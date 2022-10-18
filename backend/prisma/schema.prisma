@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+
+model conso {
+  id    String   @id @default(cuid())
+  date  DateTime @default(now()) @db.DateTime(0)
+  BASE  BigInt?  @db.UnsignedBigInt
+  HCHC  BigInt?  @db.UnsignedBigInt
+  HCHP  BigInt?  @db.UnsignedBigInt
+  PAPP  Int?
+  IINST Int?
+}
