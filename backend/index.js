@@ -37,6 +37,13 @@ function bigIntToString(object) {
     return object;
 }
 
+function arrayBigIntToString(array) {
+    for (let i = 0; i < array.length; i++) {
+        array[i] = bigIntToString(array[i]);
+    }
+    return array;
+}
+
 
 
 app.use(cors())
@@ -99,6 +106,15 @@ app.post("/post", async(req, res) => {
     io.emit("live", result);
     res.send("OK");
 });
+
+
+app.get("/get", async(req, res) => {
+    const result = await prisma.conso.findMany();
+    var toSend = arrayBigIntToString(result);
+    console.log(toSend);
+    res.send(toSend);
+});
+
 
 
 app.get('*', function(req, res) {

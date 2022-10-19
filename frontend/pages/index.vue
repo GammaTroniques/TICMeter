@@ -10,13 +10,17 @@
             <p>Index Base: {{BASE}} Wh</p>
             <p>Puissance Apparente: {{PAPP}} VA</p>
             <p>Intensité Instantanée: {{IINST}} A</p>
-            {{connected}}
         </div>
         <div v-else>
             <h2>Connexion en cours...</h2>
         </div>
         <button @click="toto">Test</button>
-        <Bar :chart-data="chartData" chart-id="conso" :width="800" :chart-options="chartOptions" />
+        <button @click="refresh">Redresh</button>
+        <div v-if="!pending">
+            <h2>Historique</h2>
+            {{toto2()}}
+            <Bar :chart-data="chartData" chart-id="conso" :width="800" :chart-options="chartOptions" />
+        </div>
     </div>
 </template>
   
@@ -44,9 +48,29 @@ var PAPP = ref(0);
 var IINST = ref(0);
 
 
-const socket = io("ws://192.168.2.16:3001");
+const { pending, data: posts, refresh } = useLazyAsyncData('data', () => $fetch('http://localhost:3001/get'))
+
+var dataConso = [
+
+]
+
+function toto2() {
+    for (let i = 0; i < posts.value.length; i++) {
+        console.log(i);
+        dataConso[i] = posts.value[i].BASE;
+    }
+}
+
+watch(posts, (newPosts) => {
+    toto2()
+})
+
+const socket = io("ws://localhost:3001");
 
 var connected = ref(false);
+
+
+
 
 var chartOptions = ref({
     plugins: {
@@ -88,7 +112,7 @@ var chartData = ref({
         {
             label: 'Consommation',
             backgroundColor: '#004079',
-            data: [40, 20, 12, 39, 10, 40, 39, 80, 40, 20, 12, 11]
+            data: dataConso,
         }
     ]
 })
@@ -120,41 +144,10 @@ function toto() {
     socket.emit('live', {
         HCHC: 12,
     });
-
 }
 
 
 </script>
-  
-
-<!-- <script>
-
-export default {
-    mounted() {
-        this.socket = this.$nuxtSocket({
-            // nuxt-socket-io opts: 
-            name: 'main', // Use socket "home"
-            channel: '/index', // connect to '/index'
-
-            // socket.io-client opts:
-            reconnection: true
-        })
-    },
-    methods: {
-        async getMessage() {
-            this.messageRxd = await this.socket.emitP('getMessage', { id: 'abc123' })
-        },
-        // Or the old way with callback
-        getMessageAlt() {
-            this.socket.emit('getMessage', { id: 'abc123' }, (resp) => {
-                this.messageRxd = resp
-            })
-        },
-    }
-}
-
-
-</script> -->
   
 <style lang="scss">
 .windows {
