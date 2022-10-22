@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.9.96/css/materialdesignicons.min.css">
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js" integrity="sha384-fKnu0iswBIqkjxrhQCTZ7qlLHOFEgNkRmK2vaO/LbTZSXdJfAu6ewRBdwHPhBo/H" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <title>Linky</title>
+</head>
+
+<body>
+    <h1>Linky</h1>
+
+    <div id="app" class="windows">
+        <h2>Infomation en live <span class="mdi mdi-record" style="color: red;"></span></h2>
+        <p>Index Heure Pleines: {{HCHP}} Wh</p>
+        <p>Index Heure Creuses: {{HCHC}} Wh</p>
+        <p>Index Base: {{BASE}} Wh</p>
+        <p>Puissance Apparente: {{PAPP}} VA</p>
+        <p>Intensité Instantanée: {{IINST}} A</p>
+
+    </div>
+    <canvas id="myChart" width="700" height="400"></canvas>
+</body>
+
+
+<script>
+    const ctx = document.getElementById('myChart').getContext('2d');
+    const myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+            datasets: [{
+                label: 'Consommation',
+                data: [0],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            responsive: false,
+        }
+
+    });
+
+    const {
+        createApp
+    } = Vue
+
+    var app = createApp({
+        data() {
+            return {
+                connected: false,
+                HCHC: 0,
+                HCHP: 0,
+                BASE: 0,
+                PAPP: 0,
+                IINST: 0,
+            }
+        }
+    }).mount('#app')
+
+    const socket = io();
+
+    socket.on("connect", () => {
+        console.log("Connected");
+        app.connected = socket.connected;
+    });
+    socket.on("disconnect", () => {
+        console.log("Disconnected");
+        app.connected = socket.connected;
+    });
+
+    socket.on("data", (data) => {
+        console.log(data);
+        const base = data.map((d) => d.BASE);
+        const date = data.map((d) => {
+            const date = new Date(d.date);
+            var hours = date.getHours();
+            var minutes = date.getMinutes();
+            if (minutes < 10) {
+                minutes = "0" + minutes;
+            }
+            if (hours < 10) {
+                hours = "0" + hours;
+            }
+            return hours + ":" + minutes;
+        });
+        console.log(base);
+        myChart.data.datasets[0].data = base;
+        myChart.data.labels = date;
+        myChart.update();
+    });
+
+    socket.emit("get_data", {
+        count: 10
+    });
+</script>
+
+
+
+</html>

@@ -25,7 +25,19 @@ io.on("connection", (socket) => {
     socket.on("disconnect", () => {
         console.log("user disconnected");
     });
+    socket.on("get_data", (message) => {
+        console.log(message);
+        if ("count" in message) {
+            prisma.conso.findMany({
+                take: message.count,
+            }).then((data) => {
+                socket.emit("data", arrayBigIntToString(data));
+            });
+        }
+    });
 });
+
+
 
 
 function bigIntToString(object) {
@@ -50,9 +62,7 @@ app.use(cors())
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.get('/', (req, res) => {
-    res.send('Hello World!')
-});
+app.use('/', express.static('public'));
 
 app.get("/post", (req, res) => {
     res.send("Only post requests are allowed");
@@ -67,11 +77,15 @@ app.post("/post", async(req, res) => {
     var PAPP = null;
     var IINST = null;
 
-    if (!("TOKEN" in body))
-        return "TOKEN is missing";
+    if (!("TOKEN" in body)) {
+        res.send("TOKEN is missing");
+        return;
+    }
 
-    if (body.TOKEN != TOKEN)
-        return "TOKEN is invalid";
+    if (body.TOKEN != TOKEN) {
+        res.send("TOKEN is invalid");
+        return;
+    }
 
     if ("HCHC" in body && !isNaN(body.HCHC)) {
         HCHC = body.HCHC;
