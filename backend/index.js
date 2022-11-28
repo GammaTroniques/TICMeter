@@ -87,6 +87,11 @@ app.post("/post", async(req, res) => {
         return;
     }
 
+    if (!("DEST" in body)) {
+        res.send("DEST (destination) is missing");
+        return;
+    }
+
     if ("HCHC" in body && !isNaN(body.HCHC)) {
         HCHC = body.HCHC;
     }
@@ -103,22 +108,38 @@ app.post("/post", async(req, res) => {
         IINST = body.IINST;
     }
 
-    const result = await prisma.conso.create({
-        data: {
+    if (body.DEST == "db") {
+        const result = await prisma.conso.create({
+            data: {
+                HCHC: HCHC,
+                HCHP: HCHP,
+                BASE: BASE,
+                PAPP: PAPP,
+                IINST: IINST,
+            },
+        });
+        console.log("Saved in database:");
+        console.log(result);
+        prisma.$disconnect();
+        var toSend = bigIntToString(result);
+        prisma.conso.findMany({
+            take: 10,
+        }).then((data) => {
+            io.emit("data", arrayBigIntToString(data));
+        });
+        res.send("OK");
+    } else if (body.DEST == "live") {
+        console.log("Sent to live:");
+        io.emit("live", {
             HCHC: HCHC,
             HCHP: HCHP,
             BASE: BASE,
             PAPP: PAPP,
             IINST: IINST,
-        },
-    });
+        });
+        res.send("OK");
+    }
 
-    console.log("Saved in database:");
-    console.log(result);
-    prisma.$disconnect();
-    var toSend = bigIntToString(result);
-    io.emit("live", result);
-    res.send("OK");
 });
 
 
@@ -129,6 +150,10 @@ app.get("/get", async(req, res) => {
     res.send(toSend);
 });
 
+app.get("/config", async(req, res) => {
+    const result = await prisma.config.findMany();
+    res.send(result);
+});
 
 
 app.get('*', function(req, res) {
