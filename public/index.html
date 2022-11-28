@@ -17,13 +17,34 @@
 <body>
     <h1>Linky</h1>
 
-    <div id="app" class="windows">
-        <h2>Infomation en live <span class="mdi mdi-record" style="color: red;"></span></h2>
-        <p>Index Heure Pleines: {{HCHP}} Wh</p>
-        <p>Index Heure Creuses: {{HCHC}} Wh</p>
-        <p>Index Base: {{BASE}} Wh</p>
-        <p>Puissance Apparente: {{PAPP}} VA</p>
-        <p>Intensité Instantanée: {{IINST}} A</p>
+    <div id="app">
+        <div class="windows">
+            <h2>Infomation en live <span class="mdi mdi-record" style="color: red;"></span></h2>
+            <p>Index Heure Pleines: {{HCHP}} Wh</p>
+            <p>Index Heure Creuses: {{HCHC}} Wh</p>
+            <p>Index Base: {{BASE}} Wh</p>
+            <p>Puissance Apparente: {{PAPP}} VA</p>
+            <p>Intensité Instantanée: {{IINST}} A</p>
+
+        </div>
+
+        <div class="flex horizontal">
+            <button @click="previous()"><span class="mdi mdi-chevron-left"></span></button>
+            <div v-if="startDisplayDate.getTime() == endDisplayDate.getTime()">
+                <p>Affichage des données du {{strStartDisplayDate}}</p>
+            </div>
+            <div v-else>
+                <p>Affichage des données du {{strStartDisplayDate}} au {{strEndDisplayDate}}</p>
+            </div>
+            <button @click="next()"><span class="mdi mdi-chevron-right"></span></button>
+        </div>
+        <input type="radio" name="period" v-model="period" value="day" id="day" checked>
+        <label for="day">Jour</label>
+        <input type="radio" name="period" v-model="period" value="week" id="week">
+        <label for="week">Semaine</label>
+        <input type="radio" name="period" v-model="period" value="month" id="month">
+        <label for="month">Mois</label>
+        <input type="radio" name="period" v-model="period" value="year" id="year">
 
     </div>
     <canvas id="myChart" width="700" height="400"></canvas>
@@ -34,13 +55,14 @@
 <script>
     const ctx = document.getElementById('myChart').getContext('2d');
     const myChart = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
             datasets: [{
                 label: 'Consommation',
                 data: [0],
                 borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgb(75, 192, 192)',
                 tension: 0.1
             }]
         },
@@ -89,8 +111,115 @@
                 BASE: 0,
                 PAPP: 0,
                 IINST: 0,
+                startDisplayDate: new Date("2022-10-24"),
+                endDisplayDate: new Date("2022-10-25"),
+                period: "day",
             }
-        }
+        },
+        methods: {
+            dateToString(date) {
+                let day = date.getDate();
+                let month = date.getMonth() + 1;
+                let year = date.getFullYear();
+                if (day < 10) {
+                    day = "0" + day;
+                }
+                if (month < 10) {
+                    month = "0" + month;
+                }
+                return day + "/" + month + "/" + year;
+            },
+            previous() {
+                switch (this.period) {
+                    case "day":
+                        this.startDisplayDate = new Date(this.startDisplayDate.setDate(this.startDisplayDate.getDate() - 1));
+                        this.endDisplayDate = new Date(this.endDisplayDate.setDate(this.endDisplayDate.getDate() - 1));
+                        break;
+                    case "week":
+                        this.startDisplayDate = new Date(this.startDisplayDate.setDate(this.startDisplayDate.getDate() - 7));
+                        this.endDisplayDate = new Date(this.endDisplayDate.setDate(this.endDisplayDate.getDate() - 7));
+                        break;
+                    case "month":
+                        this.startDisplayDate = new Date(this.startDisplayDate.setMonth(this.startDisplayDate.getMonth() - 1));
+                        this.endDisplayDate = new Date(this.endDisplayDate.setMonth(this.endDisplayDate.getMonth() - 1));
+                        break;
+                    case "year":
+                        this.startDisplayDate = new Date(this.startDisplayDate.setFullYear(this.startDisplayDate.getFullYear() - 1));
+                        this.endDisplayDate = new Date(this.endDisplayDate.setFullYear(this.endDisplayDate.getFullYear() - 1));
+                        break;
+                }
+                this.updateChart();
+            },
+            next() {
+                switch (this.period) {
+                    case "day":
+                        this.startDisplayDate = new Date(this.startDisplayDate.setDate(this.startDisplayDate.getDate() + 1));
+                        this.endDisplayDate = new Date(this.endDisplayDate.setDate(this.endDisplayDate.getDate() + 1));
+                        break;
+                    case "week":
+                        this.startDisplayDate = new Date(this.startDisplayDate.setDate(this.startDisplayDate.getDate() + 7));
+                        this.endDisplayDate = new Date(this.endDisplayDate.setDate(this.endDisplayDate.getDate() + 7));
+                        break;
+                    case "month":
+                        this.startDisplayDate = new Date(this.startDisplayDate.setMonth(this.startDisplayDate.getMonth() + 1));
+                        this.endDisplayDate = new Date(this.endDisplayDate.setMonth(this.endDisplayDate.getMonth() + 1));
+                        break;
+                    case "year":
+                        this.startDisplayDate = new Date(this.startDisplayDate.setFullYear(this.startDisplayDate.getFullYear() + 1));
+                        this.endDisplayDate = new Date(this.endDisplayDate.setFullYear(this.endDisplayDate.getFullYear() + 1));
+                        break;
+                }
+                this.updateChart();
+            },
+            updateChart() {
+                let start = this.startDisplayDate;
+                let end = this.endDisplayDate;
+                let data = {
+                    start: start,
+                    end: end
+                }
+                socket.emit("get_data", data);
+            }
+        },
+        computed: {
+            strStartDisplayDate() {
+                return this.dateToString(this.startDisplayDate);
+            },
+            strEndDisplayDate() {
+                return this.dateToString(this.endDisplayDate);
+            },
+
+        },
+        watch: {
+            period() {
+                switch (this.period) {
+                    case "day":
+                        //select today
+                        this.startDisplayDate = new Date();
+                        this.endDisplayDate = new Date(new Date().getTime() + 86400000);
+                        break;
+                    case "week":
+                        //select this week
+                        this.startDisplayDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+                        this.endDisplayDate = new Date();
+                        break;
+                    case "month":
+                        //select this month
+                        this.startDisplayDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+                        this.endDisplayDate = new Date();
+                        break;
+                    case "year":
+                        //select this year
+                        this.startDisplayDate = new Date(new Date().getFullYear(), 0, 1);
+                        this.endDisplayDate = new Date(new Date().getFullYear(), 11, 31);
+                        break;
+                }
+
+                this.updateChart();
+            }
+        },
+
     }).mount('#app')
 
     const socket = io();
@@ -106,23 +235,78 @@
 
     socket.on("data", (data) => {
         console.log(data);
-        const base = data.map((d) => d.BASE);
-        const date = data.map((d) => {
-            const date = new Date(d.date);
-            var hours = date.getHours();
-            var minutes = date.getMinutes();
-            if (minutes < 10) {
-                minutes = "0" + minutes;
-            }
-            if (hours < 10) {
-                hours = "0" + hours;
-            }
-            return hours + ":" + minutes;
-        });
-        console.log(base);
-        myChart.data.datasets[0].data = base;
-        myChart.data.labels = date;
+
+        let values = [];
+        let labels = [];
+
+        switch (app.period) {
+            case "day":
+                //get one value per hour
+                for (let i = 0; i < 24; i++) {
+                    values.push(0);
+                }
+
+                for (let i = 0; i < 24; i++) {
+                    if (i < 10) {
+                        labels.push("0" + i + ":00");
+                    } else {
+                        labels.push(i + ":00");
+                    }
+                }
+                for (let i = 0; i < data.length - 1; i++) {
+                    const hour = new Date(data[i].date).getHours();
+                    values[hour] += (data[i + 1].BASE - data[i].BASE);
+                }
+                break;
+            case "week":
+                //get one value per day
+                for (let i = 0; i < 7; i++) {
+                    values.push(0);
+                }
+
+                for (let i = 0; i < 7; i++) {
+                    labels.push(app.dateToString(new Date(app.endDisplayDate.getTime() - 86400000 * (6 - i))));
+                }
+                for (let i = 0; i < data.length - 1; i++) {
+                    const day = new Date(data[i].date).getDay();
+                    values[day] += (data[i + 1].BASE - data[i].BASE);
+                }
+                break;
+            case "month":
+                //get one value per day
+                for (let i = 0; i < 30; i++) {
+                    values.push(0);
+                }
+
+                for (let i = 0; i < 30; i++) {
+                    labels.push(app.dateToString(new Date(app.endDisplayDate.getTime() - 86400000 * (29 - i))));
+                }
+                for (let i = 0; i < data.length - 1; i++) {
+                    const day = new Date(data[i].date).getDate();
+                    values[day] += (data[i + 1].BASE - data[i].BASE);
+                }
+                break;
+            case "year":
+                //get one value per month
+                for (let i = 0; i < 12; i++) {
+                    values.push(0);
+                }
+
+                for (let i = 0; i < 12; i++) {
+                    labels.push(i + 1);
+                }
+                for (let i = 0; i < data.length - 1; i++) {
+                    const month = new Date(data[i].date).getMonth();
+                    values[month] += (data[i + 1].BASE - data[i].BASE);
+                }
+                break;
+        }
+        console.log(values);
+
+        myChart.data.datasets[0].data = values;
+        myChart.data.labels = labels;
         myChart.update();
+
     });
 
     socket.on("live", (data) => {
@@ -156,7 +340,9 @@
     });
 
     socket.emit("get_data", {
-        count: 10
+        count: 20,
+        start: app.startDisplayDate,
+        end: app.endDisplayDate
     });
 </script>
 

@@ -2,3 +2,14 @@
     border: 1px solid #000;
     border-radius: 20px;
 }
+
+.flex {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.horizontal {
+    flex-direction: row;
+}
