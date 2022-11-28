@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model conso {
   id    String   @id @default(cuid())
   date  DateTime @default(now()) @db.DateTime(0)
@@ -16,4 +15,9 @@ model conso {
   HCHP  BigInt?  @db.UnsignedBigInt
   PAPP  Int?
   IINST Int?
+}
+
+model config {
+  prop  String @id @unique
+  value String
 }
