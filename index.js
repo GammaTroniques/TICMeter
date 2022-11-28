@@ -26,14 +26,34 @@ io.on("connection", (socket) => {
         console.log("user disconnected");
     });
     socket.on("get_data", (message) => {
-        console.log(message);
-        if ("count" in message) {
+        if ("start" in message && "end" in message && message.start !== undefined && message.end !== undefined) {
+            console.log("get_data: " + message.start + " " + message.end);
             prisma.conso.findMany({
-                take: message.count,
+                where: {
+                    date: {
+                        gte: message.start,
+                        lte: message.end
+                    }
+                },
+                orderBy: {
+                    date: "asc"
+                }
             }).then((data) => {
+                console.log(data);
                 socket.emit("data", arrayBigIntToString(data));
             });
+        } else {
+            console.log(message);
+            if ("count" in message) {
+                prisma.conso.findMany({
+                    take: message.count,
+                }).then((data) => {
+                    socket.emit("data", arrayBigIntToString(data));
+                });
+            }
+
         }
+
     });
 });
 
