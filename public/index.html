@@ -45,6 +45,7 @@
         <input type="radio" name="period" v-model="period" value="month" id="month">
         <label for="month">Mois</label>
         <input type="radio" name="period" v-model="period" value="year" id="year">
+        <label for="year">Année</label>
 
     </div>
     <canvas id="myChart" width="700" height="400"></canvas>
@@ -141,7 +142,8 @@
                         break;
                     case "month":
                         this.startDisplayDate = new Date(this.startDisplayDate.setMonth(this.startDisplayDate.getMonth() - 1));
-                        this.endDisplayDate = new Date(this.endDisplayDate.setMonth(this.endDisplayDate.getMonth() - 1));
+                        const lastDay = new Date(this.startDisplayDate.getFullYear(), this.startDisplayDate.getMonth() + 1, 0);
+                        this.endDisplayDate = new Date(this.startDisplayDate.getFullYear(), this.startDisplayDate.getMonth(), lastDay.getDate());
                         break;
                     case "year":
                         this.startDisplayDate = new Date(this.startDisplayDate.setFullYear(this.startDisplayDate.getFullYear() - 1));
@@ -162,6 +164,7 @@
                         break;
                     case "month":
                         this.startDisplayDate = new Date(this.startDisplayDate.setMonth(this.startDisplayDate.getMonth() + 1));
+                        const lastDay = new Date(this.endDisplayDate.getFullYear(), this.endDisplayDate.getMonth() + 2, 0);
                         this.endDisplayDate = new Date(this.endDisplayDate.setMonth(this.endDisplayDate.getMonth() + 1));
                         break;
                     case "year":
@@ -201,13 +204,13 @@
                     case "week":
                         //select this week
                         this.startDisplayDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-
                         this.endDisplayDate = new Date();
                         break;
                     case "month":
-                        //select this month
+                        //select this month (1st to last day of month)
+                        const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
                         this.startDisplayDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-                        this.endDisplayDate = new Date();
+                        this.endDisplayDate = new Date(new Date().getFullYear(), new Date().getMonth(), daysInMonth);
                         break;
                     case "year":
                         //select this year
@@ -274,12 +277,13 @@
                 break;
             case "month":
                 //get one value per day
-                for (let i = 0; i < 30; i++) {
+                const daysInMonth = new Date(app.endDisplayDate.getFullYear(), app.endDisplayDate.getMonth() + 1, 0).getDate();
+                for (let i = 0; i < daysInMonth; i++) {
                     values.push(0);
                 }
 
-                for (let i = 0; i < 30; i++) {
-                    labels.push(app.dateToString(new Date(app.endDisplayDate.getTime() - 86400000 * (29 - i))));
+                for (let i = 0; i < daysInMonth; i++) {
+                    labels.push(app.dateToString(new Date(app.endDisplayDate.getMonth() + 1 + "/" + (i + 1) + "/" + app.endDisplayDate.getFullYear())));
                 }
                 for (let i = 0; i < data.length - 1; i++) {
                     const day = new Date(data[i].date).getDate();
@@ -293,7 +297,11 @@
                 }
 
                 for (let i = 0; i < 12; i++) {
-                    labels.push(i + 1);
+                    //get month name
+                    const month = new Date(app.endDisplayDate.getFullYear(), i, 1).toLocaleString('default', {
+                        month: 'long'
+                    });
+                    labels.push(month);
                 }
                 for (let i = 0; i < data.length - 1; i++) {
                     const month = new Date(data[i].date).getMonth();
