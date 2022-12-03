@@ -4,6 +4,7 @@ import bodyParser from 'body-parser'
 import cors from 'cors'
 import { PrismaClient } from "@prisma/client"
 import { Server } from "socket.io";
+import sass from 'node-sass';
 
 
 
@@ -81,6 +82,23 @@ function arrayBigIntToString(array) {
 app.use(cors())
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+
+app.get('/index.css', (req, res) => {
+    sass.render({
+        file: './public/index.scss',
+        // outputStyle: 'compressed'
+    }, (err, result) => {
+        if (err) {
+            console.log(err);
+            res.status(500).send(err);
+        } else {
+            res.set('Content-Type', 'text/css');
+            res.send(result.css);
+        }
+    });
+});
+
 
 app.use('/', express.static('public'));
 

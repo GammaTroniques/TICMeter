@@ -1,0 +1,115 @@
+@font-face {
+    font-family: 'Inter';
+    src: url('Inter.ttf') format('truetype');
+}
+
+* {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 700;
+    margin: 0;
+}
+
+h6 {
+    color: #BBBBBB;
+    font-weight: 600;
+    font-size: 10px;
+    line-height: 12px;
+}
+
+.flex {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.horizontal {
+    flex-direction: row;
+}
+
+body {
+    background-color: #BBBBBB;
+}
+
+.widget-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    width: 100%;
+}
+
+.widget {
+    background: #FFFFFF;
+    border-radius: 10px;
+    margin: 10px;
+    padding: 10px;
+    h1 {
+        font-size: 35px;
+        line-height: 42px;
+        display: flex;
+        align-items: center;
+    }
+    .header {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .state-info {
+        display: flex;
+        flex-direction: column;
+        margin: 2px;
+    }
+    .state-content {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+}
+
+.side {
+    width: 25%;
+}
+
+.text-box {
+    background: #BBBBBB;
+    border-radius: 10px;
+    padding: 10px;
+    color: #FFFFFF;
+}
+
+.mdi {
+    font-size: 35px;
+    color: #535353;
+}
+
+hr {
+    border: 2px solid #BBBBBB;
+    border-radius: 10px;
+    margin: 10px 0;
+}
+
+span.value {
+    color: #01A2E0;
+}
+
+.main {
+    width: 50%;
+    label {
+        background: #FFFFFF;
+        box-shadow: inset 0px 0px 10px 2px rgba(0, 0, 0, 0.6);
+        padding: 10px;
+    }
+    input[type='radio'] {
+        display: none;
+        &:not(:disabled)+label {
+            cursor: pointer;
+        }
+    }
+    input[type='radio']:checked+label {
+        background: #01A2E0;
+        color: #FFFFFF;
+        cursor: default;
+    }
+}

@@ -5,49 +5,172 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.14/dist/vue.js"></script>
+    <!-- <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script> -->
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@6.9.96/css/materialdesignicons.min.css">
     <script src="https://cdn.socket.io/4.4.1/socket.io.min.js" integrity="sha384-fKnu0iswBIqkjxrhQCTZ7qlLHOFEgNkRmK2vaO/LbTZSXdJfAu6ewRBdwHPhBo/H" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/vue-chartjs@4.1.2/dist/index.cjs"></script>
 
     <title>Linky</title>
 </head>
 
 <body>
-    <h1>Linky</h1>
+    <div class="widget-container">
+        <div class="side">
+            <div class="widget">
+                <div class="header">
+                    <h1>État</h1>
+                    <span class="mdi mdi-cog"></span>
+                </div>
+                <div class="state-content">
+                    <svg width="137" height="230" viewBox="0 0 157 236" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <mask id="mask0_7_265" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0"
+                            width="157" height="236">
+                            <path d="M0 0H156.818V236H0V0Z" fill="white" />
+                        </mask>
+                        <g mask="url(#mask0_7_265)">
+                            <path fill-rule="evenodd" clip-rule="evenodd"
+                                d="M156.818 227.552C156.818 232.233 152.367 236.019 146.834 236L9.9562 235.8C4.46175 235.795 0 231.998 0 227.338V8.43027C0 3.77067 4.46175 -0.0251466 9.9562 -0.000814454L146.834 0.196055C152.367 0.222599 156.818 4.00071 156.818 8.66142V227.552Z"
+                                fill="#BBD41F" />
+                        </g>
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M124.824 157.409C124.824 162.346 120.1 166.348 114.28 166.356L33.3966 166.224C27.5735 166.224 22.8337 162.193 22.8337 157.241V57.7783C22.8337 52.83 27.5735 48.8163 33.3966 48.8329L114.28 48.9524C120.1 48.9612 124.824 52.9782 124.824 57.942V157.409Z"
+                            fill="#B7C243" />
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M124.824 157.409C124.824 162.346 120.1 166.348 114.28 166.356L33.3966 166.224C27.5735 166.224 22.8337 162.193 22.8337 157.241V57.7783C22.8337 52.83 27.5735 48.8163 33.3966 48.8329L114.28 48.9524C120.1 48.9612 124.824 52.9782 124.824 57.942V157.409Z"
+                            stroke="#B7C243" stroke-width="0.365" />
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M126.576 149.693C126.576 154.362 122.11 158.129 116.605 158.144L40.2126 158.024C34.7076 158.015 30.2283 154.215 30.2283 149.532V55.5866C30.2283 50.9138 34.7076 47.1235 40.2126 47.1345L116.605 47.2473C122.11 47.2507 126.576 51.0454 126.576 55.7382V149.693Z"
+                            fill="#CFCEC4" />
+                        <mask id="mask1_7_265" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="34" y="49"
+                            width="89" height="103">
+                            <path d="M34.3432 49.6647H122.439V151.852H34.3432V49.6647Z" fill="white" />
+                        </mask>
+                        <g mask="url(#mask1_7_265)">
+                            <path fill-rule="evenodd" clip-rule="evenodd"
+                                d="M122.438 144.082C122.438 148.376 118.362 151.844 113.332 151.852L43.4722 151.755C38.4452 151.738 34.3423 148.238 34.3423 143.933V57.4498C34.3423 53.1416 38.4452 49.6645 43.4722 49.6645L113.332 49.7748C118.362 49.7893 122.438 53.2742 122.438 57.5869V144.082Z"
+                                fill="#F9F9F7" />
+                        </g>
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M76.9301 157.212L53.7915 157.26V142.998L76.9301 142.939V157.212Z" stroke="#7F8074"
+                            stroke-width="0.219" />
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M107.018 157.371L83.9009 157.428V143.138L107.018 143.106V157.371Z" stroke="#7F8074"
+                            stroke-width="0.219" />
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M47.4438 98.1305V119.241L112.327 119.336V98.2142L47.4438 98.1305Z" fill="#9AA3AB" />
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M47.4438 140.681C47.4438 141.938 48.6665 142.963 50.1454 142.975L109.616 143.057C111.11 143.066 112.327 142.021 112.327 140.752V119.336L47.4438 119.24V140.681Z"
+                            fill="#4F4F4F" />
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M112.327 77.8232C112.327 76.543 111.11 75.5215 109.616 75.538L50.1444 75.4467C48.6666 75.4225 47.4428 76.4759 47.4428 77.7439V98.1309L112.327 98.2145V77.8232Z"
+                            fill="#4F4F4F" />
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M127.326 149.057C127.326 153.703 122.873 157.452 117.384 157.467L41.2198 157.348C35.7312 157.339 31.2652 153.557 31.2652 148.896V55.3975C31.2652 50.7468 35.7312 46.9746 41.2198 46.9856L117.384 47.0978C122.873 47.1011 127.326 50.8778 127.326 55.5483V149.057Z"
+                            stroke="#B7C243" stroke-width="0.365" />
+                        <mask id="mask2_7_265" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="69" y="209"
+                            width="17" height="10">
+                            <path
+                                d="M69.8483 209.968V218.021C69.8483 218.318 70.1022 218.553 70.4123 218.557L84.6259 218.679C84.9349 218.679 85.1888 218.439 85.1888 218.147V210.109C85.1888 209.822 84.9349 209.594 84.6259 209.588L70.4123 209.445C70.1022 209.453 69.8483 209.684 69.8483 209.968Z"
+                                fill="white" />
+                        </mask>
+                        <g mask="url(#mask2_7_265)">
+                            <path fill-rule="evenodd" clip-rule="evenodd"
+                                d="M85.1877 218.147C85.1877 218.44 84.9349 218.679 84.6259 218.679L70.4112 218.557C70.1021 218.553 69.8471 218.318 69.8471 218.022V209.969C69.8471 209.684 70.1021 209.454 70.4112 209.445L84.6259 209.588C84.9349 209.596 85.1877 209.823 85.1877 210.111V218.147Z"
+                                fill="#4F4F4F" />
+                        </g>
+                        <mask id="mask3_7_265" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="69" y="209"
+                            width="17" height="10">
+                            <path
+                                d="M69.8483 209.968V218.021C69.8483 218.318 70.1022 218.553 70.4123 218.557L84.6259 218.679C84.9349 218.679 85.1888 218.439 85.1888 218.147V210.109C85.1888 209.822 84.9349 209.594 84.6259 209.588L70.4123 209.445C70.1022 209.453 69.8483 209.684 69.8483 209.968Z"
+                                fill="white" />
+                        </mask>
+                        <g mask="url(#mask3_7_265)">
+                            <path fill-rule="evenodd" clip-rule="evenodd"
+                                d="M81.5149 208.557L78.9474 208.533V209.977C78.9474 210.947 78.3041 211.732 77.5057 211.718C76.7257 211.718 76.0835 210.921 76.0835 209.961V208.496L73.5126 208.469C73.3506 208.48 73.1955 208.592 73.1955 208.764V213.296C73.1955 213.446 73.3506 213.588 73.5126 213.588L81.5149 213.657C81.6895 213.657 81.8273 213.526 81.8273 213.356V208.842C81.8273 208.682 81.6895 208.557 81.5149 208.557Z"
+                                fill="#FEFEFE" />
+                        </g>
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                            d="M76.6377 207.186V198.643H80.2116V207.219L76.6377 207.186Z" fill="#4F4F4F" />
+                    </svg>
+                    <div class="state-info">
+                        <h3>Non Connecté</h3>
+                        <h6>Dernière connection il y a 5 minutes</h6>
+                        <hr>
+                        <h3>Dernière valeur reçue :</h3>
+                        <h4 class="text-box">Il y a 6 minutes</h4>
+                        <hr>
+                        <h3>Prochaine valeur estimée:</h3>
+                        <h4 class="text-box">Dans 1 minute</h4>
+                    </div>
+                </div>
+                <h2>Index Consommation : <span class="value">0.000 kWh</span></h2>
+                <h2>Mode : <span class="value">BASE</span></h2>
+                <hr>
+                <h2>Version : <span class="value">1.0.0</span></h2>
+                <h2>Tension condensateur : <span class="value">4.2 V</span></h2>
 
-    <div id="app">
-        <div class="windows">
-            <h2>Infomation en live <span class="mdi mdi-record" style="color: red;"></span></h2>
-            <p>Index Heure Pleines: {{HCHP}} Wh</p>
-            <p>Index Heure Creuses: {{HCHC}} Wh</p>
-            <p>Index Base: {{BASE}} Wh</p>
-            <p>Puissance Apparente: {{PAPP}} VA</p>
-            <p>Intensité Instantanée: {{IINST}} A</p>
-
-        </div>
-
-        <div class="flex horizontal">
-            <button @click="previous()"><span class="mdi mdi-chevron-left"></span></button>
-            <div v-if="startDisplayDate.getTime() == endDisplayDate.getTime()">
-                <p>Affichage des données du {{strStartDisplayDate}}</p>
             </div>
-            <div v-else>
-                <p>Affichage des données du {{strStartDisplayDate}} au {{strEndDisplayDate}}</p>
+            <div class="widget">
+                <h1>Évolution conso.</h1>
+                <!-- gauge -->
             </div>
-            <button @click="next()"><span class="mdi mdi-chevron-right"></span></button>
         </div>
-        <input type="radio" name="period" v-model="period" value="day" id="day" checked>
-        <label for="day">Jour</label>
-        <input type="radio" name="period" v-model="period" value="week" id="week">
-        <label for="week">Semaine</label>
-        <input type="radio" name="period" v-model="period" value="month" id="month">
-        <label for="month">Mois</label>
-        <input type="radio" name="period" v-model="period" value="year" id="year">
-        <label for="year">Année</label>
-
+        <div class="widget main">
+            <h1>Consommation électrique</h1>
+            <input type="radio" name="period" v-model="period" value="day" id="day" checked>
+            <label for="day">Jour</label>
+            <input type="radio" name="period" v-model="period" value="week" id="week">
+            <label for="week">Semaine</label>
+            <input type="radio" name="period" v-model="period" value="month" id="month">
+            <label for="month">Mois</label>
+            <input type="radio" name="period" v-model="period" value="year" id="year">
+            <label for="year">Année</label>
+            <line-chart></line-chart>
+        </div>
+        <div class="side">
+            <div class="widget">
+                <h1>Puissance</h1>
+            </div>
+            <div class="widget">
+                <h1>Prix</h1>
+            </div>
+            <div class="widget">
+                <h1>Heure Creuse / Pleine</h1>
+            </div>
+        </div>
     </div>
+
+
+    <!-- <h2>Infomation en live <span class="mdi mdi-record" style="color: red;"></span></h2>
+    <p>Index Heure Pleines: {{HCHP}} Wh</p>
+    <p>Index Heure Creuses: {{HCHC}} Wh</p>
+    <p>Index Base: {{BASE}} Wh</p>
+    <p>Puissance Apparente: {{PAPP}} VA</p>
+    <p>Intensité Instantanée: {{IINST}} A</p>
+
+    <div class="flex horizontal">
+        <button @click="previous()"><span class="mdi mdi-chevron-left"></span></button>
+        <div v-if="startDisplayDate.getTime() == endDisplayDate.getTime()">
+            <p>Affichage des données du {{strStartDisplayDate}}</p>
+        </div>
+        <div v-else>
+            <p>Affichage des données du {{strStartDisplayDate}} au {{strEndDisplayDate}}</p>
+        </div>
+        <button @click="next()"><span class="mdi mdi-chevron-right"></span></button>
+    </div>
+    <input type="radio" name="period" v-model="period" value="day" id="day" checked>
+    <label for="day">Jour</label>
+    <input type="radio" name="period" v-model="period" value="week" id="week">
+    <label for="week">Semaine</label>
+    <input type="radio" name="period" v-model="period" value="month" id="month">
+    <label for="month">Mois</label>
+    <input type="radio" name="period" v-model="period" value="year" id="year">
+    <label for="year">Année</label>
+
+-->
     <canvas id="myChart" width="700" height="400"></canvas>
     <canvas id="livePAPP" width="700" height="400"></canvas>
 </body>
@@ -103,7 +226,27 @@
         createApp
     } = Vue
 
-    var app = createApp({
+
+
+    Vue.component('line-chart', {
+        extends: Chart.Line,
+        mounted() {
+            this.renderChart({
+                labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
+                datasets: [{
+                    label: 'Data One',
+                    backgroundColor: '#f87979',
+                    data: [40, 39, 10, 40, 39, 80, 40]
+                }]
+            }, {
+                responsive: true,
+                maintainAspectRatio: false
+            })
+        }
+
+    })
+
+    var app = new Vue({
         data() {
             return {
                 connected: false,
@@ -223,7 +366,7 @@
             }
         },
 
-    }).mount('#app')
+    })
 
     const socket = io();
 
