@@ -297,8 +297,43 @@ socket.on("live", (data) => {
     livePAPPChart.update();
 });
 
+
+socket.on("error", (data) => {
+    console.log(data);
+    alert(JSON.stringify(data));
+});
+
+
 socket.emit("get_data", {
     count: 20,
     start: app.startDisplayDate,
     end: app.endDisplayDate
 });
+
+
+
+function deg2rad(deg) {
+    return deg * (Math.PI / 180)
+}
+
+// var gauge2 = Gauge(
+//     document.getElementById("conso-percent"), {
+//         min: -50,
+//         max: 50,
+//         dialStartAngle: 195,
+//         dialEndAngle: -15,
+//         value: -1,
+//         label: function(value) {
+//             return value > 0 ? "+" + value + "%" : value + "%";
+//         },
+//         color: function(value) {
+//             if (value < -20) {
+//                 return "#48A23F";
+//             } else if (value < 20) {
+//                 return "#BBD41F";
+//             } else {
+//                 return "#EAAA00";
+//             }
+//         }
+//     }
+// );

@@ -26,31 +26,40 @@ io.on("connection", (socket) => {
     socket.on("disconnect", () => {
         console.log("user disconnected");
     });
-    socket.on("get_data", (message) => {
+    socket.on("get_data", async(message) => {
         if ("start" in message && "end" in message && message.start !== undefined && message.end !== undefined) {
             console.log("get_data: " + message.start + " " + message.end);
-            prisma.conso.findMany({
-                where: {
-                    date: {
-                        gte: message.start,
-                        lte: message.end
+            try {
+                await prisma.conso.findMany({
+                    where: {
+                        date: {
+                            gte: message.start,
+                            lte: message.end
+                        }
+                    },
+                    orderBy: {
+                        date: "asc"
                     }
-                },
-                orderBy: {
-                    date: "asc"
-                }
-            }).then((data) => {
-                console.log(data);
-                socket.emit("data", arrayBigIntToString(data));
-            });
+                }).then((data) => {
+                    console.log(data);
+                    socket.emit("data", arrayBigIntToString(data));
+                });
+            } catch (error) {
+                console.log(error);
+                socket.emit("error", error);
+            }
         } else {
             console.log(message);
             if ("count" in message) {
-                prisma.conso.findMany({
-                    take: message.count,
-                }).then((data) => {
-                    socket.emit("data", arrayBigIntToString(data));
-                });
+                try {
+                    prisma.conso.findMany({
+                        take: message.count,
+                    }).then((data) => {
+                        socket.emit("data", arrayBigIntToString(data));
+                    });
+                } catch (error) {
+                    console.log(error);
+                }
             }
 
         }
@@ -182,15 +191,25 @@ app.post("/post", async(req, res) => {
 
 
 app.get("/get", async(req, res) => {
-    const result = await prisma.conso.findMany();
-    var toSend = arrayBigIntToString(result);
-    console.log(toSend);
-    res.send(toSend);
+    try {
+        const result = await prisma.conso.findMany();
+        var toSend = arrayBigIntToString(result);
+        console.log(toSend);
+        res.send(toSend);
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(error);
+    }
 });
 
 app.get("/config", async(req, res) => {
-    const result = await prisma.config.findMany();
-    res.send(result);
+    try {
+        const result = await prisma.config.findMany();
+        res.send(result);
+    } catch (error) {
+        console.log(error);
+        res.status(500).send(error);
+    }
 });
 
 
