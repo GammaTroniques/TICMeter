@@ -17,6 +17,13 @@ h6 {
     line-height: 12px;
 }
 
+h5 {
+    color: #6D6D6D;
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 18px;
+}
+
 .flex {
     display: flex;
     flex-direction: column;
@@ -127,4 +134,58 @@ span.value {
 .period-selector {
     margin: 10px 0;
     padding: 10px;
+}
+
+.needle {
+    transform: rotate(20deg);
+    transform-origin: center;
+}
+
+.text-below-gauge {
+    position: relative;
+    top: -30px;
+    text-align: center;
+    h4 {
+        color: #48A23F;
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+    }
+}
+
+.price>* {
+    color: #FFCF00;
+}
+
+.price-tab {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    .label {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        margin: 0 10px;
+    }
+}
+
+.line {
+    display: flex;
+    flex-direction: row;
+    .HCHP {
+        display: flex;
+        flex-direction: column;
+        height: 30px;
+        color: white;
+        justify-content: center;
+        padding: 0 10px;
+        &.HC {
+            background-color: #01A2E0;
+            align-items: flex-start;
+        }
+        &.HP {
+            background-color: #E63A0F;
+            align-items: flex-end;
+        }
+    }
 }
