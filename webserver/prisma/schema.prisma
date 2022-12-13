@@ -21,3 +21,21 @@ model config {
   prop  String @id @unique
   value String
 }
+
+model live {
+  id       Int      @id @default(autoincrement())
+  date     DateTime @default(now())
+  BASE     BigInt?  @db.UnsignedBigInt
+  HCHC     BigInt?  @db.UnsignedBigInt
+  HCHP     BigInt?  @db.UnsignedBigInt
+  ADCO     String
+  OPTARIF  String
+  ISOUSC   Int
+  PTEC     String
+  IINST    Int
+  IMAX     Int
+  PAPP     Int
+  HHPHC    String
+  MOTDETAT String
+  VCONDO   Float?
+}

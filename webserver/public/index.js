@@ -34,8 +34,18 @@ var app = createApp({
             BASE: 0,
             PAPP: 0,
             IINST: 0,
-            startDisplayDate: new Date("2022-10-24"),
-            endDisplayDate: new Date("2022-10-25"),
+            live: {
+                PAPP: "?",
+                IINST: "?",
+                date: "?",
+                BASE: "?",
+                OPTARIF: "?",
+                VCONDO: "?",
+
+            },
+            config: {},
+            startDisplayDate: new Date(new Date().setHours(0, 0, 0, 0)),
+            endDisplayDate: new Date(new Date().setHours(23, 59, 59, 999)),
             period: "day",
             //----------------
             consoChart: null,
@@ -58,13 +68,23 @@ var app = createApp({
             },
             options: {
                 scales: {
+                    x: {
+                        ticks: {
+                            callback: function(value, index, values) {
+                                return value + 'kWh';
+                            }
+                        }
+                    },
                     y: {
                         beginAtZero: true
                     }
                 },
                 responsive: false,
-            }
+            },
+
         });
+
+
 
     },
     methods: {
@@ -132,6 +152,49 @@ var app = createApp({
                 end: end
             }
             socket.emit("get_data", data);
+        },
+        today() {
+            this.period = "day";
+            this.startDisplayDate = new Date(new Date().setHours(0, 0, 0, 0));
+            this.endDisplayDate = new Date(new Date().setHours(23, 59, 59, 999))
+            this.updateChart();
+        },
+        timeAgo(time, from) {
+            let now;
+            if (from == undefined) {
+                now = new Date();
+            } else {
+                now = new Date(from);
+            }
+            let diff = new Date(now).getTime() - new Date(time).getTime();
+            console.log(new Date(diff).getTime());
+            let diffInMinutes = Math.floor(diff / 1000 / 60);
+            let diffInHours = Math.floor(diff / 1000 / 60 / 60);
+            let diffInDays = Math.floor(diff / 1000 / 60 / 60 / 24);
+            if (isNaN(diffInMinutes)) {
+                return "Inconnu";
+            } else if (diff / 1000 < 60) {
+                return Math.floor(diff / 1000) + "secondes";
+            } else if (diffInMinutes < 60) {
+                return diffInMinutes + " minutes";
+            } else if (diffInHours < 24) {
+                return diffInHours + " heures";
+            } else {
+                return diffInDays + " jours";
+            }
+        },
+        nextValue(lastDate) {
+            let date = new Date(lastDate);
+
+            let lastTimePlusRefreshRate = date.getTime() + this.config.REFRESH_RATE * 60 * 1000;
+            console.log(new Date().getTime());
+            console.log(date.getTime() + this.config.REFRESH_RATE * 60 * 1000);
+
+            return (lastTimePlusRefreshRate - new Date().getTime()) / 1000;
+            if (new Date().getTime() < lastTimePlusRefreshRate) //if 
+            {} else {
+                return "?";
+            }
         }
     },
     computed: {
@@ -186,9 +249,7 @@ socket.on("disconnect", () => {
     app.connected = socket.connected;
 });
 
-socket.on("data", (data) => {
-    console.log(data);
-
+socket.on("chart_data", (data) => {
     let values = [];
     let labels = [];
 
@@ -206,6 +267,11 @@ socket.on("data", (data) => {
                     labels.push(i + ":00");
                 }
             }
+
+            //remove null values
+            data = data.filter((item) => {
+                return item.BASE != null;
+            });
             for (let i = 0; i < data.length - 1; i++) {
                 const hour = new Date(data[i].date).getHours();
                 values[hour] += (data[i + 1].BASE - data[i].BASE);
@@ -267,41 +333,11 @@ socket.on("data", (data) => {
 
 });
 
-socket.on("live", (data) => {
-    console.log(data);
-    app.HCHC = data.HCHC;
-    app.HCHP = data.HCHP;
-    app.BASE = data.BASE;
-    app.PAPP = data.PAPP;
-    app.IINST = data.IINST;
-
-
-    const date = new Date();
-    var hours = date.getHours();
-    var minutes = date.getMinutes();
-    var seconds = date.getSeconds();
-    if (minutes < 10) {
-        minutes = "0" + minutes;
-    }
-    if (hours < 10) {
-        hours = "0" + hours;
-    }
-    if (seconds < 10) {
-        seconds = "0" + seconds;
-    }
-
-    const time = hours + ":" + minutes + ":" + seconds;
-
-    livePAPPChart.data.datasets[0].data.push(data.PAPP);
-    livePAPPChart.data.labels.push(time);
-    livePAPPChart.update();
-});
-
-
 socket.on("error", (data) => {
     console.log(data);
     alert(JSON.stringify(data));
 });
+
 
 
 socket.emit("get_data", {
@@ -312,28 +348,20 @@ socket.emit("get_data", {
 
 
 
-function deg2rad(deg) {
-    return deg * (Math.PI / 180)
-}
 
-// var gauge2 = Gauge(
-//     document.getElementById("conso-percent"), {
-//         min: -50,
-//         max: 50,
-//         dialStartAngle: 195,
-//         dialEndAngle: -15,
-//         value: -1,
-//         label: function(value) {
-//             return value > 0 ? "+" + value + "%" : value + "%";
-//         },
-//         color: function(value) {
-//             if (value < -20) {
-//                 return "#48A23F";
-//             } else if (value < 20) {
-//                 return "#BBD41F";
-//             } else {
-//                 return "#EAAA00";
-//             }
-//         }
-//     }
-// );
+socket.on("live_data", (data) => {
+    console.log(data);
+    app.live = data;
+});
+socket.emit("get_live");
+window.setInterval(() => {
+    socket.emit("get_live");
+}, 10000);
+
+
+socket.on("config_data", (data) => {
+    console.log("config");
+    console.log(data);
+    app.config = data;
+});
+socket.emit("get_config");

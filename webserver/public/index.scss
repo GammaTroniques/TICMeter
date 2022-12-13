@@ -142,8 +142,8 @@ span.value {
 }
 
 .text-below-gauge {
-    position: relative;
-    top: -30px;
+    // position: relative;
+    // top: -30px;
     text-align: center;
     h4 {
         color: #48A23F;
@@ -188,4 +188,22 @@ span.value {
             align-items: flex-end;
         }
     }
+}
+
+.gauge-value {
+    position: relative;
+    top: -150px;
+    * {
+        color: #5AAA3B;
+    }
+    h1 {
+        font-weight: 700;
+        font-size: 50px;
+        line-height: 73px;
+    }
+}
+
+#today {
+    margin-right: 30px;
+    cursor: pointer;
 }
