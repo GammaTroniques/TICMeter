@@ -9,7 +9,16 @@ import sass from 'node-sass';
 
 const prisma = new PrismaClient();
 
-const TOKEN = "abc"; // security token
+var TOKEN = null;
+await prisma.config.findMany({}).then((result) => {
+    var toSend = {};
+    result.forEach((element) => {
+        toSend[element.prop] = element.value;
+    });
+    TOKEN = toSend.TOKEN;
+}).catch((error) => {
+    console.log(error);
+});
 
 const app = express()
 const httpServer = createServer(app);
@@ -258,17 +267,29 @@ app.get("/get", async(req, res) => {
 
 app.get("/config", async(req, res) => {
 
-    const result = await prisma.config.findMany({})
-        .then((result) => {
-            var toSend = {};
-            result.forEach((element) => {
-                toSend[element.prop] = element.value;
+    console.log(req.query);
+    if (!("token" in req.query)) {
+        res.status(401).send("TOKEN is missing");
+        return;
+    }
+
+    const token = req.query.token;
+
+    if (token == TOKEN) {
+        const result = await prisma.config.findMany({})
+            .then((result) => {
+                var toSend = {};
+                result.forEach((element) => {
+                    toSend[element.prop] = element.value;
+                });
+                res.send(toSend);
+            }).catch((error) => {
+                console.log(error);
+                res.status(500).send(error);
             });
-            res.send(toSend);
-        }).catch((error) => {
-            console.log(error);
-            res.status(500).send(error);
-        });
+    } else {
+        res.status(401).send("TOKEN is invalid");
+    }
     console.log("esp get config");
 });
 

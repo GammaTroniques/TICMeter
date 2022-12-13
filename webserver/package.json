@@ -4,7 +4,8 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "start": "nodemon --ignore ./public/ index.js"
+        "start": "nodemon --ignore ./public/ index.js",
+        "rebuild": "npm rebuild node-sass"
     },
     "author": "",
     "license": "ISC",
