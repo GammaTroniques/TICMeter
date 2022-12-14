@@ -207,3 +207,12 @@ span.value {
     margin-right: 30px;
     cursor: pointer;
 }
+
+.settings-windows {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border: 1px solid #000000;
+    border-radius: 10px;
+    background: #FFFFFF;
+}

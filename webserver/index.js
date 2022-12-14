@@ -214,10 +214,34 @@ app.post("/post", async(req, res) => {
         skipDuplicates: true,
     });
 
+    const lastData = body.data[body.data.length - 1];
+    console.log("Sending live data");
+    lastData.DATE = new Date(lastData.DATE * 1000);
 
-    // console.log("Saved in database:");
-    // console.log(result);
-    res.send("OK");
+    console.log(lastData);
+    const live = await prisma.live.update({
+        where: {
+            id: 0,
+        },
+        data: {
+            date: lastData.DATE,
+            BASE: lastData.BASE,
+            HCHC: lastData.HCHC,
+            HCHP: lastData.HCHP,
+            ADCO: lastData.ADCO.toString(),
+            OPTARIF: lastData.OPTARIF,
+            ISOUSC: lastData.ISOUSC,
+            PTEC: lastData.PTEC,
+            IINST: lastData.IINST,
+            PAPP: lastData.PAPP,
+            HHPHC: lastData.HHPHC,
+            MOTDETAT: lastData.MOTDETAT,
+            VCONDO: body.VCONDO,
+        },
+    });
+
+
+
 
 
     // // if time is more than the last send time
@@ -246,6 +270,9 @@ app.post("/post", async(req, res) => {
     //         },
     //     });
     // }
+
+    res.send("OK");
+
 });
 
 

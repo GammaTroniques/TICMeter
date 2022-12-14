@@ -5,34 +5,64 @@
 #include <ArduinoJson.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+#include <EEPROM.h> //store data in flash memory (the ESP32 does not have EEPROM)
 #include "linky.h"
 
-const char *ssid = "Livebox 2ryz";
-const char *password = "aaaaaaaaaaaaa1";
+#include "soc/soc.h"          //disable brownour problems
+#include "soc/rtc_cntl_reg.h" //disable brownour problems
 
-#define SERVER_HOST "http://192.168.43.233:3001"
-#define POST_URL "/post"
-#define CONFIG_URL "/config"
+#define EEPROM_SIZE 512
+
 #define uS_TO_S_FACTOR 1000000
-
 #define V_CONDO_PIN 32 // io32
 
+// #define OVERWRITE_CONFIG // to overwrite EEPROM with the config below (use only once to set the config)
+
+// firt time config
+// struct config_t
+// {
+//   char ssid[50] = "Livebox 2ryz";
+//   char password[50] = "aaaaaaaaaaaaa1";
+//   char serverHost[50] = "192.168.43.233:3001";
+//   char postUrl[50] = "/post";
+//   char configUrl[20] = "/config";
+//   char version[10] = "";
+//   unsigned int refreshRate = 60;
+//   char deepSleep = 0;
+//   char token[50] = "abc";
+//  unsigned int dataCount = 3;
+// };
+
+struct config_t
+{
+  char ssid[50] = "";
+  char password[50] = "";
+  char serverHost[50] = "";
+  char postUrl[50] = "";
+  char configUrl[20] = "";
+  char version[10] = "";
+  unsigned int refreshRate = 60;
+  char deepSleep = 0;
+  char token[50] = "";
+  unsigned int dataCount = 3;
+};
+
+config_t config;
+
 const char *ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 0;
-const int daylightOffset_sec = 3600;
+const long gmtOffset_sec = 0;        // UTC
+const int daylightOffset_sec = 3600; //
 
 Linky linky(MODE_HISTORIQUE, 16, 17);
 
 // ------------Global variables stored in RTC memory to keep their values after deep sleep
-RTC_DATA_ATTR int bootCount = 0;
 RTC_DATA_ATTR LinkyData dataArray[15]; // 10 + 5 in case of error
 RTC_DATA_ATTR unsigned int dataIndex = 0;
-RTC_DATA_ATTR unsigned int refreshRateMin = 1;
 // ---------------------------------------------------------------------------------------
 
 float getVCondo()
 {
-  float vCondo = analogRead(V_CONDO_PIN) * 5 / 3988;
+  float vCondo = (float)(analogRead(V_CONDO_PIN) * 5) / 3988; // return voltage in V after the voltage divider
   return vCondo;
 }
 
@@ -40,89 +70,117 @@ unsigned long getTimestamp()
 {
   time_t now;
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo))
+  unsigned int nTry = 0;
+  while (!getLocalTime(&timeinfo) && nTry < 3)
   {
-    Serial.println("Failed to obtain time");
+    Serial.println("Failed to obtain time : " + String(nTry));
+    delay(500);
+    nTry++;
   }
   time(&now);
   return now;
 }
 
-void getConfig()
+void createHttpUrl(char *url, const char *host, const char *path)
+{
+
+  url = strcat(url, "http://");
+  url = strcat(url, host);
+  url = strcat(url, path);
+}
+
+void getConfigFromServer()
 {
   HTTPClient http;
-  http.begin(SERVER_HOST CONFIG_URL);
-  Serial.println(SERVER_HOST CONFIG_URL);
+  char url[100] = {0};
+  createHttpUrl(url, config.serverHost, config.configUrl);
+  strcat(url, "?token=");
+  strcat(url, config.token);
+  Serial.println(url);
+  http.begin(url);
   int httpCode = http.GET();
-  if (httpCode > 0)
+  Serial.println(httpCode);
+  if (httpCode == 200)
   {
     String payload = http.getString();
     Serial.println(payload);
-    StaticJsonDocument<200> doc;
+    StaticJsonDocument<500> doc;
     deserializeJson(doc, payload);
-    const char *ssid = doc["SSID"];
-    const char *password = doc["PASSWORD"];
-    refreshRateMin = doc["REFRESH_RATE"];
-    Serial.println(ssid);
-    Serial.println(password);
-    Serial.println(refreshRateMin);
+    strcpy(config.ssid, doc["SSID"].as<const char *>());
+    strcpy(config.password, doc["PASSWORD"].as<const char *>());
+    strcpy(config.serverHost, doc["SERVER_HOST"].as<const char *>());
+    strcpy(config.postUrl, doc["POST_URL"].as<const char *>());
+    strcpy(config.configUrl, doc["CONFIG_URL"].as<const char *>());
+    strcpy(config.version, doc["VERSION"].as<const char *>());
+    strcpy(config.token, doc["TOKEN"].as<const char *>());
+    config.refreshRate = doc["REFRESH_RATE"].as<unsigned int>();
+    config.deepSleep = doc["DEEPSLEEP"].as<char>();
+    config.dataCount = doc["DATA_COUNT"].as<unsigned int>();
+
+    EEPROM.put(0, config);
+    EEPROM.commit();
   }
   http.end();
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   getTimestamp();
 }
 
-char sendTo(LinkyData data, char nMsg)
+void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int jsonSize)
 {
-  static char firstTime = 1;
+  DynamicJsonDocument doc(1024);
+  doc["TOKEN"] = "abc";
+  doc["VCONDO"] = getVCondo();
+
+  for (int i = 0; i < dataIndex; i++)
+  {
+    Serial.println("Sending data " + String(dataIndex) + " " + String(data->timestamp));
+
+    doc["data"][i]["DATE"] = data[i].timestamp;
+    doc["data"][i]["ADCO"] = data[i].ADCO;
+    doc["data"][i]["OPTARIF"] = data[i].OPTARIF;
+    doc["data"][i]["ISOUSC"] = data[i].ISOUSC;
+
+    if (data[i].BASE != 0)
+      doc["data"][i]["BASE"] = data[i].BASE;
+
+    if (data[i].HCHC != 0)
+      doc["data"][i]["HCHC"] = data[i].HCHC;
+
+    if (data[i].HCHP != 0)
+      doc["data"][i]["HCHP"] = data[i].HCHP;
+
+    doc["data"][i]["PTEC"] = data[i].PTEC;
+    doc["data"][i]["IINST"] = data[i].IINST;
+    doc["data"][i]["IMAX"] = data[i].IMAX;
+    doc["data"][i]["PAPP"] = data[i].PAPP;
+    doc["data"][i]["HHPHC"] = data[i].HHPHC;
+    doc["data"][i]["MOTDETAT"] = data[i].MOTDETAT;
+  }
+
+  if (dataIndex == 0)
+  {
+    // Send empty data to server to keep the connection alive
+    doc["ERROR"] = "Cant read data from linky";
+    doc["data"][0]["DATE"] = getTimestamp();
+    doc["data"][0]["BASE"] = nullptr;
+    doc["data"][0]["HCHC"] = nullptr;
+    doc["data"][0]["HCHP"] = nullptr;
+  }
+  serializeJson(doc, json, jsonSize);
+  Serial.println(json);
+}
+
+char sendToServer(char *json)
+{
   if (WiFi.status() == WL_CONNECTED)
   {
     WiFiClient client;
     HTTPClient http;
 
-    http.begin(client, SERVER_HOST POST_URL);
-
+    char POST_URL[100] = {0};
+    createHttpUrl(POST_URL, config.serverHost, config.postUrl);
+    http.begin(client, POST_URL);
     http.addHeader("Content-Type", "application/json");
-
-    DynamicJsonDocument doc(1024);
-
-    Serial.println("Time " + String(getTimestamp()));
-
-    doc["nMSG"] = nMsg;
-    doc["DATE"] = data.timestamp;
-    doc["TOKEN"] = "abc";
-    doc["ADCO"] = data.ADCO;
-    doc["OPTARIF"] = data.OPTARIF;
-    doc["ISOUSC"] = data.ISOUSC;
-
-    if (data.BASE != 0)
-      doc["BASE"] = data.BASE;
-
-    if (data.HCHC != 0)
-      doc["HCHC"] = data.HCHC;
-
-    if (data.HCHP != 0)
-      doc["HCHP"] = data.HCHP;
-
-    doc["PTEC"] = data.PTEC;
-    doc["IINST"] = data.IINST;
-    doc["IMAX"] = data.IMAX;
-    doc["PAPP"] = data.PAPP;
-    doc["HHPHC"] = data.HHPHC;
-    doc["MOTDETAT"] = data.MOTDETAT;
-
-    if (firstTime == 1)
-    { // only send V_CONDO on last message
-      doc["V_CONDO"] = getVCondo();
-      firstTime = 0;
-    }
-
-    if(nMsg == 0){
-      firstTime = 1;
-    }
-
-    char json[1024] = {0};
-    serializeJson(doc, json);
 
     int httpCode = http.POST(json);
     Serial.print("HTTP Code: ");
@@ -135,13 +193,14 @@ char sendTo(LinkyData data, char nMsg)
 
 char connectToWifi()
 {
-  setCpuFrequencyMhz(240);
-  Serial.begin(115200);
-
-  WiFi.begin(ssid, password);
-  unsigned long timeout = millis() + 7000;
+  setCpuFrequencyMhz(240);                  // 240 MHz
+  Serial.begin(115200);                     // Initialize serial port
+  WiFi.begin(config.ssid, config.password); // Connect to the network
+  Serial.println(config.ssid);
+  Serial.println(config.password);
+  unsigned long timeout = millis() + 5000;
   Serial.println("WiFi connecting...");
-  while (WiFi.status() != WL_CONNECTED && millis() < timeout)
+  while (WiFi.status() != WL_CONNECTED && millis() < timeout) // Wait for the Wi-Fi to connect or timeout
   {
   }
 
@@ -174,11 +233,31 @@ void setup()
 {
   setCpuFrequencyMhz(10);
   Serial.begin(115200);
-  WiFi.setSleep(true);
+  Serial.println("Starting...");
+  WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); // disable brownout detector in the setup.
+  WiFi.setSleep(true);                       // disable wifi to save power
+
+  delay(1000);
   pinMode(V_CONDO_PIN, INPUT);
+
+  EEPROM.begin(EEPROM_SIZE); // init eeprom
+
+#ifdef OVERWRITE_CONFIG
+  EEPROM.put(0, config);
+  EEPROM.commit();
+#endif
+
+  EEPROM.get(0, config); // read config from eeprom
+
+  if (getVCondo() < 4.5)
+  {
+    Serial.println("VCondo too low, going to sleep");
+    esp_sleep_enable_timer_wakeup(1 * 60 * uS_TO_S_FACTOR); // 1 minutes
+    esp_deep_sleep_start();
+  }
   if (connectToWifi())
   {
-    getConfig();
+    getConfigFromServer();
     disconectFromWifi();
     linky.begin();
   }
@@ -187,44 +266,47 @@ void setup()
 void loop()
 {
   char result = -1; // 0 = error, 1 = success, -1 = init
+  char nTry = 0;
   do
   {
-    delay(5000);             // wait to get some frame from linky into the serial buffer
+    delay(4000);             // wait to get some frame from linky into the serial buffer
     result = linky.update(); // decode the frame
-  } while (result != 1);     // wait for a successfull frame
+    nTry++;
+  } while (result != 1 && nTry < 10); // wait for a successfull frame
 
   if (dataIndex < 15) // store data until buffer is full
   {
     dataArray[dataIndex] = linky.data;               // store data
     dataArray[dataIndex].timestamp = getTimestamp(); // add timestamp
-    dataIndex++;                                     // increment index
+    Serial.println(dataArray[dataIndex].timestamp);
+    dataIndex++; // increment index
     Serial.println("Data stored: " + String(dataIndex) + " - " + String(dataArray[dataIndex - 1].BASE));
   }
   else // buffer full
   {
-    // no nothing
+    // shift data to the left
+    for (int i = 0; i < 14; i++)
+    {
+      dataArray[i] = dataArray[i + 1];
+    }
+    dataArray[14] = linky.data;               // store data
+    dataArray[14].timestamp = getTimestamp(); // add timestamp
+    Serial.println("Data stored: " + String(dataIndex) + " - " + String(dataArray[14].BASE));
   }
 
-  if (dataIndex >= 3) // send data if buffer contains at least 3 messages
+  if ((dataIndex >= config.dataCount || nTry >= 10) && getVCondo() > 4.5) // send data if buffer contains at least 3 messages and VCondo is ok
   {
-    connectToWifi();                  // reconnect to wifi
-    getConfig();                      // get config from server
-    int nTry = 0;                     // number of tries
-    while (dataIndex > 0 && nTry < 3) // send data until buffer is empty or 3 tries
+    char json[1024] = {0};
+    preapareJsonData(dataArray, dataIndex, json, sizeof(json)); // prepare json data
+    connectToWifi();                                            // reconnect to wifi
+    getConfigFromServer();                                      // get config from server
+    if (sendToServer(json) == 200)                              // send data
     {
-      if (sendTo(dataArray[dataIndex - 1], dataIndex - 1) == 200) // send data and check if success
-      {
-        Serial.println("Data sent: " + String(dataIndex - 1) + " - " + String(dataArray[dataIndex - 1].BASE));
-        dataIndex--; // decrement index to send next data
-      }
-      else
-      {
-        nTry++; // increment number of tries if error
-      }
+      dataIndex = 0; // reset index
     }
     disconectFromWifi(); // disconnect from wifi when buffer is empty or 3 tries
     linky.begin();       // the serial communication with linky: when we change the CPU frequency, we need to reinit the serial communication
   }
-
-  delay(refreshRateMin * 60 * 1000);
+  nTry = 0;
+  delay(config.refreshRate * 1000);
 }

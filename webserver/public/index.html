@@ -11,7 +11,6 @@
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
     <script src="https://unpkg.com/vue-chartjs@2.8.7/dist/vue-chartjs.full.min.js"></script>
-    <script src="gauge.js"></script>
 
     <title>Linky</title>
 </head>
@@ -275,35 +274,14 @@
         </div>
     </div>
 
-
-    <!-- <h2>Infomation en live <span class="mdi mdi-record" style="color: red;"></span></h2>
-    <p>Index Heure Pleines: {{HCHP}} Wh</p>
-    <p>Index Heure Creuses: {{HCHC}} Wh</p>
-    <p>Index Base: {{BASE}} Wh</p>
-    <p>Puissance Apparente: {{PAPP}} VA</p>
-    <p>Intensité Instantanée: {{IINST}} A</p>
-
-    <div class="flex horizontal">
-        <button @click="previous()"><span class="mdi mdi-chevron-left"></span></button>
-        <div v-if="startDisplayDate.getTime() == endDisplayDate.getTime()">
-            <p>Affichage des données du {{strStartDisplayDate}}</p>
-        </div>
-        <div v-else>
-            <p>Affichage des données du {{strStartDisplayDate}} au {{strEndDisplayDate}}</p>
-        </div>
-        <button @click="next()"><span class="mdi mdi-chevron-right"></span></button>
+    <div class="settings-window">
+        <h1>Paramètres</h1>
+        <h2>SSID :</h2>
+        <input type="text">
+        <h2>Mot de passe:</h2>
+        <input type="password">
     </div>
-    <input type="radio" name="period" v-model="period" value="day" id="day" checked>
-    <label for="day">Jour</label>
-    <input type="radio" name="period" v-model="period" value="week" id="week">
-    <label for="week">Semaine</label>
-    <input type="radio" name="period" v-model="period" value="month" id="month">
-    <label for="month">Mois</label>
-    <input type="radio" name="period" v-model="period" value="year" id="year">
-    <label for="year">Année</label>
 
--->
-    <!-- <canvas id="livePAPP" width="700" height="400"></canvas> -->
 </body>
 <script src="./index.js"></script>
 
