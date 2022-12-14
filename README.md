@@ -37,6 +37,9 @@ This project as been created with :
 
 `est32/src` : The code is made to be sent on an ESP32 on an electronic card
 
+| Top Side  | Bottom Side |
+| ------------- | ------------- |
+| ![topside](https://github.com/xmow49/LinkyTeleinfoESP32/blob/5a6a4f057d743f156686f012e9a329d2cba7980d/img/TopSide.png) | ![bottomside](https://github.com/xmow49/LinkyTeleinfoESP32/blob/5a6a4f057d743f156686f012e9a329d2cba7980d/img/BottomSide.png) |
 
 #### Schematic
 
@@ -48,17 +51,17 @@ This project as been created with :
 Compile and send `esp32/src/` files to the ESP32
 
 #### DataBase MySQL :globe_with_meridians:
-Create a `Linky` Database
-Copy the [.env_sample](/webserver/.env_sample) to `.env` and fill with your database logins
+Create Linky Database and execute
+```bash
+npx prisma db push
+```
 
 #### WebPage :computer:
 Host the website available on `webserver/`
 ```bash
-cd webserver
 #Installation
 npm install
 npx prisma generate
-npx prisma db push
 #Start
 npm start
 ```
@@ -87,7 +90,7 @@ WebPage example
 
 ## Authors
 
-- [@Dorian.local/](https://github.com/xmow49)
+- [@xmow49](https://github.com/xmow49)
 - [@Noah_](https://github.com/NoahJust)
 
 [![youtube](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](https://www.youtube.com/gammatroniques)
