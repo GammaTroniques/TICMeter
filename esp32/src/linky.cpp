@@ -1,38 +1,24 @@
-#include <HardwareSerial.h>
 #include <linky.h>
 
-//------------------------------------------------------------------------------
-// Linky constructor
-// serialNumber: UART number of the ESP for the Linky (1 or 2)
-// mode: MODE_STANDARD or MODE_HISTORIQUE
-// RX: RX pin number
-// TX: TX pin number (not used)
-//------------------------------------------------------------------------------
-
+/**
+ * @brief Linky constructor
+ *
+ * @param mode MODE_STANDARD or MODE_HISTORIQUE
+ * @param RX RX pin number for the UART
+ * @param TX TX pin number for the UART (not used)
+ */
 Linky::Linky(char mode, int RX, int TX)
 {
+
     UARTmode = mode;
     UARTRX = RX;
     UARTTX = TX;
-
-    // UART = new HardwareSerial(serialNumber); // create a new HardwareSerial object with the given UART number
-    //  switch (mode)                            // begin the UART port with the given mode
-    //  {
-    //  case MODE_HISTORIQUE:
-    //      UART->begin(1200, SERIAL_7E1, RX, TX); // start the serial communication at 1200 bauds, 7E1, RX on pin RX, TX on pin TX
-    //      break;
-    //  case MODE_STANDARD:
-    //      UART->begin(9600, SERIAL_7E1, RX, TX); // --> not dev
-    //      break;
-    //  default:
-    //      break;
-    //  }
 }
 
-//------------------------------------------------------------------------------
-// Linky Read function
-// Read the data from the UART and store it in the buffer
-//------------------------------------------------------------------------------
+/**
+ * @brief Read the data from the UART and store it in the buffer
+ *
+ */
 void Linky::read()
 {
     char c = 0;                                        // store the current read character
@@ -44,10 +30,12 @@ void Linky::read()
         buffer[index++] = c; // store the character in the buffer and increment the index    }
     }
 }
-//------------------------------------------------------------------------------
-// Linky decode function
-// Decode the data from the buffer and store it in variables
-//------------------------------------------------------------------------------
+
+/**
+ * @brief Decode the data from the buffer and store it in variables
+ *
+ * @return 0 if an error occured, 1 if the data is valid
+ */
 char Linky::decode()
 {
     //----------------------------------------------------------
@@ -207,42 +195,26 @@ char Linky::decode()
     return 1;
 }
 
-void Linky::arrayCopy(char *dest, char *src, int start, int end)
-{
-    if (start > end) // if the start index is greater than the end index
-    {
-        return; // do nothing
-    }
-    for (unsigned int i = start, j = 0; i < end; i++)
-    {
-        // Serial.println(i);
-        if (src[i] > 127)
-        {
-            dest[j] = 0;
-        }
-        else
-        {
-            dest[j] = src[i];
-        }
-        j++;
-    }
-}
-
+/**
+ * @brief Update the data from the Linky
+ * Read the UART and decode the frame
+ *
+ * @return char 1 if success, 0 if error
+ */
 char Linky::update()
 {
-
     read();       // read the UART
     if (decode()) // decode the frame
     {
         return 1;
     }
-    else
-    {
-        Serial.println("Error: decode failed");
-        return 0;
-    }
+    return 0;
 }
 
+/**
+ * @brief Print the data
+ *
+ */
 void Linky::print()
 {
     Serial.print("ADCO: ");
@@ -272,6 +244,13 @@ void Linky::print()
     Serial.println("----------------");
 }
 
+/**
+ * @brief Calculate the checksum
+ *
+ * @param label name of the field
+ * @param data value of the field
+ * @return return the character of the checksum
+ */
 char Linky::checksum(char label[], char data[])
 {
     int S1 = 0;                             // sum of the ASCII codes of the characters in the label
@@ -287,6 +266,10 @@ char Linky::checksum(char label[], char data[])
     return (S1 & 0x3F) + 0x20;              // return the checksum
 }
 
+/**
+ * @brief Start the serial communication
+ *
+ */
 void Linky::begin()
 {
     Serial2.end();                                   // stop the serial communication
