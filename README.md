@@ -2,9 +2,7 @@
 
 ## About the project
 
-The **Linky Teleinfo** project aims to retrieve consumption information
-from a **Linky meter** to send it to a **web server**. The system is powered by the pins of the
-Linky meter and with the charge of a supercapacitor.
+**Linky Teleinfo** is a project to collect data from a **Linky meter** and send them to a **web server**. The system is powered by the pins A of the Linky meter and with the help of a supercapacitor.
 
 #### Built With
 
@@ -35,7 +33,7 @@ This project as been created with :
 
 ## Electronic
 
-`esp32/src` : The code is made to be sent on an ESP32 on an electronic card
+[`esp32/src`](/esp32/src) : The code is made to be sent on an ESP32 on an electronic card
 
 | PCB without components | PCB with soldered components | PCB connected to the linky meter |
 |-----|-----|-----|
@@ -56,14 +54,14 @@ This project as been created with :
 ## Installation
 
 #### ESP32 :satellite:
-Compile and send `esp32/src/` files to the ESP32
+Compile and send [`esp32/src`](/esp32/src) files to the ESP32
 
 #### DataBase MySQL :globe_with_meridians:
 Create a `Linky` Database
-Edit the [.env](/webserver/.env) file with your database logins
+Edit the [`.env`](/webserver/.env) file with your database logins
 
 #### WebPage :computer:
-Host the website available on `webserver/`
+Host the website available on [`webserver/`](/webserver)
 ```bash
 cd webserver
 #Installation
