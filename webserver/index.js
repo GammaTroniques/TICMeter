@@ -149,92 +149,105 @@ var lastSendTime = 0;
 app.post("/post", async(req, res) => {
     const body = req.body;
     console.log(body);
-    var HCHC = null;
-    var HCHP = null;
-    var BASE = null;
-    var PAPP = null;
-    var IINST = null;
-    var DATE = null;
 
     if (!("TOKEN" in body)) {
-        console.log("TOKEN is missing");
-        res.send("TOKEN is missing");
+        console.log("Post Config: TOKEN is missing");
+        res.status(400).send("TOKEN is missing");
         return;
     }
 
     if (body.TOKEN != TOKEN) {
-        console.log("TOKEN is invalid");
-        res.send("TOKEN is invalid");
+        console.log("Post Config: invalid TOKEN");
+        res.status(400).send("invalid TOKEN");
         return;
     }
 
-    if ("HCHC" in body && !isNaN(body.HCHC)) {
-        HCHC = body.HCHC;
-    }
-    if ("HCHP" in body && !isNaN(body.HCHP)) {
-        HCHP = body.HCHP;
-    }
-    if ("BASE" in body && !isNaN(body.BASE)) {
-        BASE = body.BASE;
-    }
-    if ("PAPP" in body && !isNaN(body.PAPP)) {
-        PAPP = body.PAPP;
-    }
-    if ("IINST" in body && !isNaN(body.IINST)) {
-        IINST = body.IINST;
+    if (!("data" in body)) {
+        console.log("Post Config: data is missing");
+        res.status(400).send("data is missing");
+        return;
     }
 
-    if ("DATE" in body) {
-        DATE = body.DATE;
-    }
-    try {
-        const result = await prisma.conso.create({
-            data: {
-                date: new Date(DATE * 1000),
-                HCHC: HCHC,
-                HCHP: HCHP,
-                BASE: BASE,
-                PAPP: PAPP,
-                IINST: IINST,
-            },
+    var dataToInsert = [];
+    body.data.forEach((data) => {
+        let HCHC = null;
+        let HCHP = null;
+        let BASE = null;
+        let PAPP = null;
+        let IINST = null;
+        let DATE = null;
+
+        if ("HCHC" in data && !isNaN(data.HCHC)) {
+            HCHC = data.HCHC;
+        }
+        if ("HCHP" in data && !isNaN(data.HCHP)) {
+            HCHP = data.HCHP;
+        }
+        if ("BASE" in data && !isNaN(data.BASE)) {
+            BASE = data.BASE;
+        }
+        if ("PAPP" in data && !isNaN(data.PAPP)) {
+            PAPP = data.PAPP;
+        }
+        if ("IINST" in data && !isNaN(data.IINST)) {
+            IINST = data.IINST;
+        }
+        if ("DATE" in data) {
+            DATE = data.DATE;
+        }
+
+        dataToInsert.push({
+            date: new Date(DATE * 1000),
+            HCHC: HCHC,
+            HCHP: HCHP,
+            BASE: BASE,
+            PAPP: PAPP,
+            IINST: IINST,
         });
 
-        console.log("Saved in database:");
-        console.log(result);
-        res.send("OK");
+    });
+    console.log("Inserting data in database");
+    console.log(dataToInsert);
+
+    const result = await prisma.conso.createMany({
+        data: dataToInsert,
+        skipDuplicates: true,
+    });
 
 
-        // if time is more than the last send time
-        if (new Date(DATE * 1000) - lastSendTime > 1) {
-            console.log("Sending live data");
-            lastSendTime = new Date(DATE * 1000);
-            const live = await prisma.live.update({
-                where: {
-                    id: 0,
-                },
-                data: {
-                    date: new Date(DATE * 1000),
-                    HCHC: HCHC,
-                    HCHP: HCHP,
-                    BASE: BASE,
-                    ADCO: body.ADCO.toString(),
-                    OPTARIF: body.OPTARIF,
-                    ISOUSC: body.ISOUSC,
-                    PTEC: body.PTEC,
-                    IINST: IINST,
-                    IMAX: body.IMAX,
-                    PAPP: PAPP,
-                    HHPHC: body.HHPHC,
-                    MOTDETAT: body.MOTDETAT,
-                    VCONDO: body.VCONDO,
-                },
-            });
-        }
-    } catch (error) {
-        console.log(error);
-        res.status(500).send(error);
-    }
+    // console.log("Saved in database:");
+    // console.log(result);
+    res.send("OK");
+
+
+    // // if time is more than the last send time
+    // if (new Date(DATE * 1000) - lastSendTime > 1) {
+    //     console.log("Sending live data");
+    //     lastSendTime = new Date(DATE * 1000);
+    //     const live = await prisma.live.update({
+    //         where: {
+    //             id: 0,
+    //         },
+    //         data: {
+    //             date: new Date(DATE * 1000),
+    //             HCHC: HCHC,
+    //             HCHP: HCHP,
+    //             BASE: BASE,
+    //             ADCO: body.ADCO.toString(),
+    //             OPTARIF: body.OPTARIF,
+    //             ISOUSC: body.ISOUSC,
+    //             PTEC: body.PTEC,
+    //             IINST: IINST,
+    //             IMAX: body.IMAX,
+    //             PAPP: PAPP,
+    //             HHPHC: body.HHPHC,
+    //             MOTDETAT: body.MOTDETAT,
+    //             VCONDO: body.VCONDO,
+    //         },
+    //     });
+    // }
 });
+
 
 
 app.get("/get", async(req, res) => {
@@ -266,8 +279,7 @@ app.get("/get", async(req, res) => {
 });
 
 app.get("/config", async(req, res) => {
-
-    console.log(req.query);
+    console.log("esp get config");
     if (!("token" in req.query)) {
         res.status(401).send("TOKEN is missing");
         return;
@@ -290,7 +302,6 @@ app.get("/config", async(req, res) => {
     } else {
         res.status(401).send("TOKEN is invalid");
     }
-    console.log("esp get config");
 });
 
 
