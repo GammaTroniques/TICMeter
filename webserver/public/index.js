@@ -1,29 +1,6 @@
-// const livePAPPCanvas = document.getElementById('livePAPP').getContext('2d');
-// const livePAPPChart = new Chart(livePAPPCanvas, {
-//     type: 'line',
-//     data: {
-//         labels: [],
-//         datasets: [{
-//             label: 'Puisance Apparente',
-//             data: [0],
-//             borderColor: 'rgb(75, 192, 192)',
-//             tension: 0.1
-//         }]
-//     },
-//     options: {
-//         scales: {
-//             y: {
-//                 beginAtZero: true
-//             }
-//         },
-//         responsive: false,
-//     }
-// });
-
 const {
     createApp
 } = Vue
-
 
 var app = createApp({
     data() {
@@ -159,6 +136,7 @@ var app = createApp({
             this.endDisplayDate = new Date(new Date().setHours(23, 59, 59, 999))
             this.updateChart();
         },
+
         timeAgo(time, from) {
             let now;
             if (from == undefined) {
@@ -174,7 +152,7 @@ var app = createApp({
             if (isNaN(diffInMinutes)) {
                 return "Inconnu";
             } else if (diff / 1000 < 60) {
-                return Math.floor(diff / 1000) + "secondes";
+                return Math.floor(diff / 1000) + " secondes";
             } else if (diffInMinutes < 60) {
                 return diffInMinutes + " minutes";
             } else if (diffInHours < 24) {
@@ -186,13 +164,25 @@ var app = createApp({
         nextValue(lastDate) {
             let date = new Date(lastDate);
 
-            let lastTimePlusRefreshRate = date.getTime() + this.config.REFRESH_RATE * 60 * 1000;
-            console.log(new Date().getTime());
-            console.log(date.getTime() + this.config.REFRESH_RATE * 60 * 1000);
+            let lastTimePlusRefreshRate = date.getTime() + this.config.REFRESH_RATE * this.config.DATA_COUNT * 60 * 1000;
 
-            return (lastTimePlusRefreshRate - new Date().getTime()) / 1000;
-            if (new Date().getTime() < lastTimePlusRefreshRate) //if 
-            {} else {
+            if (lastTimePlusRefreshRate - new Date().getTime() > 0) {
+                const diff = (lastTimePlusRefreshRate - new Date().getTime()) / 1000;
+                let diffInMinutes = (diff / 60).toFixed(1);
+                let diffInHours = (diff / 60 / 60).toFixed(1);
+                let diffInDays = (diff / 60 / 60 / 24).toFixed(1);
+                if (isNaN(diffInMinutes)) {
+                    return "Inconnu";
+                } else if (diff < 60) {
+                    return Math.floor(diff) + " secondes";
+                } else if (diffInMinutes < 60) {
+                    return diffInMinutes + " minutes";
+                } else if (diffInHours < 24) {
+                    return diffInHours + " heures";
+                } else {
+                    return diffInDays + " jours";
+                }
+            } else {
                 return "?";
             }
         }
