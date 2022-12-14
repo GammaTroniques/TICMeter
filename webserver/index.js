@@ -51,8 +51,8 @@ io.on("connection", (socket) => { //connection event
             }).then((data) => {
                 socket.emit("chart_data", arrayBigIntToString(data));
             }).catch((error) => {
-                console.log(JSON.stringify(error));
-                socket.emit("error", error);
+                var errormsg = "Error: " + error;
+                socket.emit("error", errormsg);
             });
 
         } else { //if start and end date are not defined, get last 1000 data
@@ -93,6 +93,24 @@ io.on("connection", (socket) => { //connection event
             toSend[element.prop] = element.value;
         });
         socket.emit("config_data", toSend);
+    });
+
+    socket.on("set_config", async(config) => {
+        console.log(config);
+        var configToInsert = [];
+
+        for (const [key, value] of Object.entries(config)) {
+            configToInsert.push({
+                prop: key,
+                value: value
+            });
+        }
+
+        console.log(configToInsert);
+
+        // await prisma.config.updateMany({
+        //     data: {
+
     });
 
 });

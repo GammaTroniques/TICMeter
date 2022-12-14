@@ -24,6 +24,7 @@ var app = createApp({
             startDisplayDate: new Date(new Date().setHours(0, 0, 0, 0)),
             endDisplayDate: new Date(new Date().setHours(23, 59, 59, 999)),
             period: "day",
+            settingsWindowActive: true,
             //----------------
             consoChart: null,
 
@@ -185,7 +186,15 @@ var app = createApp({
             } else {
                 return "?";
             }
-        }
+        },
+        toggleSettingsWindowActive() {
+            this.settingsWindowActive = !this.settingsWindowActive;
+        },
+        saveConfig() {
+            this.toggleSettingsWindowActive();
+            socket.emit("set_config", this.config);
+        },
+
     },
     computed: {
         strStartDisplayDate() {
