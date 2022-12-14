@@ -48,17 +48,18 @@ This project as been created with :
 Compile and send `esp32/src/` files to the ESP32
 
 #### DataBase MySQL :globe_with_meridians:
-Create Linky Database and execute
-```bash
-npx prisma db push
-```
+Create a `Linky` Database
+Edit the [.env](/webserver/.env) file with your database logins
+
 
 #### WebPage :computer:
 Host the website available on `webserver/`
 ```bash
+cd webserver
 #Installation
 npm install
 npx prisma generate
+npx prisma db push
 #Start
 npm start
 ```
