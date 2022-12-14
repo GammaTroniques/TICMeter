@@ -2,9 +2,9 @@
 
 ## About the project
 
-The **Linky Téléinfo** project aims to retrieve consumption information
-from a **Linky meter** to send it to a **web server**. The system must be powered
-without an external power supply.
+The **Linky Teleinfo** project aims to retrieve consumption information
+from a **Linky meter** to send it to a **web server**. The system is powered by the pins of the
+Linky meter and with the charge of a supercapacitor.
 
 #### Built With
 
@@ -36,6 +36,10 @@ This project as been created with :
 ## Electronic
 
 `esp32/src` : The code is made to be sent on an ESP32 on an electronic card
+
+| PCB without components | PCB with soldered components | PCB connected to the linky meter |
+|-----|-----|-----|
+| ![](https://github.com/xmow49/LinkyTeleinfoESP32/blob/3dbf8694b0553c2865f70a5dbcbd061af5c98c59/img/PhotoPCB1.png) | ![](https://github.com/xmow49/LinkyTeleinfoESP32/blob/3dbf8694b0553c2865f70a5dbcbd061af5c98c59/img/PhotoPCB2.png) | ![](https://github.com/xmow49/LinkyTeleinfoESP32/blob/3dbf8694b0553c2865f70a5dbcbd061af5c98c59/img/PhotoPCB3.png) | 
 
 #### Schematic
 
