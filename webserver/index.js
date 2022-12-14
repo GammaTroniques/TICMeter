@@ -96,20 +96,30 @@ io.on("connection", (socket) => { //connection event
     });
 
     socket.on("set_config", async(config) => {
-        console.log(config);
-        var configToInsert = [];
-
+        var strError = "";
         for (const [key, value] of Object.entries(config)) {
-            configToInsert.push({
-                prop: key,
-                value: value
+            await prisma.config.update({
+                where: {
+                    prop: key
+                },
+                data: {
+                    value: value.toString()
+                }
+            }).catch((error) => {
+                console.log(error);
+                strError += error + "\n";
             });
         }
-
-        console.log(configToInsert);
-
-        // await prisma.config.updateMany({
-        //     data: {
+        if (strError != "") {
+            socket.emit("error", strError);
+        } else {
+            const result = await prisma.config.findMany({});
+            var toSend = {};
+            result.forEach((element) => {
+                toSend[element.prop] = element.value;
+            });
+            socket.emit("config_data", toSend);
+        }
 
     });
 
