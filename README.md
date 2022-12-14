@@ -35,15 +35,19 @@ This project as been created with :
 
 ## Electronic
 
-`est32/src` : The code is made to be sent on an ESP32 on an electronic card
+`esp32/src` : The code is made to be sent on an ESP32 on an electronic card
+
+#### Schematic
+
+[`pcb/Schematic_LINKY_ESP32.pdf`](https://github.com/xmow49/LinkyTeleinfoESP32/blob/380a1ca9197e3b3d39645f49adc59257cdbf59da/pcb/Schematic_LINKY_ESP32.pdf)
+
+#### PCB
+
+[`pcb/Gerber_PCB_LINKY_ESP32.zip`](https://github.com/xmow49/LinkyTeleinfoESP32/blob/380a1ca9197e3b3d39645f49adc59257cdbf59da/pcb/Gerber_PCB_LINKY_ESP32.zip)
 
 | Top Side  | Bottom Side |
 | ------------- | ------------- |
 | ![topside](https://github.com/xmow49/LinkyTeleinfoESP32/blob/5a6a4f057d743f156686f012e9a329d2cba7980d/img/TopSide.png) | ![bottomside](https://github.com/xmow49/LinkyTeleinfoESP32/blob/5a6a4f057d743f156686f012e9a329d2cba7980d/img/BottomSide.png) |
-
-#### Schematic
-
-#### PCB
 
 ## Installation
 
