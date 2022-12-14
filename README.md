@@ -37,19 +37,19 @@ This project as been created with :
 
 | PCB without components | PCB with soldered components | PCB connected to the linky meter |
 |-----|-----|-----|
-| ![](https://github.com/xmow49/LinkyTeleinfoESP32/blob/3dbf8694b0553c2865f70a5dbcbd061af5c98c59/img/PhotoPCB1.png) | ![](https://github.com/xmow49/LinkyTeleinfoESP32/blob/3dbf8694b0553c2865f70a5dbcbd061af5c98c59/img/PhotoPCB2.png) | ![](https://github.com/xmow49/LinkyTeleinfoESP32/blob/3dbf8694b0553c2865f70a5dbcbd061af5c98c59/img/PhotoPCB3.png) | 
+| ![](img/PhotoPCB1.png) | ![](img/PhotoPCB2.png) | ![](img/PhotoPCB3.png) | 
 
 #### Schematic
 
-[`pcb/Schematic_LINKY_ESP32.pdf`](https://github.com/xmow49/LinkyTeleinfoESP32/blob/380a1ca9197e3b3d39645f49adc59257cdbf59da/pcb/Schematic_LINKY_ESP32.pdf)
+[`pcb/Schematic_LINKY_ESP32.pdf`](pcb/Schematic_LINKY_ESP32.pdf)
 
 #### PCB
 
-[`pcb/Gerber_PCB_LINKY_ESP32.zip`](https://github.com/xmow49/LinkyTeleinfoESP32/blob/380a1ca9197e3b3d39645f49adc59257cdbf59da/pcb/Gerber_PCB_LINKY_ESP32.zip)
+[`pcb/Gerber_PCB_LINKY_ESP32.zip`](pcb/Gerber_PCB_LINKY_ESP32.zip)
 
 | Top Side  | Bottom Side |
 | ------------- | ------------- |
-| ![topside](https://github.com/xmow49/LinkyTeleinfoESP32/blob/5a6a4f057d743f156686f012e9a329d2cba7980d/img/TopSide.png) | ![bottomside](https://github.com/xmow49/LinkyTeleinfoESP32/blob/5a6a4f057d743f156686f012e9a329d2cba7980d/img/BottomSide.png) |
+| ![topside](img/TopSide.png) | ![bottomside](img/BottomSide.png) |
 
 ## Installation
 
@@ -92,7 +92,7 @@ Start the system with USB cable and serial monitor opened and you should see
 
 WebPage example
 
-![webpageimg](https://raw.githubusercontent.com/xmow49/LinkySAE/0c7f3f8a5039b80d5e1c0aa4dec2789c06513440/img/WebPage.png)
+![webpageimg](img/WebPage.png)
 
 ## Authors
 
