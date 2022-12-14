@@ -49,8 +49,7 @@ Compile and send `esp32/src/` files to the ESP32
 
 #### DataBase MySQL :globe_with_meridians:
 Create a `Linky` Database
-Edit the [.env](/webserver/.env) file with your database logins
-
+Copy the [.env_sample](/webserver/.env_sample) to `.env` and fill with your database logins
 
 #### WebPage :computer:
 Host the website available on `webserver/`
