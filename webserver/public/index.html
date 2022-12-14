@@ -275,12 +275,28 @@
     </div>
 
     <div class="settings-window">
-        <h1>Paramètres</h1>
-        <h2>SSID :</h2>
-        <input type="text">
-        <h2>Mot de passe:</h2>
-        <input type="password">
+        <div class="window-content">
+            <h1>Paramètres</h1>
+            <h2>SSID :</h2>
+            <input type="text" v-model="config.SSID">
+            <h2>Mot de passe:</h2>
+            <input type="password" v-model="config.PASSWORD">
+            <hr>
+            <h2>Actualisation :</h2>
+            <h2>Nb de mesures avant envoi :</h2>
+            <hr>
+            <label for="hchp"> HCHC</label>
+            <input type="radio" name="tarif" id="hchp">
+            <label for="hchp"> HCHC</label>
+            <input type="radio" name="tarif" id="base">
+            <hr>
+            <h2>Prix :</h2>
+            <input type="number" v-model="config.PRIX_BASE">
+
+
+        </div>
     </div>
+    <div class="window-background"></div>
 
 </body>
 <script src="./index.js"></script>
