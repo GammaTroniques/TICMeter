@@ -21,7 +21,7 @@
             <div class="widget">
                 <div class="header">
                     <h1>État</h1>
-                    <span class="mdi mdi-cog"></span>
+                    <span class="mdi mdi-cog" @click="toggleSettingsWindowActive()"></span>
                 </div>
                 <div class="state-content">
                     <svg width="137" height="230" viewBox="0 0 157 236" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -274,29 +274,72 @@
         </div>
     </div>
 
-    <div class="settings-window">
+    <div class="settings-window" v-if="settingsWindowActive">
         <div class="window-content">
-            <h1>Paramètres</h1>
-            <h2>SSID :</h2>
-            <input type="text" v-model="config.SSID">
-            <h2>Mot de passe:</h2>
-            <input type="password" v-model="config.PASSWORD">
-            <hr>
-            <h2>Actualisation :</h2>
-            <h2>Nb de mesures avant envoi :</h2>
-            <hr>
-            <label for="hchp"> HCHC</label>
-            <input type="radio" name="tarif" id="hchp">
-            <label for="hchp"> HCHC</label>
-            <input type="radio" name="tarif" id="base">
-            <hr>
-            <h2>Prix :</h2>
-            <input type="number" v-model="config.PRIX_BASE">
 
+            <div class="flex row space-between">
+                <h1>Paramètres</h1>
+                <span class="mdi mdi-close" @click="toggleSettingsWindowActive()"></span>
 
+            </div>
+
+            <div>
+                <h2>SSID :</h2>
+                <input type="text" v-model="config.SSID">
+            </div>
+
+            <div>
+                <h2>Mot de passe:</h2>
+                <input type="password" v-model="config.PASSWORD">
+            </div>
+            <hr>
+
+            <div class="flex row left">
+                <h2>Actualisation :</h2>
+                <input type="number" v-model="config.REFRESH_RATE" class="litle-number">
+                <h2>secondes</h2>
+            </div>
+            <div class="flex row left">
+                <h2>Nb de mesures avant envoi :</h2>
+                <input type="number" v-model="config.DATA_COUNT" class="litle-number">
+            </div>
+
+            <hr>
+            <label for="base"> BASE</label>
+            <input type="radio" name="tarif" id="base" value="BASE" v-model="config.MODE">
+            <label for="hchp"> HCHC</label>
+            <input type="radio" name="tarif" id="hchp" value="HCHP" v-model="config.MODE">
+            <hr>
+
+            <div v-if="config.MODE == 'HCHP'" class="flex">
+                <div class="flex row">
+                    <h2>Prix HC : </h2>
+                    <input type="number" v-model="config.PRIX_HC" class="litle-number">
+                    <h2>€/kWh</h2>
+
+                </div>
+                <div class="flex row">
+                    <h2>Prix HP : </h2>
+                    <input type="number" v-model="config.PRIX_HP" class="litle-number">
+                    <h2>€/kWh</h2>
+
+                </div>
+            </div>
+            <div v-else class="flex">
+                <div class="flex row">
+                    <h2>Prix BASE : </h2>
+                    <input type="number" v-model="config.PRIX_BASE" class="litle-number">
+                    <h2>€/kWh</h2>
+
+                </div>
+            </div>
+
+            <div class="flex">
+                <button @click="saveConfig()">Sauvegarder</button>
+            </div>
         </div>
+        <div class="window-background" v-if="settingsWindowActive" @click="toggleSettingsWindowActive()"></div>
     </div>
-    <div class="window-background"></div>
 
 </body>
 <script src="./index.js"></script>
