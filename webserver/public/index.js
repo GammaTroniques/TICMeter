@@ -20,11 +20,19 @@ var app = createApp({
                 VCONDO: "?",
 
             },
-            config: {},
+            config: {
+                PRIX_BASE: 0,
+            },
+            totals: {
+                day: 0,
+                week: 0,
+                month: 0,
+                year: 0,
+            },
             startDisplayDate: new Date(new Date().setHours(0, 0, 0, 0)),
             endDisplayDate: new Date(new Date().setHours(23, 59, 59, 999)),
             period: "day",
-            settingsWindowActive: true,
+            settingsWindowActive: false,
             //----------------
             consoChart: null,
 
@@ -146,7 +154,6 @@ var app = createApp({
                 now = new Date(from);
             }
             let diff = new Date(now).getTime() - new Date(time).getTime();
-            console.log(new Date(diff).getTime());
             let diffInMinutes = Math.floor(diff / 1000 / 60);
             let diffInHours = Math.floor(diff / 1000 / 60 / 60);
             let diffInDays = Math.floor(diff / 1000 / 60 / 60 / 24);
@@ -165,7 +172,7 @@ var app = createApp({
         nextValue(lastDate) {
             let date = new Date(lastDate);
 
-            let lastTimePlusRefreshRate = date.getTime() + this.config.REFRESH_RATE * this.config.DATA_COUNT * 60 * 1000;
+            let lastTimePlusRefreshRate = date.getTime() + this.config.REFRESH_RATE * this.config.DATA_COUNT * 1000;
 
             if (lastTimePlusRefreshRate - new Date().getTime() > 0) {
                 const diff = (lastTimePlusRefreshRate - new Date().getTime()) / 1000;
@@ -194,6 +201,18 @@ var app = createApp({
             this.toggleSettingsWindowActive();
             socket.emit("set_config", this.config);
         },
+        getPrice(period) {
+            switch (period) {
+                case "day":
+                    return (this.totals.day / 1000 * this.config.PRIX_BASE).toFixed(2);
+                case "week":
+                    return (this.totals.week / 1000 * this.config.PRIX_BASE).toFixed(2);
+                case "month":
+                    return (this.totals.month / 1000 * this.config.PRIX_BASE).toFixed(2);
+                case "year":
+                    return (this.totals.year / 1000 * this.config.PRIX_BASE).toFixed(2);
+            }
+        }
 
     },
     computed: {
@@ -275,6 +294,12 @@ socket.on("chart_data", (data) => {
                 const hour = new Date(data[i].date).getHours();
                 values[hour] += (data[i + 1].BASE - data[i].BASE);
             }
+
+            var totalDay = 0;
+            for (let i = 0; i < values.length; i++) {
+                totalDay += values[i];
+            }
+            app.totals.day = totalDay;
             break;
         case "week":
             //get one value per day
@@ -289,6 +314,15 @@ socket.on("chart_data", (data) => {
                 const day = new Date(data[i].date).getDay();
                 values[day] += (data[i + 1].BASE - data[i].BASE);
             }
+
+            var totalWeek = 0;
+            for (let i = 0; i < values.length; i++) {
+                totalWeek += values[i];
+                console.log(values[i]);
+            }
+            app.totals.week = totalWeek;
+
+
             break;
         case "month":
             //get one value per day
@@ -304,6 +338,13 @@ socket.on("chart_data", (data) => {
                 const day = new Date(data[i].date).getDate();
                 values[day] += (data[i + 1].BASE - data[i].BASE);
             }
+
+            var totalMonth = 0;
+            for (let i = 0; i < values.length; i++) {
+                totalMonth += values[i];
+            }
+            app.totals.month = totalMonth;
+
             break;
         case "year":
             //get one value per month
@@ -322,10 +363,15 @@ socket.on("chart_data", (data) => {
                 const month = new Date(data[i].date).getMonth();
                 values[month] += (data[i + 1].BASE - data[i].BASE);
             }
+
+            var totalYear = 0;
+            for (let i = 0; i < values.length; i++) {
+                totalYear += values[i];
+            }
+            app.totals.year = totalYear;
+
             break;
     }
-    console.log(values);
-
     app.consoChart.data.datasets[0].data = values;
     app.consoChart.data.labels = labels;
     app.consoChart.update();
@@ -345,11 +391,7 @@ socket.emit("get_data", {
     end: app.endDisplayDate
 });
 
-
-
-
 socket.on("live_data", (data) => {
-    console.log(data);
     app.live = data;
 });
 socket.emit("get_live");
@@ -359,8 +401,6 @@ window.setInterval(() => {
 
 
 socket.on("config_data", (data) => {
-    console.log("config");
-    console.log(data);
     app.config = data;
 });
 socket.emit("get_config");

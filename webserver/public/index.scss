@@ -259,3 +259,17 @@ span.value {
     border-radius: 10px;
     padding: 5px;
 }
+
+.temp {
+    transform: rotate(45deg);
+    transform-origin: center;
+    width: 300px;
+    position: relative;
+    top: -150px;
+    border: 1px solid #000000;
+    &.HC {
+        top: -57px;
+        width: 271px;
+        transform: rotate(25deg);
+    }
+}

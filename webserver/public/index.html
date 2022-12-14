@@ -106,7 +106,7 @@
                     </div>
                 </div>
                 <h2>Index Consommation : <span class="value">{{live.BASE / 1000}} kWh</span></h2>
-                <h2>Mode : <span class="value">{{live.OPTARIF}}</span></h2>
+                <h2>Mode : <span class="value">{{config.MODE}}</span></h2>
                 <hr>
                 <h2>Version : <span class="value">{{config.VERSION}}</span></h2>
                 <h2>Tension alim : <span class="value">{{live.VCONDO}} V</span></h2>
@@ -159,7 +159,7 @@
                 </div>
 
 
-
+                <img src="temp.png" class="temp">
 
 
             </div>
@@ -196,7 +196,7 @@
         <div class="side">
             <div class="widget">
                 <h1>Puissance</h1>
-                <div class="flex center">
+                <div class="flex center power-gauge">
                     <svg width="250" viewBox="0 0 327 272" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path
                             d="M0.74151 124.889C10.3418 89.0602 31.4962 57.4005 60.9237 34.8199C90.3513 12.2394 126.407 -9.28589e-06 163.5 0C200.593 9.2859e-06 236.649 12.2394 266.076 34.82C295.504 57.4005 316.658 89.0603 326.259 124.889L163.5 168.5L0.74151 124.889Z"
@@ -253,10 +253,12 @@
                         <h5>1 an : </h5>
                     </div>
                     <div class="price">
-                        <h5>0.53€</h5>
-                        <h5>0.53€</h5>
-                        <h5>0.53€</h5>
-                        <h5>0.53€</h5>
+                        <h5>{{ getPrice('day')}}€</h5>
+                        <h5>{{ getPrice('week')}}€</h5>
+                        <h5>--.--€</h5>
+                        <h5>--.--€</h5>
+                        <!-- <h5>{{ getPrice('month')}}€</h5>
+                        <h5>{{ getPrice('year')}}€</h5> -->
                     </div>
 
                 </div>
@@ -269,6 +271,7 @@
                     <div class="HCHP HC" style="width: 50%;">HC</div>
                     <div class="HCHP HP" style="width: 50%;">HP</div>
                 </div>
+                <img src="temp.png" class="temp HC">
 
             </div>
         </div>
@@ -314,13 +317,13 @@
             <div v-if="config.MODE == 'HCHP'" class="flex">
                 <div class="flex row">
                     <h2>Prix HC : </h2>
-                    <input type="number" v-model="config.PRIX_HC" class="litle-number">
+                    <input type="number" v-model="config.PRIX_HC" class="litle-number" step="0.01">
                     <h2>€/kWh</h2>
 
                 </div>
                 <div class="flex row">
                     <h2>Prix HP : </h2>
-                    <input type="number" v-model="config.PRIX_HP" class="litle-number">
+                    <input type="number" v-model="config.PRIX_HP" class="litle-number" step="0.01">
                     <h2>€/kWh</h2>
 
                 </div>
@@ -328,7 +331,7 @@
             <div v-else class="flex">
                 <div class="flex row">
                     <h2>Prix BASE : </h2>
-                    <input type="number" v-model="config.PRIX_BASE" class="litle-number">
+                    <input type="number" v-model="config.PRIX_BASE" class="litle-number" step="0.01">
                     <h2>€/kWh</h2>
 
                 </div>
