@@ -262,8 +262,6 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
 
   for (int i = 0; i < dataIndex; i++)
   {
-    Serial.println("Sending data " + String(dataIndex) + " " + String(data->timestamp));
-
     doc["data"][i]["DATE"] = data[i].timestamp;
     doc["data"][i]["ADCO"] = data[i].ADCO;
     doc["data"][i]["OPTARIF"] = data[i].OPTARIF;
