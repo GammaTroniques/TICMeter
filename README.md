@@ -75,7 +75,7 @@ npm start
 ## Running Tests
 Start the system with USB cable and serial monitor opened and you should see
 
-```bash
+```
 Starting...
 Connecting to Livebox 2ryz ...
 WiFi connected
@@ -93,7 +93,6 @@ IP address: 192.168.43.185
 Getting config from server...OK
 Getting time from NTP...OK
 Sending data to server... OK: 200
-[142795][E][WiFiClient.cpp:517] flush(): fail on fd 48, errno: 11, "No more processes"
 Disconecting from wifi...OK
 ```
 ## Demo
