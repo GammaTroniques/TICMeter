@@ -76,17 +76,25 @@ npm start
 Start the system with USB cable and serial monitor opened and you should see
 
 ```bash
-  1671030318
-  Data stored: 1 - 1599
-  1671030382
-  Data stored: 2 - 1599
-  error: number of start and end frames are not equal:9 10
-  Error: decode failed
-  1671030451
-  Data stored: 3 - 1600
-  Sending data ␃ 1671030318
-  Sending data ␃ 1671030318
-  Sending data ␃ 1671030318
+Starting...
+Connecting to Livebox 2ryz ...
+WiFi connected
+IP address: 192.168.43.185
+Getting config from server...OK
+Getting time from NTP...OK
+Disconecting from wifi...OK
+Data stored: 0 - BASE:1647
+Data stored: 1 - BASE:1647
+Data stored: 2 - BASE:1647
+Preparing json data... OK
+Connecting to Livebox 2ryz ...
+WiFi connected
+IP address: 192.168.43.185
+Getting config from server...OK
+Getting time from NTP...OK
+Sending data to server... OK: 200
+[142795][E][WiFiClient.cpp:517] flush(): fail on fd 48, errno: 11, "No more processes"
+Disconecting from wifi...OK
 ```
 ## Demo
 
