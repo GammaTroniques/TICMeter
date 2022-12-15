@@ -101,6 +101,8 @@ void setup()
   }
 }
 
+
+
 void loop()
 {
   char result = -1; // 0 = error, 1 = success, -1 = init
