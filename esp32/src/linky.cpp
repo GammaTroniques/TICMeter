@@ -135,14 +135,14 @@ char Linky::decode()
         if (this->checksum(label, value) != checksum[0]) // check the checksum with the
         {
             // error: checksum is not correct, skip the field
-            Serial.println("ERROR: Checksum KO");
+            //Serial.println("ERROR: Checksum KO");
         }
         else
         {
             //------------------------------------------------------------
             // Fourth step: Copy values from each field to the variables
             //------------------------------------------------------------
-            if (strcmp(label, "ADCO") == 0)
+            if (strcmp(label, "ADCO") == 0) 
             {
                 data.ADCO = strtoul(value, NULL, 10);
             }
