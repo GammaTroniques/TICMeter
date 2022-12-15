@@ -7,10 +7,13 @@ import { Server } from "socket.io";
 import sass from 'node-sass';
 
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient(); //create prisma client to connect to database
 
-var TOKEN = null;
-await prisma.config.findMany({}).then((result) => {
+var TOKEN = null; //token to authenticate web and esp clients
+
+
+//get token from database
+await prisma.config.findMany().then((result) => {
     var toSend = {};
     result.forEach((element) => {
         toSend[element.prop] = element.value;
@@ -20,8 +23,8 @@ await prisma.config.findMany({}).then((result) => {
     console.log(error);
 });
 
-const app = express()
-const httpServer = createServer(app);
+const app = express() //create express app
+const httpServer = createServer(app); //create http server
 
 const io = new Server(httpServer, { //set up socket.io and bind it to our http server.
     cors: {
@@ -31,13 +34,13 @@ const io = new Server(httpServer, { //set up socket.io and bind it to our http s
 });
 
 io.on("connection", (socket) => { //connection event
-    console.log("a user connected: " + socket.id);
+    //console.log("a user connected: " + socket.id);
     socket.on("disconnect", () => {
-        console.log("user disconnected");
+        //console.log("user disconnected");
     });
     socket.on("get_data", async(message) => { //get_data event from web client to get data from database for chart
         if ("start" in message && "end" in message && message.start !== undefined && message.end !== undefined) { //if start and end date are defined, get data between start and end date
-            console.log("get_data: " + message.start + " " + message.end);
+            //console.log("get_data: " + message.start + " " + message.end);
             await prisma.conso.findMany({
                 where: {
                     date: {
@@ -72,7 +75,7 @@ io.on("connection", (socket) => { //connection event
         }
 
     });
-    socket.on("get_live", async(message) => {
+    socket.on("get_live", async(message) => { //get_live event from web client to get live data from database
         try {
             await prisma.live.findUnique({
                 where: {
@@ -86,18 +89,18 @@ io.on("connection", (socket) => { //connection event
         }
     });
 
-    socket.on("get_config", async(message) => {
+    socket.on("get_config", async(message) => { //get_config event from web client to get config from database
         const result = await prisma.config.findMany({});
         var toSend = {};
-        result.forEach((element) => {
+        result.forEach((element) => { //convert config to object
             toSend[element.prop] = element.value;
         });
         socket.emit("config_data", toSend);
     });
 
-    socket.on("set_config", async(config) => {
+    socket.on("set_config", async(config) => { //set_config event from web client to set config in database
         var strError = "";
-        for (const [key, value] of Object.entries(config)) {
+        for (const [key, value] of Object.entries(config)) { //loop through config object and update database
             await prisma.config.update({
                 where: {
                     prop: key
@@ -110,23 +113,21 @@ io.on("connection", (socket) => { //connection event
                 strError += error + "\n";
             });
         }
-        if (strError != "") {
+        if (strError != "") { //if there is an error, send it to web client
             socket.emit("error", strError);
         } else {
-            const result = await prisma.config.findMany({});
+            const result = await prisma.config.findMany({}); //if there is no error, send new config to web client
             var toSend = {};
             result.forEach((element) => {
                 toSend[element.prop] = element.value;
             });
             socket.emit("config_data", toSend);
         }
-
     });
-
 });
 
 
-function bigIntToString(object) {
+function bigIntToString(object) { //convert bigint (from database) to string (JSON.stringify can't handle bigint)
     for (let key in object) {
         if (typeof object[key] === 'bigint') {
             object[key] = object[key].toString();
@@ -135,22 +136,19 @@ function bigIntToString(object) {
     return object;
 }
 
-function arrayBigIntToString(array) {
+function arrayBigIntToString(array) { //convert array of bigint (from database) to array of string (JSON.stringify can't handle bigint)
     for (let i = 0; i < array.length; i++) {
         array[i] = bigIntToString(array[i]);
     }
     return array;
 }
 
-
-
-app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
+app.use(cors()); //allow cors for all origins
+app.use(bodyParser.json()); //parse json body
+app.use(bodyParser.urlencoded({ extended: true })); //parse urlencoded body
 
 app.get('/index.css', (req, res) => {
-    sass.render({
+    sass.render({ // compile scss to css
         file: './public/index.scss',
         // outputStyle: 'compressed'
     }, (err, result) => {
@@ -164,20 +162,16 @@ app.get('/index.css', (req, res) => {
     });
 });
 
+app.use('/', express.static('public')); //serve static files from public folder
 
-app.use('/', express.static('public'));
-
-app.get("/post", (req, res) => {
+app.get("/post", (req, res) => { //only post requests are allowed
     res.send("Only post requests are allowed");
 });
 
-
-var lastSendTime = 0;
-
-app.post("/post", async(req, res) => {
+app.post("/post", async(req, res) => { //post request from esp32 to insert data in database
     const body = req.body;
-    console.log(body);
 
+    //--------------------check if the request is valid--------------------
     if (!("TOKEN" in body)) {
         console.log("Post Config: TOKEN is missing");
         res.status(400).send("TOKEN is missing");
@@ -195,8 +189,9 @@ app.post("/post", async(req, res) => {
         res.status(400).send("data is missing");
         return;
     }
+    //---------------------------------------------------------------------
 
-    var dataToInsert = [];
+    var dataToInsert = []; //array of data to insert in database
     body.data.forEach((data) => {
         let HCHC = null;
         let HCHP = null;
@@ -205,6 +200,7 @@ app.post("/post", async(req, res) => {
         let IINST = null;
         let DATE = null;
 
+        // -------------------check if data is valid-------------------
         if ("HCHC" in data && !isNaN(data.HCHC)) {
             HCHC = data.HCHC;
         }
@@ -223,8 +219,8 @@ app.post("/post", async(req, res) => {
         if ("DATE" in data) {
             DATE = data.DATE;
         }
-
-        dataToInsert.push({
+        // -----------------------------------------------------------
+        dataToInsert.push({ //add data to array
             date: new Date(DATE * 1000),
             HCHC: HCHC,
             HCHP: HCHP,
@@ -232,22 +228,17 @@ app.post("/post", async(req, res) => {
             PAPP: PAPP,
             IINST: IINST,
         });
-
     });
-    console.log("Inserting data in database");
-    console.log(dataToInsert);
+    console.log(`Inserting ${dataToInsert.length} data in database`); //insert data in database
 
-    const result = await prisma.conso.createMany({
+    const result = await prisma.conso.createMany({ //insert data in database
         data: dataToInsert,
         skipDuplicates: true,
     });
 
-    const lastData = body.data[body.data.length - 1];
-    console.log("Sending live data");
-    lastData.DATE = new Date(lastData.DATE * 1000);
-
-    console.log(lastData);
-    const live = await prisma.live.update({
+    const lastData = body.data[body.data.length - 1]; //get last data
+    lastData.DATE = new Date(lastData.DATE * 1000); //convert timestamp to date
+    const live = await prisma.live.update({ //update live data
         where: {
             id: 0,
         },
@@ -267,40 +258,7 @@ app.post("/post", async(req, res) => {
             VCONDO: body.VCONDO,
         },
     });
-
-
-
-
-
-    // // if time is more than the last send time
-    // if (new Date(DATE * 1000) - lastSendTime > 1) {
-    //     console.log("Sending live data");
-    //     lastSendTime = new Date(DATE * 1000);
-    //     const live = await prisma.live.update({
-    //         where: {
-    //             id: 0,
-    //         },
-    //         data: {
-    //             date: new Date(DATE * 1000),
-    //             HCHC: HCHC,
-    //             HCHP: HCHP,
-    //             BASE: BASE,
-    //             ADCO: body.ADCO.toString(),
-    //             OPTARIF: body.OPTARIF,
-    //             ISOUSC: body.ISOUSC,
-    //             PTEC: body.PTEC,
-    //             IINST: IINST,
-    //             IMAX: body.IMAX,
-    //             PAPP: PAPP,
-    //             HHPHC: body.HHPHC,
-    //             MOTDETAT: body.MOTDETAT,
-    //             VCONDO: body.VCONDO,
-    //         },
-    //     });
-    // }
-
     res.send("OK");
-
 });
 
 
@@ -320,52 +278,39 @@ app.get("/get", async(req, res) => {
             res.status(500).send(error);
         }
     }
-
-    // try {
-    //     const result = await prisma.conso.findMany({
-    //         take: 100,
-    //     });
-    //     var toSend = arrayBigIntToString(result);
-    //     res.send(toSend);
-    // } catch (error) {
-    //     console.log(error);
-    //     res.status(500).send(error);
-    // }
 });
 
-app.get("/config", async(req, res) => {
-    console.log("esp get config");
+app.get("/config", async(req, res) => { //get config from database (only for esp32)
+    console.log("Esp32 get config");
     if (!("token" in req.query)) {
         res.status(401).send("TOKEN is missing");
         return;
     }
-
     const token = req.query.token;
 
-    if (token == TOKEN) {
-        const result = await prisma.config.findMany({})
+    if (token == TOKEN) { //check if token is valid
+        const result = await prisma.config.findMany() //get config from database
             .then((result) => {
                 var toSend = {};
-                result.forEach((element) => {
+                result.forEach((element) => { //convert array to object
                     toSend[element.prop] = element.value;
                 });
-                res.send(toSend);
+                res.send(toSend); //send config to esp32
             }).catch((error) => {
                 console.log(error);
                 res.status(500).send(error);
             });
     } else {
-        res.status(401).send("TOKEN is invalid");
+        res.status(401).send("TOKEN is invalid"); //send error if token is invalid
     }
 });
 
-
-app.get('*', function(req, res) {
+app.get('*', function(req, res) { //other routes
     //res.redirect('/')
     //404 error
     res.send('404 Not Found', 404);
 });
 
 httpServer.listen(3001, () => {
-    console.log('Example app listening on port 3001!')
+    console.log('listening on *:3001');
 });

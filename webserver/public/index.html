@@ -95,7 +95,20 @@
                             d="M76.6377 207.186V198.643H80.2116V207.219L76.6377 207.186Z" fill="#4F4F4F" />
                     </svg>
                     <div class="state-info">
-                        <h3>Non Connecté</h3>
+                        <div v-if="nextValue(live.date) != '?'" class="flex row left">
+                            <h3>Connecté</h3>
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="14" height="14" rx="7" fill="#48A23F" />
+                            </svg>
+
+                        </div>
+                        <div v-else class="flex row left">
+                            <h3>Non connecté</h3>
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="14" height="14" rx="7" fill="#E63A0F" />
+                            </svg>
+
+                        </div>
                         <h6>Dernière connection il y a {{timeAgo(live.date)}}</h6>
                         <hr>
                         <h3>Dernière valeur reçue :</h3>
@@ -109,7 +122,7 @@
                 <h2>Mode : <span class="value">{{config.MODE}}</span></h2>
                 <hr>
                 <h2>Version : <span class="value">{{config.VERSION}}</span></h2>
-                <h2>Tension alim : <span class="value">{{live.VCONDO}} V</span></h2>
+                <h2>Tension alim : <span class="value">{{parseFloat(live.VCONDO).toFixed(1)}} V</span></h2>
 
             </div>
             <div class="widget">

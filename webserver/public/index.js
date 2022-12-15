@@ -53,12 +53,10 @@ var app = createApp({
                 }]
             },
             options: {
-                scales: {
-                    x: {
-                        ticks: {
-                            callback: function(value, index, values) {
-                                return value + 'kWh';
-                            }
+                tooltips: {
+                    callbacks: {
+                        label: function(value, index, values) {
+                            return value.yLabel + " Wh";
                         }
                     },
                     y: {
