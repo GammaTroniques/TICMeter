@@ -77,7 +77,7 @@ Start the system with USB cable and serial monitor opened and you should see
 
 ```
 Starting...
-Connecting to Livebox 2ryz ...
+Connecting to [WIFI_SSID] ...
 WiFi connected
 IP address: 192.168.43.185
 Getting config from server...OK
@@ -87,7 +87,7 @@ Data stored: 0 - BASE:1647
 Data stored: 1 - BASE:1647
 Data stored: 2 - BASE:1647
 Preparing json data... OK
-Connecting to Livebox 2ryz ...
+Connecting to [WIFI_SSID] ...
 WiFi connected
 IP address: 192.168.43.185
 Getting config from server...OK
