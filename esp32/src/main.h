@@ -41,22 +41,21 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
 
 /**
  * @brief Send json data to server
- * 
+ *
  * @param json the json data to send
  * @return the http code
  */
 char sendToServer(char *json);
 
 /**
- * @brief set the CPU frequency to 240Mhz and connect to wifi 
- * 
+ * @brief set the CPU frequency to 240Mhz and connect to wifi
+ *
  * @return 1 if connected, 0 if not
  */
 char connectToWifi();
 
-
 /**
- * @brief set the CPU frequency to 10Mhz and disconnect from wifi 
- * 
+ * @brief set the CPU frequency to 10Mhz and disconnect from wifi
+ *
  */
 void disconectFromWifi();
