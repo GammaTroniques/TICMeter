@@ -37,12 +37,12 @@ class Linky
 {
 
 public:
-    HardwareSerial *UART;                              // The UART port
+    HardwareSerial *UART;             // The UART port
     Linky(char mode, int RX, int TX); // Constructor
-                                                       //
-    char update();                                     // Update the data
-    void print();                                      // Print the data
-                                                       //
+                                      //
+    char update();                    // Update the data
+    void print();                     // Print the data
+                                      //
     LinkyData data;
     void begin(); // Begin the linky
 
