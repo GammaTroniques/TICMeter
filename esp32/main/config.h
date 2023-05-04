@@ -2,10 +2,20 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <EEPROM.h> //store data in flash memory (the ESP32 does not have EEPROM)
+#include <stdio.h>
+#include <inttypes.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "esp_log.h"
+
 #define EEPROM_SIZE sizeof(config_t)
 
 #define AP_SSID "Linky 5G Pfizer#9432"
+
+#define NVS_TAG "NVS"
 
 #define MODE_WEB 0
 #define MODE_MQTT 1
@@ -66,6 +76,7 @@ public:
     config_t values;
 
 private:
+    nvs_handle_t nvsHandle;
 };
 
 #endif

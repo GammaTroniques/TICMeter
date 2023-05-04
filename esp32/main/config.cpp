@@ -23,37 +23,71 @@ int8_t Config::erase()
 
 int8_t Config::begin()
 {
-    EEPROM.begin(EEPROM_SIZE); // init eeprom
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        // NVS partition was truncated and needs to be erased
+        // Retry nvs_flash_init
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+
+    printf("\n");
+    printf("Opening Non-Volatile Storage (NVS) handle... ");
+    err = nvs_open("config", NVS_READWRITE, &nvsHandle);
+    if (err != ESP_OK)
+    {
+        printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+    }
+    else
+    {
+        printf("Done\n");
+    }
+
     this->read();
-    Serial.printf("\nConfig read checksum: %x\n", this->values.checksum);
-    Serial.printf("Config calculated checksum: %x \n", this->calculateChecksum());
+    ESP_LOGI(NVS_TAG, "Config read checksum: %x", this->values.checksum);
+    ESP_LOGI(NVS_TAG, "Config calculated checksum: %x", this->calculateChecksum());
     if (this->values.checksum != this->calculateChecksum())
     {
-        Serial.printf("Config checksum error: %x != %x\n", this->values.checksum, this->calculateChecksum());
+        ESP_LOGI(NVS_TAG, "Config checksum error: %x != %x", this->values.checksum, this->calculateChecksum());
         this->erase();
-        Serial.println("Config erased");
+        ESP_LOGI(NVS_TAG, "Config erased");
         this->write();
-        for (int i = 0; i < sizeof(config_t); i++)
-        {
-            Serial.printf("%x ", ((uint8_t *)&this->values)[i]);
-        }
-        Serial.println();
         return 1;
     }
-    Serial.println("Config OK");
+    ESP_LOGI(NVS_TAG, "Config OK");
     return 0;
 }
 
 int8_t Config::read()
 {
-    EEPROM.get(0, values);
+    size_t bytesRead = sizeof(config_t);
+    esp_err_t err = nvs_get_blob(nvsHandle, "config", &this->values, &bytesRead);
+    if (err != ESP_OK)
+    {
+        ESP_LOGI(NVS_TAG, "Error (%s) reading!\n", esp_err_to_name(err));
+        return 1;
+    }
+    ESP_LOGI(NVS_TAG, "Config read %d bytes", bytesRead);
     return 0;
 }
 
 int8_t Config::write()
 {
     this->values.checksum = this->calculateChecksum();
-    EEPROM.put(0, this->values); // Write config to EEPROM
-    EEPROM.commit();             // Commit the EEPROM
+    esp_err_t err = nvs_set_blob(nvsHandle, "config", &this->values, sizeof(config_t));
+    if (err != ESP_OK)
+    {
+        ESP_LOGI(NVS_TAG, "Error (%s) writing!\n", esp_err_to_name(err));
+        return 1;
+    }
+    err = nvs_commit(nvsHandle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGI(NVS_TAG, "Error (%s) committing!\n", esp_err_to_name(err));
+        return 1;
+    }
+    ESP_LOGI(NVS_TAG, "Config written");
     return 0;
 }

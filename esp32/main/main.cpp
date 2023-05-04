@@ -4,6 +4,7 @@
 #include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_log.h"
+
 #include "sdkconfig.h"
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
@@ -87,12 +88,18 @@ void loop(void *arg)
   }
 }
 
+#define MAIN_TAG "MAIN"
+
 extern "C" void app_main(void)
 {
+  ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
+
+  config.begin();
+
   linky.begin();
   // xTaskCreate(rx_task, "uart_rx_task", 4096, NULL, configMAX_PRIORITIES, NULL);
   xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
-  xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
+  // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
 }
 
 void fetchLinkyDataTask(void *pvParameters)
@@ -260,5 +267,6 @@ float getVCondo()
   //////////////////////////////// io5
   // float vCondo = (float)(analogRead(V_CONDO_PIN) * 5) / 3988; // get VCondo from ADC after voltage divider
   // return vCondo;
+  // uint16_t vCondo = analogRead(V_CONDO_PIN);
   return 3.3;
 }
