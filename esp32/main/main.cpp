@@ -4,6 +4,7 @@
 #include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_log.h"
+#include "esp_sleep.h"
 
 #include "sdkconfig.h"
 #include "driver/adc.h"
@@ -40,11 +41,6 @@ RTC_DATA_ATTR unsigned int dataIndex = 0;
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
 TaskHandle_t pushButtonTaskHandle = NULL;
 TaskHandle_t pairingTaskHandle = NULL;
-
-uint8_t getVUSB()
-{
-  return adc1_get_raw(ADC1_CHANNEL_3) > 3700 ? 1 : 0;
-}
 
 void led_blink_task(void *pvParameter)
 {
@@ -93,12 +89,32 @@ void loop(void *arg)
 extern "C" void app_main(void)
 {
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
-
+  // set frequency of cpu to 10MHz
+  // start shell task
+  // disable brownout detector
+  // disable wifi (sleep)
+  // pinmode
   config.begin();
 
-  linky.begin();
-  // xTaskCreate(rx_task, "uart_rx_task", 4096, NULL, configMAX_PRIORITIES, NULL);
+  // check vcondo and sleep if not ok
+  if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
+  {
+    ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
+    esp_deep_sleep_start();
+  }
   xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
+
+  // start linky fetch task
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+
+  // start push button task
+  xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
+
+  // connect to wifi
+  // get time from ntp
+  // get config from server
+
+  // xTaskCreate(rx_task, "uart_rx_task", 4096, NULL, configMAX_PRIORITIES, NULL);
   // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
 }
 
@@ -264,9 +280,12 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
 
 float getVCondo()
 {
-  //////////////////////////////// io5
-  // float vCondo = (float)(analogRead(V_CONDO_PIN) * 5) / 3988; // get VCondo from ADC after voltage divider
-  // return vCondo;
-  // uint16_t vCondo = analogRead(V_CONDO_PIN);
+  float vCondo = (float)(adc1_get_raw(V_CONDO_PIN) * 5) / 3988; // get VCondo from ADC after voltage divider
+  return vCondo;
   return 3.3;
+}
+
+uint8_t getVUSB()
+{
+  return adc1_get_raw(ADC1_CHANNEL_3) > 3700 ? 1 : 0;
 }

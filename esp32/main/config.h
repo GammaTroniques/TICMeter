@@ -25,7 +25,7 @@
 #define CONNECTION_TYPE_ZIGBEE 1
 #define CONNECTION_TYPE_MATTER 2
 
-#define V_CONDO_PIN 32            // io32
+#define V_CONDO_PIN ADC1_CHANNEL_5
 #define PAIRING_PIN (gpio_num_t)6 // io6
 #define PAIRING_LED_PIN 5         // io2
 
