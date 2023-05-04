@@ -8,6 +8,13 @@
 float getVCondo();
 
 /**
+ * @brief Get the VUSB
+ *
+ * @return 1 if VUSB is present, 0 if not
+ */
+uint8_t getVUSB();
+
+/**
  * @brief Get the Timestamp in seconds
  *
  * @return timestamp
