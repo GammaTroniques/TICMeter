@@ -1,0 +1,10 @@
+{
+    "idf.adapterTargetName": "esp32c6",
+    "idf.flashType": "UART",
+    "idf.portWin": "COM4",
+    "files.associations": {
+        "*.vhd": "vhdl",
+        "*.yaml": "home-assistant",
+        "*.tcc": "cpp"
+    }
+}
