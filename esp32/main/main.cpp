@@ -1,8 +1,15 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
+
+#include "freertos/timers.h"
+#include "esp_wifi.h"
+#include "nvs_flash.h"
+#include "esp_netif.h"
+#include "esp_http_client.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
 
@@ -20,6 +27,7 @@
 #include "linky.h"
 #include "main.h"
 #include "config.h"
+#include "wifi.h"
 
 #define BLINK_GPIO 8
 #define LED_RED (gpio_num_t)7
@@ -86,6 +94,7 @@ void loop(void *arg)
 
 #define MAIN_TAG "MAIN"
 
+// main
 extern "C" void app_main(void)
 {
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
@@ -102,17 +111,26 @@ extern "C" void app_main(void)
     ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
     esp_deep_sleep_start();
   }
+
+  strcpy(config.values.web.host, "192.168.10.59:3001");
+  strcpy(config.values.web.configUrl, "/config");
+  strcpy(config.values.web.token, "abc");
+
+  // connect to wifi
+  connectToWifi();
+  vTaskDelay(2000 / portTICK_PERIOD_MS);
+  getConfigFromServer(&config); // get config from server
+
+  time_t time = getTimestamp();                // get timestamp from ntp server
+  ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
+
   xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
 
   // start linky fetch task
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 
   // start push button task
   xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
-
-  // connect to wifi
-  // get time from ntp
-  // get config from server
 
   // xTaskCreate(rx_task, "uart_rx_task", 4096, NULL, configMAX_PRIORITIES, NULL);
   // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
@@ -134,8 +152,8 @@ void fetchLinkyDataTask(void *pvParameters)
 
     if (dataIndex < 15) // store data until buffer is full
     {
-      dataArray[dataIndex] = linky.data; // store data
-                                         ////////////////dataArray[dataIndex].timestamp = getTimestamp(); // add timestamp
+      dataArray[dataIndex] = linky.data;               // store data
+      dataArray[dataIndex].timestamp = getTimestamp(); // add timestamp
 #ifdef DEBUG
       Serial.print("Data stored: ");
       Serial.print(dataIndex);
@@ -154,8 +172,8 @@ void fetchLinkyDataTask(void *pvParameters)
       {
         dataArray[i] = dataArray[i + 1];
       }
-      dataArray[14] = linky.data; // store data
-                                  ///////////dataArray[14].timestamp = getTimestamp(); // add timestamp
+      dataArray[14] = linky.data;               // store data
+      dataArray[14].timestamp = getTimestamp(); // add timestamp
 #ifdef DEBUG
       Serial.print("Data stored: ");
       Serial.print(dataIndex);
@@ -169,7 +187,7 @@ void fetchLinkyDataTask(void *pvParameters)
       char json[1024] = {0};
       preapareJsonData(dataArray, dataIndex, json, sizeof(json)); // prepare json data
       connectToWifi();                                            // reconnect to wifi
-      getConfigFromServer();                                      // get config from server
+      getConfigFromServer(&config);                               // get config from server
       if (sendToServer(json) == 200)                              // send data
       {
         // if data is sent, reset buffer
@@ -227,6 +245,8 @@ void pushButtonTask(void *pvParameters)
     //   taskYIELD();
     //   vTaskDelay(100);
     // }
+
+    vTaskDelay(100);
   }
 }
 
@@ -267,7 +287,7 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
   {
     // Send empty data to server to keep the connection alive
     doc["ERROR"] = "Cant read data from linky";
-    //////////////////////////////doc["data"][0]["DATE"] = getTimestamp();
+    doc["data"][0]["DATE"] = getTimestamp();
     doc["data"][0]["BASE"] = nullptr;
     doc["data"][0]["HCHC"] = nullptr;
     doc["data"][0]["HCHP"] = nullptr;
@@ -288,4 +308,53 @@ float getVCondo()
 uint8_t getVUSB()
 {
   return adc1_get_raw(ADC1_CHANNEL_3) > 3700 ? 1 : 0;
+}
+
+static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+  switch (event_id)
+  {
+  case WIFI_EVENT_STA_START:
+    printf("WiFi connecting ... \n");
+    break;
+  case WIFI_EVENT_STA_CONNECTED:
+    printf("WiFi connected ... \n");
+    break;
+  case WIFI_EVENT_STA_DISCONNECTED:
+    printf("WiFi lost connection ... \n");
+    break;
+  case IP_EVENT_STA_GOT_IP:
+    printf("WiFi got IP ... \n\n");
+    break;
+  default:
+    break;
+  }
+}
+
+char sendToServer(char *json)
+{
+  // #ifdef DEBUG
+  //   Serial.print("Sending data to server... ");
+  // #endif
+  //   if (WiFi.status() == WL_CONNECTED)
+  //   {
+  //     WiFiClient client;
+  //     HTTPClient http;
+
+  //     char POST_URL[100] = {0};
+  //     createHttpUrl(POST_URL, config.values.web.host, config.values.web.postUrl);
+  //     http.begin(client, POST_URL);
+  //     http.addHeader("Content-Type", "application/json");
+  //     int httpCode = http.POST(json);
+  // #ifdef DEBUG
+  //     Serial.print("OK: ");
+  //     Serial.println(httpCode);
+  // #endif
+  //     http.end();
+  //     return httpCode;
+  //   }
+  // #ifdef DEBUG
+  //   Serial.print("ERROR");
+  // #endif
+  return -1;
 }

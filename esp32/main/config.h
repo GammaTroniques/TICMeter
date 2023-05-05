@@ -29,6 +29,9 @@
 #define PAIRING_PIN (gpio_num_t)6 // io6
 #define PAIRING_LED_PIN 5         // io2
 
+#define TEMP_SSID "wifirobot"
+#define TEMP_PASSWORD "robot2004LARIS"
+
 struct webConfig_t
 {
     char host[100] = "";
