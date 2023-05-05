@@ -1,6 +1,5 @@
 #ifndef SHELL_H
 #define SHELL_H
-#include <Arduino.h>
 #include "config.h"
 #include "mqtt.h"
 

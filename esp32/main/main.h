@@ -15,13 +15,6 @@ float getVCondo();
 uint8_t getVUSB();
 
 /**
- * @brief Get the Timestamp in seconds
- *
- * @return timestamp
- */
-unsigned long getTimestamp();
-
-/**
  * @brief Create a Http Url (http://host/path)
  *
  * @param url the destination url
@@ -29,12 +22,6 @@ unsigned long getTimestamp();
  * @param path the path
  */
 void createHttpUrl(char *url, const char *host, const char *path);
-
-/**
- * @brief Get config from server and save it in EEPROM
- *
- */
-void getConfigFromServer();
 
 /**
  * @brief prepare json data to send to server
@@ -55,17 +42,9 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
 char sendToServer(char *json);
 
 /**
- * @brief set the CPU frequency to 240Mhz and connect to wifi
- *
- * @return 1 if connected, 0 if not
- */
-char connectToWifi();
-
-/**
  * @brief set the CPU frequency to 10Mhz and disconnect from wifi
  *
  */
-void disconectFromWifi();
 
 void fetchLinkyDataTask(void *pvParameters);
 

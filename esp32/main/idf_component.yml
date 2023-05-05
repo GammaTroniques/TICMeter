@@ -1,5 +1,6 @@
 ## IDF Component Manager Manifest File
 dependencies:
+  # cesanta/mongoose: "^7.8.2"
   # espressif/arduino-esp32: "^2.0.8"
   bblanchon/arduinojson: "^6.21.2"
   ## Required IDF version
