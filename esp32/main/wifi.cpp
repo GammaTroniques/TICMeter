@@ -226,3 +226,65 @@ time_t getTimestamp()
     time(&now);
     return now;
 }
+
+esp_err_t send_data_handler(esp_http_client_event_handle_t evt)
+{
+    switch (evt->event_id)
+    {
+    case HTTP_EVENT_ON_DATA:
+        printf("Config: %.*s\n", evt->data_len, (char *)evt->data);
+        break;
+
+    default:
+        break;
+    }
+    return ESP_OK;
+}
+
+char sendToServer(char *json, Config *config)
+{
+    ESP_LOGI(TAG, "send data to server");
+    char url[100] = {0};
+    createHttpUrl(url, config->values.web.host, config->values.web.postUrl);
+    ESP_LOGI(TAG, "url: %s", url);
+
+    esp_http_client_config_t config_post = {
+        .url = url,
+        .cert_pem = NULL,
+        .method = HTTP_METHOD_POST,
+        .event_handler = send_data_handler,
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config_post);
+
+    esp_http_client_set_post_field(client, json, strlen(json));
+    esp_http_client_set_header(client, "Content-Type", "application/json");
+
+    esp_http_client_perform(client);
+    esp_http_client_cleanup(client);
+
+    // #ifdef DEBUG
+    //   Serial.print("Sending data to server... ");
+    // #endif
+    //   if (WiFi.status() == WL_CONNECTED)
+    //   {
+    //     WiFiClient client;
+    //     HTTPClient http;
+
+    //     char POST_URL[100] = {0};
+    //     createHttpUrl(POST_URL, config.values.web.host, config.values.web.postUrl);
+    //     http.begin(client, POST_URL);
+    //     http.addHeader("Content-Type", "application/json");
+    //     int httpCode = http.POST(json);
+    // #ifdef DEBUG
+    //     Serial.print("OK: ");
+    //     Serial.println(httpCode);
+    // #endif
+    //     http.end();
+    //     return httpCode;
+    //   }
+    // #ifdef DEBUG
+    //   Serial.print("ERROR");
+    // #endif
+    return -1;
+}

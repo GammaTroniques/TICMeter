@@ -65,4 +65,13 @@ void getConfigFromServer(Config *config);
  */
 time_t getTimestamp();
 
+esp_err_t send_data_handler(esp_http_client_event_handle_t evt);
+
+/**
+ * @brief Send json data to server
+ *
+ * @param json the json data to send
+ * @return the http code
+ */
+char sendToServer(char *json, Config *config);
 #endif

@@ -124,10 +124,12 @@ extern "C" void app_main(void)
   time_t time = getTimestamp();                // get timestamp from ntp server
   ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
 
+  disconectFromWifi(); // disconnect from wifi
+
   xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
 
   // start linky fetch task
-  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, configMAX_PRIORITIES, &fetchLinkyDataTaskHandle); // start linky task
 
   // start push button task
   xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
@@ -145,8 +147,8 @@ void fetchLinkyDataTask(void *pvParameters)
     char nTry = 0;    // number of tries to get a frame from linky
     do
     {
-      vTaskDelay(4000);        // wait to get some frame from linky into the serial buffer
-      result = linky.update(); // decode the frame
+      vTaskDelay(4000 / portTICK_PERIOD_MS); // wait to get some frame from linky into the serial buffer
+      result = linky.update();               // decode the frame
       nTry++;
     } while (result != 1 && nTry < 10); // wait for a successfull frame
 
@@ -188,7 +190,7 @@ void fetchLinkyDataTask(void *pvParameters)
       preapareJsonData(dataArray, dataIndex, json, sizeof(json)); // prepare json data
       connectToWifi();                                            // reconnect to wifi
       getConfigFromServer(&config);                               // get config from server
-      if (sendToServer(json) == 200)                              // send data
+      if (sendToServer(json, &config) == 200)                     // send data
       {
         // if data is sent, reset buffer
         dataIndex = 0; // reset index
@@ -196,8 +198,8 @@ void fetchLinkyDataTask(void *pvParameters)
       disconectFromWifi(); // disconnect from wifi when buffer is empty or 3 tries
       linky.begin();       // the serial communication with linky: when we change the CPU frequency, we need to reinit the serial communication
     }
-    nTry = 0;                                     // reset nTry
-    vTaskDelay(config.values.refreshRate * 1000); // wait for refreshRate seconds before next loop
+    nTry = 0;                                                            // reset nTry
+    vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
   }
 }
 
@@ -246,7 +248,7 @@ void pushButtonTask(void *pvParameters)
     //   vTaskDelay(100);
     // }
 
-    vTaskDelay(100);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
   }
 }
 
@@ -329,32 +331,4 @@ static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_b
   default:
     break;
   }
-}
-
-char sendToServer(char *json)
-{
-  // #ifdef DEBUG
-  //   Serial.print("Sending data to server... ");
-  // #endif
-  //   if (WiFi.status() == WL_CONNECTED)
-  //   {
-  //     WiFiClient client;
-  //     HTTPClient http;
-
-  //     char POST_URL[100] = {0};
-  //     createHttpUrl(POST_URL, config.values.web.host, config.values.web.postUrl);
-  //     http.begin(client, POST_URL);
-  //     http.addHeader("Content-Type", "application/json");
-  //     int httpCode = http.POST(json);
-  // #ifdef DEBUG
-  //     Serial.print("OK: ");
-  //     Serial.println(httpCode);
-  // #endif
-  //     http.end();
-  //     return httpCode;
-  //   }
-  // #ifdef DEBUG
-  //   Serial.print("ERROR");
-  // #endif
-  return -1;
 }
