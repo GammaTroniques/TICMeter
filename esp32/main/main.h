@@ -34,14 +34,6 @@ void createHttpUrl(char *url, const char *host, const char *path);
 void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int jsonSize);
 
 /**
- * @brief Send json data to server
- *
- * @param json the json data to send
- * @return the http code
- */
-char sendToServer(char *json);
-
-/**
  * @brief set the CPU frequency to 10Mhz and disconnect from wifi
  *
  */
