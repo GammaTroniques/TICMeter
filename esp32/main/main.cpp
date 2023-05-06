@@ -28,6 +28,7 @@
 #include "main.h"
 #include "config.h"
 #include "wifi.h"
+#include "shell.h"
 
 #define BLINK_GPIO 8
 #define LED_RED (gpio_num_t)7
@@ -112,27 +113,33 @@ extern "C" void app_main(void)
     esp_deep_sleep_start();
   }
 
-  strcpy(config.values.web.host, "192.168.10.59:3001");
+  strcpy(config.values.web.host, "192.168.2.16:3001");
   strcpy(config.values.web.configUrl, "/config");
   strcpy(config.values.web.token, "abc");
 
-  // connect to wifi
-  connectToWifi();
-  vTaskDelay(2000 / portTICK_PERIOD_MS);
-  getConfigFromServer(&config); // get config from server
+  // // connect to wifi
+  // if (connectToWifi())
+  // {
+  //   vTaskDelay(2000 / portTICK_PERIOD_MS);
+  //   getConfigFromServer(&config); // get config from server
 
-  time_t time = getTimestamp();                // get timestamp from ntp server
-  ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
-
-  disconectFromWifi(); // disconnect from wifi
+  //   time_t time = getTimestamp();                // get timestamp from ntp server
+  //   ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
+  // }
+  // disconectFromWifi(); // disconnect from wifi
 
   xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
 
+  shell_t shell = {
+      .config = &config,
+  };
+  xTaskCreate(shellTask, "shellTask", 10000, &shell, 1, NULL); // start shell task
+
   // start linky fetch task
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, configMAX_PRIORITIES, &fetchLinkyDataTaskHandle); // start linky task
+  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, configMAX_PRIORITIES, &fetchLinkyDataTaskHandle); // start linky task
 
   // start push button task
-  xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
+  // xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
 
   // xTaskCreate(rx_task, "uart_rx_task", 4096, NULL, configMAX_PRIORITIES, NULL);
   // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);

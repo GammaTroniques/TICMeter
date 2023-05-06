@@ -1,5 +1,7 @@
 #include "config.h"
 
+const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER"};
+
 Config::Config()
 {
 }
