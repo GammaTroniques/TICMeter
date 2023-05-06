@@ -5,6 +5,9 @@
   "files.associations": {
     "*.vhd": "vhdl",
     "*.yaml": "home-assistant",
-    "*.tcc": "cpp"
+    "*.tcc": "cpp",
+    "sstream": "cpp",
+    "regex": "cpp",
+    "cstdio": "cpp"
   }
 }

@@ -1,179 +1,443 @@
 #include "shell.h"
+static Config *config;
 
-void shellParser(char *strInput, Config *config, Mqtt *mqtt)
+void shellTask(void *pvParameters)
 {
-    String input = String(strInput);
-    String command = input.substring(0, input.indexOf(' '));
-    String args[10];
-    for (int i = 0; i < 10; i++)
-    {
-        args[i] = input.substring(input.indexOf(' ') + 1, input.indexOf(' ', input.indexOf(' ') + 1));
-        input = input.substring(input.indexOf(' ', input.indexOf(' ') + 1));
-    }
+    shell_t *shell = (shell_t *)pvParameters;
 
-    // set-wifi <ssid> <password>
-    // set-web <url> <post-url> <config-url> <token>
-    // set-mqtt <url> <port> <username> <password> <topic>
+    if (shell == NULL)
+    {
+        ESP_LOGE("SHELL", "shell is NULL");
+        vTaskDelete(NULL);
+    }
+    config = shell->config;
 
-    command.replace("\r", "");
-    command.replace("\n", "");
+    esp_console_repl_t *repl = NULL;
+    esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
 
-    for (int i = 0; i < 10; i++)
-    {
-        args[i].replace("\r", "");
-        args[i].replace("\n", "");
-    }
+    repl_config.prompt = "$";
+    repl_config.max_cmdline_length = 100;
 
-    if (command == "set-wifi")
+    esp_console_register_help_command();
+    esp_console_register_wifi_command();
+    esp_console_register_web_command();
+    esp_console_register_mqtt_command();
+    esp_console_register_mode_command();
+    esp_console_register_config_command();
+
+    esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
+
+    ESP_ERROR_CHECK(esp_console_start_repl(repl));
+
+    while (1)
     {
-        strcpy(config->values.ssid, args[0].c_str());
-        strcpy(config->values.password, args[1].c_str());
-        config->write();
-        Serial.println("WiFi credentials saved");
-    }
-    else if (command == "get-wifi")
-    {
-        Serial.print("SSID: ");
-        Serial.println(config->values.ssid);
-        Serial.print("Password: ");
-        Serial.println(config->values.password);
-    }
-    else if (command == "set-web")
-    {
-        strcpy(config->values.web.host, args[0].c_str());
-        strcpy(config->values.web.postUrl, args[1].c_str());
-        strcpy(config->values.web.configUrl, args[2].c_str());
-        strcpy(config->values.web.token, args[3].c_str());
-        config->write();
-        Serial.println("Web credentials saved");
-    }
-    else if (command == "get-web")
-    {
-        Serial.print("Host: ");
-        Serial.println(config->values.web.host);
-        Serial.print("Post URL: ");
-        Serial.println(config->values.web.postUrl);
-        Serial.print("Config URL: ");
-        Serial.println(config->values.web.configUrl);
-        Serial.print("Token: ");
-        Serial.println(config->values.web.token);
-    }
-    else if (command == "set-mqtt")
-    {
-        strcpy(config->values.mqtt.host, args[0].c_str());
-        config->values.mqtt.port = args[1].toInt();
-        strcpy(config->values.mqtt.username, args[2].c_str());
-        strcpy(config->values.mqtt.password, args[3].c_str());
-        strcpy(config->values.mqtt.topic, args[4].c_str());
-        config->write();
-        Serial.println("MQTT credentials saved");
-    }
-    else if (command == "get-mqtt")
-    {
-        Serial.print("Host: ");
-        Serial.println(config->values.mqtt.host);
-        Serial.print("Port: ");
-        Serial.println(config->values.mqtt.port);
-        Serial.print("Username: ");
-        Serial.println(config->values.mqtt.username);
-        Serial.print("Password: ");
-        Serial.println(config->values.mqtt.password);
-        Serial.print("Topic: ");
-        Serial.println(config->values.mqtt.topic);
-    }
-    else if (command == "set-mode")
-    {
-        config->values.mode = args[0].toInt();
-        config->write();
-        Serial.println("Mode saved");
-    }
-    else if (command == "get-mode")
-    {
-        Serial.print("Mode: ");
-        Serial.println(config->values.mode);
-    }
-    else if (command == "mqtt-connect")
-    {
-        mqtt->connect(config->values.mqtt.host, config->values.mqtt.port, config->values.mqtt.username, config->values.mqtt.password);
-    }
-    else if (command == "mqtt-send")
-    {
-        mqtt->send(args[0].c_str(), args[1].c_str());
-    }
-    else if (command == "get-config")
-    {
-        config->read();
-        for (int i = 0; i < sizeof(config->values); i++)
-        {
-            Serial.printf("%x ", ((uint8_t *)&config->values)[i]);
-        }
-    }
-    else if (command == "set-config")
-    {
-        config->write();
-    }
-    else if (command == "wifi-connect")
-    {
-        WiFi.softAPdisconnect(true);
-        WiFi.mode(WIFI_STA);
-        WiFi.begin(config->values.ssid, config->values.password);
-        uint32_t timeout = millis() + 10000;
-        while (WiFi.status() != WL_CONNECTED && millis() < timeout)
-        {
-            delay(500);
-            Serial.print(".");
-        }
-        Serial.println("");
-        Serial.println("WiFi connected");
-        Serial.println("IP address: ");
-        Serial.println(WiFi.localIP());
-    }
-    else if (command == "wifi-disconnect")
-    {
-        WiFi.disconnect();
-    }
-    else if (command == "wifi-status")
-    {
-        Serial.println(WiFi.status());
-    }
-    else
-    {
-        Serial.println("Command not found");
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
-void shellLoop(void *pvParameters)
+static int get_wifi_command(int argc, char **argv)
 {
-    shell_t *shell = (shell_t *)pvParameters;
-    Config *config = shell->config;
-    Mqtt *mqtt = shell->mqtt;
-
-    char input[100];
-    uint8_t inputIndex = 0;
-    while (1)
+    if (argc != 1)
     {
-        if (Serial.available() > 0)
-        {
-            char c = Serial.read();
-            if (c == '\b' || c == 127)
-            {
-                if (inputIndex > 0)
-                {
-                    inputIndex--;
-                    Serial.print("\b \b");
-                }
-                continue;
-            }
-            input[inputIndex++] = c;
-            Serial.print(c);
-            if (c == '\n')
-            {
-                input[inputIndex] = '\0';
-                inputIndex = 0;
-                shellParser(input, config, mqtt);
-                Serial.printf("\n$ ");
-            }
-        }
-        delay(10);
+        return ESP_ERR_INVALID_ARG;
     }
+    printf("SSID: %s\n", config->values.ssid);
+    printf("Password: %s\n", config->values.password);
+
+    return 0;
+}
+static int set_wifi_command(int argc, char **argv)
+{
+    if (argc != 3)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    strcpy(config->values.ssid, argv[1]);
+    strcpy(config->values.password, argv[2]);
+    config->write();
+    printf("Wifi credentials saved\n");
+
+    return 0;
+}
+static int connect_wifi_command(int argc, char **argv)
+{
+    printf("Connecting to wifi TODO\n");
+    // TODO
+    return 0;
+}
+static int wifi_disconnect_command(int argc, char **argv)
+{
+    printf("Disconnecting from wifi TODO\n");
+    // TODO
+    return 0;
+}
+static int wifi_status_command(int argc, char **argv)
+{
+    printf("Wifi status TODO\n");
+    // TODO
+    return 0;
+}
+esp_err_t esp_console_register_wifi_command(void)
+{
+    esp_console_cmd_t get = {
+        .command = "get-wifi",
+        .help = "Get wifi config",
+        .func = &get_wifi_command};
+    esp_err_t err = esp_console_cmd_register(&get);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    static struct
+    {
+        struct arg_str *ssid;
+        struct arg_str *password;
+        struct arg_end *end;
+    } set_wifi_args;
+
+    set_wifi_args.ssid = arg_str1(NULL, NULL, "<ssid>", "SSID of AP");
+    set_wifi_args.password = arg_str1(NULL, NULL, "<password>", "Password of AP");
+    set_wifi_args.end = arg_end(2);
+
+    esp_console_cmd_t set = {
+        .command = "set-wifi",
+        .help = "Set wifi config",
+        .func = &set_wifi_command,
+        .argtable = &set_wifi_args};
+    err = esp_console_cmd_register(&set);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    esp_console_cmd_t connect = {
+        .command = "wifi-connect",
+        .help = "Connect to wifi",
+        .func = &connect_wifi_command};
+    err = esp_console_cmd_register(&connect);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    esp_console_cmd_t disconnect = {
+        .command = "wifi-disconnect",
+        .help = "Disconnect from wifi",
+        .func = &wifi_disconnect_command};
+    err = esp_console_cmd_register(&disconnect);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    esp_console_cmd_t status = {
+        .command = "wifi-status",
+        .help = "Get wifi status",
+        .func = &wifi_status_command};
+    err = esp_console_cmd_register(&status);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    return ESP_OK;
+}
+
+static int set_web_command(int argc, char **argv)
+{
+    if (argc != 5)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    strcpy(config->values.web.host, argv[1]);
+    strcpy(config->values.web.postUrl, argv[2]);
+    strcpy(config->values.web.configUrl, argv[3]);
+    strcpy(config->values.web.token, argv[4]);
+    config->write();
+    printf("Web credentials saved\n");
+    return 0;
+}
+static int get_web_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    printf("Host: %s\n", config->values.web.host);
+    printf("PostUrl: %s\n", config->values.web.postUrl);
+    printf("ConfigUrl: %s\n", config->values.web.configUrl);
+    printf("Token: %s\n", config->values.web.token);
+    return 0;
+}
+esp_err_t esp_console_register_web_command()
+{
+    esp_console_cmd_t get = {
+        .command = "get-web",
+        .help = "Get web config",
+        .func = &get_web_command};
+
+    esp_err_t err = esp_console_cmd_register(&get);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    static struct
+    {
+        struct arg_str *host;
+        struct arg_str *postUrl;
+        struct arg_str *configUrl;
+        struct arg_str *token;
+        struct arg_end *end;
+    } set_web_args;
+
+    set_web_args.host = arg_str1(NULL, NULL, "<host>", "Host of web server e.g. 192.168.1.10");
+    set_web_args.postUrl = arg_str1(NULL, NULL, "<postUrl>", "Url for posting data e.g. /post");
+    set_web_args.configUrl = arg_str1(NULL, NULL, "<configUrl>", "Url for getting config e.g. /config");
+    set_web_args.token = arg_str1(NULL, NULL, "<token>", "Token for authorization");
+    set_web_args.end = arg_end(4);
+
+    esp_console_cmd_t set = {
+        .command = "set-web",
+        .help = "Set web config",
+        .func = &set_web_command,
+        .argtable = &set_web_args};
+    err = esp_console_cmd_register(&set);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    return ESP_OK;
+}
+
+static int get_mqtt_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    printf("Host: %s\n", config->values.mqtt.host);
+    printf("Port: %d\n", config->values.mqtt.port);
+    printf("Topic: %s\n", config->values.mqtt.topic);
+    printf("Username: %s\n", config->values.mqtt.username);
+    printf("Password: %s\n", config->values.mqtt.password);
+    return 0;
+}
+static int set_mqtt_command(int argc, char **argv)
+{
+    if (argc != 6)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    strcpy(config->values.mqtt.host, argv[1]);
+    config->values.mqtt.port = atoi(argv[2]);
+    strcpy(config->values.mqtt.topic, argv[3]);
+    strcpy(config->values.mqtt.username, argv[4]);
+    strcpy(config->values.mqtt.password, argv[5]);
+    config->write();
+    printf("MQTT credentials saved\n");
+    return 0;
+}
+static int mqtt_connect_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    // mqtt->connect();
+    printf("MQTT connect TODO\n");
+    return 0;
+}
+static int mqtt_send_command(int argc, char **argv)
+{
+    if (argc != 2)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    // mqtt->send(argv[1]);
+    printf("MQTT send TODO\n");
+    return 0;
+}
+esp_err_t esp_console_register_mqtt_command()
+{
+    esp_console_cmd_t get = {
+        .command = "get-mqtt",
+        .help = "Get mqtt config",
+        .func = &get_mqtt_command};
+
+    esp_err_t err = esp_console_cmd_register(&get);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    static struct
+    {
+        struct arg_str *host;
+        struct arg_int *port;
+        struct arg_str *topic;
+        struct arg_str *username;
+        struct arg_str *password;
+        struct arg_end *end;
+    } set_mqtt_args;
+
+    set_mqtt_args.host = arg_str1(NULL, NULL, "<host>", "Host of mqtt server e.g. 192.168.1.10");
+    set_mqtt_args.port = arg_int1(NULL, NULL, "<port>", "Port of mqtt server e.g. 1883");
+    set_mqtt_args.topic = arg_str1(NULL, NULL, "<topic>", "Topic for publishing data e.g. /topic");
+    set_mqtt_args.username = arg_str1(NULL, NULL, "<username>", "Username for authorization");
+    set_mqtt_args.password = arg_str1(NULL, NULL, "<password>", "Password for authorization");
+    set_mqtt_args.end = arg_end(5);
+
+    esp_console_cmd_t set = {
+        .command = "set-mqtt",
+        .help = "Set mqtt config",
+        .func = &set_mqtt_command,
+        .argtable = &set_mqtt_args};
+    err = esp_console_cmd_register(&set);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+    esp_console_cmd_t connect = {
+        .command = "mqtt-connect",
+        .help = "Connect to mqtt server",
+        .func = &mqtt_connect_command};
+
+    err = esp_console_cmd_register(&connect);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    static struct
+    {
+        struct arg_str *message;
+        struct arg_end *end;
+    } send_args;
+
+    send_args.message = arg_str1(NULL, NULL, "<message>", "Message to send");
+    send_args.end = arg_end(1);
+
+    esp_console_cmd_t send = {
+        .command = "mqtt-send",
+        .help = "Send message to mqtt server",
+        .func = &mqtt_send_command,
+        .argtable = &send_args};
+    err = esp_console_cmd_register(&send);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+    return ESP_OK;
+}
+
+static int get_mode_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    printf("Mode: %d - %s\n", config->values.mode, MODES[config->values.mode]);
+    return 0;
+}
+static int set_mode_command(int argc, char **argv)
+{
+    if (argc != 2)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    config->values.mode = atoi(argv[1]);
+    config->write();
+    printf("Mode saved\n");
+    return 0;
+}
+esp_err_t esp_console_register_mode_command()
+{
+    esp_console_cmd_t get = {
+        .command = "get-mode",
+        .help = "Get mode",
+        .func = &get_mode_command};
+
+    esp_err_t err = esp_console_cmd_register(&get);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    static struct
+    {
+        struct arg_int *mode;
+        struct arg_end *end;
+    } set_mode_args;
+
+    set_mode_args.mode = arg_int1(NULL, NULL, "<mode>", "Mode of operation");
+    set_mode_args.end = arg_end(1);
+
+    esp_console_cmd_t set = {
+        .command = "set-mode",
+        .help = "Set mode\n"
+                "0 - Wifi - Webserver\n"
+                "1 - Wifi - MQTT\n"
+                "2 - Wifi - MQTT Home Assistant\n"
+                "3 - Zigbee\n"
+                "4 - Matter\n",
+
+        .func = &set_mode_command,
+        .argtable = &set_mode_args};
+    err = esp_console_cmd_register(&set);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    return ESP_OK;
+}
+
+static int get_config_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    printf("config read\n");
+    config->read();
+    return 0;
+}
+static int set_config_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    config->write();
+    printf("Config saved\n");
+    return 0;
+}
+esp_err_t esp_console_register_config_command()
+{
+    esp_console_cmd_t get = {
+        .command = "get-config",
+        .help = "Get config",
+        .func = &get_config_command};
+
+    esp_err_t err = esp_console_cmd_register(&get);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    esp_console_cmd_t set = {
+        .command = "set-config",
+        .help = "Set config",
+        .func = &set_config_command};
+    err = esp_console_cmd_register(&set);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    return ESP_OK;
 }

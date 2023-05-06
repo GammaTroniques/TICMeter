@@ -1,7 +1,10 @@
 #include "wifi.h"
 uint8_t connectToWifi()
 {
+    static uint8_t firstCall = 1;
 
+    ESP_LOGI(TAG, "FIRST WiFi INIT");
+    // firstCall = 0;
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -10,15 +13,15 @@ uint8_t connectToWifi()
     }
     ESP_ERROR_CHECK(ret);
 
-    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-
     s_wifi_event_group = xEventGroupCreate();
-
     ESP_ERROR_CHECK(esp_netif_init());
 
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_sta();
-
+    if (firstCall)
+    {
+        firstCall = 0;
+        ESP_ERROR_CHECK(esp_event_loop_create_default());
+        esp_netif_create_default_wifi_sta();
+    }
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
@@ -54,7 +57,7 @@ uint8_t connectToWifi()
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
+    ESP_LOGI(TAG, "wifi_init_sta finished. ");
 
     /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
      * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
@@ -68,19 +71,19 @@ uint8_t connectToWifi()
      * happened. */
     if (bits & WIFI_CONNECTED_BIT)
     {
-        ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+        ESP_LOGI(TAG, "connected to ap SSID:%s ", EXAMPLE_ESP_WIFI_SSID);
+        return 1;
     }
     else if (bits & WIFI_FAIL_BIT)
     {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+        ESP_LOGI(TAG, "Failed to connect to SSID:%s", EXAMPLE_ESP_WIFI_SSID);
+        return 0;
     }
     else
     {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
+        return 0;
     }
-    return 1;
 }
 
 void disconectFromWifi()
@@ -124,39 +127,6 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 }
 
 //------------------
-
-esp_err_t client_event_post_handler(esp_http_client_event_handle_t evt)
-{
-    switch (evt->event_id)
-    {
-    case HTTP_EVENT_ON_DATA:
-        printf("HTTP_EVENT_ON_DATA: %.*s\n", evt->data_len, (char *)evt->data);
-        break;
-
-    default:
-        break;
-    }
-    return ESP_OK;
-}
-
-void post_rest_function()
-{
-    esp_http_client_config_t config_post = {
-        .url = "http://httpbin.org/post",
-        .cert_pem = NULL,
-        .method = HTTP_METHOD_POST,
-        .event_handler = client_event_post_handler,
-    };
-
-    esp_http_client_handle_t client = esp_http_client_init(&config_post);
-
-    char *post_data = "test ...";
-    esp_http_client_set_post_field(client, post_data, strlen(post_data));
-    esp_http_client_set_header(client, "Content-Type", "application/json");
-
-    esp_http_client_perform(client);
-    esp_http_client_cleanup(client);
-}
 
 void createHttpUrl(char *url, const char *host, const char *path)
 {
@@ -206,9 +176,9 @@ time_t getTimestamp()
     if (firstCall)
     {
         firstCall = 0;
-        sntp_setoperatingmode(SNTP_OPMODE_POLL);
-        sntp_setservername(0, "pool.ntp.org");
-        sntp_init();
+        esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        esp_sntp_setservername(0, "pool.ntp.org");
+        esp_sntp_init();
         time_t start = xTaskGetTickCount() / portTICK_PERIOD_MS;
         time_t noww;
         while (noww < 100000 && (xTaskGetTickCount() / portTICK_PERIOD_MS < start + 2000))
