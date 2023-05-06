@@ -19,10 +19,14 @@
 
 #include "config.h"
 
-#define EXAMPLE_ESP_WIFI_SSID "wifirobot"
-#define EXAMPLE_ESP_WIFI_PASS "robot2004LARIS"
-#define EXAMPLE_ESP_MAXIMUM_RETRY 10
+// #define EXAMPLE_ESP_WIFI_SSID "wifirobot"
+// #define EXAMPLE_ESP_WIFI_PASS "robot2004LARIS"
 
+#define EXAMPLE_ESP_WIFI_SSID "AFDD"
+#define EXAMPLE_ESP_WIFI_PASS "afddChromino"
+
+#define EXAMPLE_ESP_MAXIMUM_RETRY 3
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 /**
  * @brief set the CPU frequency to 240Mhz and connect to wifi
  *
@@ -48,8 +52,6 @@ static const char *TAG = "wifi station";
 
 static int s_retry_num = 0;
 
-esp_err_t client_event_post_handler(esp_http_client_event_handle_t evt);
-void post_rest_function();
 void createHttpUrl(char *url, const char *host, const char *path);
 
 /**

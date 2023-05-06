@@ -20,6 +20,10 @@
 #define MODE_WEB 0
 #define MODE_MQTT 1
 #define MODE_MQTT_HA 2
+#define MODE_ZIGBEE 3
+#define MODE_MATTER 4
+
+extern const char *MODES[];
 
 #define CONNECTION_TYPE_WIFI 0
 #define CONNECTION_TYPE_ZIGBEE 1
