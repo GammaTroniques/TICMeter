@@ -1,18 +1,24 @@
 #ifndef MQTT_H
 #define MQTT_H
-#include <PubSubClient.h>
-#include <WiFi.h>
 
-class Mqtt
-{
-public:
-    Mqtt(PubSubClient *mqttClient);
-    PubSubClient *mqttClient;
-    int8_t connect(const char *serverHost, const uint16_t server_port, const char *user, const char *password);
-    int8_t send(const char *topic, const char *payload);
+#include "config.h"
+#include <stdio.h>
+#include "esp_log.h"
+#include "mqtt_client.h"
+#include "esp_event.h"
 
-private:
-};
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "freertos/queue.h"
 
-void callback(char *topic, byte *payload, unsigned int length);
+#include "esp_log.h"
+
+static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data);
+void mqtt_app_start(void);
+
+void setupHomeAssistantDiscovery();
+
+extern esp_mqtt_client_handle_t mqttClient;
+
 #endif
