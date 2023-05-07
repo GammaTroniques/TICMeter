@@ -71,4 +71,6 @@ esp_err_t send_data_handler(esp_http_client_event_handle_t evt);
  * @return the http code
  */
 char sendToServer(char *json, Config *config);
+
+extern uint8_t wifiConnected;
 #endif

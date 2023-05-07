@@ -240,12 +240,16 @@ int mqtt_connect_command(int argc, char **argv)
 }
 int mqtt_send_command(int argc, char **argv)
 {
-    if (argc != 2)
+    if (argc != 1)
     {
         return ESP_ERR_INVALID_ARG;
     }
     printf("MQTT send\n");
-    esp_mqtt_client_publish(mqttClient, "linkytest", argv[1], 0, 0, 0);
+    LinkyData data;
+    data.timestamp = getTimestamp();
+    data.BASE = 5050;
+    data.IINST = 10;
+    sendToMqtt(&data);
     return 0;
 }
 int mqtt_discovery_command(int argc, char **argv)
