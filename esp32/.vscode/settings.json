@@ -9,6 +9,7 @@
     "sstream": "cpp",
     "regex": "cpp",
     "cstdio": "cpp",
-    "compare": "cpp"
+    "compare": "cpp",
+    "typeinfo": "cpp"
   }
 }
