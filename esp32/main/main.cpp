@@ -29,11 +29,9 @@
 #include "config.h"
 #include "wifi.h"
 #include "shell.h"
+#include "mqtt.h"
 
-#define BLINK_GPIO 8
-#define LED_RED (gpio_num_t)7
-#define LED_GREEN (gpio_num_t)11
-#define VUSB (gpio_num_t)3
+#define MILLIS xTaskGetTickCount() * portTICK_PERIOD_MS
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 0;        // UTC
@@ -61,6 +59,10 @@ void led_blink_task(void *pvParameter)
   while (1)
   {
     // ESP_LOGI(TAG, "Turning the LED %s!", led_red_state == true ? "ON" : "OFF");
+    // ESP_LOGI(TAG, "%lld", esp_log_timestamp());
+    // ESP_LOGI(TAG, "%lu", xTaskGetTickCount());
+    // ESP_LOGI(TAG, "%lu", );
+
     led_red_state = !led_red_state;
     gpio_set_level(LED_GREEN, getVUSB());
     gpio_set_level(LED_RED, led_red_state);
@@ -113,9 +115,7 @@ extern "C" void app_main(void)
     esp_deep_sleep_start();
   }
 
-  strcpy(config.values.web.host, "192.168.2.16:3001");
-  strcpy(config.values.web.configUrl, "/config");
-  strcpy(config.values.web.token, "abc");
+  shellInit(); // init shell
 
   // // connect to wifi
   // if (connectToWifi())
@@ -130,16 +130,11 @@ extern "C" void app_main(void)
 
   xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
 
-  shell_t shell = {
-      .config = &config,
-  };
-  xTaskCreate(shellTask, "shellTask", 10000, &shell, 1, NULL); // start shell task
-
   // start linky fetch task
   // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, configMAX_PRIORITIES, &fetchLinkyDataTaskHandle); // start linky task
 
   // start push button task
-  // xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
+  xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
 
   // xTaskCreate(rx_task, "uart_rx_task", 4096, NULL, configMAX_PRIORITIES, NULL);
   // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
@@ -215,47 +210,45 @@ void pushButtonTask(void *pvParameters)
   uint32_t startPushTime = 0;
   while (1)
   {
-    // if (gpio_get_level(PAIRING_PIN) == 0)
-    // {
-    //   if (startPushTime == 0)
-    //   {
-    //     startPushTime = esp_timer_get_time();
-    //   }
-    //   else if (millis() - startPushTime > 2000)
-    //   {
-    //     startPushTime = 0;
-    //     ESP_LOGI("PAIRING", "Pairing mode");
-    //     /// setCpuFrequencyMhz(240);
-    //     // Serial.begin(115200);
-    //     WiFi.setSleep(false);
+    if (gpio_get_level(PAIRING_PIN) == 0)
+    {
+      if (startPushTime == 0)
+      {
+        startPushTime = MILLIS;
+      }
+      else if (MILLIS - startPushTime > 2000)
+      {
+        startPushTime = 0;
+        ESP_LOGI("PAIRING", "Pairing mode");
+        /// setCpuFrequencyMhz(240);
+        // Serial.begin(115200);
+        // WiFi.setSleep(false);
 
-    //     uint16_t *time = (uint16_t *)malloc(sizeof(uint16_t));
-    //     *time = 500;
-    //     ///////////////////////////////////////xTaskCreate(pairingLEDTask, "pairingLEDTask", 10000, time, 1, NULL);
+        uint16_t *time = (uint16_t *)malloc(sizeof(uint16_t));
+        *time = 500;
+        ///////////////////////////////////////xTaskCreate(pairingLEDTask, "pairingLEDTask", 10000, time, 1, NULL);
 
-    //     switch (config.values.connectionType)
-    //     {
-    //     case CONNECTION_TYPE_WIFI:
-    //       ///////////////////////////////////xTaskCreate(wifiPairingTask, "wifiPairingTask", 10000, &config, 1, &pairingTaskHandle);
+        switch (config.values.connectionType)
+        {
+        case CONNECTION_TYPE_WIFI:
+          ///////////////////////////////////xTaskCreate(wifiPairingTask, "wifiPairingTask", 10000, &config, 1, &pairingTaskHandle);
 
-    //       break;
-    //     case CONNECTION_TYPE_ZIGBEE:
-    //       // startZigbeeConfig(config);
-    //       break;
-    //     default:
-    //       break;
-    //     }
-    //     vTaskSuspend(pushButtonTaskHandle);
-    //   }
-    // }
-    // else
-    // {
-    //   startPushTime = 0;
-    //   taskYIELD();
-    //   vTaskDelay(100);
-    // }
-
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+          break;
+        case CONNECTION_TYPE_ZIGBEE:
+          // startZigbeeConfig(config);
+          break;
+        default:
+          break;
+        }
+        vTaskSuspend(pushButtonTaskHandle);
+      }
+    }
+    else
+    {
+      startPushTime = 0;
+      taskYIELD();
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
   }
 }
 
@@ -316,26 +309,6 @@ float getVCondo()
 
 uint8_t getVUSB()
 {
-  return adc1_get_raw(ADC1_CHANNEL_3) > 3700 ? 1 : 0;
-}
-
-static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
-{
-  switch (event_id)
-  {
-  case WIFI_EVENT_STA_START:
-    printf("WiFi connecting ... \n");
-    break;
-  case WIFI_EVENT_STA_CONNECTED:
-    printf("WiFi connected ... \n");
-    break;
-  case WIFI_EVENT_STA_DISCONNECTED:
-    printf("WiFi lost connection ... \n");
-    break;
-  case IP_EVENT_STA_GOT_IP:
-    printf("WiFi got IP ... \n\n");
-    break;
-  default:
-    break;
-  }
+  // return adc1_get_raw(ADC1_CHANNEL_3) > 3700 ? 1 : 0;
+  return gpio_get_level(V_USB_PIN);
 }
