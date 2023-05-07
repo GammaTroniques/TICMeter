@@ -158,19 +158,12 @@ void fetchLinkyDataTask(void *pvParameters)
     {
       dataArray[dataIndex] = linky.data;               // store data
       dataArray[dataIndex].timestamp = getTimestamp(); // add timestamp
-#ifdef DEBUG
-      Serial.print("Data stored: ");
-      Serial.print(dataIndex);
-      Serial.print(" - BASE:");
-      Serial.println(dataArray[dataIndex].BASE);
-#endif
+      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %ld", dataIndex, dataArray[dataIndex].BASE);
       dataIndex++; // increment index
     }
     else // buffer full
     {
-#ifdef DEBUG
-      Serial.print("Buffer full, shifting data");
-#endif
+      ESP_LOGI(MAIN_TAG, "Buffer full, shifting data");
       // shift data to the left
       for (int i = 0; i < 14; i++)
       {
@@ -178,27 +171,44 @@ void fetchLinkyDataTask(void *pvParameters)
       }
       dataArray[14] = linky.data;               // store data
       dataArray[14].timestamp = getTimestamp(); // add timestamp
-#ifdef DEBUG
-      Serial.print("Data stored: ");
-      Serial.print(dataIndex);
-      Serial.print(" - BASE:");
-      Serial.println(dataArray[14].BASE);
-#endif
+      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %ld", dataIndex, dataArray[dataIndex].BASE);
     }
 
     if ((dataIndex >= config.values.dataCount || nTry >= 10) && getVCondo() > 4.5) // send data if buffer contains at least 3 messages, nTry >= 10 to avoid infinite loop and VCondo is ok
     {
-      char json[1024] = {0};
-      preapareJsonData(dataArray, dataIndex, json, sizeof(json)); // prepare json data
-      connectToWifi();                                            // reconnect to wifi
-      getConfigFromServer(&config);                               // get config from server
-      if (sendToServer(json, &config) == 200)                     // send data
+      switch (config.values.mode)
       {
-        // if data is sent, reset buffer
-        dataIndex = 0; // reset index
+      case MODE_WEB:
+      {
+        char json[1024] = {0};
+        preapareJsonData(dataArray, dataIndex, json, sizeof(json)); // prepare json data
+        connectToWifi();                                            // reconnect to wifi
+        getConfigFromServer(&config);                               // get config from server
+        if (sendToServer(json, &config) == 200)                     // send data
+        {
+          // if data is sent, reset buffer
+          dataIndex = 0; // reset index
+        }
+        disconectFromWifi(); // disconnect from wifi when buffer is empty or 3 tries
+        linky.begin();       // the serial communication with linky: when we change the CPU frequency, we need to reinit the serial communication
+        break;
       }
-      disconectFromWifi(); // disconnect from wifi when buffer is empty or 3 tries
-      linky.begin();       // the serial communication with linky: when we change the CPU frequency, we need to reinit the serial communication
+      case MODE_MQTT:
+      case MODE_MQTT_HA:
+      {
+        sendToMqtt(&dataArray[dataIndex]); // send the last value to mqtt
+        dataIndex = 0;                     // reset index
+        break;
+      case MODE_ZIGBEE:
+        // TODO: send data to zigbee
+        dataIndex = 0; // reset index
+        break;
+      case MODE_MATTER:
+        // TODO: send data to matter
+        dataIndex = 0; // reset index
+        break;
+      }
+      }
     }
     nTry = 0;                                                            // reset nTry
     vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
