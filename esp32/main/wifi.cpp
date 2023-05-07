@@ -1,10 +1,16 @@
 #include "wifi.h"
+
+static int s_retry_num = 0;
+
+/* FreeRTOS event group to signal when we are connected*/
+static EventGroupHandle_t s_wifi_event_group;
+
 uint8_t connectToWifi()
 {
     static uint8_t firstCall = 1;
-
+    s_retry_num = 0;
     ESP_LOGI(TAG, "FIRST WiFi INIT");
-    // firstCall = 0;
+
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -21,22 +27,22 @@ uint8_t connectToWifi()
         firstCall = 0;
         ESP_ERROR_CHECK(esp_event_loop_create_default());
         esp_netif_create_default_wifi_sta();
-    }
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                        IP_EVENT_STA_GOT_IP,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_got_ip));
+        esp_event_handler_instance_t instance_any_id;
+        esp_event_handler_instance_t instance_got_ip;
+        ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
+                                                            ESP_EVENT_ANY_ID,
+                                                            &event_handler,
+                                                            NULL,
+                                                            &instance_any_id));
+        ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                            IP_EVENT_STA_GOT_IP,
+                                                            &event_handler,
+                                                            NULL,
+                                                            &instance_got_ip));
+    }
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -47,12 +53,14 @@ uint8_t connectToWifi()
              * to WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK and set the password with length and format matching to
              * WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK standards.
              */
-            // .threshold.authmode = WIFI_AUTH_WPA_WPA2_PSK,
+            .threshold = {
+                .authmode = WIFI_AUTH_WPA_WPA2_PSK,
+            },
             .sae_pwe_h2e = WPA3_SAE_PWE_HUNT_AND_PECK,
             .sae_h2e_identifier = "",
         },
     };
-    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
