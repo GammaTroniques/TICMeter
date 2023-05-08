@@ -19,12 +19,6 @@
 
 #include "config.h"
 
-// #define EXAMPLE_ESP_WIFI_SSID "wifirobot"
-// #define EXAMPLE_ESP_WIFI_PASS "robot2004LARIS"
-
-#define EXAMPLE_ESP_WIFI_SSID "AFDD"
-#define EXAMPLE_ESP_WIFI_PASS "afddChromino"
-
 #define EXAMPLE_ESP_MAXIMUM_RETRY 3
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 /**
