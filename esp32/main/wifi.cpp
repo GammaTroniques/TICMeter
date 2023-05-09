@@ -1,4 +1,6 @@
 #include "wifi.h"
+#include "http.h"
+#include "dns_server.h"
 
 static int s_retry_num = 0;
 uint8_t wifiConnected = 0;
@@ -9,114 +11,105 @@ uint8_t wifiConnected = 0;
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
 
+esp_netif_t *sta_netif = NULL;
+
 uint8_t connectToWifi()
 {
-    static uint8_t firstCall = 1;
     s_retry_num = 0;
-    ESP_LOGI(TAG, "FIRST WiFi INIT");
-
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
+    esp_wifi_set_ps(WIFI_PS_NONE);
     s_wifi_event_group = xEventGroupCreate();
+
     ESP_ERROR_CHECK(esp_netif_init());
 
-    if (firstCall)
-    {
-        firstCall = 0;
-        ESP_ERROR_CHECK(esp_event_loop_create_default());
-        esp_netif_create_default_wifi_sta();
-
-        esp_event_handler_instance_t instance_any_id;
-        esp_event_handler_instance_t instance_got_ip;
-        ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                            ESP_EVENT_ANY_ID,
-                                                            &event_handler,
-                                                            NULL,
-                                                            &instance_any_id));
-        ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                            IP_EVENT_STA_GOT_IP,
-                                                            &event_handler,
-                                                            NULL,
-                                                            &instance_got_ip));
-    }
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    sta_netif = esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ;
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    wifi_config_t wifi_config = {
-        .sta = {
-            // .ssid = (uint8_t *)(void *)(config.values.ssid),
-            // .password = (uint8_t *)(void *)(config.values.password),
-            /* Authmode threshold resets to WPA2 as default if password matches WPA2 standards (pasword len => 8).
-             * If you want to connect the device to deprecated WEP/WPA networks, Please set the threshold value
-             * to WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK and set the password with length and format matching to
-             * WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK standards.
-             */
-            .threshold = {
-                .authmode = WIFI_AUTH_WPA_WPA2_PSK,
-            },
-            .sae_pwe_h2e = WPA3_SAE_PWE_HUNT_AND_PECK,
-            .sae_h2e_identifier = "",
-        },
-    };
+    esp_event_handler_instance_t instance_any_id;
+    esp_event_handler_instance_t instance_got_ip;
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
+                                                        ESP_EVENT_ANY_ID,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_any_id));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                        IP_EVENT_STA_GOT_IP,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_got_ip));
+
+    wifi_config_t wifi_config;
+    memset(&wifi_config, 0, sizeof(wifi_config_t));
+
+    wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+    wifi_config.sta.sae_pwe_h2e = WPA3_SAE_PWE_HUNT_AND_PECK;
+    wifi_config.sta.sae_h2e_identifier[0] = '\0';
 
     strcpy((char *)wifi_config.sta.ssid, config.values.ssid);
     strcpy((char *)wifi_config.sta.password, config.values.password);
 
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "wifi_init_sta finished. ");
+    ESP_LOGI(TAG, "wifi_init_sta finished.");
 
     /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
      * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
+    ESP_LOGI(TAG, "Waiting for wifi");
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
                                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
                                            pdFALSE,
                                            pdFALSE,
-                                           portMAX_DELAY);
+                                           10000 / portTICK_PERIOD_MS);
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
+    ESP_LOGI(TAG, "Got wifi");
     if (bits & WIFI_CONNECTED_BIT)
     {
-        ESP_LOGI(TAG, "connected to ap SSID:%s ", config.values.ssid);
-        return 1;
+        ESP_LOGI(TAG, "connected to ap SSID:%s", (char *)wifi_config.sta.ssid);
     }
     else if (bits & WIFI_FAIL_BIT)
     {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s", config.values.ssid);
-        disconectFromWifi();
-        return 0;
+        ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
     }
     else
     {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
-        return 0;
     }
+
+    initi_web_page_buffer();
+    setup_server();
+    return 0;
 }
 
 void disconectFromWifi()
 {
+    ESP_LOGI(TAG, "wifi disconnected");
     esp_wifi_disconnect();
     esp_wifi_stop();
     esp_wifi_deinit();
+    vEventGroupDelete(s_wifi_event_group);
+    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
+    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
+
+    ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    // esp_netif_t *netif = esp_netif_get_default_netif();
+    // esp_netif_destroy_default_wifi(netif);
+    // ESP_ERROR_CHECK(esp_netif_deinit());
+    esp_netif_destroy(sta_netif);
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
-    ESP_LOGI(TAG, "wifi disconnected");
     // change cpu to 10Mhz
 }
 
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
 {
+
+    ESP_LOGI(TAG, "GOT EVENT: event_base: %s, event_id: %ld", event_base, event_id);
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
         esp_wifi_connect();
@@ -156,6 +149,9 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "station " MACSTR " leave, AID=%d",
                  MAC2STR(event->mac), event->aid);
     }
+    else
+    {
+    }
 }
 
 //------------------
@@ -190,12 +186,12 @@ void getConfigFromServer(Config *config)
     strcat(url, config->values.web.token);
     ESP_LOGI(TAG, "url: %s", url);
 
-    esp_http_client_config_t config_get = {
-        .url = url,
-        .cert_pem = NULL,
-        .method = HTTP_METHOD_GET,
-        .event_handler = get_config_handler,
-    };
+    esp_http_client_config_t config_get;
+    memset(&config_get, 0, sizeof(config_get));
+    config_get.url = url;
+    config_get.cert_pem = NULL;
+    config_get.method = HTTP_METHOD_POST;
+    config_get.event_handler = get_config_handler;
 
     esp_http_client_handle_t client = esp_http_client_init(&config_get);
     esp_http_client_perform(client);
@@ -262,12 +258,12 @@ char sendToServer(char *json, Config *config)
     createHttpUrl(url, config->values.web.host, config->values.web.postUrl);
     ESP_LOGI(TAG, "url: %s", url);
 
-    esp_http_client_config_t config_post = {
-        .url = url,
-        .cert_pem = NULL,
-        .method = HTTP_METHOD_POST,
-        .event_handler = send_data_handler,
-    };
+    esp_http_client_config_t config_post;
+    memset(&config_post, 0, sizeof(config_post));
+    config_post.url = url;
+    config_post.cert_pem = NULL;
+    config_post.method = HTTP_METHOD_POST;
+    config_post.event_handler = send_data_handler;
 
     esp_http_client_handle_t client = esp_http_client_init(&config_post);
 
@@ -301,4 +297,65 @@ char sendToServer(char *json, Config *config)
     //   Serial.print("ERROR");
     // #endif
     return -1;
+}
+
+static void wifi_init_softap(void)
+{
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+
+    wifi_config_t wifi_config = {
+        .ap = {
+            .ssid = AP_SSID,
+            .password = AP_PASS,
+            .ssid_len = strlen(AP_SSID),
+            .authmode = WIFI_AUTH_WPA_WPA2_PSK,
+            .max_connection = 4,
+        }};
+
+    if (strlen(AP_PASS) == 0)
+    {
+        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    ESP_ERROR_CHECK(esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_AP, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    esp_netif_ip_info_t ip_info;
+    esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
+
+    char ip_addr[16];
+    inet_ntoa_r(ip_info.ip.addr, ip_addr, 16);
+    ESP_LOGI(TAG, "Set up softAP with IP: %s", ip_addr);
+
+    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:'%s' password:'%s'",
+             AP_SSID, AP_PASS);
+}
+
+void start_captive_portal()
+{
+    // Initialize networking stack
+    ESP_ERROR_CHECK(esp_netif_init());
+
+    // Create default event loop needed by the  main app
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    // Initialize NVS needed by Wi-Fi
+    ESP_ERROR_CHECK(nvs_flash_init());
+
+    // Initialize Wi-Fi including netif with default config
+    esp_netif_create_default_wifi_ap();
+
+    // Initialise ESP32 in SoftAP mode
+    wifi_init_softap();
+
+    initi_web_page_buffer();
+    // Start the server for the first time
+    setup_server();
+
+    // Start the DNS server that will redirect all queries to the softAP IP
+    start_dns_server();
 }

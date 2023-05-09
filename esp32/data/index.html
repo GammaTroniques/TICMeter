@@ -1,1 +1,96 @@
-<h1>Hello</h1>
+<!-- code une page html pour téléphone -->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="style.css">
+    <title>Linky TIC ESP32</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+    <form action="/save-config" method="POST">
+        <div class="titre">
+            <h1>Linky TIC ESP32</h1>
+        </div>
+        <div class="bloc">
+            <h1>Configuration Wifi</h1>
+            <div class="input-field">
+                <h2>SSID</h2>
+                <input type="text" name="wifi-ssid" />
+            </div>
+            <div class="input-field">
+                <h2>PWD</h2>
+                <input type="password" name="wifi-password" />
+            </div>
+        </div>
+        <div class="bloc server-selector">
+            <h2>Mode de connexion</h2>
+            <label>
+                <input type="radio" name="server-mode" value="0" checked>
+                <img src="web.jpg" alt="WEB">
+            </label>
+
+            <label>
+                <input type="radio" name="server-mode" value="1">
+                <img src="mqtt.jpg" alt="MQTT">
+            </label>
+
+
+            <div class="web">
+                <div class="input-field">
+                    <h1>URL</h1>
+                    <input type="text" name="web-url" />
+                </div>
+                <div class="input-field">
+                    <h1>TOKEN</h1>
+                    <input type="text" name="web-token" />
+                </div>
+                <div class="bloc">
+                    <label>
+                        <input type="radio" name="web-tarif" value="base" checked>
+                        <h3>Tarif Base</h3>
+                    </label>
+
+                    <label>
+                        <input type="radio" name="web-tarif" value="hphc">
+                        <h3>Tarif HP/HC</h3>
+
+                    </label>
+
+                    <input type="number" name="web-price-base">
+                    <input type="number" name="web-price-hc">
+                    <input type="number" name="web-price-hp">
+                </div>
+            </div>
+
+            <div class="mqtt">
+                <div class="input-field">
+                    <h1>IP</h1>
+                    <input type="text" name="mqtt-host" />
+                </div>
+                <div class="input-field">
+                    <h1>Port</h1>
+                    <input type="text" name="mqtt-port" />
+                </div>
+                <div class="input-field">
+                    <h1>User</h1>
+                    <input type="text" name="mqtt-user" />
+                </div>
+                <div class="input-field">
+                    <h1>PWD</h1>
+                    <input type="password" name="mqtt-password" />
+                </div>
+            </div>
+
+        </div>
+        <input type="submit" value="Engregistrer">
+    </form>
+</body>
+
+
+<!-- <script src="index.js"></script> -->
+
+</html>

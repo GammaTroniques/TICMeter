@@ -14,6 +14,8 @@
 #define EEPROM_SIZE sizeof(config_t)
 
 #define AP_SSID "Linky 5G Pfizer#9432"
+#define AP_PASS ""
+#define HOSTNAME "Linky"
 
 #define NVS_TAG "NVS"
 
