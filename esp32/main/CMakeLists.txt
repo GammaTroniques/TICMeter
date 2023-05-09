@@ -1,3 +1,8 @@
-idf_component_register(SRCS "mqtt.cpp" "shell.cpp" "main.cpp" "linky.cpp" "config.cpp" "wifi.cpp" "shell.cpp" "mqtt.cpp"
+idf_component_register(SRCS
+                       SRC_DIRS "."
                        INCLUDE_DIRS "include"
-                       INCLUDE_DIRS ".")
+                       INCLUDE_DIRS "."
+                        )
+
+                        
+spiffs_create_partition_image(storage ../data FLASH_IN_PROJECT)

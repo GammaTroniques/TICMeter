@@ -103,22 +103,24 @@ extern "C" void app_main(void)
 
   shellInit(); // init shell
 
-  // connect to wifi
-  if (connectToWifi())
-  {
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-    getConfigFromServer(&config); // get config from server
+  // // connect to wifi
+  // if (connectToWifi())
+  // {
+  //   vTaskDelay(2000 / portTICK_PERIOD_MS);
+  //   getConfigFromServer(&config); // get config from server
 
-    time_t time = getTimestamp();                // get timestamp from ntp server
-    ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
-  }
-  disconectFromWifi(); // disconnect from wifi
+  //   time_t time = getTimestamp();                // get timestamp from ntp server
+  //   ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
+  // }
+
+  // vTaskDelay(2000 / portTICK_PERIOD_MS);
+  // disconectFromWifi(); // disconnect from wifi
 
   xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
 
   // start linky fetch task
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 2, &fetchLinkyDataTaskHandle); // start linky task
-  xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
+  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 2, &fetchLinkyDataTaskHandle); // start linky task
+  // xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
 
   // start push button task
   xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
