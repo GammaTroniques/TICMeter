@@ -51,8 +51,8 @@ uint8_t connectToWifi()
 
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = config.values.ssid,
-            .password = config.values.password,
+            // .ssid = (uint8_t *)(void *)(config.values.ssid),
+            // .password = (uint8_t *)(void *)(config.values.password),
             /* Authmode threshold resets to WPA2 as default if password matches WPA2 standards (pasword len => 8).
              * If you want to connect the device to deprecated WEP/WPA networks, Please set the threshold value
              * to WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK and set the password with length and format matching to
@@ -65,6 +65,10 @@ uint8_t connectToWifi()
             .sae_h2e_identifier = "",
         },
     };
+
+    strcpy((char *)wifi_config.sta.ssid, config.values.ssid);
+    strcpy((char *)wifi_config.sta.password, config.values.password);
+
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
@@ -90,6 +94,7 @@ uint8_t connectToWifi()
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", config.values.ssid);
+        disconectFromWifi();
         return 0;
     }
     else
@@ -199,9 +204,15 @@ void getConfigFromServer(Config *config)
 
 time_t getTimestamp()
 {
+
     static uint8_t firstCall = 1;
     if (firstCall)
     {
+        // if (!wifiConnected)
+        // {
+        //     ESP_LOGE(TAG, "wifi not connected");
+        //     return 0;
+        // }
         firstCall = 0;
         esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
         esp_sntp_setservername(0, "pool.ntp.org");
@@ -240,6 +251,12 @@ esp_err_t send_data_handler(esp_http_client_event_handle_t evt)
 
 char sendToServer(char *json, Config *config)
 {
+    if (strcmp(config->values.web.host, "") == 0 || strcmp(config->values.web.postUrl, "") == 0)
+    {
+        ESP_LOGE(TAG, "host or postUrl not set");
+        return 0;
+    }
+
     ESP_LOGI(TAG, "send data to server");
     char url[100] = {0};
     createHttpUrl(url, config->values.web.host, config->values.web.postUrl);
