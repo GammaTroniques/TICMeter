@@ -37,7 +37,7 @@ const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 0;        // UTC
 const int daylightOffset_sec = 3600; //
 
-Linky linky(MODE_HISTORIQUE, 16, 17);
+Linky linky(MODE_HISTORIQUE, 17, 16);
 Config config;
 
 // ------------Global variables stored in RTC memory to keep their values after deep sleep
@@ -70,21 +70,7 @@ void led_blink_task(void *pvParameter)
   }
 }
 
-void rx_task(void *arg)
-{
-  const char *RX_TASK_TAG = "RX_TASK";
-  esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
-  while (1)
-  {
-    const int rxBytes = uart_read_bytes(UART_NUM_1, linky.buffer, RX_BUF_SIZE, 1 / portTICK_PERIOD_MS);
-    if (rxBytes > 0)
-    {
-      ESP_LOGI(RX_TASK_TAG, "Read %d, strlen %d", rxBytes, strlen(linky.buffer));
-    }
-    vTaskDelay(50 / portTICK_PERIOD_MS);
-  }
-}
-
+void linkyRead(void *pvParameters);
 void loop(void *arg)
 {
   while (1)
@@ -117,32 +103,48 @@ extern "C" void app_main(void)
 
   shellInit(); // init shell
 
-  // // connect to wifi
-  // if (connectToWifi())
-  // {
-  //   vTaskDelay(2000 / portTICK_PERIOD_MS);
-  //   getConfigFromServer(&config); // get config from server
+  // connect to wifi
+  if (connectToWifi())
+  {
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    getConfigFromServer(&config); // get config from server
 
-  //   time_t time = getTimestamp();                // get timestamp from ntp server
-  //   ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
-  // }
-  // disconectFromWifi(); // disconnect from wifi
+    time_t time = getTimestamp();                // get timestamp from ntp server
+    ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
+  }
+  disconectFromWifi(); // disconnect from wifi
 
   xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
 
   // start linky fetch task
-  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, configMAX_PRIORITIES, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 2, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
 
   // start push button task
   xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
 
-  // xTaskCreate(rx_task, "uart_rx_task", 4096, NULL, configMAX_PRIORITIES, NULL);
   // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
+}
+
+void linkyRead(void *pvParameters)
+{
+  char *RX_TASK_TAG = "RX_TASK";
+  linky.begin(); // init linky
+  while (1)
+  {
+    const int rxBytes = uart_read_bytes(UART_NUM_1, linky.buffer + linky.index, RX_BUF_SIZE - linky.index - 1, 50 / portTICK_PERIOD_MS);
+    linky.index += rxBytes;
+    if (rxBytes > 0)
+    {
+      // ESP_LOGI(RX_TASK_TAG, "Read %d, buffer: %d, %d", rxBytes, strlen(linky.buffer), linky.index);
+    }
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+  }
 }
 
 void fetchLinkyDataTask(void *pvParameters)
 {
-  linky.begin(); // init linky
+  // linky.begin(); // init linky
   while (1)
   {
     char result = -1; // 0 = error, 1 = success, -1 = init
@@ -183,14 +185,14 @@ void fetchLinkyDataTask(void *pvParameters)
         char json[1024] = {0};
         preapareJsonData(dataArray, dataIndex, json, sizeof(json)); // prepare json data
         connectToWifi();                                            // reconnect to wifi
-        getConfigFromServer(&config);                               // get config from server
-        if (sendToServer(json, &config) == 200)                     // send data
+        // getConfigFromServer(&config);                               // get config from server
+        if (sendToServer(json, &config) == 200) // send data
         {
           // if data is sent, reset buffer
           dataIndex = 0; // reset index
         }
         disconectFromWifi(); // disconnect from wifi when buffer is empty or 3 tries
-        linky.begin();       // the serial communication with linky: when we change the CPU frequency, we need to reinit the serial communication
+        // linky.begin();       // the serial communication with linky: when we change the CPU frequency, we need to reinit the serial communication
         break;
       }
       case MODE_MQTT:

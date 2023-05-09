@@ -1,7 +1,7 @@
 {
   "idf.adapterTargetName": "esp32c6",
   "idf.flashType": "UART",
-  "idf.portWin": "COM6",
+  "idf.portWin": "COM4",
   "files.associations": {
     "*.vhd": "vhdl",
     "*.yaml": "home-assistant",
@@ -11,5 +11,7 @@
     "cstdio": "cpp",
     "compare": "cpp",
     "typeinfo": "cpp"
-  }
+  },
+  "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
+  "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH"
 }
