@@ -13,6 +13,9 @@
 
 void shellInit();
 
+int esp_reset_command(int argc, char **argv);
+esp_err_t esp_console_register_reset_command(void);
+
 int get_wifi_command(int argc, char **argv);
 int set_wifi_command(int argc, char **argv);
 int connect_wifi_command(int argc, char **argv);

@@ -16,11 +16,28 @@ void shellInit()
     esp_console_register_mqtt_command();
     esp_console_register_mode_command();
     esp_console_register_config_command();
+    esp_console_register_reset_command();
 
     esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
 
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
+}
+
+int esp_reset_command(int argc, char **argv)
+{
+    ESP_LOGI(TAG, "Resetting the device");
+    esp_restart();
+    return 0;
+}
+esp_err_t esp_console_register_reset_command(void)
+{
+    esp_console_cmd_t reset = {
+        .command = "reset",
+        .help = "Reset the device",
+        .func = &esp_reset_command};
+
+    return esp_console_cmd_register(&reset);
 }
 
 int get_wifi_command(int argc, char **argv)
@@ -63,6 +80,12 @@ int wifi_status_command(int argc, char **argv)
 {
     printf("Wifi status TODO\n");
     // TODO
+    return 0;
+}
+int wifi_start_captive_portal_command(int argc, char **argv)
+{
+    printf("Starting captive portal TODO\n");
+    start_captive_portal();
     return 0;
 }
 esp_err_t esp_console_register_wifi_command(void)
@@ -124,6 +147,16 @@ esp_err_t esp_console_register_wifi_command(void)
         .help = "Get wifi status",
         .func = &wifi_status_command};
     err = esp_console_cmd_register(&status);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    esp_console_cmd_t start_captive_portal = {
+        .command = "wifi-start-captive-portal",
+        .help = "Start captive portal",
+        .func = &wifi_start_captive_portal_command};
+    err = esp_console_cmd_register(&start_captive_portal);
     if (err != ESP_OK)
     {
         return err;

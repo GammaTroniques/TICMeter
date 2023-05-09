@@ -19,8 +19,8 @@
 
 #include "config.h"
 
-#define EXAMPLE_ESP_MAXIMUM_RETRY 3
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#define EXAMPLE_ESP_MAXIMUM_RETRY 5
+// #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 /**
  * @brief set the CPU frequency to 240Mhz and connect to wifi
  *
@@ -67,4 +67,6 @@ esp_err_t send_data_handler(esp_http_client_event_handle_t evt);
 char sendToServer(char *json, Config *config);
 
 extern uint8_t wifiConnected;
+
+void start_captive_portal();
 #endif
