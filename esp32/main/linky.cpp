@@ -80,9 +80,7 @@ char Linky::decode()
     //----------------------------------------------------------
     // Clear the previous data
     //----------------------------------------------------------
-    const int rxBytes = uart_read_bytes(UART_NUM_1, buffer, RX_BUF_SIZE, 2000 / portTICK_PERIOD_MS);
-    ESP_LOGI("RX_TASK", "Read %d", rxBytes);
-
+    ESP_LOGI(LINKY_TAG, "decode");
     data = {0}; // clear the data structure
     // memset(&data, 0, sizeof(data));
 
@@ -108,12 +106,13 @@ char Linky::decode()
     {
         // ERROR
         ESP_LOGI(LINKY_TAG, "error");
-
-        return 0; // exit the function
+        index = 0; // clear the buffer
+        return 0;  // exit the function
     }
 
     char frame[200] = {0};                                           // store the frame
     memcpy(frame, buffer + startOfFrame, endOfFrame - startOfFrame); // copy only one frame from the buffer
+    index = 0;                                                       // clear the buffer
 
     //-------------------------------------
     // Second step: Find goups of data in the frame
@@ -234,6 +233,7 @@ char Linky::decode()
             }
         }
     }
+
     return 1;
 }
 
