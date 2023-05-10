@@ -1,7 +1,7 @@
 #include "shell.h"
 #include "wifi.h"
 #include "mqtt.h"
-#include "wifi2.h"
+
 void shellInit()
 {
     esp_console_repl_t *repl = NULL;
@@ -67,21 +67,19 @@ int set_wifi_command(int argc, char **argv)
 int connect_wifi_command(int argc, char **argv)
 {
     printf("Connecting to wifi\n");
-    // connectToWifi();
-    example_connect();
+    connectToWifi();
     return 0;
 }
 int reconnect_wifi_command(int argc, char **argv)
 {
     printf("reConnecting to wifi\n");
-    reconnectToWifi();
+    // reconnectToWifi();
     return 0;
 }
 int wifi_disconnect_command(int argc, char **argv)
 {
     printf("Disconnecting from wifi\n");
-    // disconectFromWifi();
-    example_disconnect();
+    disconectFromWifi();
     return 0;
 }
 int wifi_status_command(int argc, char **argv)
