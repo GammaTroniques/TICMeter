@@ -80,7 +80,6 @@ char Linky::decode()
     //----------------------------------------------------------
     // Clear the previous data
     //----------------------------------------------------------
-    ESP_LOGI(LINKY_TAG, "decode");
     data = {0}; // clear the data structure
     // memset(&data, 0, sizeof(data));
 
