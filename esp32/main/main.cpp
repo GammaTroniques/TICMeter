@@ -31,6 +31,9 @@
 #include "shell.h"
 #include "mqtt.h"
 
+#include "soc/rtc.h"
+#include "esp_pm.h"
+
 #define MILLIS xTaskGetTickCount() * portTICK_PERIOD_MS
 
 const char *ntpServer = "pool.ntp.org";
@@ -41,8 +44,9 @@ Linky linky(MODE_HISTORIQUE, 17, 16);
 Config config;
 
 // ------------Global variables stored in RTC memory to keep their values after deep sleep
-RTC_DATA_ATTR LinkyData dataArray[15]; // 10 + 5 in case of error
-RTC_DATA_ATTR unsigned int dataIndex = 0;
+RTC_NOINIT_ATTR LinkyData dataArray[15]; // 10 + 5 in case of error
+RTC_NOINIT_ATTR unsigned int dataIndex = 0;
+RTC_NOINIT_ATTR uint8_t firstBoot = 1;
 // ---------------------------------------------------------------------------------------
 
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
@@ -63,10 +67,15 @@ void led_blink_task(void *pvParameter)
     // ESP_LOGI(TAG, "%lu", xTaskGetTickCount());
     // ESP_LOGI(TAG, "%lu", );
 
-    led_red_state = !led_red_state;
-    gpio_set_level(LED_GREEN, getVUSB());
     gpio_set_level(LED_RED, led_red_state);
-    vTaskDelay(200 / portTICK_PERIOD_MS);
+    led_red_state = !led_red_state;
+    vTaskDelay(950 / portTICK_PERIOD_MS);
+
+    gpio_set_level(LED_RED, led_red_state);
+    led_red_state = !led_red_state;
+    vTaskDelay(50 / portTICK_PERIOD_MS);
+
+    gpio_set_level(LED_GREEN, getVUSB());
   }
 }
 
@@ -86,14 +95,44 @@ void loop(void *arg)
 // main
 extern "C" void app_main(void)
 {
+
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
+
+  rtc_cpu_freq_config_t tmp;
+  rtc_clk_cpu_freq_get_config(&tmp);
+  ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
+  rtc_cpu_freq_config_t conf;
+
+  esp_pm_config_t pm_config = {
+      .max_freq_mhz = 80,
+      .min_freq_mhz = 10,
+      .light_sleep_enable = false
+
+  };
+  ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
+
+  rtc_clk_cpu_freq_get_config(&tmp);
+  ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
+
+  // xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
+
+  esp_reset_reason_t reason = esp_reset_reason();
+  if ((reason != ESP_RST_DEEPSLEEP) && (reason != ESP_RST_SW))
+  {
+    ESP_LOGI(MAIN_TAG, "Not deep sleep or software reset, init RTC memory");
+    // init RTC memory if not deep sleep or software reset
+    memset(&dataArray, 0, sizeof(dataArray));
+    dataIndex = 0;
+    firstBoot = 1;
+  }
+
   // set frequency of cpu to 10MHz
   // start shell task
   // disable brownout detector
   // disable wifi (sleep)
   // pinmode
   config.begin();
-
+  config.values.refreshRate = 10;
   // check vcondo and sleep if not ok
   if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
   {
@@ -103,24 +142,27 @@ extern "C" void app_main(void)
 
   shellInit(); // init shell
 
-  // // connect to wifi
-  // if (connectToWifi())
-  // {
-  //   vTaskDelay(2000 / portTICK_PERIOD_MS);
-  //   getConfigFromServer(&config); // get config from server
+  if (firstBoot)
+  {
+    firstBoot = 0;
+    // connect to wifi
+    if (connectToWifi())
+    {
+      vTaskDelay(2000 / portTICK_PERIOD_MS);
+      getConfigFromServer(&config); // get config from server
 
-  //   time_t time = getTimestamp();                // get timestamp from ntp server
-  //   ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
-  // }
+      time_t time = getTimestamp();                // get timestamp from ntp server
+      ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
+    }
 
-  // vTaskDelay(2000 / portTICK_PERIOD_MS);
-  // disconectFromWifi(); // disconnect from wifi
-
-  xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
+    ESP_LOGI(MAIN_TAG, "Sleeping");
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    sleep(5000);
+  }
 
   // start linky fetch task
-  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 2, &fetchLinkyDataTaskHandle); // start linky task
-  // xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 2, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
 
   // start push button task
   xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
@@ -153,6 +195,12 @@ void fetchLinkyDataTask(void *pvParameters)
     char nTry = 0;    // number of tries to get a frame from linky
     do
     {
+
+      rtc_cpu_freq_config_t tmp;
+
+      rtc_clk_cpu_freq_get_config(&tmp);
+      ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
+
       vTaskDelay(4000 / portTICK_PERIOD_MS); // wait to get some frame from linky into the serial buffer
       result = linky.update();               // decode the frame
       nTry++;
@@ -193,8 +241,10 @@ void fetchLinkyDataTask(void *pvParameters)
           // if data is sent, reset buffer
           dataIndex = 0; // reset index
         }
-        disconectFromWifi(); // disconnect from wifi when buffer is empty or 3 tries
-        // linky.begin();       // the serial communication with linky: when we change the CPU frequency, we need to reinit the serial communication
+        sleep(10000);
+        // esp_restart();
+        //  disconectFromWifi(); // disconnect from wifi when buffer is empty or 3 tries
+        //   linky.begin();       // the serial communication with linky: when we change the CPU frequency, we need to reinit the serial communication
         break;
       }
       case MODE_MQTT:
@@ -325,4 +375,10 @@ uint8_t getVUSB()
 {
   // return adc1_get_raw(ADC1_CHANNEL_3) > 3700 ? 1 : 0;
   return gpio_get_level(V_USB_PIN);
+}
+
+uint8_t sleep(int time)
+{
+  esp_sleep_enable_timer_wakeup(time * 1000);
+  esp_deep_sleep_start();
 }

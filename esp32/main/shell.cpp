@@ -70,6 +70,12 @@ int connect_wifi_command(int argc, char **argv)
     connectToWifi();
     return 0;
 }
+int reconnect_wifi_command(int argc, char **argv)
+{
+    printf("reConnecting to wifi\n");
+    reconnectToWifi();
+    return 0;
+}
 int wifi_disconnect_command(int argc, char **argv)
 {
     printf("Disconnecting from wifi\n");
@@ -127,6 +133,16 @@ esp_err_t esp_console_register_wifi_command(void)
         .help = "Connect to wifi",
         .func = &connect_wifi_command};
     err = esp_console_cmd_register(&connect);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    esp_console_cmd_t reconnect = {
+        .command = "wifi-reconnect",
+        .help = "Reconnect to wifi",
+        .func = &reconnect_wifi_command};
+    err = esp_console_cmd_register(&reconnect);
     if (err != ESP_OK)
     {
         return err;
