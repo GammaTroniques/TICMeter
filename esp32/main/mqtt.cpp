@@ -181,8 +181,8 @@ void sendToMqtt(LinkyData *linky)
     }
     if (!mqttConnected)
     {
-        ESP_LOGI(TAG, "MQTT not connected, skipping sendToMqtt");
-        return;
+        ESP_LOGI(TAG, "MQTT not connected");
+        mqtt_app_start();
     }
 
     char topic[150];

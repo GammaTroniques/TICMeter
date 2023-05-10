@@ -15,6 +15,8 @@ esp_netif_t *sta_netif = NULL;
 
 uint8_t connectToWifi()
 {
+    if (wifiConnected)
+        return 1;
     s_retry_num = 0;
     esp_wifi_set_ps(WIFI_PS_NONE);
     s_wifi_event_group = xEventGroupCreate();
@@ -75,15 +77,24 @@ uint8_t connectToWifi()
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
+        disconectFromWifi();
+        return 0;
     }
     else
     {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
+        return 0;
     }
 
-    initi_web_page_buffer();
-    setup_server();
-    return 0;
+    static char firstTime = 1;
+    if (firstTime)
+    {
+        firstTime = 0;
+        initi_web_page_buffer();
+        setup_server();
+    }
+
+    return 1;
 }
 
 void disconectFromWifi()
@@ -204,21 +215,13 @@ void getConfigFromServer(Config *config)
 
 time_t getTimestamp()
 {
-
-    static uint8_t firstCall = 1;
-    if (firstCall)
+    if (wifiConnected)
     {
-        // if (!wifiConnected)
-        // {
-        //     ESP_LOGE(TAG, "wifi not connected");
-        //     return 0;
-        // }
-        firstCall = 0;
         esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
         esp_sntp_setservername(0, "pool.ntp.org");
         esp_sntp_init();
         time_t start = xTaskGetTickCount() / portTICK_PERIOD_MS;
-        time_t noww;
+        time_t noww = 0;
         while (noww < 100000 && (xTaskGetTickCount() / portTICK_PERIOD_MS < start + 2000))
         {
             time(&noww);
@@ -228,6 +231,10 @@ time_t getTimestamp()
         {
             ESP_LOGE(TAG, "Failed to get time from NTP server");
             return 0;
+        }
+        else
+        {
+            return noww;
         }
     }
     time_t now;
