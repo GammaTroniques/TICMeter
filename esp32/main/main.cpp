@@ -30,6 +30,7 @@
 #include "wifi.h"
 #include "shell.h"
 #include "mqtt.h"
+#include "pairing.h"
 
 #include "soc/rtc.h"
 #include "esp_pm.h"
@@ -110,7 +111,6 @@ extern "C" void app_main(void)
 
   };
   ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
-
   rtc_clk_cpu_freq_get_config(&tmp);
   ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
 
@@ -133,36 +133,38 @@ extern "C" void app_main(void)
   // pinmode
   config.begin();
   config.values.refreshRate = 10;
+  config.values.enableDeepSleep = false;
   // check vcondo and sleep if not ok
   if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
   {
     ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
+    esp_sleep_enable_timer_wakeup(1 * 1000000);
     esp_deep_sleep_start();
   }
 
   shellInit(); // init shell
 
-  if (firstBoot)
-  {
-    firstBoot = 0;
-    // connect to wifi
-    if (connectToWifi())
-    {
-      vTaskDelay(2000 / portTICK_PERIOD_MS);
-      getConfigFromServer(&config); // get config from server
+  // if (firstBoot)
+  // {
+  //   firstBoot = 0;
+  //   // connect to wifi
+  //   if (connectToWifi())
+  //   {
+  //     vTaskDelay(2000 / portTICK_PERIOD_MS);
+  //     getConfigFromServer(&config); // get config from server
 
-      time_t time = getTimestamp();                // get timestamp from ntp server
-      ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
-    }
+  //     time_t time = getTimestamp();                // get timestamp from ntp server
+  //     ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
+  //   }
 
-    ESP_LOGI(MAIN_TAG, "Sleeping");
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    sleep(5000);
-  }
+  //   ESP_LOGI(MAIN_TAG, "Sleeping");
+  //   vTaskDelay(1000 / portTICK_PERIOD_MS);
+  //   // sleep(5000);
+  // }
 
   // start linky fetch task
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 2, &fetchLinkyDataTaskHandle); // start linky task
-  xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
+  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 2, &fetchLinkyDataTaskHandle); // start linky task
+  // xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
 
   // start push button task
   xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
@@ -288,15 +290,16 @@ void pushButtonTask(void *pvParameters)
         // Serial.begin(115200);
         // WiFi.setSleep(false);
 
+        vTaskSuspend(fetchLinkyDataTaskHandle);
+
         uint16_t *time = (uint16_t *)malloc(sizeof(uint16_t));
         *time = 500;
-        ///////////////////////////////////////xTaskCreate(pairingLEDTask, "pairingLEDTask", 10000, time, 1, NULL);
+        xTaskCreate(pairingLEDTask, "pairingLEDTask", 10000, time, 1, NULL);
 
         switch (config.values.connectionType)
         {
         case CONNECTION_TYPE_WIFI:
-          ///////////////////////////////////xTaskCreate(wifiPairingTask, "wifiPairingTask", 10000, &config, 1, &pairingTaskHandle);
-
+          start_captive_portal();
           break;
         case CONNECTION_TYPE_ZIGBEE:
           // startZigbeeConfig(config);
@@ -379,6 +382,7 @@ uint8_t getVUSB()
 
 uint8_t sleep(int time)
 {
-  esp_sleep_enable_timer_wakeup(time * 1000);
-  esp_deep_sleep_start();
+  // esp_sleep_enable_timer_wakeup(time * 1000);
+  // esp_deep_sleep_start();
+  esp_restart();
 }
