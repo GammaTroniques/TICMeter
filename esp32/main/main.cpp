@@ -76,7 +76,7 @@ void led_blink_task(void *pvParameter)
     led_red_state = !led_red_state;
     vTaskDelay(50 / portTICK_PERIOD_MS);
 
-    gpio_set_level(LED_GREEN, getVUSB());
+    // gpio_set_level(LED_GREEN, getVUSB());
   }
 }
 
@@ -114,7 +114,7 @@ extern "C" void app_main(void)
   rtc_clk_cpu_freq_get_config(&tmp);
   ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
 
-  // xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
+  xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
 
   esp_reset_reason_t reason = esp_reset_reason();
   if ((reason != ESP_RST_DEEPSLEEP) && (reason != ESP_RST_SW))
@@ -144,27 +144,21 @@ extern "C" void app_main(void)
 
   shellInit(); // init shell
 
-  // if (firstBoot)
-  // {
-  //   firstBoot = 0;
-  //   // connect to wifi
-  //   if (connectToWifi())
-  //   {
-  //     vTaskDelay(2000 / portTICK_PERIOD_MS);
-  //     getConfigFromServer(&config); // get config from server
-
-  //     time_t time = getTimestamp();                // get timestamp from ntp server
-  //     ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
-  //   }
-
-  //   ESP_LOGI(MAIN_TAG, "Sleeping");
-  //   vTaskDelay(1000 / portTICK_PERIOD_MS);
-  //   // sleep(5000);
-  // }
+  // connect to wifi
+  if (connectToWifi())
+  {
+    time_t time = getTimestamp();                // get timestamp from ntp server
+    ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
+    if (config.values.mode == MODE_WEB)
+    {
+      getConfigFromServer(&config); // get config from server
+    }
+  }
+  disconectFromWifi();
 
   // start linky fetch task
-  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 2, &fetchLinkyDataTaskHandle); // start linky task
-  // xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 2, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
 
   // start push button task
   xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
@@ -197,11 +191,9 @@ void fetchLinkyDataTask(void *pvParameters)
     char nTry = 0;    // number of tries to get a frame from linky
     do
     {
-
-      rtc_cpu_freq_config_t tmp;
-
-      rtc_clk_cpu_freq_get_config(&tmp);
-      ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
+      // rtc_cpu_freq_config_t tmp;
+      // rtc_clk_cpu_freq_get_config(&tmp);
+      // ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
 
       vTaskDelay(4000 / portTICK_PERIOD_MS); // wait to get some frame from linky into the serial buffer
       result = linky.update();               // decode the frame
@@ -228,7 +220,7 @@ void fetchLinkyDataTask(void *pvParameters)
       ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %ld", dataIndex, dataArray[dataIndex].BASE);
     }
 
-    if ((dataIndex >= config.values.dataCount || nTry >= 10) && getVCondo() > 4.5) // send data if buffer contains at least 3 messages, nTry >= 10 to avoid infinite loop and VCondo is ok
+    if ((((dataIndex >= config.values.dataCount) || config.values.mode != MODE_WEB) || nTry >= 10) && getVCondo() > 4.5) // send data if buffer contains at least 3 messages, nTry >= 10 to avoid infinite loop and VCondo is ok
     {
       switch (config.values.mode)
       {
@@ -243,17 +235,23 @@ void fetchLinkyDataTask(void *pvParameters)
           // if data is sent, reset buffer
           dataIndex = 0; // reset index
         }
-        sleep(10000);
+        // sleep(10000);
         // esp_restart();
-        //  disconectFromWifi(); // disconnect from wifi when buffer is empty or 3 tries
+        disconectFromWifi(); // disconnect from wifi when buffer is empty or 3 tries
         //   linky.begin();       // the serial communication with linky: when we change the CPU frequency, we need to reinit the serial communication
         break;
       }
       case MODE_MQTT:
       case MODE_MQTT_HA:
       {
+        if (!connectToWifi())
+        {
+          ESP_LOGI(MAIN_TAG, "Can't connect to wifi");
+          break;
+        }
         sendToMqtt(&dataArray[dataIndex]); // send the last value to mqtt
         dataIndex = 0;                     // reset index
+        disconectFromWifi();
         break;
       case MODE_ZIGBEE:
         // TODO: send data to zigbee
