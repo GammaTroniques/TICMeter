@@ -1,6 +1,8 @@
 #include "wifi.h"
 #include "http.h"
 #include "dns_server.h"
+#include "soc/rtc.h"
+#include "esp_pm.h"
 
 static int s_retry_num = 0;
 uint8_t wifiConnected = 0;
@@ -12,6 +14,8 @@ uint8_t wifiConnected = 0;
 static EventGroupHandle_t s_wifi_event_group;
 
 esp_netif_t *sta_netif = NULL;
+esp_event_handler_instance_t instance_any_id;
+esp_event_handler_instance_t instance_got_ip;
 
 uint8_t connectToWifi()
 {
@@ -27,8 +31,6 @@ uint8_t connectToWifi()
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,
                                                         &event_handler,
@@ -129,21 +131,23 @@ uint8_t reconnectToWifi()
 void disconectFromWifi()
 {
     ESP_LOGI(TAG, "wifi disconnected");
-    esp_wifi_disconnect();
+    // esp_wifi_disconnect();
+    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
+    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
     esp_wifi_stop();
+    ESP_ERROR_CHECK(esp_wifi_deinit());
+    ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(sta_netif));
+    esp_netif_destroy(sta_netif);
+    sta_netif = NULL;
     // esp_wifi_deinit();
     // vEventGroupDelete(s_wifi_event_group);
 
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
-
-    // ESP_ERROR_CHECK(esp_event_loop_delete_default());
-    // // esp_netif_t *netif = esp_netif_get_default_netif();
-    // // esp_netif_destroy_default_wifi(netif);
-    // // ESP_ERROR_CHECK(esp_netif_deinit());
+    ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    // esp_netif_destroy_default_wifi(netif);
+    // ESP_ERROR_CHECK(esp_netif_deinit());
     // esp_netif_destroy(sta_netif);
-    // esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
-    // // change cpu to 10Mhz
+    esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+    // change cpu to 10Mhz
 }
 
 static void event_handler(void *arg, esp_event_base_t event_base,
