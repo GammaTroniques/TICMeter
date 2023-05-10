@@ -1,8 +1,6 @@
 #include "wifi.h"
 #include "http.h"
 #include "dns_server.h"
-#include "soc/rtc.h"
-#include "esp_pm.h"
 
 static int s_retry_num = 0;
 uint8_t wifiConnected = 0;
@@ -14,13 +12,11 @@ uint8_t wifiConnected = 0;
 static EventGroupHandle_t s_wifi_event_group;
 
 esp_netif_t *sta_netif = NULL;
-esp_event_handler_instance_t instance_any_id;
-esp_event_handler_instance_t instance_got_ip;
 
 uint8_t connectToWifi()
 {
     s_retry_num = 0;
-    esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+    esp_wifi_set_ps(WIFI_PS_NONE);
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
@@ -31,6 +27,8 @@ uint8_t connectToWifi()
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
+    esp_event_handler_instance_t instance_any_id;
+    esp_event_handler_instance_t instance_got_ip;
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,
                                                         &event_handler,
@@ -65,7 +63,7 @@ uint8_t connectToWifi()
                                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
                                            pdFALSE,
                                            pdFALSE,
-                                           20000 / portTICK_PERIOD_MS);
+                                           10000 / portTICK_PERIOD_MS);
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
@@ -77,77 +75,38 @@ uint8_t connectToWifi()
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
-        return 0;
     }
     else
     {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
-        return 0;
     }
 
     initi_web_page_buffer();
     setup_server();
-    return 1;
-}
-
-uint8_t reconnectToWifi()
-{
-    s_retry_num = 0;
-    esp_wifi_set_ps(WIFI_PS_NONE);
-    s_wifi_event_group = xEventGroupCreate();
-    esp_wifi_restore();
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
-
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
-
-    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
-     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
-    ESP_LOGI(TAG, "Waiting for wifi");
-    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-                                           WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-                                           pdFALSE,
-                                           pdFALSE,
-                                           20000 / portTICK_PERIOD_MS);
-
-    /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
-     * happened. */
-    ESP_LOGI(TAG, "Got wifi");
-    if (bits & WIFI_CONNECTED_BIT)
-    {
-        ESP_LOGI(TAG, "connected to ap SSID:");
-    }
-    else if (bits & WIFI_FAIL_BIT)
-    {
-        ESP_LOGI(TAG, "Failed to connect to SSID:");
-    }
-    else
-    {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT");
-    }
     return 0;
 }
 
 void disconectFromWifi()
 {
     ESP_LOGI(TAG, "wifi disconnected");
-    // esp_wifi_disconnect();
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
+    esp_wifi_disconnect();
     esp_wifi_stop();
-    ESP_ERROR_CHECK(esp_wifi_deinit());
-    ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(sta_netif));
-    esp_netif_destroy(sta_netif);
-    sta_netif = NULL;
-    // esp_wifi_deinit();
-    // vEventGroupDelete(s_wifi_event_group);
+    esp_wifi_deinit();
+    vEventGroupDelete(s_wifi_event_group);
+    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
+    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
 
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(sta_netif));
+
+    // esp_netif_t *netif = esp_netif_get_default_netif();
     // esp_netif_destroy_default_wifi(netif);
     // ESP_ERROR_CHECK(esp_netif_deinit());
-    // esp_netif_destroy(sta_netif);
+    esp_netif_destroy(sta_netif);
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
     // change cpu to 10Mhz
+
+    // ESP_ERROR_CHECK(esp_wifi_stop());
 }
 
 static void event_handler(void *arg, esp_event_base_t event_base,
@@ -235,7 +194,7 @@ void getConfigFromServer(Config *config)
     memset(&config_get, 0, sizeof(config_get));
     config_get.url = url;
     config_get.cert_pem = NULL;
-    config_get.method = HTTP_METHOD_GET;
+    config_get.method = HTTP_METHOD_POST;
     config_get.event_handler = get_config_handler;
 
     esp_http_client_handle_t client = esp_http_client_init(&config_get);
@@ -245,9 +204,16 @@ void getConfigFromServer(Config *config)
 
 time_t getTimestamp()
 {
-    if (wifiConnected)
+
+    static uint8_t firstCall = 1;
+    if (firstCall)
     {
-        ESP_LOGI(TAG, "get time from NTP server");
+        // if (!wifiConnected)
+        // {
+        //     ESP_LOGE(TAG, "wifi not connected");
+        //     return 0;
+        // }
+        firstCall = 0;
         esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
         esp_sntp_setservername(0, "pool.ntp.org");
         esp_sntp_init();
@@ -263,9 +229,7 @@ time_t getTimestamp()
             ESP_LOGE(TAG, "Failed to get time from NTP server");
             return 0;
         }
-        return noww;
     }
-
     time_t now;
     time(&now);
     return now;
@@ -311,9 +275,6 @@ char sendToServer(char *json, Config *config)
     esp_http_client_set_header(client, "Content-Type", "application/json");
 
     esp_http_client_perform(client);
-
-    int status_code = esp_http_client_get_status_code(client);
-    ESP_LOGI(TAG, "status code: %d", status_code);
     esp_http_client_cleanup(client);
 
     // #ifdef DEBUG
@@ -339,7 +300,7 @@ char sendToServer(char *json, Config *config)
     // #ifdef DEBUG
     //   Serial.print("ERROR");
     // #endif
-    return status_code;
+    return -1;
 }
 
 static void wifi_init_softap(void)
