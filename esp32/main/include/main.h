@@ -1,5 +1,5 @@
 #include "linky.h"
-
+#define uS_TO_S_FACTOR 1000000
 /**
  * @brief Get the tension of the condo
  *
@@ -41,3 +41,5 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
 void fetchLinkyDataTask(void *pvParameters);
 
 void pushButtonTask(void *pvParameters);
+
+uint8_t sleep(int time);

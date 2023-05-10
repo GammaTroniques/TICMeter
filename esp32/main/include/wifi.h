@@ -69,4 +69,6 @@ char sendToServer(char *json, Config *config);
 extern uint8_t wifiConnected;
 
 void start_captive_portal();
+
+uint8_t reconnectToWifi();
 #endif
