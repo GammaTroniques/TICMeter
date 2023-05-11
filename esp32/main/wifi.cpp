@@ -65,7 +65,7 @@ uint8_t connectToWifi()
                                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
                                            pdFALSE,
                                            pdFALSE,
-                                           10000 / portTICK_PERIOD_MS);
+                                           100000 / portTICK_PERIOD_MS);
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
@@ -77,7 +77,7 @@ uint8_t connectToWifi()
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
-        disconectFromWifi();
+        // disconectFromWifi();
         return 0;
     }
     else
@@ -205,7 +205,7 @@ void getConfigFromServer(Config *config)
     memset(&config_get, 0, sizeof(config_get));
     config_get.url = url;
     config_get.cert_pem = NULL;
-    config_get.method = HTTP_METHOD_POST;
+    config_get.method = HTTP_METHOD_GET;
     config_get.event_handler = get_config_handler;
 
     esp_http_client_handle_t client = esp_http_client_init(&config_get);
@@ -227,6 +227,7 @@ time_t getTimestamp()
             time(&noww);
             vTaskDelay(10 / portTICK_PERIOD_MS);
         }
+        esp_sntp_stop();
         if (noww < 100000)
         {
             ESP_LOGE(TAG, "Failed to get time from NTP server");

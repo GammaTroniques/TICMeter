@@ -12,13 +12,15 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
+#include "cJSON.h"
 
 #include "sdkconfig.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
+#include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 #include "string.h"
 
-#include <ArduinoJson.h>
+// #include <ArduinoJson.h>
 // #include <WiFi.h>
 // #include <HTTPClient.h>
 // #include <NTPClient.h>
@@ -48,11 +50,14 @@ Config config;
 RTC_NOINIT_ATTR LinkyData dataArray[15]; // 10 + 5 in case of error
 RTC_NOINIT_ATTR unsigned int dataIndex = 0;
 RTC_NOINIT_ATTR uint8_t firstBoot = 1;
+char jsonPost[1024] = {0};
 // ---------------------------------------------------------------------------------------
 
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
 TaskHandle_t pushButtonTaskHandle = NULL;
 TaskHandle_t pairingTaskHandle = NULL;
+
+adc_oneshot_unit_handle_t adc1_handle;
 
 void led_blink_task(void *pvParameter)
 {
@@ -85,9 +90,10 @@ void loop(void *arg)
 {
   while (1)
   {
-    linky.update();
-    linky.print();
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    int raw = 0;
+    adc_oneshot_read(adc1_handle, V_CONDO_PIN, &raw);
+    ESP_LOGI("LOOP", "VCondo: %d", raw);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 }
 
@@ -98,7 +104,7 @@ extern "C" void app_main(void)
 {
 
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
-
+  esp_log_level_set("wifi", ESP_LOG_ERROR);
   rtc_cpu_freq_config_t tmp;
   rtc_clk_cpu_freq_get_config(&tmp);
   ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
@@ -126,13 +132,16 @@ extern "C" void app_main(void)
     firstBoot = 1;
   }
 
+  initPins();
+  ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
+
   // set frequency of cpu to 10MHz
   // start shell task
   // disable brownout detector
   // disable wifi (sleep)
   // pinmode
   config.begin();
-  config.values.refreshRate = 10;
+  config.values.refreshRate = 60;
   config.values.enableDeepSleep = false;
   // check vcondo and sleep if not ok
   if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
@@ -154,16 +163,18 @@ extern "C" void app_main(void)
       getConfigFromServer(&config); // get config from server
     }
   }
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
   disconectFromWifi();
 
   // start linky fetch task
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 2, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
   xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
+  xTaskCreate(sendDataTask, "sendDataTask", 8192, NULL, 10, NULL); // start send data task
 
   // start push button task
   xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
 
-  // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
+  xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
 }
 
 void linkyRead(void *pvParameters)
@@ -182,89 +193,46 @@ void linkyRead(void *pvParameters)
   }
 }
 
-void fetchLinkyDataTask(void *pvParameters)
+void sendDataTask(void *pvParameters)
 {
-  // linky.begin(); // init linky
   while (1)
   {
-    char result = -1; // 0 = error, 1 = success, -1 = init
-    char nTry = 0;    // number of tries to get a frame from linky
-    do
+    if (dataIndex > 0)
     {
-      // rtc_cpu_freq_config_t tmp;
-      // rtc_clk_cpu_freq_get_config(&tmp);
-      // ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
-
-      vTaskDelay(4000 / portTICK_PERIOD_MS); // wait to get some frame from linky into the serial buffer
-      result = linky.update();               // decode the frame
-      nTry++;
-    } while (result != 1 && nTry < 10); // wait for a successfull frame
-
-    if (dataIndex < 15) // store data until buffer is full
-    {
-      dataArray[dataIndex] = linky.data;               // store data
-      dataArray[dataIndex].timestamp = getTimestamp(); // add timestamp
-      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %ld", dataIndex, dataArray[dataIndex].BASE);
-      dataIndex++; // increment index
+      char json[1024] = {0};
+      preapareJsonData(dataArray, dataIndex, json, sizeof(json));
+      ESP_LOGI(MAIN_TAG, "Sending data to server");
+      if (connectToWifi())
+      {
+        ESP_LOGI(MAIN_TAG, "POST: %s", json);
+        sendToServer(json, &config);
+      }
+      // connectToWifi();
+      // ESP_LOGI(MAIN_TAG, "POST: %s", jsonPost);
+      // sendToServer(jsonPost, &config);
+      // vTaskDelay(10000 / portTICK_PERIOD_MS);
+      disconectFromWifi();
+      dataIndex = 0;
     }
-    else // buffer full
-    {
-      ESP_LOGI(MAIN_TAG, "Buffer full, shifting data");
-      // shift data to the left
-      for (int i = 0; i < 14; i++)
-      {
-        dataArray[i] = dataArray[i + 1];
-      }
-      dataArray[14] = linky.data;               // store data
-      dataArray[14].timestamp = getTimestamp(); // add timestamp
-      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %ld", dataIndex, dataArray[dataIndex].BASE);
-    }
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+}
 
-    if ((((dataIndex >= config.values.dataCount) || config.values.mode != MODE_WEB) || nTry >= 10) && getVCondo() > 4.5) // send data if buffer contains at least 3 messages, nTry >= 10 to avoid infinite loop and VCondo is ok
+void fetchLinkyDataTask(void *pvParameters)
+{
+  while (1)
+  {
+    if (!linky.update())
     {
-      switch (config.values.mode)
-      {
-      case MODE_WEB:
-      {
-        char json[1024] = {0};
-        preapareJsonData(dataArray, dataIndex, json, sizeof(json)); // prepare json data
-        connectToWifi();                                            // reconnect to wifi
-        // getConfigFromServer(&config);                               // get config from server
-        if (sendToServer(json, &config) == 200) // send data
-        {
-          // if data is sent, reset buffer
-          dataIndex = 0; // reset index
-        }
-        // sleep(10000);
-        // esp_restart();
-        disconectFromWifi(); // disconnect from wifi when buffer is empty or 3 tries
-        //   linky.begin();       // the serial communication with linky: when we change the CPU frequency, we need to reinit the serial communication
-        break;
-      }
-      case MODE_MQTT:
-      case MODE_MQTT_HA:
-      {
-        if (!connectToWifi())
-        {
-          ESP_LOGI(MAIN_TAG, "Can't connect to wifi");
-          break;
-        }
-        sendToMqtt(&dataArray[dataIndex]); // send the last value to mqtt
-        dataIndex = 0;                     // reset index
-        disconectFromWifi();
-        break;
-      case MODE_ZIGBEE:
-        // TODO: send data to zigbee
-        dataIndex = 0; // reset index
-        break;
-      case MODE_MATTER:
-        // TODO: send data to matter
-        dataIndex = 0; // reset index
-        break;
-      }
-      }
+      ESP_LOGI(MAIN_TAG, "Linky update failed");
+      vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
+      continue;
     }
-    nTry = 0;                                                            // reset nTry
+    dataArray[0] = linky.data;
+    dataArray[0].timestamp = getTimestamp();
+    dataIndex = 1;
+    ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %ld", dataIndex, dataArray[0].BASE);
+    // preapareJsonData(dataArray, dataIndex, jsonPost, sizeof(jsonPost));
     vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
   }
 }
@@ -319,57 +287,63 @@ void pushButtonTask(void *pvParameters)
 
 void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int jsonSize)
 {
-#ifdef DEBUG
-  Serial.print("Preparing json data...");
-#endif
-  DynamicJsonDocument doc(1024);
-  doc["TOKEN"] = config.values.web.token;
-  doc["VCONDO"] = getVCondo();
+  cJSON *jsonObject = cJSON_CreateObject();
+  cJSON_AddStringToObject(jsonObject, "TOKEN", config.values.web.token);
 
+  cJSON_AddNumberToObject(jsonObject, "VCONDO", getVCondo());
+
+  cJSON *dataObject = cJSON_CreateArray();
   for (int i = 0; i < dataIndex; i++)
   {
-    doc["data"][i]["DATE"] = data[i].timestamp;
-    doc["data"][i]["ADCO"] = data[i].ADCO;
-    doc["data"][i]["OPTARIF"] = data[i].OPTARIF;
-    doc["data"][i]["ISOUSC"] = data[i].ISOUSC;
-
+    cJSON *dataItem = cJSON_CreateObject();
+    cJSON_AddNumberToObject(dataItem, "DATE", data[i].timestamp);
+    cJSON_AddNumberToObject(dataItem, "ADCO", data[i].ADCO);
+    cJSON_AddStringToObject(dataItem, "OPTARIF", data[i].OPTARIF);
+    cJSON_AddNumberToObject(dataItem, "ISOUSC", data[i].ISOUSC);
     if (data[i].BASE != 0)
-      doc["data"][i]["BASE"] = data[i].BASE;
+      cJSON_AddNumberToObject(dataItem, "BASE", data[i].BASE);
 
     if (data[i].HCHC != 0)
-      doc["data"][i]["HCHC"] = data[i].HCHC;
+      cJSON_AddNumberToObject(dataItem, "HCHC", data[i].HCHC);
 
     if (data[i].HCHP != 0)
-      doc["data"][i]["HCHP"] = data[i].HCHP;
+      cJSON_AddNumberToObject(dataItem, "HCHP", data[i].HCHP);
 
-    doc["data"][i]["PTEC"] = data[i].PTEC;
-    doc["data"][i]["IINST"] = data[i].IINST;
-    doc["data"][i]["IMAX"] = data[i].IMAX;
-    doc["data"][i]["PAPP"] = data[i].PAPP;
-    doc["data"][i]["HHPHC"] = data[i].HHPHC;
-    doc["data"][i]["MOTDETAT"] = data[i].MOTDETAT;
+    cJSON_AddStringToObject(dataItem, "PTEC", data[i].PTEC);
+    cJSON_AddNumberToObject(dataItem, "IINST", data[i].IINST);
+    cJSON_AddNumberToObject(dataItem, "IMAX", data[i].IMAX);
+    cJSON_AddNumberToObject(dataItem, "PAPP", data[i].PAPP);
+    cJSON_AddStringToObject(dataItem, "HHPHC", data[i].HHPHC);
+    cJSON_AddStringToObject(dataItem, "MOTDETAT", data[i].MOTDETAT);
+    cJSON_AddItemToArray(dataObject, dataItem);
   }
 
   if (dataIndex == 0)
   {
     // Send empty data to server to keep the connection alive
-    doc["ERROR"] = "Cant read data from linky";
-    doc["data"][0]["DATE"] = getTimestamp();
-    doc["data"][0]["BASE"] = nullptr;
-    doc["data"][0]["HCHC"] = nullptr;
-    doc["data"][0]["HCHP"] = nullptr;
+    cJSON_AddStringToObject(jsonObject, "ERROR", "Cant read data from linky");
+    cJSON *dataItem = cJSON_CreateObject();
+    cJSON_AddNumberToObject(dataItem, "DATE", getTimestamp());
+    cJSON_AddNullToObject(dataItem, "BASE");
+    cJSON_AddNullToObject(dataItem, "HCHC");
+    cJSON_AddNullToObject(dataItem, "HCHP");
+    cJSON_AddItemToArray(dataObject, dataItem);
   }
-  serializeJson(doc, json, jsonSize);
-#ifdef DEBUG
-  Serial.println(" OK");
-#endif
+  cJSON_AddItemToObject(jsonObject, "data", dataObject);
+  char *jsonString = cJSON_PrintUnformatted(jsonObject);
+  strncpy(json, jsonString, jsonSize);
+  free(jsonString);
+  cJSON_Delete(jsonObject);
 }
 
 float getVCondo()
 {
-  float vCondo = (float)(adc1_get_raw(V_CONDO_PIN) * 5) / 3988; // get VCondo from ADC after voltage divider
+  int raw = 0;
+  // adc_oneshot_io_to_channel
+  ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, V_CONDO_PIN, &raw));
+  ESP_LOGI(MAIN_TAG, "VCondo raw: %d", raw);
+  float vCondo = (float)(raw * 5) / 3988; // get VCondo from ADC after voltage divider
   return vCondo;
-  return 3.3;
 }
 
 uint8_t getVUSB()
@@ -383,4 +357,17 @@ uint8_t sleep(int time)
   // esp_sleep_enable_timer_wakeup(time * 1000);
   // esp_deep_sleep_start();
   esp_restart();
+}
+
+void initPins()
+{
+  adc_oneshot_unit_init_cfg_t init_config1 = {
+      .unit_id = ADC_UNIT_1,
+  };
+  adc_oneshot_chan_cfg_t config = {
+      .atten = ADC_ATTEN_DB_0,
+      .bitwidth = ADC_BITWIDTH_DEFAULT,
+  };
+  ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+  ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_CONDO_PIN, &config));
 }
