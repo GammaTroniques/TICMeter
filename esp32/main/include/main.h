@@ -43,3 +43,6 @@ void fetchLinkyDataTask(void *pvParameters);
 void pushButtonTask(void *pvParameters);
 
 uint8_t sleep(int time);
+void sendDataTask(void *pvParameters);
+
+void initPins();
