@@ -39,8 +39,6 @@ static void event_handler(void *arg, esp_event_base_t event_base,
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 
-static const char *TAG = "wifi station";
-
 void createHttpUrl(char *url, const char *host, const char *path);
 
 /**

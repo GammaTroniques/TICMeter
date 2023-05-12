@@ -15,9 +15,7 @@
 #include "cJSON.h"
 
 #include "sdkconfig.h"
-#include "esp_adc/adc_oneshot.h"
-#include "esp_adc/adc_cali.h"
-#include "esp_adc/adc_cali_scheme.h"
+
 #include "string.h"
 
 // #include <ArduinoJson.h>
@@ -32,12 +30,10 @@
 #include "wifi.h"
 #include "shell.h"
 #include "mqtt.h"
-#include "pairing.h"
+#include "gpio.h"
 
 #include "soc/rtc.h"
 #include "esp_pm.h"
-
-#define MILLIS xTaskGetTickCount() * portTICK_PERIOD_MS
 
 const char *ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 0;        // UTC
@@ -57,49 +53,8 @@ TaskHandle_t fetchLinkyDataTaskHandle = NULL;
 TaskHandle_t pushButtonTaskHandle = NULL;
 TaskHandle_t pairingTaskHandle = NULL;
 
-adc_oneshot_unit_handle_t adc1_handle;
-
-void led_blink_task(void *pvParameter)
-{
-  gpio_reset_pin(LED_RED);
-  gpio_reset_pin(LED_GREEN);
-  gpio_set_direction(LED_RED, GPIO_MODE_OUTPUT);
-  gpio_set_direction(LED_GREEN, GPIO_MODE_OUTPUT);
-  uint8_t led_red_state = 0;
-  while (1)
-  {
-    // ESP_LOGI(TAG, "Turning the LED %s!", led_red_state == true ? "ON" : "OFF");
-    // ESP_LOGI(TAG, "%lld", esp_log_timestamp());
-    // ESP_LOGI(TAG, "%lu", xTaskGetTickCount());
-    // ESP_LOGI(TAG, "%lu", );
-
-    gpio_set_level(LED_RED, led_red_state);
-    led_red_state = !led_red_state;
-    vTaskDelay(950 / portTICK_PERIOD_MS);
-
-    gpio_set_level(LED_RED, led_red_state);
-    led_red_state = !led_red_state;
-    vTaskDelay(50 / portTICK_PERIOD_MS);
-
-    // gpio_set_level(LED_GREEN, getVUSB());
-  }
-}
-
-void linkyRead(void *pvParameters);
-void loop(void *arg)
-{
-  while (1)
-  {
-    int raw = 0;
-    adc_oneshot_read(adc1_handle, V_CONDO_PIN, &raw);
-    ESP_LOGI("LOOP", "VCondo: %d", raw);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-  }
-}
-
 #define MAIN_TAG "MAIN"
 
-// main
 extern "C" void app_main(void)
 {
 
@@ -120,7 +75,8 @@ extern "C" void app_main(void)
   rtc_clk_cpu_freq_get_config(&tmp);
   ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
 
-  xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
+  // xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
+  xTaskCreate(pairingButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
 
   esp_reset_reason_t reason = esp_reset_reason();
   if ((reason != ESP_RST_DEEPSLEEP) && (reason != ESP_RST_SW))
@@ -141,8 +97,6 @@ extern "C" void app_main(void)
   // disable wifi (sleep)
   // pinmode
   config.begin();
-  config.values.refreshRate = 60;
-  config.values.enableDeepSleep = false;
   // check vcondo and sleep if not ok
   if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
   {
@@ -153,28 +107,28 @@ extern "C" void app_main(void)
 
   shellInit(); // init shell
 
-  // connect to wifi
-  if (connectToWifi())
+  if (config.values.mode == MODE_WEB)
   {
-    time_t time = getTimestamp();                // get timestamp from ntp server
-    ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
-    if (config.values.mode == MODE_WEB)
+    // connect to wifi
+    if (connectToWifi())
     {
-      getConfigFromServer(&config); // get config from server
+      time_t time = getTimestamp();                // get timestamp from ntp server
+      ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
+      if (config.values.mode == MODE_WEB)
+      {
+        getConfigFromServer(&config); // get config from server
+      }
     }
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    disconectFromWifi();
   }
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
-  disconectFromWifi();
 
   // start linky fetch task
   xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
   xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
   xTaskCreate(sendDataTask, "sendDataTask", 8192, NULL, 10, NULL); // start send data task
 
-  // start push button task
-  xTaskCreate(pushButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
-
-  xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
+  // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
 }
 
 void linkyRead(void *pvParameters)
@@ -237,54 +191,6 @@ void fetchLinkyDataTask(void *pvParameters)
   }
 }
 
-void pushButtonTask(void *pvParameters)
-{
-  uint32_t startPushTime = 0;
-  while (1)
-  {
-    if (gpio_get_level(PAIRING_PIN) == 0)
-    {
-      if (startPushTime == 0)
-      {
-        startPushTime = MILLIS;
-      }
-      else if (MILLIS - startPushTime > 2000)
-      {
-        startPushTime = 0;
-        ESP_LOGI("PAIRING", "Pairing mode");
-        /// setCpuFrequencyMhz(240);
-        // Serial.begin(115200);
-        // WiFi.setSleep(false);
-
-        vTaskSuspend(fetchLinkyDataTaskHandle);
-
-        uint16_t *time = (uint16_t *)malloc(sizeof(uint16_t));
-        *time = 500;
-        xTaskCreate(pairingLEDTask, "pairingLEDTask", 10000, time, 1, NULL);
-
-        switch (config.values.connectionType)
-        {
-        case CONNECTION_TYPE_WIFI:
-          start_captive_portal();
-          break;
-        case CONNECTION_TYPE_ZIGBEE:
-          // startZigbeeConfig(config);
-          break;
-        default:
-          break;
-        }
-        vTaskSuspend(pushButtonTaskHandle);
-      }
-    }
-    else
-    {
-      startPushTime = 0;
-      taskYIELD();
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-    }
-  }
-}
-
 void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int jsonSize)
 {
   cJSON *jsonObject = cJSON_CreateObject();
@@ -336,38 +242,9 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
   cJSON_Delete(jsonObject);
 }
 
-float getVCondo()
-{
-  int raw = 0;
-  // adc_oneshot_io_to_channel
-  ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, V_CONDO_PIN, &raw));
-  ESP_LOGI(MAIN_TAG, "VCondo raw: %d", raw);
-  float vCondo = (float)(raw * 5) / 3988; // get VCondo from ADC after voltage divider
-  return vCondo;
-}
-
-uint8_t getVUSB()
-{
-  // return adc1_get_raw(ADC1_CHANNEL_3) > 3700 ? 1 : 0;
-  return gpio_get_level(V_USB_PIN);
-}
-
 uint8_t sleep(int time)
 {
   // esp_sleep_enable_timer_wakeup(time * 1000);
   // esp_deep_sleep_start();
   esp_restart();
-}
-
-void initPins()
-{
-  adc_oneshot_unit_init_cfg_t init_config1 = {
-      .unit_id = ADC_UNIT_1,
-  };
-  adc_oneshot_chan_cfg_t config = {
-      .atten = ADC_ATTEN_DB_0,
-      .bitwidth = ADC_BITWIDTH_DEFAULT,
-  };
-  ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
-  ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_CONDO_PIN, &config));
 }
