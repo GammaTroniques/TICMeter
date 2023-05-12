@@ -31,15 +31,7 @@ extern const char *MODES[];
 #define CONNECTION_TYPE_ZIGBEE 1
 #define CONNECTION_TYPE_MATTER 2
 
-#define V_CONDO_PIN ADC_CHANNEL_5
-#define V_USB_PIN (gpio_num_t)3
-#define PAIRING_PIN (gpio_num_t)6 // io6
-#define PAIRING_LED_PIN (gpio_num_t)11
-#define LED_RED (gpio_num_t)7
-#define LED_GREEN (gpio_num_t)11
-
-#define TEMP_SSID "wifirobot"
-#define TEMP_PASSWORD "robot2004LARIS"
+#define MILLIS xTaskGetTickCount() * portTICK_PERIOD_MS
 
 struct webConfig_t
 {
@@ -64,7 +56,7 @@ struct config_t
     char ssid[50] = "";
     char password[50] = "";
 
-    uint8_t connectionType = CONNECTION_TYPE_WIFI;
+    uint8_t connectionType = CONNECTION_TYPE_WIFI; // to delete
     uint8_t mode = MODE_WEB;
     webConfig_t web;
     mqttConfig_t mqtt;

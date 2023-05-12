@@ -2,6 +2,9 @@
 #include "wifi.h"
 #include "mqtt.h"
 #include "main.h"
+
+#define TAG "SHELL"
+
 void shellInit()
 {
     esp_console_repl_t *repl = NULL;

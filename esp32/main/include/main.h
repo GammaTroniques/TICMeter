@@ -40,9 +40,6 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
 
 void fetchLinkyDataTask(void *pvParameters);
 
-void pushButtonTask(void *pvParameters);
-
 uint8_t sleep(int time);
 void sendDataTask(void *pvParameters);
-
-void initPins();
+void linkyRead(void *pvParameters);

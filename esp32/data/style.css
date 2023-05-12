@@ -9,48 +9,33 @@ body {
   justify-content: center;
   align-items: center;
   flex-direction: column;
+  font-size: 20px;
+}
+
+.black-text {
+  background-color: white;
+  color: black;
 }
 
 .titre {
-  width: 400px;
-  background-color: white;
-  color: black;
   text-align: center;
-  font-size: 20px;
   font-weight: bold;
   padding: 10px;
   border-radius: 10px;
-}
-
-.selection {
-  width: 400px;
-  background-color: white;
-  color: black;
-  text-align: center;
-  font-size: 20px;
-  font-weight: bold;
-  padding: 10px;
-  border-radius: 10px;
-  margin: 10px;
+  width: 100%;
 }
 
 .bloc {
-  width: 400px;
   border: 1px solid white;
-  color: white;
   text-align: center;
-  font-size: 20px;
   font-weight: bold;
   padding: 10px;
   border-radius: 10px;
   margin: 10px;
-}
-
-.bloc h2 {
+  width: 100%;
   text-align: left;
 }
 
-/* HIDE RADIO */
 [type="radio"] {
   position: absolute;
   opacity: 0;
@@ -58,7 +43,6 @@ body {
   height: 0;
 }
 
-/* IMAGE STYLES */
 [type="radio"] + img {
   cursor: pointer;
   border-radius: 15px;
@@ -67,28 +51,20 @@ body {
   margin: 10px;
 }
 
-[type="radio"] + h3 {
+[type="radio"] + .linky-selector {
   cursor: pointer;
   border-radius: 15px;
   height: 6vh;
   opacity: 0.5;
-  margin: 10px;
   background-color: white;
-  color: black;
 }
 
-/* CHECKED STYLES */
 [type="radio"]:checked + img {
   opacity: 1;
 }
 
-[type="radio"]:checked + h3 {
+[type="radio"]:checked + .linky-selector {
   opacity: 1;
-}
-
-.server-selector {
-  margin-top: 50px;
-  margin-bottom: 20px;
 }
 
 .input-field {
@@ -101,7 +77,38 @@ body {
 input[type="text"],
 input[type="password"],
 input[type="number"] {
-  width: 400px;
+  text-align: center;
+  font-size: 20px;
+  padding: 10px;
+  border-radius: 10px;
+  margin: 10px;
+}
+
+form {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.mqtt {
+  display: none;
+}
+
+p {
+  text-align: left;
+  font-size: 15px;
+}
+
+.linky-selector {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  margin: 10px;
+}
+
+input[type="submit"] {
   background-color: white;
   color: black;
   text-align: center;
@@ -110,4 +117,19 @@ input[type="number"] {
   padding: 10px;
   border-radius: 10px;
   margin: 10px;
+  border: 1px solid black;
+}
+
+.server-selector {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  margin: 10px;
+}
+
+input::placeholder {
+  opacity: 0.5;
+  color: grey;
+  font-size: 15px;
 }
