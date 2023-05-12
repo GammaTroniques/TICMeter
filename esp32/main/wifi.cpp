@@ -1,6 +1,11 @@
 #include "wifi.h"
 #include "http.h"
+#include "gpio.h"
 #include "dns_server.h"
+#include "gpio.h"
+#include "driver/gpio.h"
+
+#define TAG "WIFI"
 
 static int s_retry_num = 0;
 uint8_t wifiConnected = 0;
@@ -86,13 +91,13 @@ uint8_t connectToWifi()
         return 0;
     }
 
-    static char firstTime = 1;
-    if (firstTime)
-    {
-        firstTime = 0;
-        initi_web_page_buffer();
-        setup_server();
-    }
+    // static char firstTime = 1;
+    // if (firstTime)
+    // {
+    //     firstTime = 0;
+    //     initi_web_page_buffer();
+    //     setup_server();
+    // }
 
     return 1;
 }
@@ -347,8 +352,35 @@ static void wifi_init_softap(void)
              AP_SSID, AP_PASS);
 }
 
+void stop_captive_portal_task(void *pvParameter)
+{
+    uint8_t readCount = 0;
+
+    while (1)
+    {
+        if (!getVUSB())
+        {
+            readCount++;
+        }
+        else
+        {
+            readCount = 0;
+        }
+        if (readCount > 3)
+        {
+            ESP_LOGI(TAG, "VUSB is not connected, stop captive portal");
+            esp_restart();
+        }
+        gpio_set_level(LED_GREEN, 1);
+        vTaskDelay(50 / portTICK_PERIOD_MS);
+        gpio_set_level(LED_GREEN, 0);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
 void start_captive_portal()
 {
+    xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, 1, NULL);
     // Initialize networking stack
     ESP_ERROR_CHECK(esp_netif_init());
 

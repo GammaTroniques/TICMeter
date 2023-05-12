@@ -178,72 +178,74 @@ esp_err_t save_config_handler(httpd_req_t *req)
     char mqtt_password[100] = {0};
     char mqtt_topic[100] = {0};
 
-    char *p = strtok(buf, "&");
-    while (p != NULL)
+    // wifi-ssid=Test&wifi-password=tedt&server-mode=1&web-url=Tedt&web-token=Tehe&web-tarif=base&web-price-base=&web-price-hc=&web-price-hp=&mqtt-host=&mqtt-port=&mqtt-user=&mqtt-password=
+    // parse key value pairs
+    char *key = strtok(buf, "&");
+    while (key != NULL)
     {
-        char *e = strchr(p, '=');
-        if (e != NULL)
+        char *value = strchr(key, '=');
+        if (value != NULL)
         {
-            *e = '\0';
-            char *value = e + 1;
-            if (strcmp(p, "ssid") == 0)
+            *value = '\0';
+            value++;
+            if (strcmp(key, "wifi-ssid") == 0)
             {
                 strcpy(ssid, value);
             }
-            else if (strcmp(p, "password") == 0)
+            else if (strcmp(key, "wifi-password") == 0)
             {
                 strcpy(password, value);
             }
-            else if (strcmp(p, "server_mode") == 0)
+            else if (strcmp(key, "server-mode") == 0)
             {
                 server_mode = atoi(value);
             }
-            else if (strcmp(p, "web_url") == 0)
+            else if (strcmp(key, "web-url") == 0)
             {
                 strcpy(web_url, value);
             }
-            else if (strcmp(p, "web_token") == 0)
+            else if (strcmp(key, "web-token") == 0)
             {
                 strcpy(web_token, value);
             }
-            else if (strcmp(p, "web_tarif") == 0)
+            else if (strcmp(key, "web-tarif") == 0)
             {
                 strcpy(web_tarif, value);
             }
-            else if (strcmp(p, "web_price_base") == 0)
+            else if (strcmp(key, "web-price-base") == 0)
             {
                 web_price_base = atof(value);
             }
-            else if (strcmp(p, "web_price_hc") == 0)
+            else if (strcmp(key, "web-price-hc") == 0)
             {
                 web_price_hc = atof(value);
             }
-            else if (strcmp(p, "web_price_hp") == 0)
+            else if (strcmp(key, "web-price-hp") == 0)
             {
                 web_price_hp = atof(value);
             }
-            else if (strcmp(p, "mqtt_host") == 0)
+            else if (strcmp(key, "mqtt-host") == 0)
             {
                 strcpy(mqtt_host, value);
             }
-            else if (strcmp(p, "mqtt_port") == 0)
+            else if (strcmp(key, "mqtt-port") == 0)
             {
                 mqtt_port = atoi(value);
             }
-            else if (strcmp(p, "mqtt_user") == 0)
+            else if (strcmp(key, "mqtt-user") == 0)
             {
                 strcpy(mqtt_user, value);
             }
-            else if (strcmp(p, "mqtt_password") == 0)
+            else if (strcmp(key, "mqtt-password") == 0)
             {
                 strcpy(mqtt_password, value);
             }
-            else if (strcmp(p, "mqtt_topic") == 0)
+            else if (strcmp(key, "mqtt-topic") == 0)
             {
                 strcpy(mqtt_topic, value);
             }
         }
-        p = strtok(NULL, "&");
+        key = strtok(NULL, "&");
     }
 
     // print the parameters
@@ -267,6 +269,8 @@ esp_err_t save_config_handler(httpd_req_t *req)
     httpd_resp_set_hdr(req, "Location", "/reboot.html");
     httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
 
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    // esp_restart();
     return ESP_OK;
 }
 

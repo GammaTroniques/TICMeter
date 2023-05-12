@@ -5,82 +5,87 @@
 
 <head>
     <meta charset="utf-8">
-    <link rel="stylesheet" href="style.css">
     <title>Linky TIC ESP32</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <form action="/save-config" method="POST" id="form">
-        <div class="titre">
+        <div class="titre black-text">
             <h1>Linky TIC ESP32</h1>
         </div>
         <div class="bloc">
-            <h1>Configuration Wifi</h1>
+            <h2>Configuration Wifi</h2>
             <div class="input-field">
                 <h2>SSID</h2>
-                <input type="text" name="wifi-ssid" />
+                <input type="text" name="wifi-ssid" placeholder="Livebox ..." />
             </div>
             <div class="input-field">
                 <h2>PWD</h2>
                 <input type="password" name="wifi-password" />
             </div>
         </div>
+        <div class="bloc">
+            <h2>Configuration Linky</h2>
+            <p>Faites défiler les menus de votre compteur jusqu'à trouver l'option "MODE TIC"</p>
+            <label>
+                <input type="radio" name="linky-mode" value="0" checked>
+                <div class="linky-selector">
+                    <h3 class="black-text">Mode Historique</h3>
+                </div>
+            </label>
+
+            <label>
+                <input type="radio" name="linky-mode" value="1">
+                <div class="linky-selector">
+                    <h3 class="black-text">Mode Standard</h3>
+                </div>
+            </label>
+
+        </div>
+
         <div class="bloc server-selector">
             <h2>Mode de connexion</h2>
-            <label>
-                <input type="radio" name="server-mode" value="0" checked>
-                <img src="web.jpg" alt="WEB">
-            </label>
 
-            <label>
-                <input type="radio" name="server-mode" value="1">
-                <img src="mqtt.jpg" alt="MQTT">
-            </label>
+            <div>
+                <label>
+                    <input type="radio" name="server-mode" value="0" checked>
+                    <img src="web.jpg" alt="WEB">
+                </label>
 
+                <label>
+                    <input type="radio" name="server-mode" value="1">
+                    <img src="mqtt.jpg" alt="MQTT">
+                </label>
+            </div>
 
             <div class="web">
                 <div class="input-field">
-                    <h1>URL</h1>
-                    <input type="text" name="web-url" />
+                    <h3>URL</h3>
+                    <input type="text" name="web-url" placeholder="192.168.2.10:3001" />
                 </div>
                 <div class="input-field">
-                    <h1>TOKEN</h1>
-                    <input type="text" name="web-token" />
-                </div>
-                <div class="bloc">
-                    <label>
-                        <input type="radio" name="web-tarif" value="base" checked>
-                        <h3>Tarif Base</h3>
-                    </label>
-
-                    <label>
-                        <input type="radio" name="web-tarif" value="hphc">
-                        <h3>Tarif HP/HC</h3>
-
-                    </label>
-
-                    <input type="number" name="web-price-base">
-                    <input type="number" name="web-price-hc">
-                    <input type="number" name="web-price-hp">
+                    <h3>TOKEN</h3>
+                    <input type="text" name="web-token" placeholder="pwGGHTFaOm" />
                 </div>
             </div>
 
             <div class="mqtt">
                 <div class="input-field">
-                    <h1>IP</h1>
+                    <h3>IP</h3>
                     <input type="text" name="mqtt-host" />
                 </div>
                 <div class="input-field">
-                    <h1>Port</h1>
+                    <h3>Port</h3>
                     <input type="text" name="mqtt-port" />
                 </div>
                 <div class="input-field">
-                    <h1>User</h1>
+                    <h3>User</h3>
                     <input type="text" name="mqtt-user" />
                 </div>
                 <div class="input-field">
-                    <h1>PWD</h1>
+                    <h3>PWD</h3>
                     <input type="password" name="mqtt-password" />
                 </div>
             </div>
@@ -91,5 +96,23 @@
 </body>
 
 <!-- <script src="index.js"></script> -->
+
+<script>
+    const serverMode = document.getElementsByName("server-mode");
+    serverMode.forEach((element) => {
+        element.addEventListener("change", (event) => {
+            const web = document.querySelector(".web");
+            const mqtt = document.querySelector(".mqtt");
+            if (event.target.value == 0) {
+                web.style.display = "block";
+                mqtt.style.display = "none";
+            } else {
+                web.style.display = "none";
+                mqtt.style.display = "block";
+            }
+        });
+    });
+
+</script>
 
 </html>
