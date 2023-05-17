@@ -1,9 +1,52 @@
 #include "http.h"
+#include "config.h"
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+#include "cJSON.h"
 
 static const char *TAG = "HTTP"; // TAG for debug
 #define INDEX_HTML_PATH "/spiffs/index.html"
-char index_html[4096];
 char response_data[4096];
+void reboot_task(void *pvParameter)
+{
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    esp_restart();
+}
+void urldecode(char *dst, const char *src)
+{
+    char a, b;
+    while (*src)
+    {
+        if ((*src == '%') && ((a = src[1]) && (b = src[2])) && (isxdigit(a) && isxdigit(b)))
+        {
+            if (a >= 'a')
+                a -= 'a' - 'A';
+            if (a >= 'A')
+                a -= ('A' - 10);
+            else
+                a -= '0';
+            if (b >= 'a')
+                b -= 'a' - 'A';
+            if (b >= 'A')
+                b -= ('A' - 10);
+            else
+                b -= '0';
+            *dst++ = 16 * a + b;
+            src += 3;
+        }
+        else if (*src == '+')
+        {
+            *dst++ = ' ';
+            src++;
+        }
+        else
+        {
+            *dst++ = *src++;
+        }
+    }
+    *dst++ = '\0';
+}
 
 esp_vfs_spiffs_conf_t conf;
 void initi_web_page_buffer(void)
@@ -14,21 +57,6 @@ void initi_web_page_buffer(void)
     conf.format_if_mount_failed = true;
 
     ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
-
-    memset((void *)index_html, 0, sizeof(index_html));
-    struct stat st;
-    if (stat(INDEX_HTML_PATH, &st))
-    {
-        ESP_LOGE(TAG, "index.html not found");
-        return;
-    }
-
-    FILE *fp = fopen(INDEX_HTML_PATH, "r");
-    if (fread(index_html, st.st_size, 1, fp) == 0)
-    {
-        ESP_LOGE(TAG, "fread failed");
-    }
-    fclose(fp);
 }
 
 esp_err_t send_web_page(httpd_req_t *req)
@@ -157,9 +185,15 @@ esp_err_t save_config_handler(httpd_req_t *req)
         }
         remaining -= ret;
     }
+    // Null terminate the buffer
+    buf[req->content_len] = 0;
+
+    char decoded[500];
+    urldecode(decoded, buf);
+
     /* Log data received */
     ESP_LOGI(TAG, "=========== RECEIVED DATA ==========");
-    ESP_LOGI(TAG, "%s", buf);
+    ESP_LOGI(TAG, "%s", decoded);
     ESP_LOGI(TAG, "====================================");
 
     // Parse the POST parameters
@@ -167,20 +201,20 @@ esp_err_t save_config_handler(httpd_req_t *req)
     char password[100] = {0};
     char server_mode = 0;
     char web_url[100] = {0};
+    char web_post_url[100] = {0};
+    char web_config_url[100] = {0};
     char web_token[100] = {0};
-    char web_tarif[100] = {0};
-    float web_price_base = 0;
-    float web_price_hc = 0;
-    float web_price_hp = 0;
+    char linky_mode = 0;
     char mqtt_host[100] = {0};
     uint16_t mqtt_port = 0;
     char mqtt_user[100] = {0};
     char mqtt_password[100] = {0};
     char mqtt_topic[100] = {0};
+    char mqtt_HA_discovery = 0;
 
     // wifi-ssid=Test&wifi-password=tedt&server-mode=1&web-url=Tedt&web-token=Tehe&web-tarif=base&web-price-base=&web-price-hc=&web-price-hp=&mqtt-host=&mqtt-port=&mqtt-user=&mqtt-password=
     // parse key value pairs
-    char *key = strtok(buf, "&");
+    char *key = strtok(decoded, "&");
     while (key != NULL)
     {
         char *value = strchr(key, '=');
@@ -208,21 +242,17 @@ esp_err_t save_config_handler(httpd_req_t *req)
             {
                 strcpy(web_token, value);
             }
-            else if (strcmp(key, "web-tarif") == 0)
+            else if (strcmp(key, "web-config") == 0)
             {
-                strcpy(web_tarif, value);
+                strcpy(web_config_url, value);
             }
-            else if (strcmp(key, "web-price-base") == 0)
+            else if (strcmp(key, "web-post") == 0)
             {
-                web_price_base = atof(value);
+                strcpy(web_post_url, value);
             }
-            else if (strcmp(key, "web-price-hc") == 0)
+            else if (strcmp(key, "linky-mode") == 0)
             {
-                web_price_hc = atof(value);
-            }
-            else if (strcmp(key, "web-price-hp") == 0)
-            {
-                web_price_hp = atof(value);
+                linky_mode = atoi(value);
             }
             else if (strcmp(key, "mqtt-host") == 0)
             {
@@ -244,33 +274,84 @@ esp_err_t save_config_handler(httpd_req_t *req)
             {
                 strcpy(mqtt_topic, value);
             }
+            else if (strcmp(key, "mqtt-ha-discovery") == 0)
+            {
+                mqtt_HA_discovery = atoi(value);
+            }
         }
         key = strtok(NULL, "&");
     }
 
     // print the parameters
-    ESP_LOGI(TAG, "ssid: %s", ssid);
-    ESP_LOGI(TAG, "password: %s", password);
-    ESP_LOGI(TAG, "server_mode: %d", server_mode);
-    ESP_LOGI(TAG, "web_url: %s", web_url);
-    ESP_LOGI(TAG, "web_token: %s", web_token);
-    ESP_LOGI(TAG, "web_tarif: %s", web_tarif);
-    ESP_LOGI(TAG, "web_price_base: %f", web_price_base);
-    ESP_LOGI(TAG, "web_price_hc: %f", web_price_hc);
-    ESP_LOGI(TAG, "web_price_hp: %f", web_price_hp);
-    ESP_LOGI(TAG, "mqtt_host: %s", mqtt_host);
-    ESP_LOGI(TAG, "mqtt_port: %d", mqtt_port);
-    ESP_LOGI(TAG, "mqtt_user: %s", mqtt_user);
-    ESP_LOGI(TAG, "mqtt_password: %s", mqtt_password);
-    ESP_LOGI(TAG, "mqtt_topic: %s", mqtt_topic);
+    // ESP_LOGI(TAG, "ssid: %s", ssid);
+    // ESP_LOGI(TAG, "password: %s", password);
+    // ESP_LOGI(TAG, "server_mode: %d", server_mode);
+    // ESP_LOGI(TAG, "web_url: %s", web_url);
+    // ESP_LOGI(TAG, "web_token: %s", web_token);
+    // ESP_LOGI(TAG, "linky_mode: %s", linky_mode);
+    // ESP_LOGI(TAG, "mqtt_host: %s", mqtt_host);
+    // ESP_LOGI(TAG, "mqtt_port: %d", mqtt_port);
+    // ESP_LOGI(TAG, "mqtt_user: %s", mqtt_user);
+    // ESP_LOGI(TAG, "mqtt_password: %s", mqtt_password);
+    // ESP_LOGI(TAG, "mqtt_topic: %s", mqtt_topic);
+
+    // save the parameters
+    strcpy(config.values.ssid, ssid);
+    strcpy(config.values.password, password);
+
+    if (server_mode == MODE_MQTT && mqtt_HA_discovery == 1)
+    {
+        config.values.mode = MODE_MQTT_HA;
+    }
+    else
+    {
+        config.values.mode = server_mode;
+    }
+
+    strcpy(config.values.web.host, web_url);
+    strcpy(config.values.web.token, web_token);
+    strcpy(config.values.web.configUrl, web_config_url);
+    strcpy(config.values.web.postUrl, web_post_url);
+    config.values.linkyMode = linky_mode;
+    strcpy(config.values.mqtt.host, mqtt_host);
+    config.values.mqtt.port = mqtt_port;
+    strcpy(config.values.mqtt.username, mqtt_user);
+    strcpy(config.values.mqtt.password, mqtt_password);
+    strcpy(config.values.mqtt.topic, mqtt_topic);
+    config.write();
 
     //  redirect to the reboot page
     httpd_resp_set_status(req, "302 Temporary Redirect");
     httpd_resp_set_hdr(req, "Location", "/reboot.html");
     httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
 
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-    // esp_restart();
+    // reboot the device
+    xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 5, NULL);
+    return ESP_OK;
+}
+
+esp_err_t get_config_handler(httpd_req_t *req)
+{
+    cJSON *jsonObject = cJSON_CreateObject();
+    cJSON_AddStringToObject(jsonObject, "wifi-ssid", config.values.ssid);
+    cJSON_AddStringToObject(jsonObject, "wifi-password", config.values.password);
+    cJSON_AddNumberToObject(jsonObject, "linky-mode", config.values.mode);
+    cJSON_AddNumberToObject(jsonObject, "server-mode", config.values.mode);
+    cJSON_AddStringToObject(jsonObject, "web-url", config.values.web.host);
+    cJSON_AddStringToObject(jsonObject, "web-token", config.values.web.token);
+    cJSON_AddStringToObject(jsonObject, "web-post", config.values.web.postUrl);
+    cJSON_AddStringToObject(jsonObject, "web-config", config.values.web.configUrl);
+    cJSON_AddStringToObject(jsonObject, "mqtt-host", config.values.mqtt.host);
+    cJSON_AddNumberToObject(jsonObject, "mqtt-port", config.values.mqtt.port);
+    cJSON_AddStringToObject(jsonObject, "mqtt-user", config.values.mqtt.username);
+    cJSON_AddStringToObject(jsonObject, "mqtt-password", config.values.mqtt.password);
+    cJSON_AddStringToObject(jsonObject, "mqtt-topic", config.values.mqtt.topic);
+
+    char *jsonString = cJSON_PrintUnformatted(jsonObject);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, jsonString, strlen(jsonString));
+    free(jsonString);
+    cJSON_Delete(jsonObject);
     return ESP_OK;
 }
 
@@ -298,10 +379,18 @@ httpd_uri_t uri_save_config = {
     .handler = save_config_handler,
     .user_ctx = NULL};
 
+httpd_uri_t uri_get_config = {
+    .uri = "/config",
+    .method = HTTP_GET,
+    .handler = get_config_handler,
+    .user_ctx = NULL};
+
 httpd_handle_t setup_server(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.stack_size = 8192;
     httpd_handle_t server = NULL;
+
     config.max_open_sockets = 7;
     config.lru_purge_enable = true;
     config.uri_match_fn = httpd_uri_match_wildcard;
@@ -312,7 +401,9 @@ httpd_handle_t setup_server(void)
         httpd_register_uri_handler(server, &uri_204);
         httpd_register_uri_handler(server, &uri_2044);
         httpd_register_uri_handler(server, &uri_save_config);
+        httpd_register_uri_handler(server, &uri_get_config);
         httpd_register_uri_handler(server, &uri_get);
+
         // httpd_register_uri_handler(server, &uri_on);
         // httpd_register_uri_handler(server, &uri_off);
     }

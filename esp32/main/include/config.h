@@ -10,6 +10,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_log.h"
+#include "linky.h"
 
 #define EEPROM_SIZE sizeof(config_t)
 
@@ -56,7 +57,7 @@ struct config_t
     char ssid[50] = "";
     char password[50] = "";
 
-    uint8_t connectionType = CONNECTION_TYPE_WIFI; // to delete
+    uint8_t linkyMode = MODE_HISTORIQUE;
     uint8_t mode = MODE_WEB;
     webConfig_t web;
     mqttConfig_t mqtt;
