@@ -19,11 +19,11 @@
             <h2>Configuration Wifi</h2>
             <div class="input-field">
                 <h2>SSID</h2>
-                <input type="text" name="wifi-ssid" placeholder="Livebox ..." />
+                <input type="text" name="wifi-ssid" placeholder="Livebox ..." max="50" />
             </div>
             <div class="input-field">
                 <h2>PWD</h2>
-                <input type="password" name="wifi-password" />
+                <input type="password" name="wifi-password" max="50" />
             </div>
         </div>
         <div class="bloc">
@@ -62,31 +62,47 @@
 
             <div class="web">
                 <div class="input-field">
-                    <h3>URL</h3>
+                    <h3>SERVER</h3>
                     <input type="text" name="web-url" placeholder="192.168.2.10:3001" />
                 </div>
                 <div class="input-field">
+                    <h3>POST URL</h3>
+                    <input type="text" name="web-post" placeholder="/post" max="50" />
+                </div>
+                <div class="input-field">
+                    <h3>CONFIG URL</h3>
+                    <input type="text" name="web-config" placeholder="/config" max="50" />
+                </div>
+                <div class="input-field">
                     <h3>TOKEN</h3>
-                    <input type="text" name="web-token" placeholder="pwGGHTFaOm" />
+                    <input type="text" name="web-token" placeholder="pwGGHTFaOm" max="50" />
                 </div>
             </div>
 
             <div class="mqtt">
                 <div class="input-field">
                     <h3>IP</h3>
-                    <input type="text" name="mqtt-host" />
+                    <input type="text" name="mqtt-host" max="50" />
                 </div>
                 <div class="input-field">
                     <h3>Port</h3>
-                    <input type="text" name="mqtt-port" />
+                    <input type="text" name="mqtt-port" max="50" />
                 </div>
                 <div class="input-field">
                     <h3>User</h3>
-                    <input type="text" name="mqtt-user" />
+                    <input type="text" name="mqtt-user" max="50" />
                 </div>
                 <div class="input-field">
                     <h3>PWD</h3>
-                    <input type="password" name="mqtt-password" />
+                    <input type="password" name="mqtt-password" max="50" />
+                </div>
+                <div class="input-field">
+                    <h3>Topic</h3>
+                    <input type="text" name="mqtt-topic" max="50" />
+                </div>
+                <div class="input-field">
+                    <h3>Home Assistant Discovery</h3>
+                    <input type="checkbox" name="mqtt-ha-discovery" value="1" />
                 </div>
             </div>
 
@@ -101,17 +117,61 @@
     const serverMode = document.getElementsByName("server-mode");
     serverMode.forEach((element) => {
         element.addEventListener("change", (event) => {
+            console.log(event.target.value);
             const web = document.querySelector(".web");
             const mqtt = document.querySelector(".mqtt");
             if (event.target.value == 0) {
-                web.style.display = "block";
+                web.style.display = "flex";
                 mqtt.style.display = "none";
             } else {
                 web.style.display = "none";
-                mqtt.style.display = "block";
+                mqtt.style.display = "flex";
             }
         });
     });
+
+    //fetch config
+    fetch("/config")
+        .then((response) => response.json())
+        .then((data) => {
+            for (const key in data) {
+                if (data.hasOwnProperty(key)) {
+                    const element = data[key];
+                    if (key == "server-mode") {
+                        continue;
+                    }
+                    const input = document.querySelector(`[name="${key}"]`);
+                    if (input) {
+                        input.value = element;
+                    }
+                }
+            }
+            if ("server-mode" in data) {
+                const web = document.querySelector(".web");
+                const mqtt = document.querySelector(".mqtt");
+                const radio = document.getElementsByName("server-mode");
+                if (data["server-mode"] == 0) {
+                    web.style.display = "flex";
+                    mqtt.style.display = "none";
+                    radio[0].checked = true;
+                    radio[1].checked = false;
+                } else {
+                    web.style.display = "none";
+                    mqtt.style.display = "flex";
+                    radio[0].checked = false;
+                    radio[1].checked = true;
+                    if (data["server-mode"] == 2) { //mqtt + ha
+                        const mqttHaDiscovery = document.querySelector(`[name="mqtt-ha-discovery"]`);
+                        mqttHaDiscovery.checked = 1;
+                    }
+                }
+            }
+
+            if ("linky-mode" in data) {
+                const linkyMode = document.querySelector(`[name="linky-mode"][value="${data["linky-mode"]}"]`);
+                linkyMode.checked = true;
+            }
+        });
 
 </script>
 

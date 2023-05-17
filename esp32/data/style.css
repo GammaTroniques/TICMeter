@@ -82,6 +82,7 @@ input[type="number"] {
   padding: 10px;
   border-radius: 10px;
   margin: 10px;
+  width: 50vw;
 }
 
 form {
@@ -89,6 +90,13 @@ form {
   justify-content: center;
   align-items: center;
   flex-direction: column;
+}
+
+.web,
+.mqtt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .mqtt {
@@ -131,5 +139,9 @@ input[type="submit"] {
 input::placeholder {
   opacity: 0.5;
   color: grey;
+  font-size: 15px;
+}
+
+h3 {
   font-size: 15px;
 }
