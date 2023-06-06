@@ -11,11 +11,11 @@
 #include "gpio.h"
 #include "config.h"
 #include "wifi.h"
+#include "main.h"
 
 #define TAG "GPIO"
 
 adc_oneshot_unit_handle_t adc1_handle;
-
 void initPins()
 {
     gpio_reset_pin(LED_RED);
@@ -176,6 +176,7 @@ void pairingButtonTask(void *pvParameters)
                             disconectFromWifi();
                             vTaskDelay(1000 / portTICK_PERIOD_MS);
                         }
+                        vTaskSuspend(fetchLinkyDataTaskHandle);
                         start_captive_portal();
 
                         break;

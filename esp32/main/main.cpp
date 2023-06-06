@@ -97,6 +97,7 @@ extern "C" void app_main(void)
   // disable wifi (sleep)
   // pinmode
   config.begin();
+  config.values.refreshRate = 30;
   // check vcondo and sleep if not ok
   if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
   {
@@ -107,27 +108,38 @@ extern "C" void app_main(void)
 
   shellInit(); // init shell
 
-  if (config.values.mode == MODE_WEB)
+  switch (config.values.mode)
   {
+  case MODE_WEB:
     // connect to wifi
     if (connectToWifi())
     {
       time_t time = getTimestamp();                // get timestamp from ntp server
       ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
-      if (config.values.mode == MODE_WEB)
-      {
-        getConfigFromServer(&config); // get config from server
-      }
+      getConfigFromServer(&config);                // get config from server
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      disconectFromWifi();
     }
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    disconectFromWifi();
+    break;
+  case MODE_MQTT:
+  case MODE_MQTT_HA:
+    // connect to wifi
+    if (connectToWifi())
+    {
+      time_t time = getTimestamp();                // get timestamp from ntp server
+      ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      disconectFromWifi();
+    }
+    break;
+  default:
+    break;
   }
 
   // start linky fetch task
   xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
   xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
   xTaskCreate(sendDataTask, "sendDataTask", 8192, NULL, 10, NULL); // start send data task
-
   // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
 }
 
@@ -151,22 +163,39 @@ void sendDataTask(void *pvParameters)
 {
   while (1)
   {
-    if (dataIndex > 0)
+
+    switch (config.values.mode)
     {
-      char json[1024] = {0};
-      preapareJsonData(dataArray, dataIndex, json, sizeof(json));
-      ESP_LOGI(MAIN_TAG, "Sending data to server");
-      if (connectToWifi())
+    case MODE_WEB:
+      if (dataIndex > 2)
       {
-        ESP_LOGI(MAIN_TAG, "POST: %s", json);
-        sendToServer(json, &config);
+        char json[1024] = {0};
+        preapareJsonData(dataArray, dataIndex, json, sizeof(json));
+        ESP_LOGI(MAIN_TAG, "Sending data to server");
+        if (connectToWifi())
+        {
+          ESP_LOGI(MAIN_TAG, "POST: %s", json);
+          sendToServer(json, &config);
+        }
+        disconectFromWifi();
+        dataIndex = 0;
       }
-      // connectToWifi();
-      // ESP_LOGI(MAIN_TAG, "POST: %s", jsonPost);
-      // sendToServer(jsonPost, &config);
-      // vTaskDelay(10000 / portTICK_PERIOD_MS);
-      disconectFromWifi();
-      dataIndex = 0;
+      break;
+    case MODE_MQTT:
+    case MODE_MQTT_HA:
+      if (dataIndex > 0)
+      {
+        if (connectToWifi())
+        {
+          gpio_set_level(LED_GREEN, 1);
+          ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
+          sendToMqtt(dataArray);
+          gpio_set_level(LED_GREEN, 0);
+          // vTaskDelay(5000 / portTICK_PERIOD_MS);
+          disconectFromWifi();
+        }
+        dataIndex = 0;
+      }
     }
     vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
@@ -182,11 +211,27 @@ void fetchLinkyDataTask(void *pvParameters)
       vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
       continue;
     }
+
+    if (config.values.linkyMode == MODE_HISTORIQUE && linky.data.BASE == 0)
+    {
+      ESP_LOGI(MAIN_TAG, "Linky data is 0, skipping");
+      vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
+      continue;
+    }
+
+    if (config.values.linkyMode == MODE_STANDARD && linky.data.HCHP == 0)
+    {
+      ESP_LOGI(MAIN_TAG, "Linky data is 0, skipping");
+      vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
+      continue;
+    }
+
     dataArray[0] = linky.data;
     dataArray[0].timestamp = getTimestamp();
     dataIndex = 1;
     ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %ld", dataIndex, dataArray[0].BASE);
     // preapareJsonData(dataArray, dataIndex, jsonPost, sizeof(jsonPost));
+    linky.print();
     vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
   }
 }

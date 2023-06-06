@@ -27,19 +27,19 @@
 
 typedef struct
 {
-    unsigned long ADCO = 0;   // The linky serial number
-    char OPTARIF[5] = {0};    // The linky tarif option
-    unsigned long ISOUSC = 0; // The linky max current
-    unsigned long BASE = 0;   // The linky base index
-    unsigned long HCHC = 0;   // The linky HC index
-    unsigned long HCHP = 0;   // The linky HP index
-    char PTEC[5] = {0};       // The linky current tarif
-    unsigned long IINST = 0;  // The linky current current
-    unsigned long IMAX = 0;   // The linky max current
-    unsigned long PAPP = 0;   // The linky current power
-    char HHPHC[4] = {0};      // The linky .......
+    uint32_t ADCO = 0;     // The linky serial number
+    char OPTARIF[5] = {0}; // The linky tarif option
+    uint32_t ISOUSC = 0;   // The linky max current
+    uint32_t BASE = 0;     // The linky base index
+    uint32_t HCHC = 0;     // The linky HC index
+    uint32_t HCHP = 0;     // The linky HP index
+    char PTEC[5] = {0};    // The linky current tarif
+    uint32_t IINST = 0;    // The linky current current
+    uint32_t IMAX = 0;     // The linky max current
+    uint32_t PAPP = 0;     // The linky current power
+    char HHPHC[4] = {0};   // The linky .......
     char MOTDETAT[7] = {0};
-    unsigned long timestamp = 0;
+    uint32_t timestamp = 0;
 } LinkyData;
 
 class Linky
