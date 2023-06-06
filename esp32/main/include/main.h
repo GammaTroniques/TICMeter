@@ -1,5 +1,12 @@
+#ifndef MAIN_H
+#define MAIN_H
+
 #include "linky.h"
+
 #define uS_TO_S_FACTOR 1000000
+
+extern TaskHandle_t fetchLinkyDataTaskHandle;
+
 /**
  * @brief Get the tension of the condo
  *
@@ -43,3 +50,5 @@ void fetchLinkyDataTask(void *pvParameters);
 uint8_t sleep(int time);
 void sendDataTask(void *pvParameters);
 void linkyRead(void *pvParameters);
+
+#endif

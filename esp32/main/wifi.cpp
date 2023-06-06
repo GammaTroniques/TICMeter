@@ -22,6 +22,13 @@ uint8_t connectToWifi()
 {
     if (wifiConnected)
         return 1;
+
+    if (strlen(config.values.ssid) == 0 || strlen(config.values.password) == 0)
+    {
+        ESP_LOGI(TAG, "No Wifi SSID or password");
+        return 0;
+    }
+
     s_retry_num = 0;
     esp_wifi_set_ps(WIFI_PS_NONE);
     s_wifi_event_group = xEventGroupCreate();
