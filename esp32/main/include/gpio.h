@@ -15,5 +15,6 @@ uint8_t getVUSB();
 float getVCondo();
 void led_blink_task(void *pvParameter);
 void pairingButtonTask(void *pvParameter);
-
+void startLedPattern(gpio_num_t led, uint8_t count, uint16_t tOn, uint16_t tOff);
+void loop(void *arg);
 #endif

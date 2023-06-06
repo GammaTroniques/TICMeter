@@ -23,7 +23,7 @@ static void log_error_if_nonzero(const char *message, int error_code)
     }
 }
 
-static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
@@ -102,7 +102,7 @@ void mqtt_app_start(void)
     static char uri[200] = {0};
     sprintf(uri, "mqtt://%s:%d", config.values.mqtt.host, config.values.mqtt.port);
     ESP_LOGI(TAG, "MQTT URI: %s", uri);
-    esp_mqtt_client_config_t mqtt_cfg = {0};
+    esp_mqtt_client_config_t mqtt_cfg = {};
     mqtt_cfg.broker.address.uri = uri;
 
     mqtt_cfg.credentials.username = config.values.mqtt.username;
@@ -123,7 +123,7 @@ void createSensor(char *json, char *config_topic, const char *name, const char *
 {
 
     DynamicJsonDocument device(1024);
-    const esp_app_desc_t *app_desc = esp_ota_get_app_description();
+    const esp_app_desc_t *app_desc = esp_app_get_description();
 
     device["identifiers"] = MQTT_ID;
     device["name"] = MQTT_NAME;

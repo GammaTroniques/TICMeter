@@ -20,6 +20,8 @@ esp_netif_t *sta_netif = NULL;
 
 uint8_t connectToWifi()
 {
+    esp_log_level_set("wifi", ESP_LOG_ERROR);
+    esp_log_level_set("wifi_init", ESP_LOG_ERROR);
     if (wifiConnected)
         return 1;
 
@@ -54,8 +56,7 @@ uint8_t connectToWifi()
                                                         NULL,
                                                         &instance_got_ip));
 
-    wifi_config_t wifi_config;
-    memset(&wifi_config, 0, sizeof(wifi_config_t));
+    wifi_config_t wifi_config = {};
 
     wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA_WPA2_PSK;
     wifi_config.sta.sae_pwe_h2e = WPA3_SAE_PWE_HUNT_AND_PECK;
@@ -81,10 +82,9 @@ uint8_t connectToWifi()
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
-    ESP_LOGI(TAG, "Got wifi");
     if (bits & WIFI_CONNECTED_BIT)
     {
-        ESP_LOGI(TAG, "connected to ap SSID:%s", (char *)wifi_config.sta.ssid);
+        ESP_LOGI(TAG, "Connected to ap SSID:%s", (char *)wifi_config.sta.ssid);
     }
     else if (bits & WIFI_FAIL_BIT)
     {
@@ -97,15 +97,6 @@ uint8_t connectToWifi()
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
         return 0;
     }
-
-    // static char firstTime = 1;
-    // if (firstTime)
-    // {
-    //     firstTime = 0;
-    //     initi_web_page_buffer();
-    //     setup_server();
-    // }
-
     return 1;
 }
 
@@ -132,28 +123,30 @@ void disconectFromWifi()
     // ESP_ERROR_CHECK(esp_wifi_stop());
 }
 
-static void event_handler(void *arg, esp_event_base_t event_base,
-                          int32_t event_id, void *event_data)
+void event_handler(void *arg, esp_event_base_t event_base,
+                   int32_t event_id, void *event_data)
 {
 
-    ESP_LOGI(TAG, "GOT EVENT: event_base: %s, event_id: %ld", event_base, event_id);
+    // ESP_LOGI(TAG, "GOT EVENT: event_base: %s, event_id: %ld", event_base, event_id);
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
         esp_wifi_connect();
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY)
+        if (s_retry_num < ESP_MAXIMUM_RETRY)
         {
             esp_wifi_connect();
             s_retry_num++;
-            ESP_LOGI(TAG, "retry to connect to the AP");
+            ESP_LOGI(TAG, "Retry to connect to the AP: %d/%d", s_retry_num, ESP_MAXIMUM_RETRY);
+            startLedPattern(LED_RED, 1, 50, 50);
         }
         else
         {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+            ESP_LOGI(TAG, "Connect to the AP fail");
+            startLedPattern(LED_RED, 3, 100, 100);
         }
-        ESP_LOGI(TAG, "connect to the AP fail");
         wifiConnected = 0;
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
@@ -163,6 +156,7 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         s_retry_num = 0;
         wifiConnected = 1;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+        startLedPattern(LED_GREEN, 1, 50, 50);
     }
     else if (event_id == WIFI_EVENT_AP_STACONNECTED)
     {
@@ -330,15 +324,12 @@ static void wifi_init_softap(void)
 
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 
-    wifi_config_t wifi_config = {
-        .ap = {
-            .ssid = AP_SSID,
-            .password = AP_PASS,
-            .ssid_len = strlen(AP_SSID),
-            .authmode = WIFI_AUTH_WPA_WPA2_PSK,
-            .max_connection = 4,
-        }};
-
+    wifi_config_t wifi_config = {};
+    strcpy((char *)wifi_config.ap.ssid, AP_SSID);
+    strcpy((char *)wifi_config.ap.password, AP_PASS);
+    wifi_config.ap.ssid_len = strlen(AP_SSID);
+    wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+    wifi_config.ap.max_connection = 4;
     if (strlen(AP_PASS) == 0)
     {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
