@@ -26,15 +26,15 @@ void initPins()
     gpio_set_level(LED_RED, 0);
     gpio_set_level(LED_GREEN, 0);
 
-    adc_oneshot_unit_init_cfg_t init_config1 = {
-        .unit_id = ADC_UNIT_1,
-    };
-    adc_oneshot_chan_cfg_t config = {
-        .atten = ADC_ATTEN_DB_0,
-        .bitwidth = ADC_BITWIDTH_DEFAULT,
-    };
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_CONDO_PIN, &config));
+    // adc_oneshot_unit_init_cfg_t init_config1 = {};
+    // init_config1.unit_id = ADC_UNIT_1;
+
+    // adc_oneshot_chan_cfg_t config = {
+    //     .atten = ADC_ATTEN_DB_0,
+    //     .bitwidth = ADC_BITWIDTH_DEFAULT,
+    // };
+    // ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+    // ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_CONDO_PIN, &config));
 }
 
 uint8_t getVUSB()
@@ -45,11 +45,22 @@ uint8_t getVUSB()
 
 float getVCondo()
 {
+    adc_oneshot_unit_init_cfg_t init_config1 = {};
+    init_config1.unit_id = ADC_UNIT_1;
+
+    adc_oneshot_chan_cfg_t config = {
+        .atten = ADC_ATTEN_DB_0,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_CONDO_PIN, &config));
+
     int raw = 0;
     // adc_oneshot_io_to_channel
     ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, V_CONDO_PIN, &raw));
     ESP_LOGI(TAG, "VCondo raw: %d", raw);
     float vCondo = (float)(raw * 5) / 3988; // get VCondo from ADC after voltage divider
+    adc_oneshot_del_unit(adc1_handle);
     return vCondo;
 }
 
@@ -81,12 +92,25 @@ void led_blink_task(void *pvParameter)
 
 void loop(void *arg)
 {
+    static int adc_raw[2][10];
+    //-------------ADC1 Init---------------//
+    adc_oneshot_unit_handle_t adc1_handle = NULL;
+    adc_oneshot_unit_init_cfg_t init_config1 = {};
+    init_config1.unit_id = ADC_UNIT_1;
+
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+
+    //-------------ADC1 Config---------------//
+    adc_oneshot_chan_cfg_t config = {};
+    config.bitwidth = ADC_BITWIDTH_DEFAULT;
+    config.atten = ADC_ATTEN_DB_11;
+
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_5, &config));
     while (1)
     {
-        int raw = 0;
-        adc_oneshot_read(adc1_handle, V_CONDO_PIN, &raw);
-        ESP_LOGI("LOOP", "VCondo: %d", raw);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_5, &adc_raw[0][0]));
+        ESP_LOGI(TAG, "ADC%d Channel[%d] Raw Data: %d", ADC_UNIT_1 + 1, ADC_CHANNEL_5, adc_raw[0][0]);
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -201,4 +225,37 @@ void pairingButtonTask(void *pvParameters)
         }
         vTaskDelay(50 / portTICK_PERIOD_MS);
     }
+}
+
+struct ledBlinkParams_t
+{
+    gpio_num_t led;
+    uint32_t tOn;
+    uint32_t tOff;
+    uint32_t count;
+};
+
+void ledPatternTask(void *pvParameters)
+{
+    ledBlinkParams_t *params = (ledBlinkParams_t *)pvParameters;
+    for (int i = 0; i < params->count; i++)
+    {
+        gpio_set_level(params->led, 1);
+        vTaskDelay(params->tOn / portTICK_PERIOD_MS);
+        gpio_set_level(params->led, 0);
+        vTaskDelay(params->tOff / portTICK_PERIOD_MS);
+    }
+    gpio_set_level(params->led, 0);
+    vTaskDelete(NULL);
+    free(params);
+}
+
+void startLedPattern(gpio_num_t led, uint8_t count, uint16_t tOn, uint16_t tOff)
+{
+    ledBlinkParams_t *params = (ledBlinkParams_t *)malloc(sizeof(ledBlinkParams_t));
+    params->led = led;
+    params->tOn = tOn;
+    params->tOff = tOff;
+    params->count = count;
+    xTaskCreate(ledPatternTask, "ledPatternTask", 2048, (void *)params, 5, NULL);
 }

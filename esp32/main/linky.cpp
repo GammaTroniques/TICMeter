@@ -28,14 +28,13 @@ void Linky::begin()
         .parity = UART_PARITY_EVEN,
         .stop_bits = UART_STOP_BITS_1,
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        // .rx_flow_ctrl_thresh = 122,
+        .rx_flow_ctrl_thresh = 122,
         .source_clk = UART_SCLK_DEFAULT,
     };
 
     // We won't use a buffer for sending data.
     uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
     uart_param_config(UART_NUM_1, &uart_config);
-    ESP_LOGI("Linky", "Pin: %d", UARTRX);
     uart_set_pin(UART_NUM_1, UARTTX, UARTRX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 }
 
@@ -104,7 +103,7 @@ char Linky::decode()
     if (endOfFrame == UINT_MAX || startOfFrame == UINT_MAX || startOfFrame > endOfFrame) // if the start or the end of the frame are not found or if the start is after the end
     {
         // ERROR
-        ESP_LOGI(LINKY_TAG, "error");
+        // ESP_LOGI(LINKY_TAG, "error");
         index = 0; // clear the buffer
         return 0;  // exit the function
     }

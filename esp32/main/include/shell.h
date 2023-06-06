@@ -42,4 +42,7 @@ int get_config_command(int argc, char **argv);
 int set_config_command(int argc, char **argv);
 esp_err_t esp_console_register_config_command();
 
+int get_VCondo_command(int argc, char **argv);
+esp_err_t esp_console_register_VCondo_command();
+
 #endif
