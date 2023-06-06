@@ -19,7 +19,7 @@
 
 #include "config.h"
 
-#define EXAMPLE_ESP_MAXIMUM_RETRY 5
+#define ESP_MAXIMUM_RETRY 5
 // #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 /**
  * @brief set the CPU frequency to 240Mhz and connect to wifi
@@ -30,8 +30,8 @@ uint8_t connectToWifi();
 
 void disconectFromWifi();
 
-static void event_handler(void *arg, esp_event_base_t event_base,
-                          int32_t event_id, void *event_data);
+void event_handler(void *arg, esp_event_base_t event_base,
+                   int32_t event_id, void *event_data);
 
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP

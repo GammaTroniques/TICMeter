@@ -17,13 +17,6 @@
 #include "sdkconfig.h"
 
 #include "string.h"
-
-// #include <ArduinoJson.h>
-// #include <WiFi.h>
-// #include <HTTPClient.h>
-// #include <NTPClient.h>
-// #include <WiFiUdp.h>
-
 #include "linky.h"
 #include "main.h"
 #include "config.h"
@@ -42,11 +35,11 @@ const int daylightOffset_sec = 3600; //
 Linky linky(MODE_HISTORIQUE, 17, 16);
 Config config;
 
+#define MAX_DATA_INDEX 15 // 10 + 5 in case of error
 // ------------Global variables stored in RTC memory to keep their values after deep sleep
-RTC_NOINIT_ATTR LinkyData dataArray[15]; // 10 + 5 in case of error
-RTC_NOINIT_ATTR unsigned int dataIndex = 0;
-RTC_NOINIT_ATTR uint8_t firstBoot = 1;
-char jsonPost[1024] = {0};
+RTC_DATA_ATTR LinkyData dataArray[MAX_DATA_INDEX];
+RTC_DATA_ATTR unsigned int dataIndex = 0;
+RTC_DATA_ATTR uint8_t firstBoot = 1;
 // ---------------------------------------------------------------------------------------
 
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
@@ -59,23 +52,21 @@ extern "C" void app_main(void)
 {
 
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
-  esp_log_level_set("wifi", ESP_LOG_ERROR);
+  initPins();
   rtc_cpu_freq_config_t tmp;
   rtc_clk_cpu_freq_get_config(&tmp);
   ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
-  rtc_cpu_freq_config_t conf;
+  // rtc_cpu_freq_config_t conf;
 
   esp_pm_config_t pm_config = {
       .max_freq_mhz = 80,
       .min_freq_mhz = 10,
-      .light_sleep_enable = false
-
-  };
+      .light_sleep_enable = false};
   ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
   rtc_clk_cpu_freq_get_config(&tmp);
-  ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
+  // ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
 
-  // xTaskCreate(led_blink_task, "led_blink_task", 10000, NULL, 1, NULL);
+  startLedPattern(LED_GREEN, 1, 50, 50);
   xTaskCreate(pairingButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
 
   esp_reset_reason_t reason = esp_reset_reason();
@@ -88,14 +79,8 @@ extern "C" void app_main(void)
     firstBoot = 1;
   }
 
-  initPins();
   ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
 
-  // set frequency of cpu to 10MHz
-  // start shell task
-  // disable brownout detector
-  // disable wifi (sleep)
-  // pinmode
   config.begin();
   config.values.refreshRate = 30;
   // check vcondo and sleep if not ok
@@ -145,7 +130,6 @@ extern "C" void app_main(void)
 
 void linkyRead(void *pvParameters)
 {
-  char *RX_TASK_TAG = "RX_TASK";
   linky.begin(); // init linky
   while (1)
   {
@@ -187,10 +171,9 @@ void sendDataTask(void *pvParameters)
       {
         if (connectToWifi())
         {
-          gpio_set_level(LED_GREEN, 1);
+          startLedPattern(LED_GREEN, 1, 100, 100);
           ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
           sendToMqtt(dataArray);
-          gpio_set_level(LED_GREEN, 0);
           // vTaskDelay(5000 / portTICK_PERIOD_MS);
           disconectFromWifi();
         }
@@ -205,32 +188,23 @@ void fetchLinkyDataTask(void *pvParameters)
 {
   while (1)
   {
-    if (!linky.update())
+    if (!linky.update() ||
+        (config.values.linkyMode == MODE_HISTORIQUE && linky.data.BASE == 0) ||
+        (config.values.linkyMode == MODE_STANDARD && linky.data.HCHP == 0))
     {
       ESP_LOGI(MAIN_TAG, "Linky update failed");
+      startLedPattern(LED_RED, 3, 300, 700);
       vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
       continue;
     }
 
-    if (config.values.linkyMode == MODE_HISTORIQUE && linky.data.BASE == 0)
+    if (dataIndex >= MAX_DATA_INDEX)
     {
-      ESP_LOGI(MAIN_TAG, "Linky data is 0, skipping");
-      vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
-      continue;
+      dataIndex = 0;
     }
-
-    if (config.values.linkyMode == MODE_STANDARD && linky.data.HCHP == 0)
-    {
-      ESP_LOGI(MAIN_TAG, "Linky data is 0, skipping");
-      vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
-      continue;
-    }
-
-    dataArray[0] = linky.data;
-    dataArray[0].timestamp = getTimestamp();
-    dataIndex = 1;
+    dataArray[dataIndex++] = linky.data;
+    dataArray[dataIndex++].timestamp = getTimestamp();
     ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %ld", dataIndex, dataArray[0].BASE);
-    // preapareJsonData(dataArray, dataIndex, jsonPost, sizeof(jsonPost));
     linky.print();
     vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
   }
