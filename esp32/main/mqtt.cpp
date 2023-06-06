@@ -10,6 +10,7 @@
 
 const char *topics[] = {"ADCO", "OPTARIF", "ISOUSC", "BASE", "HCHC", "HCHP", "PTEC", "IINST", "IMAX", "PAPP", "HHPHC", "MOTDETAT", "Timestamp"};
 const char *deviceClass[] = {NULL, NULL, NULL, "energy", "energy", "energy", NULL, "current", "current", "power", NULL, NULL, "timestamp"};
+const char *unitOfMeasurement[] = {NULL, NULL, "A", "Wh", "Wh", "Wh", NULL, "A", "A", "VA", NULL, NULL, NULL};
 
 uint32_t mqttConnected = 0;
 esp_mqtt_client_handle_t mqttClient = NULL;
@@ -93,32 +94,32 @@ void mqtt_app_start(void)
     if (mqttClient != NULL)
     {
         ESP_LOGI(TAG, "MQTT already started");
+        esp_mqtt_client_reconnect(mqttClient);
         return;
     }
 
     ESP_LOGI(TAG, "STARTING MQTT");
-    char *uri = (char *)malloc(150);
+    static char uri[200] = {0};
     sprintf(uri, "mqtt://%s:%d", config.values.mqtt.host, config.values.mqtt.port);
     ESP_LOGI(TAG, "MQTT URI: %s", uri);
-
     esp_mqtt_client_config_t mqtt_cfg = {0};
     mqtt_cfg.broker.address.uri = uri;
-    mqtt_cfg.credentials.username = "admin";
-    mqtt_cfg.credentials.authentication.password = "hassio49";
 
+    mqtt_cfg.credentials.username = config.values.mqtt.username;
+    mqtt_cfg.credentials.authentication.password = config.values.mqtt.password;
     mqttClient = esp_mqtt_client_init(&mqtt_cfg);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
     esp_mqtt_client_register_event(mqttClient, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     esp_mqtt_client_start(mqttClient);
 
     // xTaskCreate(Publisher_Task, "Publisher_Task", 1024 * 5, NULL, 5, NULL);
-    // ESP_LOGI(TAG, "MQTT Publisher_Task is up and running\n");
+    ESP_LOGI(TAG, "MQTT Publisher_Task is up and running\n");
 }
 
 #define MQTT_NAME "Linky"
 #define MQTT_ID "linky"
 
-void createSensor(char *json, char *config_topic, const char *name, const char *entity_id, const char *device_class)
+void createSensor(char *json, char *config_topic, const char *name, const char *entity_id, const char *device_class, const char *unit_of_measurement)
 {
 
     DynamicJsonDocument device(1024);
@@ -145,6 +146,10 @@ void createSensor(char *json, char *config_topic, const char *name, const char *
     {
         sensorConfig["device_class"] = device_class;
     }
+    if (unit_of_measurement != NULL)
+    {
+        sensorConfig["unit_of_measurement"] = unit_of_measurement;
+    }
     sensorConfig["device"] = device;
     serializeJson(sensorConfig, json, 1024);
 }
@@ -167,10 +172,14 @@ void setupHomeAssistantDiscovery()
 
     for (int i = 0; i < 13; i++)
     {
-        createSensor(mqttBuffer, config_topic, topics[i], topics[i], deviceClass[i]);
+        createSensor(mqttBuffer, config_topic, topics[i], topics[i], deviceClass[i], unitOfMeasurement[i]);
         esp_mqtt_client_publish(mqttClient, config_topic, mqttBuffer, 0, 1, 0);
     }
+    ESP_LOGI(TAG, "Home Assistant Discovery done");
 }
+
+#define TYPE_STRING 0
+#define TYPE_UINT32 1
 
 void sendToMqtt(LinkyData *linky)
 {
@@ -185,16 +194,25 @@ void sendToMqtt(LinkyData *linky)
         mqtt_app_start();
     }
 
+    static uint8_t HAConfigured = 0;
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    if (config.values.mode == MODE_MQTT_HA && HAConfigured == 0)
+    {
+        setupHomeAssistantDiscovery();
+        HAConfigured = 1;
+    }
+
     char topic[150];
     char value[20];
     const void *values[] = {&linky->ADCO, &linky->OPTARIF, &linky->ISOUSC, &linky->BASE, &linky->HCHC, &linky->HCHP, &linky->PTEC, &linky->IINST, &linky->IMAX, &linky->PAPP, &linky->HHPHC, &linky->MOTDETAT, &linky->timestamp};
+    const uint8_t type[] = {TYPE_UINT32, TYPE_STRING, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_STRING, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_STRING, TYPE_STRING, TYPE_UINT32};
 
     for (int i = 0; i < 13; i++)
     {
-        if (sizeof(values[i]) == sizeof(unsigned long))
+        if (type[i] == TYPE_UINT32)
         {
             sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)topics[i]);
-            sprintf(value, "%lu", *(uint32_t *)(values[i]));
+            sprintf(value, "%ld", *(uint32_t *)(values[i]));
         }
         else
         {
@@ -202,5 +220,22 @@ void sendToMqtt(LinkyData *linky)
             sprintf(value, "%s", (char *)(values[i]));
         }
         esp_mqtt_client_publish(mqttClient, topic, value, 0, 1, 0);
+    }
+
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    // esp_mqtt_client_disconnect(mqttClient);
+    mqtt_stop();
+    mqttConnected = false;
+}
+
+void mqtt_stop()
+{
+    if (mqttClient != NULL)
+    {
+        esp_mqtt_client_disconnect(mqttClient);
+        esp_mqtt_client_unregister_event(mqttClient, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler);
+        esp_mqtt_client_stop(mqttClient);
+        esp_mqtt_client_destroy(mqttClient);
+        mqttClient = NULL;
     }
 }

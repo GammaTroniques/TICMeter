@@ -20,7 +20,7 @@ void mqtt_app_start(void);
 
 void setupHomeAssistantDiscovery();
 void sendToMqtt(LinkyData *linky);
-
+void mqtt_stop();
 extern esp_mqtt_client_handle_t mqttClient;
 
 #endif
