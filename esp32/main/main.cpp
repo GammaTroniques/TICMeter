@@ -82,6 +82,7 @@ extern "C" void app_main(void)
   }
 
   config.begin();
+  linky.begin();
   config.values.refreshRate = 30;
   // ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
   // check vcondo and sleep if not ok
@@ -93,7 +94,6 @@ extern "C" void app_main(void)
   // }
 
   shellInit(); // init shell
-  linky.begin();
   switch (config.values.mode)
   {
   case MODE_WEB:
@@ -131,8 +131,6 @@ void fetchLinkyDataTask(void *pvParameters)
   while (1)
   {
     if (!linky.update() ||
-        (config.values.linkyMode == MODE_HISTORIQUE && linky.data.BASE == 0) ||
-        (config.values.linkyMode == MODE_STANDARD && linky.data.HCHP == 0) ||
         (strlen(linky.data.ADCO) == 0))
     {
       ESP_LOGI(MAIN_TAG, "Linky update failed");
@@ -175,7 +173,7 @@ void fetchLinkyDataTask(void *pvParameters)
         ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
         startLedPattern(LED_GREEN, 1, 100, 100);
         linky.data.timestamp = getTimestamp();
-        ESP_LOGI(MAIN_TAG, "Timestamp: %lld", linky.data.timestamp);
+        ESP_LOGI(MAIN_TAG, "Timestamp: %llu", linky.data.timestamp);
         sendToMqtt(&linky.data);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         disconectFromWifi();
