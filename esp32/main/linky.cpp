@@ -33,7 +33,7 @@ void Linky::begin()
     };
 
     // We won't use a buffer for sending data.
-    uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
+    uart_driver_install(UART_NUM_1, RX_BUF_SIZE, 0, 0, NULL, 0);
     uart_param_config(UART_NUM_1, &uart_config);
     uart_set_pin(UART_NUM_1, UARTTX, UARTRX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 }
@@ -67,6 +67,12 @@ void Linky::read()
     //     c = Serial2.read();  // read the character from the UART
     //     buffer[index++] = c; // store the character in the buffer and increment the index
     // }
+    const int rxBytes = uart_read_bytes(UART_NUM_1, buffer, RX_BUF_SIZE - 1, 50 / portTICK_PERIOD_MS);
+    if (rxBytes == 0)
+    {
+        ESP_LOGI(LINKY_TAG, "Failed to read from Linky");
+        return;
+    }
 }
 
 /**
@@ -81,7 +87,7 @@ char Linky::decode()
     //----------------------------------------------------------
     data = {0}; // clear the data structure
     // memset(&data, 0, sizeof(data));
-
+    // ESP_LOGI(LINKY_TAG, "data: \n%s\n-----------------------\n\n", buffer);
     //----------------------------------------------------------
     // Firt step: find the start and end of the frame
     //----------------------------------------------------------
@@ -111,7 +117,7 @@ char Linky::decode()
     char frame[200] = {0};                                           // store the frame
     memcpy(frame, buffer + startOfFrame, endOfFrame - startOfFrame); // copy only one frame from the buffer
     index = 0;                                                       // clear the buffer
-
+    ESP_LOGI(LINKY_TAG, "frame: \n%s", frame);
     //-------------------------------------
     // Second step: Find goups of data in the frame
     //-------------------------------------
