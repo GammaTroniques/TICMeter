@@ -183,7 +183,7 @@ char Linky::decode()
             //------------------------------------------------------------
             if (strcmp(label, "ADCO") == 0)
             {
-                data.ADCO = strtoul(value, NULL, 10);
+                strcpy(data.ADCO, value);
             }
             else if (strcmp(label, "OPTARIF") == 0)
             {
@@ -257,7 +257,7 @@ char Linky::update()
  */
 void Linky::print()
 {
-    ESP_LOGI(LINKY_TAG, "ADCO: %ld", data.ADCO);
+    ESP_LOGI(LINKY_TAG, "ADCO: %s", data.ADCO);
     ESP_LOGI(LINKY_TAG, "OPTARIF: %s", data.OPTARIF);
     ESP_LOGI(LINKY_TAG, "ISOUSC: %ld", data.ISOUSC);
     ESP_LOGI(LINKY_TAG, "BASE: %ld", data.BASE);
