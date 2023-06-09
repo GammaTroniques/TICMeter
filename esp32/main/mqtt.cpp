@@ -182,7 +182,7 @@ void setupHomeAssistantDiscovery()
     for (int i = 0; i < 13; i++)
     {
         createSensor(mqttBuffer, config_topic, topics[i], topics[i], deviceClass[i], unitOfMeasurement[i], valueTemplate[i]);
-        esp_mqtt_client_publish(mqttClient, config_topic, mqttBuffer, 0, 1, 0);
+        esp_mqtt_client_publish(mqttClient, config_topic, mqttBuffer, 0, 2, 1);
     }
     ESP_LOGI(TAG, "Home Assistant Discovery done");
 }
@@ -216,7 +216,7 @@ void sendToMqtt(LinkyData *linky)
     const void *values[] = {&linky->ADCO, &linky->OPTARIF, &linky->ISOUSC, &linky->BASE, &linky->HCHC, &linky->HCHP, &linky->PTEC, &linky->IINST, &linky->IMAX, &linky->PAPP, &linky->HHPHC, &linky->MOTDETAT, &linky->timestamp};
     const uint8_t type[] = {TYPE_STRING, TYPE_STRING, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_STRING, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_STRING, TYPE_STRING, TYPE_UINT32};
 
-    mqttSendTimout = (xTaskGetTickCount() / portTICK_PERIOD_MS) + 5000;
+    mqttSendTimout = MILLIS + 5000;
     mqttSendCount = 0;
     for (int i = 0; i < 13; i++)
     {
@@ -232,17 +232,13 @@ void sendToMqtt(LinkyData *linky)
         }
         esp_mqtt_client_publish(mqttClient, topic, value, 0, 2, 0);
     }
-
-    ESP_LOGI(TAG, "Now: %lu, Timeout: %lu, Count: %d", xTaskGetTickCount() / portTICK_PERIOD_MS, mqttSendTimout, mqttSendCount);
-    while ((mqttSendTimout > (xTaskGetTickCount() / portTICK_PERIOD_MS)) && mqttSendCount < 13)
+    ESP_LOGI(TAG, "Now: %lu, Timeout: %lu, Count: %d", MILLIS, mqttSendTimout, mqttSendCount);
+    while ((mqttSendTimout > MILLIS) && mqttSendCount < 13)
     {
-        ESP_LOGI(TAG, "Now: %lu, Timeout: %lu, Count: %d", xTaskGetTickCount() / portTICK_PERIOD_MS, mqttSendTimout, mqttSendCount);
+        ESP_LOGI(TAG, "Now: %lu, Timeout: %lu, Count: %d", MILLIS, mqttSendTimout, mqttSendCount);
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     ESP_LOGI(TAG, "MQTT send done");
-
-    // vTaskDelay(5000 / portTICK_PERIOD_MS);
-    // esp_mqtt_client_disconnect(mqttClient);
     mqtt_stop();
     mqttConnected = false;
 }
