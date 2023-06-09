@@ -226,9 +226,9 @@ time_t getTimestamp()
         esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
         esp_sntp_setservername(0, "pool.ntp.org");
         esp_sntp_init();
-        time_t start = xTaskGetTickCount() / portTICK_PERIOD_MS;
+        time_t timeout = MILLIS + 2000;
         time_t noww = 0;
-        while (noww < 100000 && (xTaskGetTickCount() / portTICK_PERIOD_MS < start + 2000))
+        while (noww < 100000 && (MILLIS < timeout))
         {
             time(&noww);
             vTaskDelay(10 / portTICK_PERIOD_MS);

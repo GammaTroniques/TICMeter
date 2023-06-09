@@ -67,12 +67,16 @@ void Linky::read()
     //     c = Serial2.read();  // read the character from the UART
     //     buffer[index++] = c; // store the character in the buffer and increment the index
     // }
-    const int rxBytes = uart_read_bytes(UART_NUM_1, buffer, RX_BUF_SIZE - 1, 50 / portTICK_PERIOD_MS);
-    if (rxBytes == 0)
+
+    uart_flush(UART_NUM_1); // clear the UART buffer
+    uint32_t rxBytes = 0;
+    uint32_t timeout = xTaskGetTickCount() * portTICK_PERIOD_MS + 5000;
+    do
     {
-        ESP_LOGI(LINKY_TAG, "Failed to read from Linky");
-        return;
-    }
+        rxBytes += uart_read_bytes(UART_NUM_1, buffer + rxBytes, RX_BUF_SIZE - 1, 500 / portTICK_PERIOD_MS);
+        ESP_LOGI(LINKY_TAG, "Read %lu bytes, remaning:%lu '%s'", rxBytes, timeout - xTaskGetTickCount() * portTICK_PERIOD_MS, buffer);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    } while ((rxBytes < 512) && ((xTaskGetTickCount() * portTICK_PERIOD_MS) < timeout));
 }
 
 /**
