@@ -1,0 +1,1 @@
+c:\Espressif\IDF_TOOLS_PATH\python_env\idf5.2_py3.8_env\Scripts\python.exe C:\Espressif\ESP-IDF\esp-idf\components\esptool_py\esptool\esptool.py --chip esp32c6 merge_bin --flash_mode dio --flash_freq 80m --flash_size 4MB 0x0 bootloader/bootloader.bin 0x10000 LinkyTeleinfoESP32.bin 0x8000 partition_table/partition-table.bin 0x210000 storage.bin -o merged-firmware.bin

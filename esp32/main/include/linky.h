@@ -39,7 +39,7 @@ typedef struct
     uint32_t PAPP = 0;     // The linky current power
     char HHPHC[4] = {0};   // The linky .......
     char MOTDETAT[7] = {0};
-    uint32_t timestamp = 0;
+    time_t timestamp = 0;
 } LinkyData;
 
 class Linky

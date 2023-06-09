@@ -5,13 +5,45 @@
 #include "esp_ota_ops.h"
 #define TAG "MQTT"
 
-#define HOMEASSISTANT_SENSOR "homeassistant/sensor"
-#define HOMEASSISTANT_BINARY_SENSOR "homeassistant/binary_sensor"
+#define TYPE_STRING 0
+#define TYPE_UINT32 1
+#define TYPE_UINT16 2
 
-const char *topics[] = {"ADCO", "OPTARIF", "ISOUSC", "BASE", "HCHC", "HCHP", "PTEC", "IINST", "IMAX", "PAPP", "HHPHC", "MOTDETAT", "Timestamp"};
-const char *deviceClass[] = {NULL, NULL, NULL, "energy", "energy", "energy", NULL, "current", "current", "power", NULL, NULL, "timestamp"};
-const char *unitOfMeasurement[] = {NULL, NULL, "A", "Wh", "Wh", "Wh", NULL, "A", "A", "VA", NULL, NULL, NULL};
-const char *valueTemplate[] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "{{ as_datetime(value) }}"};
+#define TYPE_SENSOR "sensor"
+#define TYPE_NUMBER "number"
+
+#define MQTT_NAME "Linky"
+#define MQTT_ID "linky"
+struct sensorConfig
+{
+    char type[32] = TYPE_SENSOR;
+    char name[32] = "";
+    char unique_id[32] = "";
+    char device_class[32] = "";
+    char unit_of_measurement[32] = "";
+    char value_template[32] = "";
+    uint8_t valueType = TYPE_STRING;
+    uint32_t valueLen = 0;
+};
+#define member_size(type, member) sizeof(((type *)0)->member)
+
+struct sensorConfig sensors[] = {
+    {TYPE_SENSOR, "Identifiant", "ADCO", "", "", "", TYPE_STRING, member_size(LinkyData, ADCO)},
+    {TYPE_SENSOR, "Option tarifaire", "OPTARIF", "", "", "", TYPE_STRING, member_size(LinkyData, OPTARIF)},
+    {TYPE_SENSOR, "Intensité souscrite", "ISOUSC", "", "", "", TYPE_UINT32, member_size(LinkyData, ISOUSC)},
+    {TYPE_SENSOR, "Index Base", "BASE", "energy", "Wh", "", TYPE_UINT32, member_size(LinkyData, BASE)},
+    {TYPE_SENSOR, "Index Heures Creuses", "HCHC", "energy", "Wh", "", TYPE_UINT32, member_size(LinkyData, HCHC)},
+    {TYPE_SENSOR, "Index Heures Pleines", "HCHP", "energy", "Wh", "", TYPE_UINT32, member_size(LinkyData, HCHP)},
+    {TYPE_SENSOR, "Période tarifaire en cours", "PTEC", "", "", "", TYPE_STRING, member_size(LinkyData, PTEC)},
+    {TYPE_SENSOR, "Intensité instantanée", "IINST", "current", "A", "", TYPE_UINT32, member_size(LinkyData, IINST)},
+    {TYPE_SENSOR, "Intensité maximale", "IMAX", "current", "A", "", TYPE_UINT32, member_size(LinkyData, IMAX)},
+    {TYPE_SENSOR, "Puissance apparente", "PAPP", "power", "VA", "", TYPE_UINT32, member_size(LinkyData, PAPP)},
+    {TYPE_SENSOR, "Horaire HC", "HHPHC", "", "", "", TYPE_STRING, member_size(LinkyData, HHPHC)},
+    {TYPE_SENSOR, "Mot d'état du compteur", "MOTDETAT", "", "", "", TYPE_STRING, member_size(LinkyData, MOTDETAT)},
+    {TYPE_SENSOR, "Timestamp", "Timestamp", "timestamp", "", "{{ as_datetime(value) }}", TYPE_UINT32, member_size(LinkyData, timestamp)},
+    {TYPE_SENSOR, "Refresh Rate", "currentRefreshRate", "", "sec", "", TYPE_UINT16, 0},
+    {TYPE_NUMBER, "Refresh Rate", "RefreshRate", "", "sec", "", TYPE_UINT32, 0},
+};
 
 uint32_t mqttConnected = 0;
 esp_mqtt_client_handle_t mqttClient = NULL;
@@ -31,8 +63,8 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
-    esp_mqtt_client_handle_t client = event->client;
-    int msg_id;
+    // esp_mqtt_client_handle_t client = event->client;
+    // int msg_id;
     switch ((esp_mqtt_event_id_t)event_id)
     {
     case MQTT_EVENT_CONNECTED:
@@ -57,21 +89,31 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        msg_id = esp_mqtt_client_publish(client, "/topic/qos0", "data", 0, 0, 0);
-        ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_PUBLISHED:
-        ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+        // ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         mqttSendCount++;
         break;
     case MQTT_EVENT_DATA:
-        ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-        printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
-        printf("DATA=%.*s\r\n", event->data_len, event->data);
-        break;
+    {
+        char topic[100] = {0};
+        memcpy(topic, event->topic, event->topic_len); // copy to not const string (add \0)
+        if (strcmp(topic, MQTT_ID "/RefreshRate") == 0)
+        {
+            config.values.refreshRate = atoi(event->data);
+            ESP_LOGI(TAG, "New RefreshRate = %d", config.values.refreshRate);
+        }
+        else
+        {
+            ESP_LOGI(TAG, "MQTT_EVENT_DATA");
+            printf("TOPIC=%.*s\r\n", event->topic_len, event->topic);
+            printf("DATA=%.*s\r\n", event->data_len, event->data);
+        }
+    }
+    break;
     case MQTT_EVENT_ERROR:
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
         if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT)
@@ -116,15 +158,22 @@ void mqtt_app_start(void)
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
     esp_mqtt_client_register_event(mqttClient, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     esp_mqtt_client_start(mqttClient);
+    for (int i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++)
+    {
+        if (strcmp(sensors[i].type, TYPE_NUMBER) == 0)
+        {
+            char topic[100];
+            sprintf(topic, MQTT_ID "/%s", sensors[i].unique_id);
+            esp_mqtt_client_subscribe(mqttClient, topic, 1);
+            ESP_LOGI(TAG, "Subscribing to %s", topic);
+        }
+    }
 
     // xTaskCreate(Publisher_Task, "Publisher_Task", 1024 * 5, NULL, 5, NULL);
     ESP_LOGI(TAG, "MQTT Publisher_Task is up and running\n");
 }
 
-#define MQTT_NAME "Linky"
-#define MQTT_ID "linky"
-
-void createSensor(char *json, char *config_topic, const char *name, const char *entity_id, const char *device_class, const char *unit_of_measurement, const char *value_template)
+void createSensor(char *json, char *config_topic, sensorConfig sensor)
 {
 
     DynamicJsonDocument device(1024);
@@ -138,26 +187,37 @@ void createSensor(char *json, char *config_topic, const char *name, const char *
 
     DynamicJsonDocument sensorConfig(1024);
     sensorConfig["~"] = config.values.mqtt.topic;
-    sensorConfig["name"] = name;
-    sensorConfig["unique_id"] = entity_id;
-    sensorConfig["object_id"] = entity_id;
+    sensorConfig["name"] = sensor.name;
+    sensorConfig["unique_id"] = sensor.unique_id;
+    sensorConfig["object_id"] = sensor.unique_id;
 
     char state_topic[100];
-    sprintf(state_topic, "~/%s", entity_id);
-    sprintf(config_topic, "%s/%s/%s/config", HOMEASSISTANT_SENSOR, MQTT_ID, entity_id);
+    sprintf(state_topic, "~/%s", sensor.unique_id);
+    sprintf(config_topic, "homeassistant/%s/%s/%s/config", sensor.type, MQTT_ID, sensor.unique_id);
 
-    sensorConfig["state_topic"] = state_topic;
-    if (device_class != NULL)
+    if (strcmp(sensor.type, TYPE_NUMBER) == 0)
     {
-        sensorConfig["device_class"] = device_class;
+        sensorConfig["command_topic"] = state_topic;
+        sensorConfig["mode"] = "box";
+        sensorConfig["min"] = 30;
+        sensorConfig["max"] = 3600;
+        sensorConfig["retain"] = "true";
     }
-    if (unit_of_measurement != NULL)
+    else
     {
-        sensorConfig["unit_of_measurement"] = unit_of_measurement;
+        sensorConfig["state_topic"] = state_topic;
     }
-    if (value_template != NULL)
+    if (strlen(sensor.device_class) > 0)
     {
-        sensorConfig["value_template"] = value_template;
+        sensorConfig["device_class"] = sensor.device_class;
+    }
+    if (strlen(sensor.unit_of_measurement) > 0)
+    {
+        sensorConfig["unit_of_measurement"] = sensor.unit_of_measurement;
+    }
+    if (strlen(sensor.value_template) > 0)
+    {
+        sensorConfig["value_template"] = sensor.value_template;
     }
     sensorConfig["device"] = device;
     serializeJson(sensorConfig, json, 1024);
@@ -179,16 +239,13 @@ void setupHomeAssistantDiscovery()
     char mqttBuffer[1024];
     char config_topic[100];
 
-    for (int i = 0; i < 13; i++)
+    for (int i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++)
     {
-        createSensor(mqttBuffer, config_topic, topics[i], topics[i], deviceClass[i], unitOfMeasurement[i], valueTemplate[i]);
+        createSensor(mqttBuffer, config_topic, sensors[i]);
         esp_mqtt_client_publish(mqttClient, config_topic, mqttBuffer, 0, 2, 1);
     }
     ESP_LOGI(TAG, "Home Assistant Discovery done");
 }
-
-#define TYPE_STRING 0
-#define TYPE_UINT32 1
 
 void sendToMqtt(LinkyData *linky)
 {
@@ -213,32 +270,50 @@ void sendToMqtt(LinkyData *linky)
 
     char topic[150];
     char value[20];
-    const void *values[] = {&linky->ADCO, &linky->OPTARIF, &linky->ISOUSC, &linky->BASE, &linky->HCHC, &linky->HCHP, &linky->PTEC, &linky->IINST, &linky->IMAX, &linky->PAPP, &linky->HHPHC, &linky->MOTDETAT, &linky->timestamp};
-    const uint8_t type[] = {TYPE_STRING, TYPE_STRING, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_STRING, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_STRING, TYPE_STRING, TYPE_UINT32};
 
-    mqttSendTimout = MILLIS + 5000;
+    mqttSendTimout = MILLIS + 10000;
     mqttSendCount = 0;
-    for (int i = 0; i < 13; i++)
+    const void *values[] = {&linky->ADCO, &linky->OPTARIF, &linky->ISOUSC, &linky->BASE, &linky->HCHC, &linky->HCHP, &linky->PTEC, &linky->IINST, &linky->IMAX, &linky->PAPP, &linky->HHPHC, &linky->MOTDETAT, &linky->timestamp, &config.values.refreshRate};
+
+    for (int i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++)
     {
-        if (type[i] == TYPE_UINT32)
+        if (strcmp(sensors[i].type, TYPE_NUMBER) == 0)
         {
-            sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)topics[i]);
+            continue;
+        }
+        if (sensors[i].valueType == TYPE_UINT32)
+        {
+            sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)sensors[i].unique_id);
             sprintf(value, "%lu", *(uint32_t *)(values[i]));
+        }
+        else if (sensors[i].valueType == TYPE_UINT16)
+        {
+            sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)sensors[i].unique_id);
+            sprintf(value, "%u", *(int16_t *)(values[i]));
         }
         else
         {
-            sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)topics[i]);
+            sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)sensors[i].unique_id);
             sprintf(value, "%s", (char *)(values[i]));
         }
         esp_mqtt_client_publish(mqttClient, topic, value, 0, 2, 0);
     }
-    ESP_LOGI(TAG, "Now: %lu, Timeout: %lu, Count: %d", MILLIS, mqttSendTimout, mqttSendCount);
+    getTimestamp(); // update timestamp
+
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+
     while ((mqttSendTimout > MILLIS) && mqttSendCount < 13)
     {
-        ESP_LOGI(TAG, "Now: %lu, Timeout: %lu, Count: %d", MILLIS, mqttSendTimout, mqttSendCount);
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-    ESP_LOGI(TAG, "MQTT send done");
+    if (mqttSendCount < 13)
+    {
+        ESP_LOGI(TAG, "MQTT send timeout");
+    }
+    else
+    {
+        ESP_LOGI(TAG, "MQTT send done");
+    }
     mqtt_stop();
     mqttConnected = false;
 }
