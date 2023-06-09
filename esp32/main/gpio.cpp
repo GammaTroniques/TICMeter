@@ -195,12 +195,13 @@ void pairingButtonTask(void *pvParameters)
                     case MODE_MQTT:
                     case MODE_MQTT_HA:
                         ESP_LOGI(TAG, "Web pairing");
+                        vTaskSuspend(fetchLinkyDataTaskHandle);
+                        vTaskSuspend(sendDataTaskHandle);
                         if (wifiConnected)
                         {
                             disconectFromWifi();
                             vTaskDelay(1000 / portTICK_PERIOD_MS);
                         }
-                        vTaskSuspend(fetchLinkyDataTaskHandle);
                         start_captive_portal();
 
                         break;

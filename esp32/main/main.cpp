@@ -45,7 +45,7 @@ RTC_DATA_ATTR uint8_t firstBoot = 1;
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
 TaskHandle_t pushButtonTaskHandle = NULL;
 TaskHandle_t pairingTaskHandle = NULL;
-
+TaskHandle_t sendDataTaskHandle = NULL;
 #define MAIN_TAG "MAIN"
 
 extern "C" void app_main(void)
@@ -53,6 +53,7 @@ extern "C" void app_main(void)
 
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   initPins();
+  startLedPattern(LED_GREEN, 1, 100, 100);
   rtc_cpu_freq_config_t tmp;
   rtc_clk_cpu_freq_get_config(&tmp);
   ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
@@ -79,19 +80,18 @@ extern "C" void app_main(void)
     firstBoot = 1;
   }
 
-  ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
-
   config.begin();
   config.values.refreshRate = 30;
+  // ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
   // check vcondo and sleep if not ok
-  if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
-  {
-    ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
-    esp_sleep_enable_timer_wakeup(1 * 1000000);
-    esp_deep_sleep_start();
-  }
+  // if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
+  // {
+  //   ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
+  //   esp_sleep_enable_timer_wakeup(1 * 1000000);
+  //   esp_deep_sleep_start();
+  // }
 
-  shellInit(); // init shell
+  // shellInit(); // init shell
 
   switch (config.values.mode)
   {
@@ -124,7 +124,7 @@ extern "C" void app_main(void)
   // start linky fetch task
   xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
   xTaskCreate(linkyRead, "linkyRead", 8192, NULL, 2, NULL);
-  xTaskCreate(sendDataTask, "sendDataTask", 8192, NULL, 10, NULL); // start send data task
+  xTaskCreate(sendDataTask, "sendDataTask", 8192, NULL, 10, &sendDataTaskHandle); // start linky task
   // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
 }
 
@@ -163,21 +163,23 @@ void sendDataTask(void *pvParameters)
         }
         disconectFromWifi();
         dataIndex = 0;
+        sleep(config.values.refreshRate * 1000);
       }
       break;
     case MODE_MQTT:
     case MODE_MQTT_HA:
-      if (dataIndex > 0)
+      if (dataIndex > 0 && strlen(dataArray[0].ADCO) > 0)
       {
         if (connectToWifi())
         {
           startLedPattern(LED_GREEN, 1, 100, 100);
           ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
           sendToMqtt(dataArray);
-          // vTaskDelay(5000 / portTICK_PERIOD_MS);
+          vTaskDelay(1000 / portTICK_PERIOD_MS);
           disconectFromWifi();
         }
         dataIndex = 0;
+        sleep(config.values.refreshRate * 1000);
       }
     }
     vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -202,10 +204,11 @@ void fetchLinkyDataTask(void *pvParameters)
     {
       dataIndex = 0;
     }
-    dataArray[dataIndex++] = linky.data;
+    dataArray[dataIndex] = linky.data;
     dataArray[dataIndex++].timestamp = getTimestamp();
     ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %ld", dataIndex, dataArray[0].BASE);
     linky.print();
+    linky.index = 0;                                                     // clear buffer
     vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
   }
 }
@@ -222,7 +225,7 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
   {
     cJSON *dataItem = cJSON_CreateObject();
     cJSON_AddNumberToObject(dataItem, "DATE", data[i].timestamp);
-    cJSON_AddNumberToObject(dataItem, "ADCO", data[i].ADCO);
+    cJSON_AddStringToObject(dataItem, "ADCO", data[i].ADCO);
     cJSON_AddStringToObject(dataItem, "OPTARIF", data[i].OPTARIF);
     cJSON_AddNumberToObject(dataItem, "ISOUSC", data[i].ISOUSC);
     if (data[i].BASE != 0)
@@ -261,9 +264,9 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
   cJSON_Delete(jsonObject);
 }
 
-uint8_t sleep(int time)
+uint8_t sleep(int timeMs)
 {
-  // esp_sleep_enable_timer_wakeup(time * 1000);
+  // esp_sleep_enable_timer_wakeup(timeMs * 1000);
   // esp_deep_sleep_start();
-  esp_restart();
+  return 0;
 }

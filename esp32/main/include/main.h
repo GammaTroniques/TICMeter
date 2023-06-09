@@ -6,6 +6,7 @@
 #define uS_TO_S_FACTOR 1000000
 
 extern TaskHandle_t fetchLinkyDataTaskHandle;
+extern TaskHandle_t sendDataTaskHandle;
 
 /**
  * @brief Get the tension of the condo
