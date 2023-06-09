@@ -11,6 +11,7 @@
 const char *topics[] = {"ADCO", "OPTARIF", "ISOUSC", "BASE", "HCHC", "HCHP", "PTEC", "IINST", "IMAX", "PAPP", "HHPHC", "MOTDETAT", "Timestamp"};
 const char *deviceClass[] = {NULL, NULL, NULL, "energy", "energy", "energy", NULL, "current", "current", "power", NULL, NULL, "timestamp"};
 const char *unitOfMeasurement[] = {NULL, NULL, "A", "Wh", "Wh", "Wh", NULL, "A", "A", "VA", NULL, NULL, NULL};
+const char *valueTemplate[] = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, "{{ as_datetime(value) }}"};
 
 uint32_t mqttConnected = 0;
 esp_mqtt_client_handle_t mqttClient = NULL;
@@ -22,6 +23,9 @@ static void log_error_if_nonzero(const char *message, int error_code)
         ESP_LOGE(TAG, "Last error %s: 0x%x", message, error_code);
     }
 }
+
+uint16_t mqttSendCount = 0;
+uint32_t mqttSendTimout = 0;
 
 void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
@@ -61,6 +65,7 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         break;
     case MQTT_EVENT_PUBLISHED:
         ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
+        mqttSendCount++;
         break;
     case MQTT_EVENT_DATA:
         ESP_LOGI(TAG, "MQTT_EVENT_DATA");
@@ -119,7 +124,7 @@ void mqtt_app_start(void)
 #define MQTT_NAME "Linky"
 #define MQTT_ID "linky"
 
-void createSensor(char *json, char *config_topic, const char *name, const char *entity_id, const char *device_class, const char *unit_of_measurement)
+void createSensor(char *json, char *config_topic, const char *name, const char *entity_id, const char *device_class, const char *unit_of_measurement, const char *value_template)
 {
 
     DynamicJsonDocument device(1024);
@@ -150,6 +155,10 @@ void createSensor(char *json, char *config_topic, const char *name, const char *
     {
         sensorConfig["unit_of_measurement"] = unit_of_measurement;
     }
+    if (value_template != NULL)
+    {
+        sensorConfig["value_template"] = value_template;
+    }
     sensorConfig["device"] = device;
     serializeJson(sensorConfig, json, 1024);
 }
@@ -172,7 +181,7 @@ void setupHomeAssistantDiscovery()
 
     for (int i = 0; i < 13; i++)
     {
-        createSensor(mqttBuffer, config_topic, topics[i], topics[i], deviceClass[i], unitOfMeasurement[i]);
+        createSensor(mqttBuffer, config_topic, topics[i], topics[i], deviceClass[i], unitOfMeasurement[i], valueTemplate[i]);
         esp_mqtt_client_publish(mqttClient, config_topic, mqttBuffer, 0, 1, 0);
     }
     ESP_LOGI(TAG, "Home Assistant Discovery done");
@@ -205,24 +214,34 @@ void sendToMqtt(LinkyData *linky)
     char topic[150];
     char value[20];
     const void *values[] = {&linky->ADCO, &linky->OPTARIF, &linky->ISOUSC, &linky->BASE, &linky->HCHC, &linky->HCHP, &linky->PTEC, &linky->IINST, &linky->IMAX, &linky->PAPP, &linky->HHPHC, &linky->MOTDETAT, &linky->timestamp};
-    const uint8_t type[] = {TYPE_UINT32, TYPE_STRING, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_STRING, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_STRING, TYPE_STRING, TYPE_UINT32};
+    const uint8_t type[] = {TYPE_STRING, TYPE_STRING, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_STRING, TYPE_UINT32, TYPE_UINT32, TYPE_UINT32, TYPE_STRING, TYPE_STRING, TYPE_UINT32};
 
+    mqttSendTimout = (xTaskGetTickCount() / portTICK_PERIOD_MS) + 5000;
+    mqttSendCount = 0;
     for (int i = 0; i < 13; i++)
     {
         if (type[i] == TYPE_UINT32)
         {
             sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)topics[i]);
-            sprintf(value, "%ld", *(uint32_t *)(values[i]));
+            sprintf(value, "%lu", *(uint32_t *)(values[i]));
         }
         else
         {
             sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)topics[i]);
             sprintf(value, "%s", (char *)(values[i]));
         }
-        esp_mqtt_client_publish(mqttClient, topic, value, 0, 1, 0);
+        esp_mqtt_client_publish(mqttClient, topic, value, 0, 2, 0);
     }
 
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    ESP_LOGI(TAG, "Now: %lu, Timeout: %lu, Count: %d", xTaskGetTickCount() / portTICK_PERIOD_MS, mqttSendTimout, mqttSendCount);
+    while ((mqttSendTimout > (xTaskGetTickCount() / portTICK_PERIOD_MS)) && mqttSendCount < 13)
+    {
+        ESP_LOGI(TAG, "Now: %lu, Timeout: %lu, Count: %d", xTaskGetTickCount() / portTICK_PERIOD_MS, mqttSendTimout, mqttSendCount);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+    ESP_LOGI(TAG, "MQTT send done");
+
+    // vTaskDelay(5000 / portTICK_PERIOD_MS);
     // esp_mqtt_client_disconnect(mqttClient);
     mqtt_stop();
     mqttConnected = false;

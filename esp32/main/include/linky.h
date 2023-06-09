@@ -27,7 +27,7 @@
 
 typedef struct
 {
-    uint32_t ADCO = 0;     // The linky serial number
+    char ADCO[13] = {0};   // The linky serial number
     char OPTARIF[5] = {0}; // The linky tarif option
     uint32_t ISOUSC = 0;   // The linky max current
     uint32_t BASE = 0;     // The linky base index
