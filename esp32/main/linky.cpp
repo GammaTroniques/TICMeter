@@ -131,11 +131,13 @@ char Linky::decode()
     {
         switch (frame[i])
         {
-        case START_OF_GROUP:                       // if the character is a start of group
+        case START_OF_GROUP: // if the character is a start of group
+            ESP_LOGI(LINKY_TAG, "START OF GROUP: %u (%x) --> startOfGroupIndex: %u", i, frame[i], startOfGroupIndex);
             startOfGroup[startOfGroupIndex++] = i; // store the index and increment it
             break;                                 //
         case END_OF_GROUP:                         // if the character is a end of group
-            endOfGroup[endOfGroupIndex++] = i;     // store the index and increment it
+            ESP_LOGI(LINKY_TAG, "END OF GROUP: %u (%x) --> endOfGroupIndex: %u", i, frame[i], endOfGroupIndex);
+            endOfGroup[endOfGroupIndex++] = i; // store the index and increment it
             break;
         default:
             break;
@@ -153,6 +155,11 @@ char Linky::decode()
         // error: number of start and end frames are not equal
         ESP_LOGI(LINKY_TAG, "error: number of start and end frames are not equal: %d %d", startOfGroupIndex, endOfGroupIndex);
         return 0;
+    }
+
+    for (int i = 0; i < startOfGroupIndex; i++) // for each group
+    {
+        ESP_LOGI(LINKY_TAG, "Group %d: %d - %d", i, startOfGroup[i], endOfGroup[i]);
     }
 
     //------------------------------------------
@@ -177,6 +184,8 @@ char Linky::decode()
         memcpy(label, frame + startOfGroup[i] + 1, separatorIndex[0] - startOfGroup[i] - 1);     // copy the label from the group
         memcpy(value, frame + separatorIndex[0] + 1, separatorIndex[1] - separatorIndex[0] - 1); // copy the data from the group
         memcpy(checksum, frame + separatorIndex[1] + 1, endOfGroup[i] - separatorIndex[1] - 1);  // copy the checksum from the group
+
+        ESP_LOGI(LINKY_TAG, "label: %s value: %s checksum: %s", label, value, checksum);
 
         if (this->checksum(label, value) != checksum[0]) // check the checksum with the
         {
