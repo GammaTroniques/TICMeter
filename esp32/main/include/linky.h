@@ -21,7 +21,7 @@
 #define RX_BUF_SIZE 1024 // The size of the UART buffer
 #define BUFFER_SIZE 1024 // The size of the UART buffer
 #define FRAME_SIZE 200   // The size of one frame buffer
-#define GROUP_COUNT 10
+#define GROUP_COUNT 15
 
 #define LINKY_TAG "Linky"
 
