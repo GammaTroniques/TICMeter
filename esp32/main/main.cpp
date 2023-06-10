@@ -46,7 +46,6 @@ RTC_DATA_ATTR uint8_t firstBoot = 1;
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
 TaskHandle_t pushButtonTaskHandle = NULL;
 TaskHandle_t pairingTaskHandle = NULL;
-TaskHandle_t sendDataTaskHandle = NULL;
 #define MAIN_TAG "MAIN"
 
 extern "C" void app_main(void)

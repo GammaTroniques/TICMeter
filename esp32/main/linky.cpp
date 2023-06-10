@@ -59,24 +59,18 @@ void Linky::begin()
  */
 void Linky::read()
 {
-    // char c = 0;                                        // store the current read character
-    // unsigned int index = 0;                            // store the current index of the buffer
-    // memset(buffer, 0, sizeof buffer);                  // clear the buffer
-    // while (Serial2.available() && index < BUFFER_SIZE) // while there is a character available and the buffer is not full
-    // {
-    //     c = Serial2.read();  // read the character from the UART
-    //     buffer[index++] = c; // store the character in the buffer and increment the index
-    // }
-
     uart_flush(UART_NUM_1); // clear the UART buffer
     uint32_t rxBytes = 0;
     uint32_t timeout = xTaskGetTickCount() * portTICK_PERIOD_MS + 5000;
+    memset(buffer, 0, sizeof buffer);
     do
     {
-        rxBytes += uart_read_bytes(UART_NUM_1, buffer + rxBytes, RX_BUF_SIZE - 1, 500 / portTICK_PERIOD_MS);
-        ESP_LOGI(LINKY_TAG, "Read %lu bytes, remaning:%lu '%s'", rxBytes, timeout - xTaskGetTickCount() * portTICK_PERIOD_MS, buffer);
+        rxBytes += uart_read_bytes(UART_NUM_1, buffer + rxBytes, (RX_BUF_SIZE - 1) - rxBytes, 500 / portTICK_PERIOD_MS);
+        ESP_LOGI(LINKY_TAG, "Read %lu bytes, remaning:%lu", rxBytes, timeout - xTaskGetTickCount() * portTICK_PERIOD_MS);
         vTaskDelay(100 / portTICK_PERIOD_MS);
-    } while ((rxBytes < 512) && ((xTaskGetTickCount() * portTICK_PERIOD_MS) < timeout));
+    } while ((rxBytes < RX_BUF_SIZE - 1) && ((xTaskGetTickCount() * portTICK_PERIOD_MS) < timeout));
+
+    ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_INFO);
 }
 
 /**
@@ -95,8 +89,8 @@ char Linky::decode()
     //----------------------------------------------------------
     // Firt step: find the start and end of the frame
     //----------------------------------------------------------
-    unsigned int startOfFrame = UINT_MAX; // store the index of the start frame
-    unsigned int endOfFrame = UINT_MAX;   // store the index of the end frame
+    uint32_t startOfFrame = UINT_MAX;     // store the index of the start frame
+    uint32_t endOfFrame = UINT_MAX;       // store the index of the end frame
     for (int i = 0; i < BUFFER_SIZE; i++) // for each character in the buffer
     {
         if (buffer[i] == START_OF_FRAME) // if the character is a start of frame
@@ -113,15 +107,18 @@ char Linky::decode()
     if (endOfFrame == UINT_MAX || startOfFrame == UINT_MAX || startOfFrame > endOfFrame) // if the start or the end of the frame are not found or if the start is after the end
     {
         // ERROR
-        // ESP_LOGI(LINKY_TAG, "error");
+        ESP_LOGI(LINKY_TAG, "ERROR: no frame found or end of frame before start of frame");
         index = 0; // clear the buffer
         return 0;  // exit the function
     }
 
-    char frame[200] = {0};                                           // store the frame
+    char frame[500] = {0};                                           // store the frame
     memcpy(frame, buffer + startOfFrame, endOfFrame - startOfFrame); // copy only one frame from the buffer
     index = 0;                                                       // clear the buffer
-    ESP_LOGI(LINKY_TAG, "frame: \n%s", frame);
+    ESP_LOGI(LINKY_TAG, "START OF FRAME: %lu (%x)", startOfFrame, buffer[startOfFrame]);
+    ESP_LOGI(LINKY_TAG, "END OF FRAME: %lu (%x)", endOfFrame, buffer[endOfFrame]);
+    ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, frame, endOfFrame - startOfFrame, ESP_LOG_INFO);
+    ESP_LOGI(LINKY_TAG, "PROCESS FRAME: %s", frame);
     //-------------------------------------
     // Second step: Find goups of data in the frame
     //-------------------------------------
@@ -184,7 +181,7 @@ char Linky::decode()
         if (this->checksum(label, value) != checksum[0]) // check the checksum with the
         {
             // error: checksum is not correct, skip the field
-            // Serial.println("ERROR: Checksum KO");
+            ESP_LOGI(LINKY_TAG, "ERROR: %s checksum is not correct (%c != %c)", label, this->checksum(label, value), checksum[0]);
         }
         else
         {
