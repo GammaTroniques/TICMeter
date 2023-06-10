@@ -196,7 +196,6 @@ void pairingButtonTask(void *pvParameters)
                     case MODE_MQTT_HA:
                         ESP_LOGI(TAG, "Web pairing");
                         vTaskSuspend(fetchLinkyDataTaskHandle);
-                        vTaskSuspend(sendDataTaskHandle);
                         if (wifiConnected)
                         {
                             disconectFromWifi();

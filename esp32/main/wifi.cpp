@@ -102,6 +102,11 @@ uint8_t connectToWifi()
 
 void disconectFromWifi()
 {
+    if (!wifiConnected)
+    {
+        ESP_LOGI(TAG, "wifi already not connected");
+        return;
+    }
     ESP_LOGI(TAG, "wifi disconnected");
     esp_wifi_disconnect();
     esp_wifi_stop();
