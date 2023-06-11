@@ -60,7 +60,7 @@ This project as been created with :
 
 | Top Side  | Bottom Side |
 | ------------- | ------------- |
-| ![topside](img/TopSide.png) | ![bottomside](img/BottomSide.png) |
+| ![topside](img/PCB_Top.png) | ![bottomside](img/PCB_Bottom.png) |
 
 ## Installation
 ![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
