@@ -2,7 +2,7 @@
 
 ## About the project
 
-**Linky Teleinfo** is a project to collect data from a **Linky meter** and send them to a **web server**. The system is powered by the pins A of the Linky meter and with the help of a supercapacitor.
+**Linky Teleinfo** is a project to collect data from a **Linky meter** and send them to a **web server** or a *home automation server*. The system is powered by the pins A of the Linky meter and with the help of a supercapacitor.
 
 #### Built With
 
@@ -10,7 +10,7 @@ This project as been created with :
 
 [![Visual Studio Code](https://img.shields.io/badge/Visual%20Studio%20Code-0078d7.svg?style=for-the-badge&logo=visual-studio-code&logoColor=white)](https://code.visualstudio.com/)
 
-- Web interface 
+- Web
 
 [![figma](https://img.shields.io/badge/Figma-F24E1E?style=for-the-badge&logo=figma&logoColor=white)](https://www.figma.com/)
 [![sass](https://img.shields.io/badge/SASS-hotpink.svg?style=for-the-badge&logo=SASS&logoColor=white)](https://sass-lang.com/)
@@ -20,11 +20,20 @@ This project as been created with :
 [![vue-js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)](https://vuejs.org/)
 [![char-js](https://img.shields.io/badge/Chart.js-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white)](https://www.chartjs.org/)
 
-- Web server 
-
 [![mysql](https://img.shields.io/badge/MySQL-005C84?style=for-the-badge&logo=mysql&logoColor=white)](https://www.mysql.com/fr/)
 [![express-js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/fr/)
 [![prisma](https://img.shields.io/badge/Prisma-3982CE?style=for-the-badge&logo=Prisma&logoColor=white)](https://www.prisma.io/)
+
+- MQTT
+
+[![mqtt](https://img.shields.io/badge/mqtt-660066?style=for-the-badge&logo=mqtt&logoColor=white)](https://mqtt.org/)
+[![home-assistant](https://img.shields.io/badge/home%20assistant-%2341BDF5.svg?style=for-the-badge&logo=home-assistant&logoColor=white)](https://www.home-assistant.io/)
+
+- Zigbee / Thread / Matter
+
+[![zigbee](https://img.shields.io/badge/zigbee-EF3453?style=for-the-badge&logo=zigbee&logoColor=white)](https://en.wikipedia.org/wiki/Zigbee)
+[![thread](https://img.shields.io/badge/thread-464646?style=for-the-badge&logo=thread&logoColor=white)](https://en.wikipedia.org/wiki/Thread_(network_protocol))
+[![matter](https://img.shields.io/badge/matter-131927?style=for-the-badge&logo=matter&logoColor=white)](https://en.wikipedia.org/wiki/Matter_(standard))
 
 - Microcontroller programming 
 
@@ -32,6 +41,7 @@ This project as been created with :
 [![espressif](https://img.shields.io/badge/espressif-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com/)
 
 ## Electronic
+![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
 
 [`esp32/src`](/esp32/src) : The code is made to be sent on an ESP32 on an electronic card
 
@@ -40,10 +50,12 @@ This project as been created with :
 | ![](img/PhotoPCB1.png) | ![](img/PhotoPCB2.png) | ![](img/PhotoPCB3.png) | 
 
 #### Schematic
+![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
 
 [`pcb/Schematic_LINKY_ESP32.pdf`](pcb/Schematic_LINKY_ESP32.pdf)
 
 #### PCB
+![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
 
 [`pcb/Gerber_PCB_LINKY_ESP32.zip`](pcb/Gerber_PCB_LINKY_ESP32.zip)
 
@@ -52,6 +64,7 @@ This project as been created with :
 | ![topside](img/TopSide.png) | ![bottomside](img/BottomSide.png) |
 
 ## Installation
+![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
 
 #### ESP32 :satellite:
 Compile and send [`esp32/src`](/esp32/src) files to the ESP32
@@ -96,6 +109,7 @@ Sending data to server... OK: 200
 Disconecting from wifi...OK
 ```
 ## Demo
+![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
 
 WebPage example
 
