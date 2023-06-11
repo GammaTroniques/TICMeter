@@ -45,12 +45,11 @@ This project as been created with :
 
 [`esp32/src`](/esp32/src) : The code is made to be sent on an ESP32 on an electronic card
 
-| PCB without components | PCB with soldered components | PCB connected to the linky meter |
+| Top Side | Bottom Side | PCB in the Linky meter |
 |-----|-----|-----|
 | ![](img/PhotoPCB1.png) | ![](img/PhotoPCB2.png) | ![](img/PhotoPCB3.png) | 
 
 #### Schematic
-![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
 
 [`pcb/Schematic_LINKY_ESP32.pdf`](pcb/Schematic_LINKY_ESP32.pdf)
 
@@ -109,16 +108,23 @@ Sending data to server... OK: 200
 Disconecting from wifi...OK
 ```
 ## Demo
-![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
 
-WebPage example
+#### Web example
 
 ![webpageimg](img/WebPage.png)
+
+#### MQTT example - Home Assistant
+
+![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square)
+
+#### Zigbee example - Home Assistant
+
+![indev](https://shields.io/badge/-in%20development-informational?style=flat-square)
 
 ## Authors
 
 - [@Dorian.local/](https://github.com/xmow49)
-- [@Noah_](https://github.com/NoahJust)
+- [@Noah_](https://github.com/NoahJst)
 
 [![youtube](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](https://www.youtube.com/gammatroniques)
 [![siteweb](https://img.shields.io/badge/GammaTroniques-EE6B00?style=for-the-badge&logoColor=white)](https://gammatroniques.fr/)
