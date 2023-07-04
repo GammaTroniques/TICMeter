@@ -5,13 +5,11 @@
 
 void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int jsonSize)
 {
-    cJSON *jsonObject = cJSON_CreateObject();
+    cJSON *jsonObject = cJSON_CreateObject(); // Create the root object
     cJSON_AddStringToObject(jsonObject, "TOKEN", config.values.web.token);
-
     cJSON_AddNumberToObject(jsonObject, "VCONDO", getVCondo());
-
-    cJSON *dataObject = cJSON_CreateArray();
-    for (int i = 0; i < dataIndex; i++)
+    cJSON *dataObject = cJSON_CreateArray(); // Create the data array
+    for (int i = 0; i < dataIndex; i++)      // Add data to the array
     {
         cJSON *dataItem = cJSON_CreateObject();
         cJSON_AddNumberToObject(dataItem, "DATE", data[i].timestamp);
@@ -20,13 +18,10 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
         cJSON_AddNumberToObject(dataItem, "ISOUSC", data[i].ISOUSC);
         if (data[i].BASE != 0)
             cJSON_AddNumberToObject(dataItem, "BASE", data[i].BASE);
-
         if (data[i].HCHC != 0)
             cJSON_AddNumberToObject(dataItem, "HCHC", data[i].HCHC);
-
         if (data[i].HCHP != 0)
             cJSON_AddNumberToObject(dataItem, "HCHP", data[i].HCHP);
-
         cJSON_AddStringToObject(dataItem, "PTEC", data[i].PTEC);
         cJSON_AddNumberToObject(dataItem, "IINST", data[i].IINST);
         cJSON_AddNumberToObject(dataItem, "IMAX", data[i].IMAX);
@@ -47,9 +42,9 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
         cJSON_AddNullToObject(dataItem, "HCHP");
         cJSON_AddItemToArray(dataObject, dataItem);
     }
-    cJSON_AddItemToObject(jsonObject, "data", dataObject);
-    char *jsonString = cJSON_PrintUnformatted(jsonObject);
-    strncpy(json, jsonString, jsonSize);
-    free(jsonString);
-    cJSON_Delete(jsonObject);
+    cJSON_AddItemToObject(jsonObject, "data", dataObject); // Add the data array to the root object
+    char *jsonString = cJSON_PrintUnformatted(jsonObject); // Convert the json object to string
+    strncpy(json, jsonString, jsonSize);                   // Copy the string to the buffer
+    free(jsonString);                                      // Free the memory
+    cJSON_Delete(jsonObject);                              // Delete the json object
 }

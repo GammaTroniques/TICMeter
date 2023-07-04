@@ -53,7 +53,6 @@ extern "C" void app_main(void)
 
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   initPins();
-  startLedPattern(LED_GREEN, 1, 100, 100);
   rtc_cpu_freq_config_t tmp;
   rtc_clk_cpu_freq_get_config(&tmp);
   ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
@@ -66,8 +65,6 @@ extern "C" void app_main(void)
   ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
   rtc_clk_cpu_freq_get_config(&tmp);
   // ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
-
-  startLedPattern(LED_GREEN, 1, 50, 50);
   xTaskCreate(pairingButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
 
   esp_reset_reason_t reason = esp_reset_reason();
@@ -99,7 +96,7 @@ extern "C" void app_main(void)
     // connect to wifi
     if (connectToWifi())
     {
-      time_t time = getTimestamp();                // get timestamp from ntp server
+      time_t time = getTimestamp();                // gset timestamp from ntp server
       ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
       getConfigFromServer(&config);                // get config from server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -133,7 +130,7 @@ void fetchLinkyDataTask(void *pvParameters)
         (strlen(linky.data.ADCO) == 0))
     {
       ESP_LOGI(MAIN_TAG, "Linky update failed");
-      startLedPattern(LED_RED, 3, 300, 700);
+      startLedPattern(PATTERN_LINKY_ERR);
       linky.index = 0;
       vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
       continue;
@@ -142,7 +139,7 @@ void fetchLinkyDataTask(void *pvParameters)
     linky.print();
     switch (config.values.mode)
     {
-    case MODE_WEB:
+    case MODE_WEB: // send data to web server
       if (dataIndex >= MAX_DATA_INDEX)
       {
         dataIndex = 0;
@@ -158,7 +155,7 @@ void fetchLinkyDataTask(void *pvParameters)
         if (connectToWifi())
         {
           ESP_LOGI(MAIN_TAG, "POST: %s", json);
-          sendToServer(json, &config);
+          sendToServer(json);
         }
         disconectFromWifi();
         dataIndex = 0;
@@ -166,16 +163,20 @@ void fetchLinkyDataTask(void *pvParameters)
       }
       break;
     case MODE_MQTT:
-    case MODE_MQTT_HA:
+    case MODE_MQTT_HA: // send data to mqtt server
       if (connectToWifi())
       {
         ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
-        startLedPattern(LED_GREEN, 1, 100, 100);
         linky.data.timestamp = getTimestamp();
         ESP_LOGI(MAIN_TAG, "Timestamp: %llu", linky.data.timestamp);
         sendToMqtt(&linky.data);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         disconectFromWifi();
+        startLedPattern(PATTERN_SEND_OK);
+      }
+      else
+      {
+        startLedPattern(PATTERN_SEND_ERR);
       }
       sleep(config.values.refreshRate * 1000);
     }

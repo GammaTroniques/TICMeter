@@ -17,11 +17,13 @@ uint8_t wifiConnected = 0;
 static EventGroupHandle_t s_wifi_event_group;
 
 esp_netif_t *sta_netif = NULL;
-
+esp_event_handler_instance_t instance_any_id;
+esp_event_handler_instance_t instance_got_ip;
 uint8_t connectToWifi()
 {
     esp_log_level_set("wifi", ESP_LOG_ERROR);
     esp_log_level_set("wifi_init", ESP_LOG_ERROR);
+    esp_log_level_set("esp_adapter", ESP_LOG_ERROR);
     if (wifiConnected)
         return 1;
 
@@ -30,6 +32,8 @@ uint8_t connectToWifi()
         ESP_LOGI(TAG, "No Wifi SSID or password");
         return 0;
     }
+
+    startLedPattern(PATTERN_WIFI_CONNECTING);
 
     s_retry_num = 0;
     esp_wifi_set_ps(WIFI_PS_NONE);
@@ -43,8 +47,6 @@ uint8_t connectToWifi()
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
                                                         ESP_EVENT_ANY_ID,
                                                         &event_handler,
@@ -107,6 +109,7 @@ void disconectFromWifi()
         ESP_LOGI(TAG, "wifi already not connected");
         return;
     }
+    wifiConnected = 0;
     ESP_LOGI(TAG, "wifi disconnected");
     esp_wifi_disconnect();
     esp_wifi_stop();
@@ -137,20 +140,20 @@ void event_handler(void *arg, esp_event_base_t event_base,
     {
         esp_wifi_connect();
     }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED && wifiConnected == 1)
     {
         if (s_retry_num < ESP_MAXIMUM_RETRY)
         {
             esp_wifi_connect();
             s_retry_num++;
             ESP_LOGI(TAG, "Retry to connect to the AP: %d/%d", s_retry_num, ESP_MAXIMUM_RETRY);
-            startLedPattern(LED_RED, 1, 50, 50);
+            startLedPattern(PATTERN_WIFI_RETRY);
         }
         else
         {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
             ESP_LOGI(TAG, "Connect to the AP fail");
-            startLedPattern(LED_RED, 3, 100, 100);
+            startLedPattern(PATTERN_WIFI_FAILED);
         }
         wifiConnected = 0;
     }
@@ -161,7 +164,6 @@ void event_handler(void *arg, esp_event_base_t event_base,
         s_retry_num = 0;
         wifiConnected = 1;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-        startLedPattern(LED_GREEN, 1, 50, 50);
     }
     else if (event_id == WIFI_EVENT_AP_STACONNECTED)
     {
@@ -268,19 +270,16 @@ esp_err_t send_data_handler(esp_http_client_event_handle_t evt)
     return ESP_OK;
 }
 
-char sendToServer(char *json, Config *config)
+uint8_t sendToServer(const char *json)
 {
-    if (strcmp(config->values.web.host, "") == 0 || strcmp(config->values.web.postUrl, "") == 0)
+    if (strlen(config.values.web.host) == 0 || strlen(config.values.web.postUrl) == 0)
     {
         ESP_LOGE(TAG, "host or postUrl not set");
         return 0;
     }
-
-    ESP_LOGI(TAG, "send data to server");
     char url[100] = {0};
-    createHttpUrl(url, config->values.web.host, config->values.web.postUrl);
-    ESP_LOGI(TAG, "url: %s", url);
-
+    createHttpUrl(url, config.values.web.host, config.values.web.postUrl);
+    // setup post request
     esp_http_client_config_t config_post;
     memset(&config_post, 0, sizeof(config_post));
     config_post.url = url;
@@ -288,38 +287,15 @@ char sendToServer(char *json, Config *config)
     config_post.method = HTTP_METHOD_POST;
     config_post.event_handler = send_data_handler;
 
+    // setup client
     esp_http_client_handle_t client = esp_http_client_init(&config_post);
-
     esp_http_client_set_post_field(client, json, strlen(json));
     esp_http_client_set_header(client, "Content-Type", "application/json");
 
+    // send post request
     esp_http_client_perform(client);
     esp_http_client_cleanup(client);
-
-    // #ifdef DEBUG
-    //   Serial.print("Sending data to server... ");
-    // #endif
-    //   if (WiFi.status() == WL_CONNECTED)
-    //   {
-    //     WiFiClient client;
-    //     HTTPClient http;
-
-    //     char POST_URL[100] = {0};
-    //     createHttpUrl(POST_URL, config.values.web.host, config.values.web.postUrl);
-    //     http.begin(client, POST_URL);
-    //     http.addHeader("Content-Type", "application/json");
-    //     int httpCode = http.POST(json);
-    // #ifdef DEBUG
-    //     Serial.print("OK: ");
-    //     Serial.println(httpCode);
-    // #endif
-    //     http.end();
-    //     return httpCode;
-    //   }
-    // #ifdef DEBUG
-    //   Serial.print("ERROR");
-    // #endif
-    return -1;
+    return 1;
 }
 
 static void wifi_init_softap(void)
