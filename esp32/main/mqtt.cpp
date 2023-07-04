@@ -83,12 +83,12 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         // ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_DISCONNECTED:
-        ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+        // ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
         mqttConnected = 0;
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
-        ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
+        // ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
@@ -125,13 +125,14 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         }
         break;
     default:
-        ESP_LOGI(TAG, "Other event id:%d", event->event_id);
+        // ESP_LOGI(TAG, "Other event id:%d", event->event_id);
         break;
     }
 }
 
 void mqtt_app_start(void)
 {
+    esp_log_level_set("mqtt_client", ESP_LOG_WARN);
     if (wifiConnected == 0)
     {
         ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
@@ -145,10 +146,15 @@ void mqtt_app_start(void)
         return;
     }
 
+    if (strlen(config.values.mqtt.host) == 0 || config.values.mqtt.port == 0)
+    {
+        ESP_LOGI(TAG, "MQTT host not set: MQTT ERROR");
+        return;
+    }
+
     ESP_LOGI(TAG, "STARTING MQTT");
     static char uri[200] = {0};
     sprintf(uri, "mqtt://%s:%d", config.values.mqtt.host, config.values.mqtt.port);
-    ESP_LOGI(TAG, "MQTT URI: %s", uri);
     esp_mqtt_client_config_t mqtt_cfg = {};
     mqtt_cfg.broker.address.uri = uri;
 
@@ -165,12 +171,8 @@ void mqtt_app_start(void)
             char topic[100];
             sprintf(topic, MQTT_ID "/%s", sensors[i].unique_id);
             esp_mqtt_client_subscribe(mqttClient, topic, 1);
-            ESP_LOGI(TAG, "Subscribing to %s", topic);
         }
     }
-
-    // xTaskCreate(Publisher_Task, "Publisher_Task", 1024 * 5, NULL, 5, NULL);
-    ESP_LOGI(TAG, "MQTT Publisher_Task is up and running\n");
 }
 
 void createSensor(char *json, char *config_topic, sensorConfig sensor)
@@ -202,6 +204,7 @@ void createSensor(char *json, char *config_topic, sensorConfig sensor)
         sensorConfig["min"] = 30;
         sensorConfig["max"] = 3600;
         sensorConfig["retain"] = "true";
+        sensorConfig["qos"] = 2;
     }
     else
     {
@@ -324,7 +327,7 @@ void mqtt_stop()
     {
         esp_mqtt_client_disconnect(mqttClient);
         esp_mqtt_client_unregister_event(mqttClient, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler);
-        esp_mqtt_client_stop(mqttClient);
+        // esp_mqtt_client_stop(mqttClient);
         esp_mqtt_client_destroy(mqttClient);
         mqttClient = NULL;
     }

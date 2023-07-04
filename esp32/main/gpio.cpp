@@ -227,35 +227,91 @@ void pairingButtonTask(void *pvParameters)
     }
 }
 
-struct ledBlinkParams_t
+// struct ledBlinkParams_t
+// {
+//     gpio_num_t led;
+//     uint32_t tOn;
+//     uint32_t tOff;
+//     uint32_t count;
+// };
+
+// void startLedBlink(gpio_num_t led, uint8_t count, uint16_t tOn, uint16_t tOff)
+// {
+//     ledBlinkParams_t *params = (ledBlinkParams_t *)malloc(sizeof(ledBlinkParams_t));
+//     params->led = led;
+//     params->tOn = tOn;
+//     params->tOff = tOff;
+//     params->count = count;
+//     xTaskCreate(ledPatternTask, "ledPatternTask", 2048, (void *)params, 5, NULL);
+// }
+
+// void ledBlinkTask(void *pvParameters)
+// {
+//     ledBlinkParams_t *params = (ledBlinkParams_t *)pvParameters;
+//     for (int i = 0; i < params->count; i++)
+//     {
+//         gpio_set_level(params->led, 1);
+//         vTaskDelay(params->tOn / portTICK_PERIOD_MS);
+//         gpio_set_level(params->led, 0);
+//         vTaskDelay(params->tOff / portTICK_PERIOD_MS);
+//     }
+//     gpio_set_level(params->led, 0);
+//     vTaskDelete(NULL);
+//     free(params);
+// }
+
+typedef struct ledPattern_t
 {
     gpio_num_t led;
     uint32_t tOn;
     uint32_t tOff;
-    uint32_t count;
+} ledPattern_t;
+
+#define PATTERN_SIZE 3
+
+const ledPattern_t ledPattern[][PATTERN_SIZE] = {
+    {{LED_GREEN, 100, 100}, {LED_GREEN, 100, 100}, {LED_GREEN, 100, 100}}, // WIFI_CONNECTING
+    {{LED_GREEN, 100, 100}, {LED_GREEN, 100, 100}, {LED_RED, 100, 100}},   // WIFI_RETRY, new try
+    {{LED_GREEN, 100, 100}, {LED_RED, 100, 100}, {LED_RED, 100, 100}},     // WIFI_FAILED
+    {{LED_GREEN, 100, 100}},                                               // LINKY_OK
+    {{LED_RED, 100, 100}},                                                 // LINKY_ERR
+    {{LED_GREEN, 100, 100}, {LED_GREEN, 100, 100}},                        // SEND_OK
+    {{LED_RED, 100, 100}, {LED_RED, 100, 100}},                            // SEND_ERR
+    {{LED_RED, 100, 100}, {LED_RED, 100, 100}, {LED_RED, 100, 100}},       // NO_CONFIG
 };
 
 void ledPatternTask(void *pvParameters)
 {
-    ledBlinkParams_t *params = (ledBlinkParams_t *)pvParameters;
-    for (int i = 0; i < params->count; i++)
+    uint8_t id = (uint32_t)pvParameters;
+    ESP_LOGI(TAG, "ledPatternTask %d apres le check", id);
+    for (int i = 0; i < PATTERN_SIZE; i++)
     {
-        gpio_set_level(params->led, 1);
-        vTaskDelay(params->tOn / portTICK_PERIOD_MS);
-        gpio_set_level(params->led, 0);
-        vTaskDelay(params->tOff / portTICK_PERIOD_MS);
+        if (ledPattern[id][i].led == LED_GREEN)
+        {
+            gpio_set_level(LED_GREEN, 1);
+            gpio_set_level(LED_RED, 0);
+        }
+        else
+        {
+            gpio_set_level(LED_GREEN, 0);
+            gpio_set_level(LED_RED, 1);
+        }
+        vTaskDelay(ledPattern[id][i].tOn / portTICK_PERIOD_MS);
+
+        gpio_set_level(LED_GREEN, 0);
+        gpio_set_level(LED_RED, 0);
+
+        vTaskDelay(ledPattern[id][i].tOff / portTICK_PERIOD_MS);
     }
-    gpio_set_level(params->led, 0);
-    vTaskDelete(NULL);
-    free(params);
+    vTaskDelete(NULL); // Delete this task
 }
 
-void startLedPattern(gpio_num_t led, uint8_t count, uint16_t tOn, uint16_t tOff)
+void startLedPattern(uint8_t pattern)
 {
-    ledBlinkParams_t *params = (ledBlinkParams_t *)malloc(sizeof(ledBlinkParams_t));
-    params->led = led;
-    params->tOn = tOn;
-    params->tOff = tOff;
-    params->count = count;
-    xTaskCreate(ledPatternTask, "ledPatternTask", 2048, (void *)params, 5, NULL);
+    static TaskHandle_t ledPatternTaskHandle = NULL;
+    // if (ledPatternTaskHandle != NULL)
+    // {
+    //     vTaskDelete(ledPatternTaskHandle);
+    // }
+    xTaskCreate(ledPatternTask, "ledPatternTask", 2048, (void *)pattern, 5, &ledPatternTaskHandle);
 }

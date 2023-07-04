@@ -10,11 +10,20 @@
 #define LED_RED (gpio_num_t)7
 #define LED_GREEN (gpio_num_t)11
 
+#define PATTERN_WIFI_CONNECTING 0
+#define PATTERN_WIFI_RETRY 1
+#define PATTERN_WIFI_FAILED 2
+#define PATTERN_LINKY_OK 3
+#define PATTERN_LINKY_ERR 4
+#define PATTERN_SEND_OK 5
+#define PATTERN_SEND_ERR 6
+#define PATTERN_NO_CONFIG 7
+
 void initPins();
 uint8_t getVUSB();
 float getVCondo();
 void led_blink_task(void *pvParameter);
 void pairingButtonTask(void *pvParameter);
-void startLedPattern(gpio_num_t led, uint8_t count, uint16_t tOn, uint16_t tOff);
+void startLedPattern(uint8_t pattern);
 void loop(void *arg);
 #endif

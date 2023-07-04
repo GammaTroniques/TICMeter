@@ -21,7 +21,7 @@ Linky::Linky(char mode, int RX, int TX)
  */
 void Linky::begin()
 {
-    // start the serial communication at 1200 bauds, 7E1, RX on pin RX, TX on pin TX
+    // start the serial communication at 1200 bauds, 7E1
     uart_config_t uart_config = {
         .baud_rate = 1200,
         .data_bits = UART_DATA_7_BITS,
@@ -31,27 +31,10 @@ void Linky::begin()
         .rx_flow_ctrl_thresh = 122,
         .source_clk = UART_SCLK_DEFAULT,
     };
-
-    // We won't use a buffer for sending data.
-    uart_driver_install(UART_NUM_1, RX_BUF_SIZE, 0, 0, NULL, 0);
+    uart_driver_install(UART_NUM_1, RX_BUF_SIZE, 0, 0, NULL, 0); // set UART1 buffer size
     uart_param_config(UART_NUM_1, &uart_config);
     uart_set_pin(UART_NUM_1, UARTTX, UARTRX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 }
-
-// void Linky::rx_task(void *arg)
-// {
-//     const char *RX_TASK_TAG = "RX_TASK";
-//     esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
-//     while (1)
-//     {
-//         const int rxBytes = uart_read_bytes(UART_NUM_1, buffer, RX_BUF_SIZE, 1000 / portTICK_PERIOD_MS);
-//         if (rxBytes > 0)
-//         {
-//             buffer[rxBytes] = 0;
-//             ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, buffer);
-//         }
-//     }
-// }
 
 /**
  * @brief Read the data from the UART and store it in the buffer
@@ -59,18 +42,17 @@ void Linky::begin()
  */
 void Linky::read()
 {
-    uart_flush(UART_NUM_1); // clear the UART buffer
-    uint32_t rxBytes = 0;
-    uint32_t timeout = xTaskGetTickCount() * portTICK_PERIOD_MS + 5000;
-    memset(buffer, 0, sizeof buffer);
+    uart_flush(UART_NUM_1);                                               // clear the UART buffer
+    uint32_t rxBytes = 0;                                                 // store the number of bytes read
+    uint32_t timeout = (xTaskGetTickCount() * portTICK_PERIOD_MS) + 5000; // 5 seconds timeout
+    memset(buffer, 0, sizeof buffer);                                     // clear the buffer
     do
     {
         rxBytes += uart_read_bytes(UART_NUM_1, buffer + rxBytes, (RX_BUF_SIZE - 1) - rxBytes, 500 / portTICK_PERIOD_MS);
-        ESP_LOGI(LINKY_TAG, "Read %lu bytes, remaning:%lu", rxBytes, timeout - xTaskGetTickCount() * portTICK_PERIOD_MS);
+        ESP_LOGI(LINKY_TAG, "Read %lu bytes, remaning:%ld", rxBytes, timeout - xTaskGetTickCount() * portTICK_PERIOD_MS);
         vTaskDelay(100 / portTICK_PERIOD_MS);
-    } while ((rxBytes < RX_BUF_SIZE - 1) && ((xTaskGetTickCount() * portTICK_PERIOD_MS) < timeout));
-
-    ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_INFO);
+    } while ((rxBytes < 256) && ((xTaskGetTickCount() * portTICK_PERIOD_MS) < timeout));
+    // ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_INFO);
 }
 
 /**
@@ -115,10 +97,10 @@ char Linky::decode()
     char frame[500] = {0};                                           // store the frame
     memcpy(frame, buffer + startOfFrame, endOfFrame - startOfFrame); // copy only one frame from the buffer
     index = 0;                                                       // clear the buffer
-    ESP_LOGI(LINKY_TAG, "START OF FRAME: %lu (%x)", startOfFrame, buffer[startOfFrame]);
-    ESP_LOGI(LINKY_TAG, "END OF FRAME: %lu (%x)", endOfFrame, buffer[endOfFrame]);
-    ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, frame, endOfFrame - startOfFrame, ESP_LOG_INFO);
-    ESP_LOGI(LINKY_TAG, "PROCESS FRAME: %s", frame);
+    // ESP_LOGI(LINKY_TAG, "START OF FRAME: %lu (%x)", startOfFrame, buffer[startOfFrame]);
+    // ESP_LOGI(LINKY_TAG, "END OF FRAME: %lu (%x)", endOfFrame, buffer[endOfFrame]);
+    // ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, frame, endOfFrame - startOfFrame, ESP_LOG_INFO);
+    // ESP_LOGI(LINKY_TAG, "PROCESS FRAME: %s", frame);
     //-------------------------------------
     // Second step: Find goups of data in the frame
     //-------------------------------------
@@ -132,11 +114,11 @@ char Linky::decode()
         switch (frame[i])
         {
         case START_OF_GROUP: // if the character is a start of group
-            ESP_LOGI(LINKY_TAG, "START OF GROUP: %u (%x) --> startOfGroupIndex: %u", i, frame[i], startOfGroupIndex);
+            // ESP_LOGI(LINKY_TAG, "START OF GROUP: %u (%x) --> startOfGroupIndex: %u", i, frame[i], startOfGroupIndex);
             startOfGroup[startOfGroupIndex++] = i; // store the index and increment it
             break;                                 //
         case END_OF_GROUP:                         // if the character is a end of group
-            ESP_LOGI(LINKY_TAG, "END OF GROUP: %u (%x) --> endOfGroupIndex: %u", i, frame[i], endOfGroupIndex);
+            // ESP_LOGI(LINKY_TAG, "END OF GROUP: %u (%x) --> endOfGroupIndex: %u", i, frame[i], endOfGroupIndex);
             endOfGroup[endOfGroupIndex++] = i; // store the index and increment it
             break;
         default:
@@ -157,10 +139,10 @@ char Linky::decode()
         return 0;
     }
 
-    for (int i = 0; i < startOfGroupIndex; i++) // for each group
-    {
-        ESP_LOGI(LINKY_TAG, "Group %d: %d - %d", i, startOfGroup[i], endOfGroup[i]);
-    }
+    // for (int i = 0; i < startOfGroupIndex; i++) // for each group
+    // {
+    //     ESP_LOGI(LINKY_TAG, "Group %d: %d - %d", i, startOfGroup[i], endOfGroup[i]);
+    // }
 
     //------------------------------------------
     // Third step: Find fields in each group
@@ -190,6 +172,7 @@ char Linky::decode()
         if (this->checksum(label, value) != checksum[0]) // check the checksum with the
         {
             // error: checksum is not correct, skip the field
+            continue;
             ESP_LOGI(LINKY_TAG, "ERROR: %s checksum is not correct (%c != %c)", label, this->checksum(label, value), checksum[0]);
         }
         else
