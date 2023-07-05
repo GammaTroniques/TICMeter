@@ -29,10 +29,6 @@
 #include "soc/rtc.h"
 #include "esp_pm.h"
 
-const char *ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 0;        // UTC
-const int daylightOffset_sec = 3600; //
-
 Linky linky(MODE_HISTORIQUE, 17, 16);
 Config config;
 
@@ -53,11 +49,11 @@ extern "C" void app_main(void)
 
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   initPins();
+  startLedPattern(PATTERN_START);
   rtc_cpu_freq_config_t tmp;
   rtc_clk_cpu_freq_get_config(&tmp);
   ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
   // rtc_cpu_freq_config_t conf;
-
   esp_pm_config_t pm_config = {
       .max_freq_mhz = 80,
       .min_freq_mhz = 10,
@@ -119,7 +115,6 @@ extern "C" void app_main(void)
   }
   // start linky fetch task
   xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
-  // xTaskCreate(loop, "loop", 10000, NULL, 1, NULL);
 }
 
 void fetchLinkyDataTask(void *pvParameters)
@@ -168,7 +163,6 @@ void fetchLinkyDataTask(void *pvParameters)
       {
         ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
         linky.data.timestamp = getTimestamp();
-        ESP_LOGI(MAIN_TAG, "Timestamp: %llu", linky.data.timestamp);
         sendToMqtt(&linky.data);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         disconectFromWifi();
