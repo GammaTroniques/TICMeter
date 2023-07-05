@@ -167,7 +167,7 @@ char Linky::decode()
         memcpy(value, frame + separatorIndex[0] + 1, separatorIndex[1] - separatorIndex[0] - 1); // copy the data from the group
         memcpy(checksum, frame + separatorIndex[1] + 1, endOfGroup[i] - separatorIndex[1] - 1);  // copy the checksum from the group
 
-        ESP_LOGI(LINKY_TAG, "label: %s value: %s checksum: %s", label, value, checksum);
+        // ESP_LOGI(LINKY_TAG, "label: %s value: %s checksum: %s", label, value, checksum);
 
         if (this->checksum(label, value) != checksum[0]) // check the checksum with the
         {

@@ -2,6 +2,7 @@
 #include "wifi.h"
 #include "mqtt.h"
 #include "main.h"
+#include "gpio.h"
 
 #define TAG "SHELL"
 
@@ -21,6 +22,7 @@ void shellInit()
     esp_console_register_config_command();
     esp_console_register_reset_command();
     esp_console_register_VCondo_command();
+    esp_console_register_test_led_command();
 
     esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
@@ -525,6 +527,42 @@ esp_err_t esp_console_register_VCondo_command()
         .func = &get_VCondo_command};
 
     esp_err_t err = esp_console_cmd_register(&get);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    return ESP_OK;
+}
+
+int test_led_command(int argc, char **argv)
+{
+    if (argc != 2)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    startLedPattern(atoi(argv[1]));
+    ESP_LOGI(TAG, "Test led pattern %d", atoi(argv[1]));
+    return 0;
+}
+
+esp_err_t esp_console_register_test_led_command()
+{
+    static struct
+    {
+        struct arg_int *mode;
+        struct arg_end *end;
+    } set_mode_args;
+
+    set_mode_args.mode = arg_int1(NULL, NULL, "<pattern>", "Pattern to test");
+    set_mode_args.end = arg_end(1);
+
+    esp_console_cmd_t set = {
+        .command = "led-pattern",
+        .help = "Test led pattern\n",
+        .func = &test_led_command,
+        .argtable = &set_mode_args};
+    esp_err_t err = esp_console_cmd_register(&set);
     if (err != ESP_OK)
     {
         return err;

@@ -45,4 +45,5 @@ esp_err_t esp_console_register_config_command();
 int get_VCondo_command(int argc, char **argv);
 esp_err_t esp_console_register_VCondo_command();
 
+esp_err_t esp_console_register_test_led_command();
 #endif

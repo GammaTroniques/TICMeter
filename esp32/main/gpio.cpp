@@ -270,20 +270,20 @@ typedef struct ledPattern_t
 #define PATTERN_SIZE 3
 
 const ledPattern_t ledPattern[][PATTERN_SIZE] = {
-    {{LED_GREEN, 100, 100}, {LED_GREEN, 100, 100}, {LED_GREEN, 100, 100}}, // WIFI_CONNECTING
+    {{LED_GREEN, 100, 900}, {LED_GREEN, 100, 900}, {LED_GREEN, 100, 900}}, // WIFI_CONNECTING
     {{LED_GREEN, 100, 100}, {LED_GREEN, 100, 100}, {LED_RED, 100, 100}},   // WIFI_RETRY, new try
-    {{LED_GREEN, 100, 100}, {LED_RED, 100, 100}, {LED_RED, 100, 100}},     // WIFI_FAILED
-    {{LED_GREEN, 100, 100}},                                               // LINKY_OK
-    {{LED_RED, 100, 100}},                                                 // LINKY_ERR
-    {{LED_GREEN, 100, 100}, {LED_GREEN, 100, 100}},                        // SEND_OK
-    {{LED_RED, 100, 100}, {LED_RED, 100, 100}},                            // SEND_ERR
-    {{LED_RED, 100, 100}, {LED_RED, 100, 100}, {LED_RED, 100, 100}},       // NO_CONFIG
+    {{LED_GREEN, 100, 100}, {LED_RED, 500, 100}, {LED_RED, 500, 100}},     // WIFI_FAILED
+    {{LED_GREEN, 500, 100}},                                               // LINKY_OK
+    {{LED_RED, 1000, 100}},                                                // LINKY_ERR
+    {{LED_GREEN, 200, 100}, {LED_GREEN, 200, 100}},                        // SEND_OK
+    {{LED_RED, 500, 100}, {LED_RED, 500, 100}},                            // SEND_ERR
+    {{LED_RED, 50, 100}, {LED_RED, 50, 100}, {LED_RED, 50, 100}},          // NO_CONFIG
+    {{LED_RED, 50, 0}},                                                    // START
 };
 
 void ledPatternTask(void *pvParameters)
 {
     uint8_t id = (uint32_t)pvParameters;
-    ESP_LOGI(TAG, "ledPatternTask %d apres le check", id);
     for (int i = 0; i < PATTERN_SIZE; i++)
     {
         if (ledPattern[id][i].led == LED_GREEN)

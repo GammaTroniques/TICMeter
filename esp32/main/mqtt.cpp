@@ -9,6 +9,9 @@
 #define TYPE_UINT32 1
 #define TYPE_UINT16 2
 
+#define STATIC_VALUE 0
+#define REAL_TIME 1
+
 #define TYPE_SENSOR "sensor"
 #define TYPE_NUMBER "number"
 
@@ -23,27 +26,31 @@ struct sensorConfig
     char unit_of_measurement[32] = "";
     char value_template[32] = "";
     uint8_t valueType = TYPE_STRING;
-    uint32_t valueLen = 0;
+    uint8_t realTime = 0;
+    char icon[32] = "";
 };
 #define member_size(type, member) sizeof(((type *)0)->member)
 
+// clang-format off
 struct sensorConfig sensors[] = {
-    {TYPE_SENSOR, "Identifiant", "ADCO", "", "", "", TYPE_STRING, member_size(LinkyData, ADCO)},
-    {TYPE_SENSOR, "Option tarifaire", "OPTARIF", "", "", "", TYPE_STRING, member_size(LinkyData, OPTARIF)},
-    {TYPE_SENSOR, "Intensité souscrite", "ISOUSC", "", "", "", TYPE_UINT32, member_size(LinkyData, ISOUSC)},
-    {TYPE_SENSOR, "Index Base", "BASE", "energy", "Wh", "", TYPE_UINT32, member_size(LinkyData, BASE)},
-    {TYPE_SENSOR, "Index Heures Creuses", "HCHC", "energy", "Wh", "", TYPE_UINT32, member_size(LinkyData, HCHC)},
-    {TYPE_SENSOR, "Index Heures Pleines", "HCHP", "energy", "Wh", "", TYPE_UINT32, member_size(LinkyData, HCHP)},
-    {TYPE_SENSOR, "Période tarifaire en cours", "PTEC", "", "", "", TYPE_STRING, member_size(LinkyData, PTEC)},
-    {TYPE_SENSOR, "Intensité instantanée", "IINST", "current", "A", "", TYPE_UINT32, member_size(LinkyData, IINST)},
-    {TYPE_SENSOR, "Intensité maximale", "IMAX", "current", "A", "", TYPE_UINT32, member_size(LinkyData, IMAX)},
-    {TYPE_SENSOR, "Puissance apparente", "PAPP", "power", "VA", "", TYPE_UINT32, member_size(LinkyData, PAPP)},
-    {TYPE_SENSOR, "Horaire HC", "HHPHC", "", "", "", TYPE_STRING, member_size(LinkyData, HHPHC)},
-    {TYPE_SENSOR, "Mot d'état du compteur", "MOTDETAT", "", "", "", TYPE_STRING, member_size(LinkyData, MOTDETAT)},
-    {TYPE_SENSOR, "Timestamp", "Timestamp", "timestamp", "", "{{ as_datetime(value) }}", TYPE_UINT32, member_size(LinkyData, timestamp)},
-    {TYPE_SENSOR, "Refresh Rate", "currentRefreshRate", "", "sec", "", TYPE_UINT16, 0},
-    {TYPE_NUMBER, "Refresh Rate", "RefreshRate", "", "sec", "", TYPE_UINT32, 0},
+    // TYPE          Name                         Unique ID              Device class   Unit        Value template           Value type  Real time
+    {TYPE_SENSOR, "Identifiant",                "ADCO",                 "",             "",     "",                         TYPE_STRING, STATIC_VALUE,   "mdi:card-account-details" },
+    {TYPE_SENSOR, "Option tarifaire",           "OPTARIF",              "",             "",     "",                         TYPE_STRING, STATIC_VALUE,   "mdi:cash-multiple"        },
+    {TYPE_SENSOR, "Intensité souscrite",        "ISOUSC",               "current",      "A",    "",                         TYPE_UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Index Base",                 "BASE",                 "energy",       "Wh",   "",                         TYPE_UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Index Heures Creuses",       "HCHC",                 "energy",       "Wh",   "",                         TYPE_UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Index Heures Pleines",       "HCHP",                 "energy",       "Wh",   "",                         TYPE_UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Période tarifaire en cours", "PTEC",                 "",             "",     "",                         TYPE_STRING, STATIC_VALUE,   "mdi:calendar-clock"       },
+    {TYPE_SENSOR, "Intensité instantanée",      "IINST",                "current",      "A",    "",                         TYPE_UINT32, REAL_TIME,      ""                           },
+    {TYPE_SENSOR, "Intensité maximale",         "IMAX",                 "current",      "A",    "",                         TYPE_UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Puissance apparente",        "PAPP",                 "power",        "VA",   "",                         TYPE_UINT32, REAL_TIME,      ""                           },
+    {TYPE_SENSOR, "Horaire HC",                 "HHPHC",                "",             "",     "",                         TYPE_STRING, STATIC_VALUE,   "mdi:home-clock"           },
+    {TYPE_SENSOR, "Mot d'état du compteur",     "MOTDETAT",             "",             "",     "",                         TYPE_STRING, STATIC_VALUE,   "mdi:state-machine"        },
+    {TYPE_SENSOR, "Timestamp",                  "Timestamp",            "timestamp",    "",     "{{ as_datetime(value) }}", TYPE_UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Refresh Rate",               "currentRefreshRate",   "",             "sec",  "",                         TYPE_UINT16, STATIC_VALUE,   "mdi:refresh"              },
+    {TYPE_NUMBER, "Refresh Rate",               "RefreshRate",          "",             "sec",  "",                         TYPE_UINT32, STATIC_VALUE,   "mdi:refresh"              },
 };
+// clang-format on
 
 uint32_t mqttConnected = 0;
 esp_mqtt_client_handle_t mqttClient = NULL;
@@ -68,7 +75,6 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
     switch ((esp_mqtt_event_id_t)event_id)
     {
     case MQTT_EVENT_CONNECTED:
-        ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
         mqttConnected = 1;
         // msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
         // ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
@@ -151,8 +157,6 @@ void mqtt_app_start(void)
         ESP_LOGI(TAG, "MQTT host not set: MQTT ERROR");
         return;
     }
-
-    ESP_LOGI(TAG, "STARTING MQTT");
     static char uri[200] = {0};
     sprintf(uri, "mqtt://%s:%d", config.values.mqtt.host, config.values.mqtt.port);
     esp_mqtt_client_config_t mqtt_cfg = {};
@@ -222,6 +226,14 @@ void createSensor(char *json, char *config_topic, sensorConfig sensor)
     {
         sensorConfig["value_template"] = sensor.value_template;
     }
+    if (strlen(sensor.icon) > 0)
+    {
+        sensorConfig["icon"] = sensor.icon;
+    }
+    if (sensor.realTime)
+    {
+        sensorConfig["expire_after"] = config.values.refreshRate * 2;
+    }
     sensorConfig["device"] = device;
     serializeJson(sensorConfig, json, 1024);
 }
@@ -259,7 +271,6 @@ void sendToMqtt(LinkyData *linky)
     }
     if (!mqttConnected)
     {
-        ESP_LOGI(TAG, "MQTT not connected");
         mqtt_app_start();
     }
 
