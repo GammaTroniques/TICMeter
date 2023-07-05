@@ -233,7 +233,7 @@ time_t getTimestamp()
         esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
         esp_sntp_setservername(0, "pool.ntp.org");
         esp_sntp_init();
-        time_t timeout = MILLIS + 2000;
+        time_t timeout = MILLIS + 3000;
         time_t noww = 0;
         while (noww < 100000 && (MILLIS < timeout))
         {

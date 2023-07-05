@@ -18,6 +18,7 @@
 #define PATTERN_SEND_OK 5
 #define PATTERN_SEND_ERR 6
 #define PATTERN_NO_CONFIG 7
+#define PATTERN_START 8
 
 void initPins();
 uint8_t getVUSB();
