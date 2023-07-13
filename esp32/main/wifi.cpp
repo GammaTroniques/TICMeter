@@ -4,6 +4,8 @@
 #include "dns_server.h"
 #include "gpio.h"
 #include "driver/gpio.h"
+#include "esp_sntp.h"
+#include "esp_netif_sntp.h"
 
 #define TAG "WIFI"
 
@@ -13,6 +15,9 @@ uint8_t wifiConnected = 0;
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
 #endif
+
+#define NTP_SERVER "pool.ntp.org"
+
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
 
@@ -226,33 +231,69 @@ void getConfigFromServer(Config *config)
     esp_http_client_cleanup(client);
 }
 
+void time_sync_notification_cb(struct timeval *tv)
+{
+    // ESP_LOGI(TAG, "Notification of a time synchronization event");
+}
+
+uint8_t sntpInit()
+{
+
+    // esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    // esp_sntp_setservername(0, "pool.ntp.org");
+    // sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+    // esp_sntp_init();
+    // time_t timeout = MILLIS + 3000;
+    // while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && (MILLIS < timeout))
+    // {
+    //     vTaskDelay(100 / portTICK_PERIOD_MS);
+    // }
+    // if (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET)
+    // {
+    //     ESP_LOGE(TAG, "Failed to get time from NTP server");
+    //     return 0;
+    // }
+
+    return 1;
+}
+
 time_t getTimestamp()
 {
+    static time_t now = 0;
+    struct tm timeinfo;
     if (wifiConnected)
     {
-        esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-        esp_sntp_setservername(0, "pool.ntp.org");
-        esp_sntp_init();
-        time_t timeout = MILLIS + 3000;
-        time_t noww = 0;
-        while (noww < 100000 && (MILLIS < timeout))
+        esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(NTP_SERVER);
+        config.sync_cb = time_sync_notification_cb; // Note: This is only needed if we want
+        esp_netif_sntp_init(&config);
+
+        int retry = 0;
+        sntp_set_sync_status(SNTP_SYNC_STATUS_RESET);
+        esp_err_t err;
+        do
         {
-            time(&noww);
-            vTaskDelay(10 / portTICK_PERIOD_MS);
-        }
-        esp_sntp_stop();
-        if (noww < 100000)
+            err = esp_netif_sntp_sync_wait(2000 / portTICK_PERIOD_MS);
+            // ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d) %d", retry, 3, err);
+        } while (err == ESP_ERR_TIMEOUT && ++retry < 2);
+
+        // time_t now = 0;
+        // time(&now);
+        // time_t timeout = MILLIS + 3000;
+        // while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && (MILLIS < timeout))
+        // {
+        //     vTaskDelay(100 / portTICK_PERIOD_MS);
+        // }
+        if (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET)
         {
-            ESP_LOGE(TAG, "Failed to get time from NTP server");
-            return 0;
+            ESP_LOGE(TAG, "Failed to get time from NTP server, return last time");
         }
-        else
-        {
-            return noww;
-        }
+        esp_netif_sntp_deinit();
     }
-    time_t now;
     time(&now);
+    localtime_r(&now, &timeinfo);
+    char strftime_buf[64];
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
     return now;
 }
 

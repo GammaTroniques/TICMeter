@@ -69,4 +69,6 @@ extern uint8_t wifiConnected;
 void start_captive_portal();
 
 uint8_t reconnectToWifi();
+
+uint8_t sntpInit();
 #endif

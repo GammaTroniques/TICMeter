@@ -287,6 +287,7 @@ void sendToMqtt(LinkyData *linky)
 
     mqttSendTimout = MILLIS + 10000;
     mqttSendCount = 0;
+    linky->timestamp = getTimestamp();
     const void *values[] = {&linky->ADCO, &linky->OPTARIF, &linky->ISOUSC, &linky->BASE, &linky->HCHC, &linky->HCHP, &linky->PTEC, &linky->IINST, &linky->IMAX, &linky->PAPP, &linky->HHPHC, &linky->MOTDETAT, &linky->timestamp, &config.values.refreshRate};
 
     for (int i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++)
@@ -312,15 +313,14 @@ void sendToMqtt(LinkyData *linky)
         }
         esp_mqtt_client_publish(mqttClient, topic, value, 0, 2, 0);
     }
-    getTimestamp(); // update timestamp
 
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    // vTaskDelay(5000 / portTICK_PERIOD_MS);
 
-    while ((mqttSendTimout > MILLIS) && mqttSendCount < 13)
+    while ((mqttSendTimout > MILLIS) && mqttSendCount < sizeof(sensors) / sizeof(sensors[0]))
     {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
-    if (mqttSendCount < 13)
+    if (mqttSendCount < sizeof(sensors) / sizeof(sensors[0]))
     {
         ESP_LOGI(TAG, "MQTT send timeout");
     }

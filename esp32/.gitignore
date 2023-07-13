@@ -1,2 +1,3 @@
 build/
 managed_components/*
+sendBin.bat
