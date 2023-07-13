@@ -92,9 +92,8 @@ extern "C" void app_main(void)
     // connect to wifi
     if (connectToWifi())
     {
-      time_t time = getTimestamp();                // gset timestamp from ntp server
-      ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
-      getConfigFromServer(&config);                // get config from server
+      getTimestamp();               // get timestamp from ntp server
+      getConfigFromServer(&config); // get config from server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       disconectFromWifi();
     }
@@ -104,8 +103,7 @@ extern "C" void app_main(void)
     // connect to wifi
     if (connectToWifi())
     {
-      time_t time = getTimestamp();                // get timestamp from ntp server
-      ESP_LOGI(MAIN_TAG, "Timestamp: %lld", time); // print timestamp
+      getTimestamp(); // get timestamp from ntp server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       disconectFromWifi();
     }
@@ -162,9 +160,7 @@ void fetchLinkyDataTask(void *pvParameters)
       if (connectToWifi())
       {
         ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
-        linky.data.timestamp = getTimestamp();
         sendToMqtt(&linky.data);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
         disconectFromWifi();
         startLedPattern(PATTERN_SEND_OK);
       }
@@ -172,9 +168,8 @@ void fetchLinkyDataTask(void *pvParameters)
       {
         startLedPattern(PATTERN_SEND_ERR);
       }
-      sleep(config.values.refreshRate * 1000);
     }
-    vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
+    vTaskDelay((abs(config.values.refreshRate - 5) * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
   }
 }
 
