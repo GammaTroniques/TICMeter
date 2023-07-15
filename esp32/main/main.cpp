@@ -36,12 +36,13 @@ Config config;
 // ------------Global variables stored in RTC memory to keep their values after deep sleep
 RTC_DATA_ATTR LinkyData dataArray[MAX_DATA_INDEX];
 RTC_DATA_ATTR unsigned int dataIndex = 0;
-RTC_DATA_ATTR uint8_t firstBoot = 1;
+// RTC_DATA_ATTR uint8_t firstBoot = 1;
 // ---------------------------------------------------------------------------------------
 
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
 TaskHandle_t pushButtonTaskHandle = NULL;
 TaskHandle_t pairingTaskHandle = NULL;
+
 #define MAIN_TAG "MAIN"
 
 extern "C" void app_main(void)
@@ -50,6 +51,7 @@ extern "C" void app_main(void)
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   initPins();
   startLedPattern(PATTERN_START);
+
   rtc_cpu_freq_config_t tmp;
   rtc_clk_cpu_freq_get_config(&tmp);
   ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
@@ -61,19 +63,26 @@ extern "C" void app_main(void)
   ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
   rtc_clk_cpu_freq_get_config(&tmp);
   // ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
+
   xTaskCreate(pairingButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
 
-  esp_reset_reason_t reason = esp_reset_reason();
-  if ((reason != ESP_RST_DEEPSLEEP) && (reason != ESP_RST_SW))
-  {
-    ESP_LOGI(MAIN_TAG, "Not deep sleep or software reset, init RTC memory");
-    // init RTC memory if not deep sleep or software reset
-    memset(&dataArray, 0, sizeof(dataArray));
-    dataIndex = 0;
-    firstBoot = 1;
-  }
+  // esp_reset_reason_t reason = esp_reset_reason();
+  // if ((reason != ESP_RST_DEEPSLEEP) && (reason != ESP_RST_SW))
+  // {
+  //   ESP_LOGI(MAIN_TAG, "Not deep sleep or software reset, init RTC memory");
+  //   // init RTC memory if not deep sleep or software reset
+  //   memset(&dataArray, 0, sizeof(dataArray));
+  //   dataIndex = 0;
+  //   firstBoot = 1;
+  // }
 
   config.begin();
+
+  if (config.verify())
+  {
+    xTaskCreate(noConfigLedTask, "noConfigLedTask", 1024, NULL, 1, NULL); // start no config led task
+  }
+
   linky.begin();
   config.values.refreshRate = 30;
   // ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
@@ -112,7 +121,7 @@ extern "C" void app_main(void)
     break;
   }
   // start linky fetch task
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 }
 
 void fetchLinkyDataTask(void *pvParameters)

@@ -25,8 +25,10 @@
 #define MODE_MQTT_HA 2
 #define MODE_ZIGBEE 3
 #define MODE_MATTER 4
+#define MODE_TUYA 5
 
 extern const char *MODES[];
+extern const char *TUYA_SERVERS[];
 
 #define CONNECTION_TYPE_WIFI 0
 #define CONNECTION_TYPE_ZIGBEE 1
@@ -51,6 +53,24 @@ struct mqttConfig_t
     char topic[100] = "";
 };
 
+enum tuya_server
+{
+    TUYA_REGION_CN = 0,
+    TUYA_REGION_EU = 1,
+    TUYA_REGION_US_W = 2,
+    TUYA_REGION_US_E = 3,
+    TUYA_REGION_EU_W = 4,
+    TUYA_REGION_IN = 5
+};
+
+struct tuyaConfig_t
+{
+    char productId[16] = "";
+    char deviceId[22] = "";
+    char deviceSecret[16] = "";
+    enum tuya_server server = TUYA_REGION_CN;
+};
+
 struct config_t
 {
     uint16_t magic = 0x1234; // magic number to check if a config is stored in EEPROM
@@ -61,6 +81,7 @@ struct config_t
     uint8_t mode = MODE_WEB;
     webConfig_t web;
     mqttConfig_t mqtt;
+    tuyaConfig_t tuya;
 
     char version[10] = "";
     uint16_t refreshRate = 60;
@@ -77,6 +98,7 @@ public:
     int8_t begin();
     int8_t read();
     int8_t write();
+    uint8_t verify();
     int16_t calculateChecksum();
     config_t values;
 

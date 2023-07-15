@@ -3,6 +3,7 @@
 #include "mqtt.h"
 #include "main.h"
 #include "gpio.h"
+#include "ota.h"
 
 #define TAG "SHELL"
 
@@ -23,6 +24,7 @@ void shellInit()
     esp_console_register_reset_command();
     esp_console_register_VCondo_command();
     esp_console_register_test_led_command();
+    esp_console_register_ota_check_command();
 
     esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
@@ -563,6 +565,31 @@ esp_err_t esp_console_register_test_led_command()
         .func = &test_led_command,
         .argtable = &set_mode_args};
     esp_err_t err = esp_console_cmd_register(&set);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    return ESP_OK;
+}
+
+int ota_check_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    check_ota_update();
+    return 0;
+}
+esp_err_t esp_console_register_ota_check_command()
+{
+    esp_console_cmd_t get = {
+        .command = "ota-check",
+        .help = "Check for ota update",
+        .func = &ota_check_command};
+
+    esp_err_t err = esp_console_cmd_register(&get);
     if (err != ESP_OK)
     {
         return err;

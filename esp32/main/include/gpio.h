@@ -27,4 +27,5 @@ void led_blink_task(void *pvParameter);
 void pairingButtonTask(void *pvParameter);
 void startLedPattern(uint8_t pattern);
 void loop(void *arg);
+void noConfigLedTask(void *pvParameters);
 #endif
