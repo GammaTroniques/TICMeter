@@ -315,3 +315,12 @@ void startLedPattern(uint8_t pattern)
     // }
     xTaskCreate(ledPatternTask, "ledPatternTask", 2048, (void *)pattern, 5, &ledPatternTaskHandle);
 }
+
+void noConfigLedTask(void *pvParameters)
+{
+    while (1)
+    {
+        startLedPattern(PATTERN_NO_CONFIG);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+    }
+}

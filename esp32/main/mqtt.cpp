@@ -3,6 +3,7 @@
 #include "wifi.h"
 #include <ArduinoJson.h>
 #include "esp_ota_ops.h"
+#include "mbedtls/md.h"
 #define TAG "MQTT"
 
 #define TYPE_STRING 0
@@ -109,8 +110,12 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         memcpy(topic, event->topic, event->topic_len); // copy to not const string (add \0)
         if (strcmp(topic, MQTT_ID "/RefreshRate") == 0)
         {
-            config.values.refreshRate = atoi(event->data);
-            ESP_LOGI(TAG, "New RefreshRate = %d", config.values.refreshRate);
+            uint16_t refreshRate = atoi(event->data);
+            if (config.values.refreshRate != refreshRate)
+            {
+                config.values.refreshRate = refreshRate;
+                ESP_LOGI(TAG, "New RefreshRate = %d", config.values.refreshRate);
+            }
         }
         else
         {
@@ -157,24 +162,73 @@ void mqtt_app_start(void)
         ESP_LOGI(TAG, "MQTT host not set: MQTT ERROR");
         return;
     }
-    static char uri[200] = {0};
-    sprintf(uri, "mqtt://%s:%d", config.values.mqtt.host, config.values.mqtt.port);
+    char uri[200];
     esp_mqtt_client_config_t mqtt_cfg = {};
+
+    if (config.values.mode == MODE_TUYA)
+    {
+        // TUYA MQTT
+        char client_id[50];
+        sprintf(client_id, "tuya_%s", config.values.tuya.deviceId);
+        mqtt_cfg.credentials.client_id = client_id;
+        sprintf(uri, "mqtt://%s:%d", TUYA_SERVERS[config.values.tuya.server], 8883);
+
+        time_t now = getTimestamp();
+
+        char username[100];
+
+        char password[100];
+        sprintf(username, "%s|signMethod=hmacSha256,timestamp=%llu,secureMode=1,accessType=1", config.values.tuya.deviceId, now);
+        sprintf(password, "deviceId=%s,timestamp=%llu,secureMode=1,accessType=1", config.values.tuya.deviceId, now);
+
+        unsigned char hash[32];
+        mbedtls_md_context_t ctx;
+        mbedtls_md_type_t md_type = MBEDTLS_MD_SHA256;
+        mbedtls_md_init(&ctx);
+        mbedtls_md_setup(&ctx, mbedtls_md_info_from_type(md_type), 1);
+        mbedtls_md_hmac_starts(&ctx, (const unsigned char *)config.values.tuya.deviceSecret, strlen(config.values.tuya.deviceSecret));
+        mbedtls_md_hmac_update(&ctx, (const unsigned char *)password, strlen(password));
+        mbedtls_md_hmac_finish(&ctx, hash);
+        mbedtls_md_free(&ctx);
+
+        char strHash[65];
+        for (int i = 0; i < sizeof(hash); i++)
+        {
+            sprintf(strHash + i * 2, "%02x", hash[i]);
+        }
+        strHash[64] = '\0';
+
+        mqtt_cfg.credentials.username = username;
+        mqtt_cfg.credentials.authentication.password = strHash;
+        mqtt_cfg.broker.address.transport = MQTT_TRANSPORT_OVER_SSL;
+        // mqtt_cfg.credentials.authentication.certificate
+    }
+    else
+    {
+        // HOME ASSISTANT / MQTT
+        sprintf(uri, "mqtt://%s:%d", config.values.mqtt.host, config.values.mqtt.port);
+        mqtt_cfg.credentials.username = config.values.mqtt.username;
+        mqtt_cfg.credentials.authentication.password = config.values.mqtt.password;
+    }
+
     mqtt_cfg.broker.address.uri = uri;
 
-    mqtt_cfg.credentials.username = config.values.mqtt.username;
-    mqtt_cfg.credentials.authentication.password = config.values.mqtt.password;
     mqttClient = esp_mqtt_client_init(&mqtt_cfg);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
     esp_mqtt_client_register_event(mqttClient, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     esp_mqtt_client_start(mqttClient);
-    for (int i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++)
+
+    if (config.values.mode != MODE_TUYA)
     {
-        if (strcmp(sensors[i].type, TYPE_NUMBER) == 0)
+        // HOME ASSISTANT / MQTT
+        for (int i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++)
         {
-            char topic[100];
-            sprintf(topic, MQTT_ID "/%s", sensors[i].unique_id);
-            esp_mqtt_client_subscribe(mqttClient, topic, 1);
+            if (strcmp(sensors[i].type, TYPE_NUMBER) == 0)
+            {
+                char topic[100];
+                sprintf(topic, MQTT_ID "/%s", sensors[i].unique_id);
+                esp_mqtt_client_subscribe(mqttClient, topic, 1);
+            }
         }
     }
 }
@@ -262,18 +316,8 @@ void setupHomeAssistantDiscovery()
     ESP_LOGI(TAG, "Home Assistant Discovery done");
 }
 
-void sendToMqtt(LinkyData *linky)
+void sendHAMqtt(LinkyData *linky)
 {
-    if (wifiConnected == 0)
-    {
-        ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
-        return;
-    }
-    if (!mqttConnected)
-    {
-        mqtt_app_start();
-    }
-
     static uint8_t HAConfigured = 0;
     vTaskDelay(500 / portTICK_PERIOD_MS);
     if (config.values.mode == MODE_MQTT_HA && HAConfigured == 0)
@@ -290,7 +334,8 @@ void sendToMqtt(LinkyData *linky)
     linky->timestamp = getTimestamp();
     const void *values[] = {&linky->ADCO, &linky->OPTARIF, &linky->ISOUSC, &linky->BASE, &linky->HCHC, &linky->HCHP, &linky->PTEC, &linky->IINST, &linky->IMAX, &linky->PAPP, &linky->HHPHC, &linky->MOTDETAT, &linky->timestamp, &config.values.refreshRate};
 
-    for (int i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++)
+    const uint8_t sensorsCount = sizeof(values) / sizeof(values[0]);
+    for (int i = 0; i < sensorsCount; i++)
     {
         if (strcmp(sensors[i].type, TYPE_NUMBER) == 0)
         {
@@ -315,19 +360,50 @@ void sendToMqtt(LinkyData *linky)
     }
 
     // vTaskDelay(5000 / portTICK_PERIOD_MS);
-
-    while ((mqttSendTimout > MILLIS) && mqttSendCount < sizeof(sensors) / sizeof(sensors[0]))
+    while ((mqttSendTimout > MILLIS) && mqttSendCount < sensorsCount)
     {
         vTaskDelay(100 / portTICK_PERIOD_MS);
+        // ESP_LOGI(TAG, "MQTT send %d/%d", mqttSendCount, sensorsCount);
     }
-    if (mqttSendCount < sizeof(sensors) / sizeof(sensors[0]))
+    if (mqttSendCount < sensorsCount)
     {
-        ESP_LOGI(TAG, "MQTT send timeout");
+        ESP_LOGE(TAG, "Send Timeout");
     }
     else
     {
-        ESP_LOGI(TAG, "MQTT send done");
+        ESP_LOGI(TAG, "Send Done");
     }
+}
+
+void sendTuyaMqtt(LinkyData *linky)
+{
+}
+
+void sendToMqtt(LinkyData *linky)
+{
+    if (wifiConnected == 0)
+    {
+        ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
+        return;
+    }
+    if (!mqttConnected)
+    {
+        mqtt_app_start();
+    }
+
+    switch (config.values.mode)
+    {
+    case MODE_MQTT:
+    case MODE_MQTT_HA:
+        sendHAMqtt(linky);
+        break;
+    case MODE_TUYA:
+        sendTuyaMqtt(linky);
+        return;
+    default:
+        return;
+    }
+
     mqtt_stop();
     mqttConnected = false;
 }
