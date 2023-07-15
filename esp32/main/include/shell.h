@@ -46,4 +46,8 @@ int get_VCondo_command(int argc, char **argv);
 esp_err_t esp_console_register_VCondo_command();
 
 esp_err_t esp_console_register_test_led_command();
+
+int ota_check_command(int argc, char **argv);
+esp_err_t esp_console_register_ota_check_command();
+
 #endif

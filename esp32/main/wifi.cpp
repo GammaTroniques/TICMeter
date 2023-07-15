@@ -29,6 +29,10 @@ uint8_t connectToWifi()
     esp_log_level_set("wifi", ESP_LOG_ERROR);
     esp_log_level_set("wifi_init", ESP_LOG_ERROR);
     esp_log_level_set("esp_adapter", ESP_LOG_ERROR);
+    esp_log_level_set("pp", ESP_LOG_ERROR);
+    esp_log_level_set("net80211", ESP_LOG_ERROR);
+    esp_log_level_set("esp_netif_handlers", ESP_LOG_ERROR);
+    esp_log_level_set("phy_version", ESP_LOG_ERROR);
     if (wifiConnected)
         return 1;
 
@@ -76,16 +80,14 @@ uint8_t connectToWifi()
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "wifi_init_sta finished.");
-
     /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
      * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
-    ESP_LOGI(TAG, "Waiting for wifi");
+    ESP_LOGI(TAG, "Connecting to %s", (char *)wifi_config.sta.ssid);
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
                                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
                                            pdFALSE,
                                            pdFALSE,
-                                           100000 / portTICK_PERIOD_MS);
+                                           5000 / portTICK_PERIOD_MS);
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
@@ -102,6 +104,7 @@ uint8_t connectToWifi()
     else
     {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
+        disconectFromWifi();
         return 0;
     }
     return 1;
@@ -115,7 +118,7 @@ void disconectFromWifi()
         return;
     }
     wifiConnected = 0;
-    ESP_LOGI(TAG, "wifi disconnected");
+    ESP_LOGI(TAG, "Disconnected");
     esp_wifi_disconnect();
     esp_wifi_stop();
     esp_wifi_deinit();
@@ -165,7 +168,7 @@ void event_handler(void *arg, esp_event_base_t event_base,
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        ESP_LOGI(TAG, "IP:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         wifiConnected = 1;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);

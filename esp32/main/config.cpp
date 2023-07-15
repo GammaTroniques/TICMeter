@@ -1,7 +1,7 @@
 #include "config.h"
 
 const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER"};
-
+const char *TUYA_SERVERS[] = {"m1.tuyacn.com", "m1.tuyaeu.com", "m1.tuyaus.com", "m1-ueaz.tuyaus.com", "m1-weaz.tuyaeu.com", "m1.tuyain.com"};
 Config::Config()
 {
 }
@@ -91,5 +91,53 @@ int8_t Config::write()
         return 1;
     }
     ESP_LOGI(NVS_TAG, "Config written");
+    return 0;
+}
+
+uint8_t Config::verify()
+{
+    switch (config.values.mode)
+    {
+    case MODE_WEB:
+    case MODE_MQTT:
+    case MODE_MQTT_HA:
+    case MODE_TUYA:
+        if (strlen(config.values.ssid) == 0 || strlen(config.values.password) == 0)
+        {
+            // No SSID or password
+            return 1;
+        }
+        break;
+    default:
+        break;
+    }
+
+    switch (config.values.mode)
+    {
+    case MODE_WEB:
+        if (strlen(config.values.web.host) == 0 || strlen(config.values.web.token) == 0 || strlen(config.values.web.postUrl) == 0 || strlen(config.values.web.configUrl) == 0)
+        {
+            // No web host, token, postUrl or configUrl
+            return 1;
+        }
+        break;
+    case MODE_MQTT:
+    case MODE_MQTT_HA:
+        if (strlen(config.values.mqtt.host) == 0 || strlen(config.values.mqtt.username) == 0 || strlen(config.values.mqtt.password) == 0 || strlen(config.values.mqtt.topic) == 0)
+        {
+            // No MQTT host, username, password or topic
+            return 1;
+        }
+        break;
+
+    case MODE_TUYA:
+        if (strlen(config.values.tuya.deviceId) == 0 || strlen(config.values.tuya.deviceSecret) == 0 || strlen(config.values.tuya.productId) == 0)
+        {
+            // No Tuya key, id, version or region
+            return 1;
+        }
+        break;
+    }
+
     return 0;
 }
