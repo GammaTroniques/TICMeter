@@ -50,4 +50,8 @@ esp_err_t esp_console_register_test_led_command();
 int ota_check_command(int argc, char **argv);
 esp_err_t esp_console_register_ota_check_command();
 
+int set_tuya_command(int argc, char **argv);
+int get_tuya_command(int argc, char **argv);
+esp_err_t esp_console_register_tuya_command();
+
 #endif
