@@ -33,6 +33,7 @@ uint8_t connectToWifi()
     esp_log_level_set("net80211", ESP_LOG_ERROR);
     esp_log_level_set("esp_netif_handlers", ESP_LOG_ERROR);
     esp_log_level_set("phy_version", ESP_LOG_ERROR);
+
     if (wifiConnected)
         return 1;
 
@@ -42,15 +43,35 @@ uint8_t connectToWifi()
         return 0;
     }
 
+    setCPUFreq(80);
     startLedPattern(PATTERN_WIFI_CONNECTING);
 
     s_retry_num = 0;
-    esp_wifi_set_ps(WIFI_PS_NONE);
+    esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
 
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+retry:
+    // ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_err_t err = esp_event_loop_create_default();
+    if (err != ESP_OK)
+    {
+        if (err == ESP_ERR_INVALID_STATE)
+        {
+            ESP_LOGI(TAG, "esp_event_loop_delete_default");
+            ESP_ERROR_CHECK(esp_event_loop_delete_default());
+            goto retry;
+        }
+        else
+        {
+            ESP_LOGE(TAG, "esp_event_loop_create_default failed with %d", err);
+            disconectFromWifi();
+            return 0;
+        }
+        return 0;
+    }
+
     sta_netif = esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -135,6 +156,7 @@ void disconectFromWifi()
     esp_netif_destroy(sta_netif);
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
     // change cpu to 10Mhz
+    setCPUFreq(10);
 
     // ESP_ERROR_CHECK(esp_wifi_stop());
 }
