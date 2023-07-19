@@ -140,7 +140,35 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         break;
     }
 }
-
+const char *tuyaMqttCert =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIE0DCCA7igAwIBAgIBBzANBgkqhkiG9w0BAQsFADCBgzELMAkGA1UEBhMCVVMx\n"
+    "EDAOBgNVBAgTB0FyaXpvbmExEzARBgNVBAcTClNjb3R0c2RhbGUxGjAYBgNVBAoT\n"
+    "EUdvRGFkZHkuY29tLCBJbmMuMTEwLwYDVQQDEyhHbyBEYWRkeSBSb290IENlcnRp\n"
+    "ZmljYXRlIEF1dGhvcml0eSAtIEcyMB4XDTExMDUwMzA3MDAwMFoXDTMxMDUwMzA3\n"
+    "MDAwMFowgbQxCzAJBgNVBAYTAlVTMRAwDgYDVQQIEwdBcml6b25hMRMwEQYDVQQH\n"
+    "EwpTY290dHNkYWxlMRowGAYDVQQKExFHb0RhZGR5LmNvbSwgSW5jLjEtMCsGA1UE\n"
+    "CxMkaHR0cDovL2NlcnRzLmdvZGFkZHkuY29tL3JlcG9zaXRvcnkvMTMwMQYDVQQD\n"
+    "EypHbyBEYWRkeSBTZWN1cmUgQ2VydGlmaWNhdGUgQXV0aG9yaXR5IC0gRzIwggEi\n"
+    "MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC54MsQ1K92vdSTYuswZLiBCGzD\n"
+    "BNliF44v/z5lz4/OYuY8UhzaFkVLVat4a2ODYpDOD2lsmcgaFItMzEUz6ojcnqOv\n"
+    "K/6AYZ15V8TPLvQ/MDxdR/yaFrzDN5ZBUY4RS1T4KL7QjL7wMDge87Am+GZHY23e\n"
+    "cSZHjzhHU9FGHbTj3ADqRay9vHHZqm8A29vNMDp5T19MR/gd71vCxJ1gO7GyQ5HY\n"
+    "pDNO6rPWJ0+tJYqlxvTV0KaudAVkV4i1RFXULSo6Pvi4vekyCgKUZMQWOlDxSq7n\n"
+    "eTOvDCAHf+jfBDnCaQJsY1L6d8EbyHSHyLmTGFBUNUtpTrw700kuH9zB0lL7AgMB\n"
+    "AAGjggEaMIIBFjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjAdBgNV\n"
+    "HQ4EFgQUQMK9J47MNIMwojPX+2yz8LQsgM4wHwYDVR0jBBgwFoAUOpqFBxBnKLbv\n"
+    "9r0FQW4gwZTaD94wNAYIKwYBBQUHAQEEKDAmMCQGCCsGAQUFBzABhhhodHRwOi8v\n"
+    "b2NzcC5nb2RhZGR5LmNvbS8wNQYDVR0fBC4wLDAqoCigJoYkaHR0cDovL2NybC5n\n"
+    "b2RhZGR5LmNvbS9nZHJvb3QtZzIuY3JsMEYGA1UdIAQ/MD0wOwYEVR0gADAzMDEG\n"
+    "CCsGAQUFBwIBFiVodHRwczovL2NlcnRzLmdvZGFkZHkuY29tL3JlcG9zaXRvcnkv\n"
+    "MA0GCSqGSIb3DQEBCwUAA4IBAQAIfmyTEMg4uJapkEv/oV9PBO9sPpyIBslQj6Zz\n"
+    "91cxG7685C/b+LrTW+C05+Z5Yg4MotdqY3MxtfWoSKQ7CC2iXZDXtHwlTxFWMMS2\n"
+    "RJ17LJ3lXubvDGGqv+QqG+6EnriDfcFDzkSnE3ANkR/0yBOtg2DZ2HKocyQetawi\n"
+    "DsoXiWJYRBuriSUBAA/NxBti21G00w9RKpv0vHP8ds42pM3Z2Czqrpv1KrKQ0U11\n"
+    "GIo/ikGQI31bS/6kA1ibRrLDYGCD+H1QQc7CoZDDu+8CL9IVVO5EFdkKrqeKM+2x\n"
+    "LXY2JtwE65/3YR8V3Idv7kaWKK2hJn0KCacuBKONvPi8BDAB\n"
+    "-----END CERTIFICATE-----\n";
 void mqtt_app_start(void)
 {
     esp_log_level_set("mqtt_client", ESP_LOG_WARN);
@@ -156,28 +184,22 @@ void mqtt_app_start(void)
         esp_mqtt_client_reconnect(mqttClient);
         return;
     }
-
-    if (strlen(config.values.mqtt.host) == 0 || config.values.mqtt.port == 0)
-    {
-        ESP_LOGI(TAG, "MQTT host not set: MQTT ERROR");
-        return;
-    }
     char uri[200];
     esp_mqtt_client_config_t mqtt_cfg = {};
 
     if (config.values.mode == MODE_TUYA)
     {
         // TUYA MQTT
-        char client_id[50];
-        sprintf(client_id, "tuya_%s", config.values.tuya.deviceId);
+        char client_id[100];
+        sprintf(client_id, "tuyalink_%s", config.values.tuya.deviceId);
         mqtt_cfg.credentials.client_id = client_id;
-        sprintf(uri, "mqtt://%s:%d", TUYA_SERVERS[config.values.tuya.server], 8883);
+        sprintf(uri, "mqtts://%s:%d", TUYA_SERVERS[config.values.tuya.server], 8883);
 
         time_t now = getTimestamp();
 
-        char username[100];
+        char username[150];
 
-        char password[100];
+        char password[150];
         sprintf(username, "%s|signMethod=hmacSha256,timestamp=%llu,secureMode=1,accessType=1", config.values.tuya.deviceId, now);
         sprintf(password, "deviceId=%s,timestamp=%llu,secureMode=1,accessType=1", config.values.tuya.deviceId, now);
 
@@ -200,8 +222,13 @@ void mqtt_app_start(void)
 
         mqtt_cfg.credentials.username = username;
         mqtt_cfg.credentials.authentication.password = strHash;
-        mqtt_cfg.broker.address.transport = MQTT_TRANSPORT_OVER_SSL;
-        // mqtt_cfg.credentials.authentication.certificate
+        mqtt_cfg.broker.verification.certificate = (const char *)tuyaMqttCert;
+
+        ESP_LOGI(TAG, "TUYA MQTT: %s", uri);
+        ESP_LOGI(TAG, "Username: %s", username);
+        ESP_LOGI(TAG, "pw: %s", password);
+        ESP_LOGI(TAG, "pw: %s", strHash);
+        ESP_LOGI(TAG, "client_id: %s", client_id);
     }
     else
     {
@@ -377,6 +404,24 @@ void sendHAMqtt(LinkyData *linky)
 
 void sendTuyaMqtt(LinkyData *linky)
 {
+    time_t now = getTimestamp();
+    DynamicJsonDocument json(1024);
+
+    json["msgId"] = "1";
+    json["time"] = now;
+    json["sys"]["ack"] = 1;
+    json["data"]["HCHP"]["value"] = linky->BASE;
+    json["data"]["HCHP"]["time"] = now;
+    json["data"]["HCHC"]["value"] = linky->HCHC;
+    json["data"]["HCHC"]["time"] = now;
+
+    char mqttBuffer[1024];
+    serializeJson(json, mqttBuffer, 1024);
+
+    char topic[100];
+    sprintf(topic, "tylink/%s/thing/property/report", config.values.tuya.deviceId);
+    esp_mqtt_client_publish(mqttClient, topic, mqttBuffer, 0, 1, 0);
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
 }
 
 void sendToMqtt(LinkyData *linky)
@@ -390,20 +435,23 @@ void sendToMqtt(LinkyData *linky)
     {
         mqtt_app_start();
     }
-
     switch (config.values.mode)
     {
     case MODE_MQTT:
     case MODE_MQTT_HA:
+        if (strlen(config.values.mqtt.host) == 0 || config.values.mqtt.port == 0)
+        {
+            ESP_LOGI(TAG, "MQTT host not set: MQTT ERROR");
+            return;
+        }
         sendHAMqtt(linky);
         break;
     case MODE_TUYA:
         sendTuyaMqtt(linky);
-        return;
+        break;
     default:
         return;
     }
-
     mqtt_stop();
     mqttConnected = false;
 }
@@ -417,5 +465,6 @@ void mqtt_stop()
         // esp_mqtt_client_stop(mqttClient);
         esp_mqtt_client_destroy(mqttClient);
         mqttClient = NULL;
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

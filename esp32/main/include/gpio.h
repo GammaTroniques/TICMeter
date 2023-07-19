@@ -28,4 +28,6 @@ void pairingButtonTask(void *pvParameter);
 void startLedPattern(uint8_t pattern);
 void loop(void *arg);
 void noConfigLedTask(void *pvParameters);
+void setCPUFreq(int32_t speedInMhz);
+
 #endif

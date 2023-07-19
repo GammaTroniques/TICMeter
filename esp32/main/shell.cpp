@@ -25,6 +25,7 @@ void shellInit()
     esp_console_register_VCondo_command();
     esp_console_register_test_led_command();
     esp_console_register_ota_check_command();
+    esp_console_register_tuya_command();
 
     esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
@@ -590,6 +591,76 @@ esp_err_t esp_console_register_ota_check_command()
         .func = &ota_check_command};
 
     esp_err_t err = esp_console_cmd_register(&get);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    return ESP_OK;
+}
+
+int set_tuya_command(int argc, char **argv)
+{
+    if (argc != 5)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    memcpy(config.values.tuya.deviceId, argv[1], 23);
+    memcpy(config.values.tuya.deviceSecret, argv[2], 17);
+    memcpy(config.values.tuya.productId, argv[3], 16);
+    config.values.tuya.server = (tuya_server_t)atoi(argv[4]);
+    config.write();
+    printf("Tuya config saved\n");
+    return 0;
+}
+
+int get_tuya_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    printf("Tuya config:\n");
+    printf("Device ID: %s\n", config.values.tuya.deviceId);
+    printf("Device Secret: %s\n", config.values.tuya.deviceSecret);
+    printf("Product ID: %s\n", config.values.tuya.productId);
+    printf("Server: %s\n", TUYA_SERVERS[config.values.tuya.server]);
+    return 0;
+}
+
+esp_err_t esp_console_register_tuya_command()
+{
+    static struct
+    {
+        struct arg_str *deviceId;
+        struct arg_str *deviceSecret;
+        struct arg_str *productId;
+        struct arg_int *server;
+        struct arg_end *end;
+    } set_mode_args;
+
+    set_mode_args.deviceId = arg_str1(NULL, NULL, "<deviceId>", "Device ID");
+    set_mode_args.deviceSecret = arg_str1(NULL, NULL, "<deviceSecret>", "Device Secret");
+    set_mode_args.productId = arg_str1(NULL, NULL, "<productId>", "Product ID");
+    set_mode_args.server = arg_int1(NULL, NULL, "<server>", "Server (0: CN, 1: EU, 2: US)");
+    set_mode_args.end = arg_end(1);
+
+    esp_console_cmd_t set = {
+        .command = "set-tuya",
+        .help = "Set Tuya config\n",
+        .func = &set_tuya_command,
+        .argtable = &set_mode_args};
+    esp_err_t err = esp_console_cmd_register(&set);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    esp_console_cmd_t get = {
+        .command = "get-tuya",
+        .help = "Get Tuya config\n",
+        .func = &get_tuya_command};
+    err = esp_console_cmd_register(&get);
     if (err != ESP_OK)
     {
         return err;

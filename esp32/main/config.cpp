@@ -1,6 +1,6 @@
 #include "config.h"
 
-const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER"};
+const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER", "TUYA"};
 const char *TUYA_SERVERS[] = {"m1.tuyacn.com", "m1.tuyaeu.com", "m1.tuyaus.com", "m1-ueaz.tuyaus.com", "m1-weaz.tuyaeu.com", "m1.tuyain.com"};
 Config::Config()
 {
@@ -137,7 +137,8 @@ uint8_t Config::verify()
             return 1;
         }
         break;
+    default:
+        break;
     }
-
     return 0;
 }

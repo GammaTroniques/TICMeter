@@ -26,9 +26,6 @@
 #include "gpio.h"
 #include "web.h"
 
-#include "soc/rtc.h"
-#include "esp_pm.h"
-
 Linky linky(MODE_HISTORIQUE, 17, 16);
 Config config;
 
@@ -51,19 +48,7 @@ extern "C" void app_main(void)
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   initPins();
   startLedPattern(PATTERN_START);
-
-  rtc_cpu_freq_config_t tmp;
-  rtc_clk_cpu_freq_get_config(&tmp);
-  ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
-  // rtc_cpu_freq_config_t conf;
-  esp_pm_config_t pm_config = {
-      .max_freq_mhz = 80,
-      .min_freq_mhz = 10,
-      .light_sleep_enable = false};
-  ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
-  rtc_clk_cpu_freq_get_config(&tmp);
-  // ESP_LOGI(MAIN_TAG, "RTC CPU Freq: %lu", tmp.freq_mhz);
-
+  setCPUFreq(10);
   xTaskCreate(pairingButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
 
   // esp_reset_reason_t reason = esp_reset_reason();
@@ -77,14 +62,19 @@ extern "C" void app_main(void)
   // }
 
   config.begin();
+  shellInit(); // init shell
 
   if (config.verify())
   {
     xTaskCreate(noConfigLedTask, "noConfigLedTask", 1024, NULL, 1, NULL); // start no config led task
+    ESP_LOGI(MAIN_TAG, "No config found. Waiting for config...");
+    while (config.verify())
+    {
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
   }
 
   linky.begin();
-  config.values.refreshRate = 30;
   // ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
   // check vcondo and sleep if not ok
   // if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
@@ -94,7 +84,6 @@ extern "C" void app_main(void)
   //   esp_deep_sleep_start();
   // }
 
-  shellInit(); // init shell
   switch (config.values.mode)
   {
   case MODE_WEB:
@@ -121,7 +110,7 @@ extern "C" void app_main(void)
     break;
   }
   // start linky fetch task
-  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 }
 
 void fetchLinkyDataTask(void *pvParameters)
@@ -166,6 +155,7 @@ void fetchLinkyDataTask(void *pvParameters)
       break;
     case MODE_MQTT:
     case MODE_MQTT_HA: // send data to mqtt server
+    case MODE_TUYA:
       if (connectToWifi())
       {
         ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
