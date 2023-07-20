@@ -9,8 +9,6 @@
 #include "esp_log.h"
 #include "soc/rtc.h"
 #include "esp_pm.h"
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
 
 #include "gpio.h"
 #include "config.h"
@@ -287,7 +285,7 @@ const ledPattern_t ledPattern[][PATTERN_SIZE] = {
 
 void ledPatternTask(void *pvParameters)
 {
-    uint8_t id = (uint32_t)pvParameters;
+    uint8_t id = *(uint8_t *)pvParameters;
     for (int i = 0; i < PATTERN_SIZE; i++)
     {
         if (ledPattern[id][i].led == LED_GREEN)
@@ -313,11 +311,9 @@ void ledPatternTask(void *pvParameters)
 void startLedPattern(uint8_t pattern)
 {
     static TaskHandle_t ledPatternTaskHandle = NULL;
-    // if (ledPatternTaskHandle != NULL)
-    // {
-    //     vTaskDelete(ledPatternTaskHandle);
-    // }
-    xTaskCreate(ledPatternTask, "ledPatternTask", 2048, (void *)pattern, 5, &ledPatternTaskHandle);
+    static uint8_t lastPattern;
+    lastPattern = pattern;
+    xTaskCreate(ledPatternTask, "ledPatternTask", 2048, &lastPattern, 5, &ledPatternTaskHandle);
 }
 
 void noConfigLedTask(void *pvParameters)
@@ -331,7 +327,7 @@ void noConfigLedTask(void *pvParameters)
 
 void setCPUFreq(int32_t speedInMhz)
 {
-    // esp_log_level_set("pm", ESP_LOG_INFO);
+    esp_log_level_set("pm", ESP_LOG_ERROR);
     esp_pm_config_t pm_config = {
         .max_freq_mhz = speedInMhz,
         .min_freq_mhz = speedInMhz,
