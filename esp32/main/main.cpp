@@ -25,6 +25,7 @@
 #include "mqtt.h"
 #include "gpio.h"
 #include "web.h"
+#include "zigbee.h"
 
 Linky linky(MODE_HISTORIQUE, 17, 16);
 Config config;
@@ -44,22 +45,11 @@ TaskHandle_t pairingTaskHandle = NULL;
 
 extern "C" void app_main(void)
 {
-
+  setCPUFreq(10);
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   initPins();
   startLedPattern(PATTERN_START);
-  setCPUFreq(10);
   xTaskCreate(pairingButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
-
-  // esp_reset_reason_t reason = esp_reset_reason();
-  // if ((reason != ESP_RST_DEEPSLEEP) && (reason != ESP_RST_SW))
-  // {
-  //   ESP_LOGI(MAIN_TAG, "Not deep sleep or software reset, init RTC memory");
-  //   // init RTC memory if not deep sleep or software reset
-  //   memset(&dataArray, 0, sizeof(dataArray));
-  //   dataIndex = 0;
-  //   firstBoot = 1;
-  // }
 
   config.begin();
   shellInit(); // init shell
@@ -106,6 +96,9 @@ extern "C" void app_main(void)
       disconectFromWifi();
     }
     break;
+  case MODE_ZIGBEE:
+    init_zigbee();
+    break;
   default:
     break;
   }
@@ -150,7 +143,6 @@ void fetchLinkyDataTask(void *pvParameters)
         }
         disconectFromWifi();
         dataIndex = 0;
-        sleep(config.values.refreshRate * 1000);
       }
       break;
     case MODE_MQTT:
@@ -170,11 +162,4 @@ void fetchLinkyDataTask(void *pvParameters)
     }
     vTaskDelay((abs(config.values.refreshRate - 5) * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
   }
-}
-
-uint8_t sleep(int timeMs)
-{
-  // esp_sleep_enable_timer_wakeup(timeMs * 1000);
-  // esp_deep_sleep_start();
-  return 0;
 }

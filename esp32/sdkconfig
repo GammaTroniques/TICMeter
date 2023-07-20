@@ -1667,6 +1667,17 @@ CONFIG_WIFI_PROV_AUTOSTOP_TIMEOUT=30
 CONFIG_WIFI_PROV_STA_ALL_CHANNEL_SCAN=y
 # CONFIG_WIFI_PROV_STA_FAST_SCAN is not set
 # end of Wi-Fi Provisioning Manager
+
+#
+# Zigbee
+#
+CONFIG_ZB_ENABLED=y
+# CONFIG_ZB_ZCZR is not set
+CONFIG_ZB_ZED=y
+# CONFIG_ZB_RCP is not set
+CONFIG_ZB_RADIO_NATIVE=y
+# CONFIG_ZB_RADIO_MACSPLIT_UART is not set
+# end of Zigbee
 # end of Component config
 
 # CONFIG_IDF_EXPERIMENTAL_FEATURES is not set

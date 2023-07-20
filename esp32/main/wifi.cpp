@@ -72,6 +72,10 @@ retry:
         return 0;
     }
 
+    // if (sta_netif)
+    // {
+    //     esp_netif_destroy(sta_netif);
+    // }
     sta_netif = esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -125,7 +129,7 @@ retry:
     else
     {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
-        disconectFromWifi();
+        esp_restart();
         return 0;
     }
     return 1;
