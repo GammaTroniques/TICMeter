@@ -16,6 +16,6 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct);
 static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask);
 void attr_cb(uint8_t status, uint8_t endpoint, uint16_t cluster_id, uint16_t attr_id, void *new_value);
 
-static void zigbee_task(void *pvParameters);
+void zigbee_task(void *pvParameters);
 
 #endif // ZIGBEE_H

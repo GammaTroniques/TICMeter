@@ -42,11 +42,11 @@ TaskHandle_t pushButtonTaskHandle = NULL;
 TaskHandle_t pairingTaskHandle = NULL;
 
 #define MAIN_TAG "MAIN"
-
 extern "C" void app_main(void)
 {
-  setCPUFreq(10);
+  // setCPUFreq(10);
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
+  init_zigbee();
   initPins();
   startLedPattern(PATTERN_START);
   xTaskCreate(pairingButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
@@ -97,13 +97,14 @@ extern "C" void app_main(void)
     }
     break;
   case MODE_ZIGBEE:
-    init_zigbee();
+
+    // zigbee_task(0);
     break;
   default:
     break;
   }
   // start linky fetch task
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 }
 
 void fetchLinkyDataTask(void *pvParameters)
