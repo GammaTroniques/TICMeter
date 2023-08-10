@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <inttypes.h>
+#include "nvs_flash.h"
+#include <string.h>
 
 #include "config.h"
 
@@ -69,6 +71,7 @@ void attr_cb(uint8_t status, uint8_t endpoint, uint16_t cluster_id, uint16_t att
 
 void init_zigbee()
 {
+    ESP_ERROR_CHECK(nvs_flash_init());
     ESP_LOGI(TAG, "Initializing Zigbee stack");
     esp_zb_platform_config_t config = {};
     config.radio_config.radio_mode = RADIO_MODE_NATIVE;
@@ -78,9 +81,12 @@ void init_zigbee()
     xTaskCreate(zigbee_task, "Zigbee_main", 4096, NULL, 5, NULL);
 }
 
-static void zigbee_task(void *pvParameters)
+void zigbee_task(void *pvParameters)
 {
-    ESP_LOGI(TAG, "Starting Zigbee stack");
+    // clang-format on
+    // ESP_LOGI(TAG, "Resetting Zigbee stack");
+    // esp_zb_factory_reset();
+    // ESP_LOGI(TAG, "Starting Zigbee stack");
     /* initialize Zigbee stack with Zigbee end-device config */
     esp_zb_cfg_t zigbee_cfg = {};
     zigbee_cfg.esp_zb_role = ESP_ZB_DEVICE_TYPE_ED;
@@ -88,7 +94,7 @@ static void zigbee_task(void *pvParameters)
     zigbee_cfg.nwk_cfg.zed_cfg.ed_timeout = ESP_ZB_ED_AGING_TIMEOUT_64MIN;
     zigbee_cfg.nwk_cfg.zed_cfg.keep_alive = 3000; // in seconds
     esp_zb_init(&zigbee_cfg);
-
+    ESP_LOGI(TAG, "Zigbee stack initialized");
     //------------------ Basic cluster ------------------
     esp_zb_basic_cluster_cfg_t basic_cluster_cfg = {};
     basic_cluster_cfg.zcl_version = ESP_ZB_ZCL_BASIC_ZCL_VERSION_DEFAULT_VALUE;
@@ -97,8 +103,11 @@ static void zigbee_task(void *pvParameters)
     uint8_t ApplicationVersion = 1;
     uint8_t StackVersion = 1;
     uint8_t HWVersion = 1;
-    uint8_t ManufacturerName[] = {14, 'G', 'a', 'm', 'm', 'a', 'T', 'r', 'o', 'n', 'i', 'q', 'u', 'e', 's'};
-    uint8_t ModelIdentifier[] = {9, 'L', 'i', 'n', 'k', 'y', ' ', 'T', 'I', 'C'};
+    // uint8_t ManufacturerName[] = {14, 'G', 'a', 'm', 'm', 'a', 'T', 'r', 'o', 'n', 'i', 'q', 'u', 'e', 's'};
+    // uint8_t ModelIdentifier[] = {9, 'L', 'i', 'n', 'k', 'y', ' ', 'T', 'I', 'C'};
+
+    uint8_t ManufacturerName[] = {6, 'L', 'i', 'X', 'e', 'e'};
+    uint8_t ModelIdentifier[] = {10, 'Z', 'L', 'i', 'n', 'k', 'y', '_', 'T', 'I', 'C'};
     uint8_t DateCode[] = {8, '2', '0', '2', '3', '0', '7', '0', '1'};
 
     const esp_app_desc_t *app_desc = esp_app_get_description();
@@ -112,9 +121,40 @@ static void zigbee_task(void *pvParameters)
     esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_DATE_CODE_ID, DateCode);
     esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_SW_BUILD_ID, SWBuildID);
 
+    //------------------ Electrical Measurement cluster ------------------
+    esp_zb_electrical_meas_cluster_cfg_t electrical_meas_cluster_cfg = {};
+    electrical_meas_cluster_cfg.measured_type = ESP_ZB_ZCL_ELECTRICAL_MEASUREMENT_APPARENT_MEASUREMENT;
+
+    uint16_t IINST = 2;
+    uint16_t IMAX = 3;
+    uint16_t PAPP = 4;
+
+    esp_zb_attribute_list_t *esp_zb_electrical_meas_cluster = esp_zb_electrical_meas_cluster_create(&electrical_meas_cluster_cfg);
+    esp_zb_electrical_meas_cluster_add_attr(esp_zb_electrical_meas_cluster, ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMSCURRENT_ID, &IINST);
+    esp_zb_electrical_meas_cluster_add_attr(esp_zb_electrical_meas_cluster, ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_RMS_CURRENT_MAX_ID, &IMAX);
+    esp_zb_electrical_meas_cluster_add_attr(esp_zb_electrical_meas_cluster, ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_APPARENT_POWER_ID, &PAPP);
+
+    // ------------------ LinkyCustomCluster ------------------
+    char *test = "test";
+    esp_zb_attribute_list_t *esp_zb_linky_custom_cluster = esp_zb_zcl_attr_list_create(0xFF66);
+    esp_zb_custom_cluster_add_custom_attr(esp_zb_linky_custom_cluster, 0x0001, ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, test);
+    esp_zb_custom_cluster_add_custom_attr(esp_zb_linky_custom_cluster, 0x0002, ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, test);
+
+    //------------------ Metering cluster ------------------
+    char test0 = 0;
+    esp_zb_attribute_list_t *esp_zb_meter_custom_cluster = esp_zb_zcl_attr_list_create(0xFF00);
+    esp_zb_custom_cluster_add_custom_attr(esp_zb_linky_custom_cluster, 0x0000, ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &test0);
+    esp_zb_custom_cluster_add_custom_attr(esp_zb_linky_custom_cluster, 0x0308, ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING, ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY, test);
+    esp_zb_meter_custom_cluster->attribute.id = 0x0702;
+
     //------------------ Cluster list ------------------
     esp_zb_cluster_list_t *esp_zb_cluster_list = esp_zb_zcl_cluster_list_create();
     esp_zb_cluster_list_add_basic_cluster(esp_zb_cluster_list, esp_zb_basic_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+    esp_zb_cluster_list_add_electrical_meas_cluster(esp_zb_cluster_list, esp_zb_electrical_meas_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+    esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_linky_custom_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+    esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_meter_custom_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+    esp_zb_cluster_list_t temp = *esp_zb_cluster_list;
+    temp = temp;
 
     //------------------ Endpoint list ------------------
     esp_zb_ep_list_t *esp_zb_ep_list = esp_zb_ep_list_create();
@@ -126,7 +166,10 @@ static void zigbee_task(void *pvParameters)
     // esp_zb_device_add_report_attr_cb(attr_cb);
 
     esp_zb_set_primary_network_channel_set(ZIGBEE_CHANNEL_MASK);
+    ESP_LOGI(TAG, "Primary channel mask");
     esp_zb_set_secondary_network_channel_set(0x07FFF800); // all channels
+    ESP_LOGI(TAG, "Secondary channel mask");
     ESP_ERROR_CHECK(esp_zb_start(false));
+    ESP_LOGI(TAG, "Zigbee stack started");
     esp_zb_main_loop_iteration();
 }
