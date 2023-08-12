@@ -24,23 +24,57 @@
 #define GROUP_COUNT 15
 
 #define LINKY_TAG "Linky"
-
+// clang-format off
 typedef struct
 {
-    char ADCO[13] = {0};   // The linky serial number
-    char OPTARIF[5] = {0}; // The linky tarif option
-    uint32_t ISOUSC = 0;   // The linky max current
-    uint32_t BASE = 0;     // The linky base index
-    uint32_t HCHC = 0;     // The linky HC index
-    uint32_t HCHP = 0;     // The linky HP index
-    char PTEC[5] = {0};    // The linky current tarif
-    uint32_t IINST = 0;    // The linky current current
-    uint32_t IMAX = 0;     // The linky max current
-    uint32_t PAPP = 0;     // The linky current power
-    char HHPHC[4] = {0};   // The linky .......
-    char MOTDETAT[7] = {0};
-    time_t timestamp = 0;
+    //  Variables                   Taille      Unité       Description
+    //-----------------------------------------------------------------------
+    char ADCO[13]       = {0}; //    12                     Adresse du compteur 
+    char OPTARIF[5]     = {0}; //     4                     Option tarifaire choisie
+    uint32_t ISOUSC     = 0;   //     2         A           Intensité souscrite 
+
+    uint32_t BASE       = 0;   //     9         Wh          Index option Base 
+    //----------------------Index option Heures Creuses ----------------------
+    uint32_t HCHC       = 0;   //     9         Wh          Index option Heures Creuses: Heures Creuses
+    uint32_t HCHP       = 0;   //     9         Wh          Index option Heures Creuses: Heures Pleines
+    
+    //---------------------- Index option EJP  (Effacement des Jours de Pointe) --> 22 jours par an prix du kWh plus cher
+    uint32_t EJPHN      = 0;   //     9         Wh          Heures Normales
+    uint32_t EJPHPM     = 0;   //     9         Wh          Heures de Pointe Mobile
+    uint32_t PEJP       = 0;   //     2         minutes     Préavis Début EJP (30 min)
+
+    //---------------------- Index option Tempo ----------------------
+    uint32_t BBRHCJB    = 0;   //     9         Wh          Heures Creuses Jours Bleus
+    uint32_t BBRHPJB    = 0;   //     9         Wh          Heures Pleines Jours Bleus
+    uint32_t BBRHCJW    = 0;   //     9         Wh          Heures Creuses Jours Blancs
+    uint32_t BBRHPJW    = 0;   //     9         Wh          Heures Pleines Jours Blancs
+    uint32_t BBRHCJR    = 0;   //     9         Wh          Heures Creuses Jours Rouges
+    uint32_t BBRHPJR    = 0;   //     9         Wh          Heures Pleines Jours Rouges
+    
+    char PTEC[5]        = {0}; //     4                     Période Tarifaire en cours: TH.. Heures Creuses, HP.. Heures Pleines, HC.. Heures Creuses, HN.. Heures Normales, PM.. Heures de Pointe Mobile, HCJB.. Heures Creuses Jours Bleus, HPJB.. Heures Pleines Jours Bleus, HCJW.. Heures Creuses Jours Blancs, HPJW.. Heures Pleines Jours Blancs, HCJR.. Heures Creuses Jours Rouges, HPJR.. Heures Pleines Jours Rouges
+    char DEMAIN[5]      = {0}; //     4                     Couleur du lendemain 
+    uint32_t IINST      = 0;   //     3         A           Intensité Instantanée
+    uint32_t IINST1     = 0;   //     3         A           Intensité Instantanée Phase 1
+    uint32_t IINST2     = 0;   //     3         A           Intensité Instantanée Phase 2
+    uint32_t IINST3     = 0;   //     3         A           Intensité Instantanée Phase 3
+    uint32_t ADPS       = 0;   //     3         A           Avertissement de Dépassement de Puissance Souscrite
+    uint32_t ADIR1      = 0;   //     3         A           Avertissement de Dépassement d'intensité de réglage Phase 1
+    uint32_t ADIR2      = 0;   //     3         A           Avertissement de Dépassement d'intensité de réglage Phase 2
+    uint32_t ADIR3      = 0;   //     3         A           Avertissement de Dépassement d'intensité de réglage Phase 3
+    uint32_t IMAX       = 0;   //     3         A           Intensité maximale appelée
+    uint32_t IMAX1      = 0;   //     3         A           Intensité maximale appelée Phase 1
+    uint32_t IMAX2      = 0;   //     3         A           Intensité maximale appelée Phase 2
+    uint32_t IMAX3      = 0;   //     3         A           Intensité maximale appelée Phase 3
+    uint32_t PAPP       = 0;   //     5         VA          Puissance apparente
+    uint32_t PMAX       = 0;   //     5         W           Puissance maximale triphasée atteinte 
+    uint32_t PPOT       = 0;   //     2                     Présence des potentiels??????????????????????????????
+
+    char HHPHC[4]       = {0}; //     1                     Horaire Heures Pleines Heures Creuses
+    char MOTDETAT[7]    = {0}; //     6                     Mot d'état du compteur                            
+    
+    time_t timestamp    = 0;
 } LinkyData;
+// clang-format on
 
 class Linky
 {

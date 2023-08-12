@@ -1,10 +1,10 @@
 dependencies:
   bblanchon/arduinojson:
-    component_hash: 0959a026dce651207070db23a13993e994476b0504cf31e2e52f3e97276225a5
+    component_hash: c111ebf785c5e3cb5a3f8902584b03e25d929a3651976b5a57054bfa941ffc74
     source:
       service_url: https://api.components.espressif.com/
       type: service
-    version: 6.21.2
+    version: 6.21.3
   espressif/esp-zboss-lib:
     component_hash: ba11f1139481e9d0aaa08e9d621eb04113052fad28c8316744a5cb503d79fe6a
     source:
@@ -17,17 +17,11 @@ dependencies:
       service_url: https://api.components.espressif.com/
       type: service
     version: 0.7.1
-  espressif/led_strip:
-    component_hash: 7e92a0c8a2e35b40904f88e88ce3c0dffff504a2763f70fba7ef4787cf2eec83
-    source:
-      service_url: https://api.components.espressif.com/
-      type: service
-    version: 2.0.0
   idf:
     component_hash: null
     source:
       type: idf
     version: 5.1.0
-manifest_hash: e64efbab87fd6ac8a00ae1b962d594eaa759ffd8e623984ad2fa8d0fce7296d9
+manifest_hash: a6b5b6621ff3f141f423e27d263fa1b9c1fa4762c4a37ba69b1353da02647b96
 target: esp32c6
 version: 1.0.0
