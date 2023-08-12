@@ -1,5 +1,57 @@
 #include <linky.h>
 
+Linky linky(MODE_HISTORIQUE, 17, 16);
+
+// clang-format off
+struct LinkyGroup LinkyLabelList[] =
+{   
+    // label         data            type
+    {"ADCO",        &linky.data.ADCO,     TYPE_STRING},
+    {"OPTARIF",     &linky.data.OPTARIF,  TYPE_STRING},
+    {"ISOUSC",      &linky.data.ISOUSC,   TYPE_UINT16},
+
+    {"BASE",        &linky.data.BASE,     TYPE_UINT48},
+
+    {"HCHC",        &linky.data.HCHC,     TYPE_UINT48},
+    {"HCHP",        &linky.data.HCHP,     TYPE_UINT48},
+
+    {"EJPHN",       &linky.data.EJPHN,    TYPE_UINT48},
+    {"EJPHPM",      &linky.data.EJPHPM,   TYPE_UINT48},
+    {"PEJP",        &linky.data.PEJP,     TYPE_UINT48},
+
+    {"BBRHCJB",     &linky.data.BBRHCJB,  TYPE_UINT48},
+    {"BBRHPJB",     &linky.data.BBRHPJB,  TYPE_UINT48},
+    {"BBRHCJW",     &linky.data.BBRHCJW,  TYPE_UINT48},
+    {"BBRHPJW",     &linky.data.BBRHPJW,  TYPE_UINT48},
+    {"BBRHCJR",     &linky.data.BBRHCJR,  TYPE_UINT48},
+    {"BBRHPJR",     &linky.data.BBRHPJR,  TYPE_UINT48},
+
+    {"PTEC",        &linky.data.PTEC,     TYPE_STRING},
+    {"DEMAIN",      &linky.data.DEMAIN,   TYPE_STRING},
+
+    {"IINST",       &linky.data.IINST,    TYPE_UINT16},
+    {"IINST1",      &linky.data.IINST1,   TYPE_UINT16},
+    {"IINST2",      &linky.data.IINST2,   TYPE_UINT16},
+    {"IINST3",      &linky.data.IINST3,   TYPE_UINT16},
+    {"IMAX",        &linky.data.IMAX,     TYPE_UINT16},
+    {"IMAX1",       &linky.data.IMAX1,    TYPE_UINT16},
+    {"IMAX2",       &linky.data.IMAX2,    TYPE_UINT16},
+    {"IMAX3",       &linky.data.IMAX3,    TYPE_UINT16},
+    {"ADPS",        &linky.data.ADPS,     TYPE_UINT16},
+    {"ADIR1",       &linky.data.ADIR1,    TYPE_UINT16},
+    {"ADIR2",       &linky.data.ADIR2,    TYPE_UINT16},
+    {"ADIR3",       &linky.data.ADIR3,    TYPE_UINT16},
+
+    {"PAPP",        &linky.data.PAPP,     TYPE_UINT32},
+    {"PAPP",        &linky.data.PMAX,     TYPE_UINT32},
+    {"PAPP",        &linky.data.PPOT,     TYPE_UINT32},
+    
+    {"HHPHC",       &linky.data.HHPHC,    TYPE_UINT8},
+    {"MOTDETAT",    &linky.data.MOTDETAT, TYPE_STRING},
+};
+// clang-format on
+const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
+
 /**
  * @brief Linky constructor
  *
@@ -7,12 +59,12 @@
  * @param RX RX pin number for the UART
  * @param TX TX pin number for the UART (not used)
  */
-Linky::Linky(char mode, int RX, int TX)
+Linky::Linky(LinkyMode mode, int RX, int TX)
 {
-
-    UARTmode = mode;
+    mode = mode;
     UARTRX = RX;
     UARTTX = TX;
+    GROUP_SEPARATOR = 0x20 ? mode == MODE_HISTORIQUE : 0x09; // space or tab depending on the mode
 }
 
 /**
@@ -94,7 +146,7 @@ char Linky::decode()
         return 0;  // exit the function
     }
 
-    char frame[500] = {0};                                           // store the frame
+    char frame[FRAME_SIZE] = {0};                                    // store the frame
     memcpy(frame, buffer + startOfFrame, endOfFrame - startOfFrame); // copy only one frame from the buffer
     index = 0;                                                       // clear the buffer
     // ESP_LOGI(LINKY_TAG, "START OF FRAME: %lu (%x)", startOfFrame, buffer[startOfFrame]);
@@ -149,88 +201,74 @@ char Linky::decode()
     //------------------------------------------
     for (int i = 0; i < startOfGroupIndex; i++) // for each group
     {
-        unsigned int separatorIndex[startOfGroupIndex + 1] = {0};    // store index of separator
-        for (int j = startOfGroup[i], s = 0; j < endOfGroup[i]; j++) // for each character in group
+        unsigned int separators[startOfGroupIndex + 1] = {0}; // store index of separators
+        uint8_t separatorIndex = 0;                           // store the current index of separators array
+        for (int j = startOfGroup[i]; j < endOfGroup[i]; j++) // for each character in group
         {
             if (frame[j] == GROUP_SEPARATOR) // if the character is a separator
             {
-                separatorIndex[s++] = j; // store the index of the separator
+                separators[separatorIndex++] = j; // store the index of the separator
             }
         }
 
         char label[10] = {0};   // store the label as a string
-        char value[20] = {0};   // store the data as a string
+        char value[100] = {0};  // store the data as a string
+        char time[15] = {0};    // store the time as a string (H081225223518)
         char checksum[5] = {0}; // store the checksum as a string
 
         //-----------------------------------------------------------------------------------------------------------------replace to MEMCOPY
-        memcpy(label, frame + startOfGroup[i] + 1, separatorIndex[0] - startOfGroup[i] - 1);     // copy the label from the group
-        memcpy(value, frame + separatorIndex[0] + 1, separatorIndex[1] - separatorIndex[0] - 1); // copy the data from the group
-        memcpy(checksum, frame + separatorIndex[1] + 1, endOfGroup[i] - separatorIndex[1] - 1);  // copy the checksum from the group
-
+        memcpy(label, frame + startOfGroup[i] + 1, separators[0] - startOfGroup[i] - 1); // copy the label from the group
+        memcpy(value, frame + separators[0] + 1, separators[1] - separators[0] - 1);     // copy the data from the group
+        if (linky.mode == MODE_STANDARD && separatorIndex == 3)                          // if the mode is standard and the number of separators is 3
+        {
+            memcpy(time, frame + separators[1] + 1, separators[2] - separators[1] - 1);     // copy the time from the group
+            memcpy(checksum, frame + separators[2] + 1, endOfGroup[i] - separators[2] - 1); // copy the checksum from the group
+        }
+        else
+        {
+            memcpy(checksum, frame + separators[1] + 1, endOfGroup[i] - separators[1] - 1); // copy the checksum from the group
+        }
         // ESP_LOGI(LINKY_TAG, "label: %s value: %s checksum: %s", label, value, checksum);
 
-        if (this->checksum(label, value) != checksum[0]) // check the checksum with the
+        if (this->checksum(label, value, time) != checksum[0]) // check the checksum with the label, data and time
         {
             // error: checksum is not correct, skip the field
             continue;
-            ESP_LOGI(LINKY_TAG, "ERROR: %s checksum is not correct (%c != %c)", label, this->checksum(label, value), checksum[0]);
+            ESP_LOGI(LINKY_TAG, "ERROR: %s checksum is not correct (%c != %c)", label, this->checksum(label, value, time), checksum[0]);
         }
         else
         {
             //------------------------------------------------------------
             // Fourth step: Copy values from each field to the variables
             //------------------------------------------------------------
-            if (strcmp(label, "ADCO") == 0)
+            for (uint32_t j = 0; j < LinkyLabelListSize; j++)
             {
-                strcpy(data.ADCO, value);
-            }
-            else if (strcmp(label, "OPTARIF") == 0)
-            {
-                strcpy(data.OPTARIF, value);
-            }
-            else if (strcmp(label, "ISOUSC") == 0)
-            {
-                data.ISOUSC = strtoul(value, NULL, 10);
-            }
-            else if (strcmp(label, "BASE") == 0)
-            {
-                data.BASE = strtoul(value, NULL, 10);
-            }
-            else if (strcmp(label, "HCHC") == 0)
-            {
-                data.HCHC = strtoul(value, NULL, 10);
-            }
-            else if (strcmp(label, "HCHP") == 0)
-            {
-                data.HCHP = strtoul(value, NULL, 10);
-            }
-            else if (strcmp(label, "PTEC") == 0)
-            {
-                strcpy(data.PTEC, value);
-            }
-            else if (strcmp(label, "IINST") == 0)
-            {
-                data.IINST = strtoul(value, NULL, 10);
-            }
-            else if (strcmp(label, "IMAX") == 0)
-            {
-                data.IMAX = strtoul(value, NULL, 10);
-            }
-            else if (strcmp(label, "PAPP") == 0)
-            {
-                data.PAPP = strtoul(value, NULL, 10);
-            }
-            else if (strcmp(label, "HHPHC") == 0)
-            {
-                strcpy(data.HHPHC, value);
-            }
-            else if (strcmp(label, "MOTDETAT") == 0)
-            {
-                strcpy(data.MOTDETAT, value);
+                if (strcmp(LinkyLabelList[j].label, label) == 0)
+                {
+                    switch (LinkyLabelList[j].type)
+                    {
+                    case TYPE_STRING:
+                        strcpy((char *)LinkyLabelList[j].data, value);
+                        break;
+                    case TYPE_UINT8:
+                        *(uint8_t *)LinkyLabelList[j].data = strtoul(value, NULL, 10);
+                        break;
+                    case TYPE_UINT16:
+                        *(uint16_t *)LinkyLabelList[j].data = strtoul(value, NULL, 10);
+                        break;
+                    case TYPE_UINT32:
+                        *(uint32_t *)LinkyLabelList[j].data = strtoul(value, NULL, 10);
+                        break;
+                    case TYPE_UINT48:
+                        *(uint64_t *)LinkyLabelList[j].data = strtoull(value, NULL, 10);
+                        break;
+                    default:
+                        break;
+                    }
+                }
             }
         }
     }
-
     return 1;
 }
 
@@ -256,19 +294,29 @@ char Linky::update()
  */
 void Linky::print()
 {
-    ESP_LOGI(LINKY_TAG, "ADCO: %s", data.ADCO);
-    ESP_LOGI(LINKY_TAG, "OPTARIF: %s", data.OPTARIF);
-    ESP_LOGI(LINKY_TAG, "ISOUSC: %ld", data.ISOUSC);
-    ESP_LOGI(LINKY_TAG, "BASE: %ld", data.BASE);
-    ESP_LOGI(LINKY_TAG, "HCHC: %ld", data.HCHC);
-    ESP_LOGI(LINKY_TAG, "HCHP: %ld", data.HCHP);
-    ESP_LOGI(LINKY_TAG, "PTEC: %s", data.PTEC);
-    ESP_LOGI(LINKY_TAG, "IINST: %ld", data.IINST);
-    ESP_LOGI(LINKY_TAG, "IMAX: %ld", data.IMAX);
-    ESP_LOGI(LINKY_TAG, "PAPP: %ld", data.PAPP);
-    ESP_LOGI(LINKY_TAG, "HHPHC: %s", data.HHPHC);
-    ESP_LOGI(LINKY_TAG, "MOTDETAT: %s", data.MOTDETAT);
-    ESP_LOGI(LINKY_TAG, "----------------");
+    for (uint32_t i = 0; i < LinkyLabelListSize; i++)
+    {
+        switch (LinkyLabelList[i].type)
+        {
+        case TYPE_STRING:
+            ESP_LOGI(LINKY_TAG, "%s: %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
+            break;
+        case TYPE_UINT8:
+            ESP_LOGI(LINKY_TAG, "%s: %u", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
+            break;
+        case TYPE_UINT16:
+            ESP_LOGI(LINKY_TAG, "%s: %u", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+            break;
+        case TYPE_UINT32:
+            ESP_LOGI(LINKY_TAG, "%s: %lu", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
+            break;
+        case TYPE_UINT48:
+            ESP_LOGI(LINKY_TAG, "%s: %llu", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 /**
@@ -278,17 +326,25 @@ void Linky::print()
  * @param data value of the field
  * @return return the character of the checksum
  */
-char Linky::checksum(char label[], char data[])
+char Linky::checksum(char *label, char *data, char *time)
 {
-    int S1 = 0;                             // sum of the ASCII codes of the characters in the label
-    for (int i = 0; i < strlen(label); i++) // for each character in the label
-    {                                       //
-        S1 += label[i];                     // add the ASCII code of the label character to the sum
-    }                                       //
-    S1 += GROUP_SEPARATOR;                  // add the ASCII code of the separator to the sum
-    for (int i = 0; i < strlen(data); i++)  // for each character in the data
-    {                                       //
-        S1 += data[i];                      // add the ASCII code of the data character to the sum
-    }                                       //
-    return (S1 & 0x3F) + 0x20;              // return the checksum
+    int S1 = 0;                                // sum of the ASCII codes of the characters in the label
+    for (int i = 0; i < strlen(label); i++)    // for each character in the label
+    {                                          //
+        S1 += label[i];                        // add the ASCII code of the label character to the sum
+    }                                          //
+    S1 += GROUP_SEPARATOR;                     // add the ASCII code of the separator to the sum
+    for (int i = 0; i < strlen(data); i++)     // for each character in the data
+    {                                          //
+        S1 += data[i];                         // add the ASCII code of the data character to the sum
+    }                                          //
+    if (linky.mode == MODE_STANDARD)           // if the mode is standard
+    {                                          //
+        S1 += GROUP_SEPARATOR;                 // add the ASCII code of the separator to the sum
+        for (int i = 0; i < strlen(time); i++) // for each character in the time
+        {                                      //
+            S1 += time[i];                     // add the ASCII code of the time character to the sum
+        }                                      //
+    }                                          //
+    return (S1 & 0x3F) + 0x20;                 // return the checksum
 }

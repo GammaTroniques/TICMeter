@@ -332,5 +332,7 @@ void setCPUFreq(int32_t speedInMhz)
         .max_freq_mhz = speedInMhz,
         .min_freq_mhz = speedInMhz,
         .light_sleep_enable = false};
-    ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
+
+    // TODO: fix this with zigbee
+    // ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
 }

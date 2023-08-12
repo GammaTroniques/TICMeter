@@ -27,7 +27,6 @@
 #include "web.h"
 #include "zigbee.h"
 
-Linky linky(MODE_HISTORIQUE, 17, 16);
 Config config;
 
 #define MAX_DATA_INDEX 15 // 10 + 5 in case of error
@@ -46,7 +45,6 @@ extern "C" void app_main(void)
 {
   // setCPUFreq(10);
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
-  init_zigbee();
   initPins();
   startLedPattern(PATTERN_START);
   xTaskCreate(pairingButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
@@ -65,6 +63,7 @@ extern "C" void app_main(void)
   }
 
   linky.begin();
+  ESP_LOGI(MAIN_TAG, "Size of LinkyData: %d", sizeof(LinkyData));
   // ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
   // check vcondo and sleep if not ok
   // if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
@@ -97,7 +96,7 @@ extern "C" void app_main(void)
     }
     break;
   case MODE_ZIGBEE:
-
+    init_zigbee();
     // zigbee_task(0);
     break;
   default:
