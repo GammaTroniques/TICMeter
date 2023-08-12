@@ -1,12 +1,11 @@
 ## IDF Component Manager Manifest File
 dependencies:
-  espressif/esp-zigbee-lib: "~0.7.0"
-  espressif/esp-zboss-lib: "~0.5.0"
-  espressif/led_strip: "~2.0.0"
+  espressif/esp-zigbee-lib: "0.7.1"
+  espressif/esp-zboss-lib: "0.5.1"
   bblanchon/arduinojson: "^6.21.2"
   ## Required IDF version
   idf:
-    version: ">=4.1.0"
+    version: "5.1.0"
   # # Put list of dependencies here
   # # For components maintained by Espressif:
   # component: "~1.0.0"
