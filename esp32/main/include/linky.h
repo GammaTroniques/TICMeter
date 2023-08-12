@@ -8,23 +8,24 @@
 #include "esp_log.h"
 #include "string.h"
 
-#define MODE_HISTORIQUE 0
-#define MODE_STANDARD 1
+// clang-format off
+// #define MODE_HISTORIQUE 0
+// #define MODE_STANDARD   1
 
-#define START_OF_FRAME 0x02 // The start of frame character
-#define END_OF_FRAME 0x03   // The end of frame character
+#define START_OF_FRAME  0x02 // The start of frame character
+#define END_OF_FRAME    0x03   // The end of frame character
 
-#define START_OF_GROUP 0x0A  // The start of group character
-#define END_OF_GROUP 0x0D    // The end of group character
-#define GROUP_SEPARATOR 0x20 // The group separator character
+#define START_OF_GROUP  0x0A  // The start of group character
+#define END_OF_GROUP    0x0D    // The end of group character
 
-#define RX_BUF_SIZE 1024 // The size of the UART buffer
-#define BUFFER_SIZE 1024 // The size of the UART buffer
-#define FRAME_SIZE 200   // The size of one frame buffer
-#define GROUP_COUNT 15
+
+#define RX_BUF_SIZE     1024 // The size of the UART buffer
+#define BUFFER_SIZE     1024 // The size of the UART buffer
+#define FRAME_SIZE      500   // The size of one frame buffer
+#define GROUP_COUNT     15
 
 #define LINKY_TAG "Linky"
-// clang-format off
+
 typedef struct
 {
     //  Variables                   Taille      Unité       Description
@@ -53,18 +54,20 @@ typedef struct
     
     char PTEC[5]        = {0}; //     4                     Période Tarifaire en cours: TH.. Heures Creuses, HP.. Heures Pleines, HC.. Heures Creuses, HN.. Heures Normales, PM.. Heures de Pointe Mobile, HCJB.. Heures Creuses Jours Bleus, HPJB.. Heures Pleines Jours Bleus, HCJW.. Heures Creuses Jours Blancs, HPJW.. Heures Pleines Jours Blancs, HCJR.. Heures Creuses Jours Rouges, HPJR.. Heures Pleines Jours Rouges
     char DEMAIN[5]      = {0}; //     4                     Couleur du lendemain 
+    
     uint32_t IINST      = 0;   //     3         A           Intensité Instantanée
     uint32_t IINST1     = 0;   //     3         A           Intensité Instantanée Phase 1
     uint32_t IINST2     = 0;   //     3         A           Intensité Instantanée Phase 2
     uint32_t IINST3     = 0;   //     3         A           Intensité Instantanée Phase 3
-    uint32_t ADPS       = 0;   //     3         A           Avertissement de Dépassement de Puissance Souscrite
-    uint32_t ADIR1      = 0;   //     3         A           Avertissement de Dépassement d'intensité de réglage Phase 1
-    uint32_t ADIR2      = 0;   //     3         A           Avertissement de Dépassement d'intensité de réglage Phase 2
-    uint32_t ADIR3      = 0;   //     3         A           Avertissement de Dépassement d'intensité de réglage Phase 3
     uint32_t IMAX       = 0;   //     3         A           Intensité maximale appelée
     uint32_t IMAX1      = 0;   //     3         A           Intensité maximale appelée Phase 1
     uint32_t IMAX2      = 0;   //     3         A           Intensité maximale appelée Phase 2
     uint32_t IMAX3      = 0;   //     3         A           Intensité maximale appelée Phase 3
+    uint32_t ADPS       = 0;   //     3         A           Avertissement de Dépassement de Puissance Souscrite
+    uint32_t ADIR1      = 0;   //     3         A           Avertissement de Dépassement d'intensité de réglage Phase 1
+    uint32_t ADIR2      = 0;   //     3         A           Avertissement de Dépassement d'intensité de réglage Phase 2
+    uint32_t ADIR3      = 0;   //     3         A           Avertissement de Dépassement d'intensité de réglage Phase 3
+    
     uint32_t PAPP       = 0;   //     5         VA          Puissance apparente
     uint32_t PMAX       = 0;   //     5         W           Puissance maximale triphasée atteinte 
     uint32_t PPOT       = 0;   //     2                     Présence des potentiels??????????????????????????????
@@ -74,31 +77,54 @@ typedef struct
     
     time_t timestamp    = 0;
 } LinkyData;
-// clang-format on
 
+#define TYPE_STRING 0
+#define TYPE_UINT8  1
+#define TYPE_UINT16 2
+#define TYPE_UINT32 3
+#define TYPE_UINT48 4
+
+struct LinkyGroup
+{
+    char label[10] = {0};
+    void *data = NULL;
+    uint8_t type = TYPE_STRING;
+};
+
+// clang-format on
+enum LinkyMode
+{
+    MODE_HISTORIQUE,
+    MODE_STANDARD,
+    AUTO
+}; // The state of the UART buffer
 class Linky
 {
 
 public:
-    Linky(char mode, int RX, int TX); // Constructor
-                                      //
-    char update();                    // Update the data
-    void print();                     // Print the data
-                                      //
+    Linky(LinkyMode mode, int RX, int TX); // Constructor
+                                           //
+    char update();                         // Update the data
+    void print();                          // Print the data
+                                           //
     LinkyData data;
     void begin(); // Begin the linky
     // void rx_task(void *arg);
 
     uint16_t index = 0;             // The index of the UART buffer
     char buffer[BUFFER_SIZE] = {0}; // The UART buffer
-private:
-    char UARTmode = 0; // The mode of the linky
-    char UARTRX = 0;   // The RX pin of the linky
-    char UARTTX = 0;   // The TX pin of the linky
+    LinkyMode mode = MODE_HISTORIQUE;
 
-    void read();                              // Read the UART buffer
-    char decode();                            // Decode the frame
-    char checksum(char label[], char data[]); // Check the checksum
+private:
+    char UARTRX = 0;                // The RX pin of the linky
+    char UARTTX = 0;                // The TX pin of the linky
+    uint8_t GROUP_SEPARATOR = 0x20; // The group separator character (changes depending on the mode) (0x20 in historique mode, 0x09 in standard mode)
+
+    void read();                                        // Read the UART buffer
+    char decode();                                      // Decode the frame
+    char checksum(char *label, char *data, char *time); // Check the checksum
 };
+
+extern Linky linky;
 
 #endif

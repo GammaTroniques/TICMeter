@@ -6,10 +6,6 @@
 #include "mbedtls/md.h"
 #define TAG "MQTT"
 
-#define TYPE_STRING 0
-#define TYPE_UINT32 1
-#define TYPE_UINT16 2
-
 #define STATIC_VALUE 0
 #define REAL_TIME 1
 
