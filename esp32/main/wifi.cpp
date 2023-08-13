@@ -129,7 +129,7 @@ retry:
     else
     {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
-        esp_restart();
+        esp_wifi_deinit();
         return 0;
     }
     return 1;
@@ -144,13 +144,13 @@ void disconectFromWifi()
     }
     wifiConnected = 0;
     ESP_LOGI(TAG, "Disconnected");
+    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
+    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
+
     esp_wifi_disconnect();
     esp_wifi_stop();
     esp_wifi_deinit();
     vEventGroupDelete(s_wifi_event_group);
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
-    // ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
-
     ESP_ERROR_CHECK(esp_event_loop_delete_default());
     ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(sta_netif));
 
@@ -174,7 +174,7 @@ void event_handler(void *arg, esp_event_base_t event_base,
     {
         esp_wifi_connect();
     }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED && wifiConnected == 1)
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) // && wifiConnected == 1)
     {
         if (s_retry_num < ESP_MAXIMUM_RETRY)
         {

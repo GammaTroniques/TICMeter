@@ -103,7 +103,7 @@ extern "C" void app_main(void)
     break;
   }
   // start linky fetch task
-  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 }
 
 void fetchLinkyDataTask(void *pvParameters)
@@ -130,7 +130,7 @@ void fetchLinkyDataTask(void *pvParameters)
       }
       dataArray[dataIndex] = linky.data;
       dataArray[dataIndex++].timestamp = getTimestamp();
-      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %ld", dataIndex, dataArray[0].BASE);
+      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].BASE);
       if (dataIndex > 2)
       {
         char json[1024] = {0};
