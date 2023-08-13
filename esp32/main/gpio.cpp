@@ -122,6 +122,7 @@ void pairingButtonTask(void *pvParameters)
     uint8_t lastState = 1;
     uint32_t pushTime = MILLIS - startPushTime;
     uint8_t ledState = 0;
+    uint8_t pairingState = 0;
     while (1)
     {
         if (gpio_get_level(PAIRING_PIN) == 0) // if button is pushed
@@ -191,12 +192,18 @@ void pairingButtonTask(void *pvParameters)
                 else if (pushTime > 2000 && pushTime <= 5000)
                 {
                     ESP_LOGI(TAG, "Pairing mode");
+                    if (pairingState)
+                    {
+                        // already in pairing mode
+                        esp_restart();
+                    }
                     switch (config.values.mode)
                     {
                     case MODE_WEB:
                     case MODE_MQTT:
                     case MODE_MQTT_HA:
                         ESP_LOGI(TAG, "Web pairing");
+                        pairingState = 1;
                         vTaskSuspend(fetchLinkyDataTaskHandle);
                         if (wifiConnected)
                         {
@@ -204,9 +211,9 @@ void pairingButtonTask(void *pvParameters)
                             vTaskDelay(1000 / portTICK_PERIOD_MS);
                         }
                         start_captive_portal();
-
                         break;
                     case MODE_ZIGBEE:
+                        pairingState = 1;
                         ESP_LOGI(TAG, "Zigbee pairing TODO");
                         // start_zigbee_pairing();
                         break;

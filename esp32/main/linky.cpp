@@ -10,21 +10,21 @@ struct LinkyGroup LinkyLabelList[] =
     {"OPTARIF",     &linky.data.OPTARIF,  TYPE_STRING},
     {"ISOUSC",      &linky.data.ISOUSC,   TYPE_UINT16},
 
-    {"BASE",        &linky.data.BASE,     TYPE_UINT48},
+    {"BASE",        &linky.data.BASE,     TYPE_UINT64},
 
-    {"HCHC",        &linky.data.HCHC,     TYPE_UINT48},
-    {"HCHP",        &linky.data.HCHP,     TYPE_UINT48},
+    {"HCHC",        &linky.data.HCHC,     TYPE_UINT64},
+    {"HCHP",        &linky.data.HCHP,     TYPE_UINT64},
 
-    {"EJPHN",       &linky.data.EJPHN,    TYPE_UINT48},
-    {"EJPHPM",      &linky.data.EJPHPM,   TYPE_UINT48},
-    {"PEJP",        &linky.data.PEJP,     TYPE_UINT48},
+    {"EJPHN",       &linky.data.EJPHN,    TYPE_UINT64},
+    {"EJPHPM",      &linky.data.EJPHPM,   TYPE_UINT64},
+    {"PEJP",        &linky.data.PEJP,     TYPE_UINT64},
 
-    {"BBRHCJB",     &linky.data.BBRHCJB,  TYPE_UINT48},
-    {"BBRHPJB",     &linky.data.BBRHPJB,  TYPE_UINT48},
-    {"BBRHCJW",     &linky.data.BBRHCJW,  TYPE_UINT48},
-    {"BBRHPJW",     &linky.data.BBRHPJW,  TYPE_UINT48},
-    {"BBRHCJR",     &linky.data.BBRHCJR,  TYPE_UINT48},
-    {"BBRHPJR",     &linky.data.BBRHPJR,  TYPE_UINT48},
+    {"BBRHCJB",     &linky.data.BBRHCJB,  TYPE_UINT64},
+    {"BBRHPJB",     &linky.data.BBRHPJB,  TYPE_UINT64},
+    {"BBRHCJW",     &linky.data.BBRHCJW,  TYPE_UINT64},
+    {"BBRHPJW",     &linky.data.BBRHPJW,  TYPE_UINT64},
+    {"BBRHCJR",     &linky.data.BBRHCJR,  TYPE_UINT64},
+    {"BBRHPJR",     &linky.data.BBRHPJR,  TYPE_UINT64},
 
     {"PTEC",        &linky.data.PTEC,     TYPE_STRING},
     {"DEMAIN",      &linky.data.DEMAIN,   TYPE_STRING},
@@ -64,7 +64,9 @@ Linky::Linky(LinkyMode mode, int RX, int TX)
     mode = mode;
     UARTRX = RX;
     UARTTX = TX;
-    GROUP_SEPARATOR = 0x20 ? mode == MODE_HISTORIQUE : 0x09; // space or tab depending on the mode
+    // mode Historique: 0x20
+    // mode Standard: 0x09
+    GROUP_SEPARATOR = (mode == MODE_HISTORIQUE) ? 0x20 : 0x09;
 }
 
 /**
@@ -98,12 +100,46 @@ void Linky::read()
     uint32_t rxBytes = 0;                                                 // store the number of bytes read
     uint32_t timeout = (xTaskGetTickCount() * portTICK_PERIOD_MS) + 5000; // 5 seconds timeout
     memset(buffer, 0, sizeof buffer);                                     // clear the buffer
+
+    uint32_t startOfFrame = UINT_MAX; // store the index of the start frame
+    uint32_t endOfFrame = UINT_MAX;   // store the index of the end frame
     do
     {
         rxBytes += uart_read_bytes(UART_NUM_1, buffer + rxBytes, (RX_BUF_SIZE - 1) - rxBytes, 500 / portTICK_PERIOD_MS);
         ESP_LOGI(LINKY_TAG, "Read %lu bytes, remaning:%ld", rxBytes, timeout - xTaskGetTickCount() * portTICK_PERIOD_MS);
+        //----------------------------------------------------------
+        // Firt step: find the start and end of the frame
+        //----------------------------------------------------------
+
+        for (int i = 0; i < BUFFER_SIZE; i++) // for each character in the buffer
+        {
+            if (buffer[i] == START_OF_FRAME) // if the character is a start of frame
+            {
+                startOfFrame = i; // store the index
+            }
+            else if (buffer[i] == END_OF_FRAME && i > startOfFrame) // if the character is an end of frame and an start of frame has been found
+            {
+                endOfFrame = i; // store the index
+                break;          // stop the loop
+            }
+        }
         vTaskDelay(100 / portTICK_PERIOD_MS);
-    } while ((rxBytes < 256) && ((xTaskGetTickCount() * portTICK_PERIOD_MS) < timeout));
+    } while ((endOfFrame == UINT_MAX || startOfFrame == UINT_MAX || (startOfFrame > endOfFrame)) && ((xTaskGetTickCount() * portTICK_PERIOD_MS) < timeout));
+
+    if (endOfFrame == UINT_MAX || startOfFrame == UINT_MAX || (startOfFrame > endOfFrame)) // if a start of frame and an end of frame has been found
+    {
+        ESP_LOGE(LINKY_TAG, "Error: start of frame is after end of frame");
+        frameSize = 0;
+        frame = NULL;
+        return;
+    }
+    else
+    {
+        ESP_LOGI(LINKY_TAG, "Start of frame: %lu", startOfFrame);
+        ESP_LOGI(LINKY_TAG, "End of frame: %lu", endOfFrame);
+        frameSize = endOfFrame - startOfFrame;
+        frame = buffer + startOfFrame;
+    }
     // ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_INFO);
 }
 
@@ -114,45 +150,20 @@ void Linky::read()
  */
 char Linky::decode()
 {
+    ESP_LOGI(LINKY_TAG, "Decode: Mode %s, Separator: %X", mode == MODE_STANDARD ? "Standard" : "Historique", GROUP_SEPARATOR);
     //----------------------------------------------------------
     // Clear the previous data
     //----------------------------------------------------------
-    data = {0}; // clear the data structure
-    // memset(&data, 0, sizeof(data));
-    // ESP_LOGI(LINKY_TAG, "data: \n%s\n-----------------------\n\n", buffer);
-    //----------------------------------------------------------
-    // Firt step: find the start and end of the frame
-    //----------------------------------------------------------
-    uint32_t startOfFrame = UINT_MAX;     // store the index of the start frame
-    uint32_t endOfFrame = UINT_MAX;       // store the index of the end frame
-    for (int i = 0; i < BUFFER_SIZE; i++) // for each character in the buffer
-    {
-        if (buffer[i] == START_OF_FRAME) // if the character is a start of frame
-        {
-            startOfFrame = i; // store the index
-        }
-        else if (buffer[i] == END_OF_FRAME && i > startOfFrame) // if the character is an end of frame and an start of frame has been found
-        {
-            endOfFrame = i; // store the index
-            break;          // stop the loop
-        }
-    }
-
-    if (endOfFrame == UINT_MAX || startOfFrame == UINT_MAX || startOfFrame > endOfFrame) // if the start or the end of the frame are not found or if the start is after the end
-    {
-        // ERROR
-        ESP_LOGI(LINKY_TAG, "ERROR: no frame found or end of frame before start of frame");
-        index = 0; // clear the buffer
-        return 0;  // exit the function
-    }
-
-    char frame[FRAME_SIZE] = {0};                                    // store the frame
-    memcpy(frame, buffer + startOfFrame, endOfFrame - startOfFrame); // copy only one frame from the buffer
-    index = 0;                                                       // clear the buffer
+    data = {}; // clear the data
+    index = 0; // clear the buffer
     // ESP_LOGI(LINKY_TAG, "START OF FRAME: %lu (%x)", startOfFrame, buffer[startOfFrame]);
     // ESP_LOGI(LINKY_TAG, "END OF FRAME: %lu (%x)", endOfFrame, buffer[endOfFrame]);
+    if (!frame)
+    {
+        ESP_LOGE(LINKY_TAG, "No frame to decode");
+        return 0;
+    }
     // ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, frame, endOfFrame - startOfFrame, ESP_LOG_INFO);
-    // ESP_LOGI(LINKY_TAG, "PROCESS FRAME: %s", frame);
     //-------------------------------------
     // Second step: Find goups of data in the frame
     //-------------------------------------
@@ -160,8 +171,7 @@ char Linky::decode()
     unsigned int endOfGroup[GROUP_COUNT] = {UINT_MAX};   // store ends index of each group
     unsigned int startOfGroupIndex = 0;                  // store the current index of starts of group array
     unsigned int endOfGroupIndex = 0;                    // store the current index of ends of group array
-
-    for (unsigned int i = 0; i < FRAME_SIZE; i++) // for each character in the frame
+    for (unsigned int i = 0; i < frameSize; i++)         // for each character in the frame
     {
         switch (frame[i])
         {
@@ -259,7 +269,7 @@ char Linky::decode()
                     case TYPE_UINT32:
                         *(uint32_t *)LinkyLabelList[j].data = strtoul(value, NULL, 10);
                         break;
-                    case TYPE_UINT48:
+                    case TYPE_UINT64:
                         *(uint64_t *)LinkyLabelList[j].data = strtoull(value, NULL, 10);
                         break;
                     default:
@@ -299,19 +309,24 @@ void Linky::print()
         switch (LinkyLabelList[i].type)
         {
         case TYPE_STRING:
-            ESP_LOGI(LINKY_TAG, "%s: %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
+            if (strlen((char *)LinkyLabelList[i].data) > 0) // print only if we have a value
+                ESP_LOGI(LINKY_TAG, "%s: %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
             break;
         case TYPE_UINT8:
-            ESP_LOGI(LINKY_TAG, "%s: %u", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
+            if (*(uint8_t *)LinkyLabelList[i].data != UINT8_MAX) // print only if we have a value
+                ESP_LOGI(LINKY_TAG, "%s: %u", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
             break;
         case TYPE_UINT16:
-            ESP_LOGI(LINKY_TAG, "%s: %u", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+            if (*(uint16_t *)LinkyLabelList[i].data != UINT16_MAX) // print only if we have a value
+                ESP_LOGI(LINKY_TAG, "%s: %u", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
             break;
         case TYPE_UINT32:
-            ESP_LOGI(LINKY_TAG, "%s: %lu", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
+            if (*(uint32_t *)LinkyLabelList[i].data != UINT32_MAX) // print only if we have a value
+                ESP_LOGI(LINKY_TAG, "%s: %lu", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
             break;
-        case TYPE_UINT48:
-            ESP_LOGI(LINKY_TAG, "%s: %llu", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
+        case TYPE_UINT64:
+            if (*(uint64_t *)LinkyLabelList[i].data != UINT64_MAX) // print only if we have a value
+                ESP_LOGI(LINKY_TAG, "%s: %llu", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
             break;
         default:
             break;
