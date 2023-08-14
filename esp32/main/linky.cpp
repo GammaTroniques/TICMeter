@@ -1,4 +1,6 @@
 #include <linky.h>
+#include <config.h>
+#include <time.h>
 
 Linky linky(MODE_HISTORIQUE, 17, 16);
 
@@ -6,48 +8,49 @@ Linky linky(MODE_HISTORIQUE, 17, 16);
 struct LinkyGroup LinkyLabelList[] =
 {   
     // label         data            type
-    {"ADCO",        &linky.data.ADCO,     TYPE_STRING},
-    {"OPTARIF",     &linky.data.OPTARIF,  TYPE_STRING},
-    {"ISOUSC",      &linky.data.ISOUSC,   TYPE_UINT16},
 
-    {"BASE",        &linky.data.BASE,     TYPE_UINT64},
+    {"ADCO",        &linky.data.hist->ADCO,     TYPE_STRING},
+    {"OPTARIF",     &linky.data.hist->OPTARIF,  TYPE_STRING},
+    {"ISOUSC",      &linky.data.hist->ISOUSC,   TYPE_UINT16},
 
-    {"HCHC",        &linky.data.HCHC,     TYPE_UINT64},
-    {"HCHP",        &linky.data.HCHP,     TYPE_UINT64},
+    {"BASE",        &linky.data.hist->BASE,     TYPE_UINT64},
 
-    {"EJPHN",       &linky.data.EJPHN,    TYPE_UINT64},
-    {"EJPHPM",      &linky.data.EJPHPM,   TYPE_UINT64},
-    {"PEJP",        &linky.data.PEJP,     TYPE_UINT64},
+    {"HCHC",        &linky.data.hist->HCHC,     TYPE_UINT64},
+    {"HCHP",        &linky.data.hist->HCHP,     TYPE_UINT64},
 
-    {"BBRHCJB",     &linky.data.BBRHCJB,  TYPE_UINT64},
-    {"BBRHPJB",     &linky.data.BBRHPJB,  TYPE_UINT64},
-    {"BBRHCJW",     &linky.data.BBRHCJW,  TYPE_UINT64},
-    {"BBRHPJW",     &linky.data.BBRHPJW,  TYPE_UINT64},
-    {"BBRHCJR",     &linky.data.BBRHCJR,  TYPE_UINT64},
-    {"BBRHPJR",     &linky.data.BBRHPJR,  TYPE_UINT64},
+    {"EJPHN",       &linky.data.hist->EJPHN,    TYPE_UINT64},
+    {"EJPHPM",      &linky.data.hist->EJPHPM,   TYPE_UINT64},
+    {"PEJP",        &linky.data.hist->PEJP,     TYPE_UINT64},
 
-    {"PTEC",        &linky.data.PTEC,     TYPE_STRING},
-    {"DEMAIN",      &linky.data.DEMAIN,   TYPE_STRING},
+    {"BBRHCJB",     &linky.data.hist->BBRHCJB,  TYPE_UINT64},
+    {"BBRHPJB",     &linky.data.hist->BBRHPJB,  TYPE_UINT64},
+    {"BBRHCJW",     &linky.data.hist->BBRHCJW,  TYPE_UINT64},
+    {"BBRHPJW",     &linky.data.hist->BBRHPJW,  TYPE_UINT64},
+    {"BBRHCJR",     &linky.data.hist->BBRHCJR,  TYPE_UINT64},
+    {"BBRHPJR",     &linky.data.hist->BBRHPJR,  TYPE_UINT64},
 
-    {"IINST",       &linky.data.IINST,    TYPE_UINT16},
-    {"IINST1",      &linky.data.IINST1,   TYPE_UINT16},
-    {"IINST2",      &linky.data.IINST2,   TYPE_UINT16},
-    {"IINST3",      &linky.data.IINST3,   TYPE_UINT16},
-    {"IMAX",        &linky.data.IMAX,     TYPE_UINT16},
-    {"IMAX1",       &linky.data.IMAX1,    TYPE_UINT16},
-    {"IMAX2",       &linky.data.IMAX2,    TYPE_UINT16},
-    {"IMAX3",       &linky.data.IMAX3,    TYPE_UINT16},
-    {"ADPS",        &linky.data.ADPS,     TYPE_UINT16},
-    {"ADIR1",       &linky.data.ADIR1,    TYPE_UINT16},
-    {"ADIR2",       &linky.data.ADIR2,    TYPE_UINT16},
-    {"ADIR3",       &linky.data.ADIR3,    TYPE_UINT16},
+    {"PTEC",        &linky.data.hist->PTEC,     TYPE_STRING},
+    {"DEMAIN",      &linky.data.hist->DEMAIN,   TYPE_STRING},
 
-    {"PAPP",        &linky.data.PAPP,     TYPE_UINT32},
-    {"PAPP",        &linky.data.PMAX,     TYPE_UINT32},
-    {"PAPP",        &linky.data.PPOT,     TYPE_UINT32},
+    {"IINST",       &linky.data.hist->IINST,    TYPE_UINT16},
+    {"IINST1",      &linky.data.hist->IINST1,   TYPE_UINT16},
+    {"IINST2",      &linky.data.hist->IINST2,   TYPE_UINT16},
+    {"IINST3",      &linky.data.hist->IINST3,   TYPE_UINT16},
+    {"IMAX",        &linky.data.hist->IMAX,     TYPE_UINT16},
+    {"IMAX1",       &linky.data.hist->IMAX1,    TYPE_UINT16},
+    {"IMAX2",       &linky.data.hist->IMAX2,    TYPE_UINT16},
+    {"IMAX3",       &linky.data.hist->IMAX3,    TYPE_UINT16},
+    {"ADPS",        &linky.data.hist->ADPS,     TYPE_UINT16},
+    {"ADIR1",       &linky.data.hist->ADIR1,    TYPE_UINT16},
+    {"ADIR2",       &linky.data.hist->ADIR2,    TYPE_UINT16},
+    {"ADIR3",       &linky.data.hist->ADIR3,    TYPE_UINT16},
+
+    {"PAPP",        &linky.data.hist->PAPP,     TYPE_UINT32},
+    {"PAPP",        &linky.data.hist->PMAX,     TYPE_UINT32},
+    {"PAPP",        &linky.data.hist->PPOT,     TYPE_UINT32},
     
-    {"HHPHC",       &linky.data.HHPHC,    TYPE_UINT8},
-    {"MOTDETAT",    &linky.data.MOTDETAT, TYPE_STRING},
+    {"HHPHC",       &linky.data.hist->HHPHC,    TYPE_UINT8},
+    {"MOTDETAT",    &linky.data.hist->MOTDETAT, TYPE_STRING},
 };
 // clang-format on
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
@@ -61,7 +64,7 @@ const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelLis
  */
 Linky::Linky(LinkyMode mode, int RX, int TX)
 {
-    mode = mode;
+    this->mode = mode;
     UARTRX = RX;
     UARTTX = TX;
     // mode Historique: 0x20
@@ -75,9 +78,51 @@ Linky::Linky(LinkyMode mode, int RX, int TX)
  */
 void Linky::begin()
 {
-    // start the serial communication at 1200 bauds, 7E1
+    switch (config.values.linkyMode)
+    {
+    case AUTO:
+        ESP_LOGI(LINKY_TAG, "Trying to autodetect Linky mode, testing MODE_HISTORIQUE");
+        setMode(MODE_HISTORIQUE);
+        break;
+    case MODE_HISTORIQUE:
+        setMode(MODE_HISTORIQUE);
+        break;
+    case MODE_STANDARD:
+        setMode(MODE_STANDARD);
+        break;
+    default:
+        break;
+    }
+}
+
+void Linky::setMode(LinkyMode mode)
+{
+    switch (this->mode)
+    {
+    case MODE_HISTORIQUE:
+        free(this->data.hist);
+        break;
+    case MODE_STANDARD:
+        free(this->data.std);
+        break;
+    default:
+        break;
+    }
+
+    switch (mode)
+    {
+    case MODE_HISTORIQUE:
+        this->data.hist = (LinkyDataHist *)malloc(sizeof(LinkyDataHist));
+        break;
+    case MODE_STANDARD:
+        this->data.std = (LinkyDataStd *)malloc(sizeof(LinkyDataStd));
+        break;
+    default:
+        break;
+    }
+
+    uart_driver_delete(UART_NUM_1);
     uart_config_t uart_config = {
-        .baud_rate = 1200,
         .data_bits = UART_DATA_7_BITS,
         .parity = UART_PARITY_EVEN,
         .stop_bits = UART_STOP_BITS_1,
@@ -85,6 +130,23 @@ void Linky::begin()
         .rx_flow_ctrl_thresh = 122,
         .source_clk = UART_SCLK_DEFAULT,
     };
+    switch (mode)
+    {
+    case MODE_HISTORIQUE:
+        // start the serial communication at 1200 bauds, 7E1
+        uart_config.baud_rate = 1200;
+        mode = MODE_HISTORIQUE;
+        GROUP_SEPARATOR = 0x20;
+        break;
+    case MODE_STANDARD:
+        // start the serial communication at 9600 bauds, 7E1
+        uart_config.baud_rate = 9600;
+        mode = MODE_STANDARD;
+        GROUP_SEPARATOR = 0x09;
+        break;
+    default:
+        break;
+    }
     uart_driver_install(UART_NUM_1, RX_BUF_SIZE, 0, 0, NULL, 0); // set UART1 buffer size
     uart_param_config(UART_NUM_1, &uart_config);
     uart_set_pin(UART_NUM_1, UARTTX, UARTRX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
@@ -279,6 +341,42 @@ char Linky::decode()
             }
         }
     }
+    if (config.values.mode == AUTO)
+    {
+        switch (this->mode)
+        {
+        case MODE_HISTORIQUE:
+            if (strlen(data.hist->ADCO) > 0)
+            {
+                ESP_LOGI(LINKY_TAG, "Auto mode: Mode Historique Found!");
+                config.values.mode = MODE_HISTORIQUE;
+                config.write();
+            }
+            else
+            {
+                ESP_LOGI(LINKY_TAG, "Auto mode: Mode Historique Not Found! Try Mode Standard");
+                this->mode = MODE_STANDARD;
+            }
+            break;
+        case MODE_STANDARD:
+            if (strlen(data.std->ADSC) > 0)
+            {
+
+                ESP_LOGI(LINKY_TAG, "Auto mode: Mode Standard Found!");
+                config.values.mode = MODE_STANDARD;
+                config.write();
+            }
+            else
+            {
+                ESP_LOGI(LINKY_TAG, "Auto mode: Mode Standard Not Found! Try Mode Historique");
+                this->mode = MODE_HISTORIQUE;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
     return 1;
 }
 
@@ -362,4 +460,28 @@ char Linky::checksum(char *label, char *data, char *time)
         }                                      //
     }                                          //
     return (S1 & 0x3F) + 0x20;                 // return the checksum
+}
+
+time_t Linky::decodeTime(char *time)
+{
+    // Le format utilisé pour les horodates est SAAMMJJhhmmss, c'est-à-dire Saison, Année, Mois, Jour, heure, minute, seconde.
+    // La saison est codée sur 1 caractère :
+    // - H pour Hiver (du 1er novembre au 31 mars)
+    // - E pour Eté (du 1er avril au 31 octobre)
+    // L'année est codée sur 2 caractères.
+    // Le mois est codé sur 2 caractères.
+    // Le jour est codé sur 2 caractères.
+    // L'heure est codée sur 2 caractères.
+    // La minute est codée sur 2 caractères.
+    // La seconde est codée sur 2 caractères.
+    struct tm tm;
+    memset(&tm, 0, sizeof(struct tm));
+    tm.tm_year = (time[1] - '0') * 10 + (time[2] - '0') + 100; // year since 1900
+    tm.tm_mon = (time[3] - '0') * 10 + (time[4] - '0') - 1;    // month since January [0-11]
+    tm.tm_mday = (time[5] - '0') * 10 + (time[6] - '0');       // day of the month [1-31]
+    tm.tm_hour = (time[7] - '0') * 10 + (time[8] - '0');       // hours since midnight [0-23]
+    tm.tm_min = (time[9] - '0') * 10 + (time[10] - '0');       // minutes after the hour [0-59]
+    tm.tm_sec = (time[11] - '0') * 10 + (time[12] - '0');      // seconds after the minute [0-60]
+    tm.tm_isdst = -1;                                          // information about daylight saving time
+    return mktime(&tm);
 }

@@ -354,8 +354,9 @@ void sendHAMqtt(LinkyData *linky)
 
     mqttSendTimout = MILLIS + 10000;
     mqttSendCount = 0;
-    linky->timestamp = getTimestamp();
-    const void *values[] = {&linky->ADCO, &linky->OPTARIF, &linky->ISOUSC, &linky->BASE, &linky->HCHC, &linky->HCHP, &linky->PTEC, &linky->IINST, &linky->IMAX, &linky->PAPP, &linky->HHPHC, &linky->MOTDETAT, &linky->timestamp, &config.values.refreshRate};
+    linky->hist->timestamp = getTimestamp();
+
+    const void *values[] = {&linky->hist->ADCO, &linky->hist->OPTARIF, &linky->hist->ISOUSC, &linky->hist->BASE, &linky->hist->HCHC, &linky->hist->HCHP, &linky->hist->PTEC, &linky->hist->IINST, &linky->hist->IMAX, &linky->hist->PAPP, &linky->hist->HHPHC, &linky->hist->MOTDETAT, &linky->hist->timestamp, &config.values.refreshRate};
 
     const uint8_t sensorsCount = sizeof(values) / sizeof(values[0]);
     for (int i = 0; i < sensorsCount; i++)
@@ -406,9 +407,9 @@ void sendTuyaMqtt(LinkyData *linky)
     json["msgId"] = "1";
     json["time"] = now;
     json["sys"]["ack"] = 1;
-    json["data"]["HCHP"]["value"] = linky->BASE;
+    json["data"]["HCHP"]["value"] = linky->hist->BASE;
     json["data"]["HCHP"]["time"] = now;
-    json["data"]["HCHC"]["value"] = linky->HCHC;
+    json["data"]["HCHC"]["value"] = linky->hist->HCHC;
     json["data"]["HCHC"]["time"] = now;
 
     char mqttBuffer[1024];

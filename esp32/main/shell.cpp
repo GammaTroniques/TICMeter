@@ -26,7 +26,7 @@ void shellInit()
     esp_console_register_test_led_command();
     esp_console_register_ota_check_command();
     esp_console_register_tuya_command();
-
+    esp_console_register_linky_command();
     esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
 
@@ -303,9 +303,9 @@ int mqtt_send_command(int argc, char **argv)
     }
     printf("MQTT send\n");
     LinkyData data;
-    data.timestamp = getTimestamp();
-    data.BASE = 5050;
-    data.IINST = 10;
+    // data.hist->timestamp = getTimestamp();
+    // data.hist->BASE = 5050;
+    // data.hist->IINST = 10;
     sendToMqtt(&data);
     return 0;
 }
@@ -667,4 +667,67 @@ esp_err_t esp_console_register_tuya_command()
     }
 
     return ESP_OK;
+}
+
+esp_err_t esp_console_register_linky_command()
+{
+    esp_console_cmd_t get = {
+        .command = "get-linky",
+        .help = "Get Linky mode",
+        .func = &get_linky_mode_command};
+
+    esp_err_t err = esp_console_cmd_register(&get);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    static struct
+    {
+        struct arg_int *mode;
+        struct arg_end *end;
+    } set_mode_args;
+
+    set_mode_args.mode = arg_int1(NULL, NULL, "<mode>", "Mode of operation");
+    set_mode_args.end = arg_end(1);
+
+    esp_console_cmd_t set = {
+        .command = "set-linky",
+        .help = "Set Linky mode\n"
+                "0: MODE_HISTORIQUE\n"
+                "1: MODE_STANDARD\n"
+                "2: MODE_AUTO",
+        .func = &set_linky_mode_command,
+        .argtable = &set_mode_args};
+    err = esp_console_cmd_register(&set);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
+    return ESP_OK;
+}
+
+int get_linky_mode_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    const char *modes[] = {"MODE_HISTORIQUE", "MODE_STANDARD", "MODE_AUTO"};
+    printf("Current Linky mode: %d: %s\n", linky.mode, modes[linky.mode]);
+    printf("Configured Linky mode: %d: %s\n", config.values.linkyMode, modes[config.values.linkyMode]);
+    return 0;
+}
+int set_linky_mode_command(int argc, char **argv)
+{
+    if (argc != 2)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    config.values.linkyMode = (LinkyMode)atoi(argv[1]);
+    config.write();
+    printf("Mode saved\n");
+    get_linky_mode_command(1, NULL);
+    return 0;
 }

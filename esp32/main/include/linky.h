@@ -26,6 +26,11 @@
 
 #define LINKY_TAG "Linky"
 
+typedef struct {
+    uint64_t value = UINT64_MAX;
+    time_t timestamp = 0;
+} TimeLabel;
+
 typedef struct
 {
     //  Variables                   Taille      Unité       Description
@@ -76,7 +81,102 @@ typedef struct
     char MOTDETAT[7]    = {0};          //     6                     Mot d'état du compteur                            
     
     time_t timestamp    = 0;
-} LinkyData;
+} LinkyDataHist;
+
+typedef struct
+{
+    //  Variables                           Taille      Unité       Description
+    //--------------------------------------------------------------------------------------
+    char ADSC[13]       = {0};          //     12                   Adresse Secondaire du Compteur
+    char VTIC[3]        = {0};          //     2                    Version de la TIC
+    TimeLabel DATE      = {0};          //     0                    Date du jour
+    char NGTF[17]       = {0};          //     16                   Nom du calendrier tarifaire fournisseur
+    char LTARF[17]      = {0};          //     16                   Libellé du calendrier tarifaire
+    
+    uint64_t EAST       = UINT64_MAX;   //     9         Wh         Energie active soutirée totale
+    uint64_t EASF01     = UINT64_MAX;   //     9         Wh         Energie active soutirée Fournisseur, index 01
+    uint64_t EASF02     = UINT64_MAX;   //     9         Wh         Energie active soutirée Fournisseur, index 02
+    uint64_t EASF03     = UINT64_MAX;   //     9         Wh         Energie active soutirée Fournisseur, index 03
+    uint64_t EASF04     = UINT64_MAX;   //     9         Wh         Energie active soutirée Fournisseur, index 04
+    uint64_t EASF05     = UINT64_MAX;   //     9         Wh         Energie active soutirée Fournisseur, index 05
+    uint64_t EASF06     = UINT64_MAX;   //     9         Wh         Energie active soutirée Fournisseur, index 06
+    uint64_t EASF07     = UINT64_MAX;   //     9         Wh         Energie active soutirée Fournisseur, index 07
+    uint64_t EASF08     = UINT64_MAX;   //     9         Wh         Energie active soutirée Fournisseur, index 08
+    uint64_t EASF09     = UINT64_MAX;   //     9         Wh         Energie active soutirée Fournisseur, index 09
+    uint64_t EASF10     = UINT64_MAX;   //     9         Wh         Energie active soutirée Fournisseur, index 10
+
+    uint64_t EASD01     = UINT64_MAX;  //      9         Wh         Energie active soutirée Distributeur, index 01
+    uint64_t EASD02     = UINT64_MAX;  //      9         Wh         Energie active soutirée Distributeur, index 02
+    uint64_t EASD03     = UINT64_MAX;  //      9         Wh         Energie active soutirée Distributeur, index 03
+    uint64_t EASD04     = UINT64_MAX;  //      9         Wh         Energie active soutirée Distributeur, index 04
+
+    uint64_t EAIT       = UINT64_MAX;  //      9         Wh         Energie active injectée totale
+
+    uint64_t ERQ1       = UINT64_MAX;  //      9         Wh         Energie réactive Q1 totale 
+    uint64_t ERQ2       = UINT64_MAX;  //      9         Wh         Energie réactive Q2 totale
+    uint64_t ERQ3       = UINT64_MAX;  //      9         Wh         Energie réactive Q3 totale
+    uint64_t ERQ4       = UINT64_MAX;  //      9         Wh         Energie réactive Q4 totale
+
+    uint16_t IRMS1      = UINT16_MAX;  //      3         A          Courant efficace, phase 1
+    uint16_t IRMS2      = UINT16_MAX;  //      3         A          Courant efficace, phase 2
+    uint16_t IRMS3      = UINT16_MAX;  //      3         A          Courant efficace, phase 3
+
+    uint16_t URMS1      = UINT16_MAX;  //      3         V          Tension efficace, phase 1
+    uint16_t URMS2      = UINT16_MAX;  //      3         V          Tension efficace, phase 2
+    uint16_t URMS3      = UINT16_MAX;  //      3         V          Tension efficace, phase 3
+
+    uint8_t PREF        = UINT8_MAX;   //      2         kVA        Puissance app. de référence (PREF) 
+    uint8_t PCOUP       = UINT8_MAX;   //      2         kVA        Puissance app. de coupure (PCOUP)
+
+    uint32_t SINSTS     = UINT32_MAX;  //      5         VA         Puissance apparente soutirée instantanée
+    uint32_t SINSTS1    = UINT32_MAX;  //      5         VA         Puissance apparente soutirée instantanée, phase 1
+    uint32_t SINSTS2    = UINT32_MAX;  //      5         VA         Puissance apparente soutirée instantanée, phase 2
+    uint32_t SINSTS3    = UINT32_MAX;  //      5         VA         Puissance apparente soutirée instantanée, phase 3
+
+    TimeLabel SMAXSN     = {0};        //      5         VA         Puissance app. max. soutirée n avec date et heure
+    TimeLabel SMAXSN1    = {0};        //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 1
+    TimeLabel SMAXSN2    = {0};        //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 2
+    TimeLabel SMAXSN3    = {0};        //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 3
+
+    TimeLabel SMAXSN_1   = {0};        //      5         VA         Puissance app max. soutirée n-1 
+    TimeLabel SMAXSN1_1  = {0};        //      5         VA         Puissance app max. soutirée n-1, phase 1
+    TimeLabel SMAXSN2_1  = {0};        //      5         VA         Puissance app max. soutirée n-1, phase 2
+    TimeLabel SMAXSN3_1  = {0};        //      5         VA         Puissance app max. soutirée n-1, phase 3
+
+    uint32_t SINSTI    = UINT32_MAX;   //      5         VA         Puissance app. Instantanée injectée
+    
+    TimeLabel SMAXIN   = {0};          //      5         VA         Puissance app. max. injectée n avec date et heure
+    TimeLabel SMAXIN_1 = {0};          //      5         VA         Puissance app. max. injectée n-1 avec date et heure
+
+    TimeLabel CCASN    = {0};          //      5         VA         Point n de la courbe de charge active soutirée
+    TimeLabel CCASN_1  = {0};          //      5         VA         Point n-1 de la courbe de charge active soutirée
+    TimeLabel CCAIN    = {0};          //      5         VA         Point n de la courbe de charge active injectée
+    TimeLabel CCAIN_1  = {0};          //      5         VA         Point n-1 de la courbe de charge active injectée
+
+    TimeLabel UMOY1  = {0};            //      3         V          Tension moyenne, phase 1
+    TimeLabel UMOY2  = {0};            //      3         V          Tension moyenne, phase 2
+    TimeLabel UMOY3  = {0};            //      3         V          Tension moyenne, phase 3
+
+    char STGE[9]     = {0};            //      8         -          Registre de Statuts
+
+    TimeLabel DPM1  = {0};             //      2         -          Début Pointe Mobile 1
+    TimeLabel FPM1  = {0};             //      2         -          Fin Pointe Mobile 1
+    TimeLabel DPM2  = {0};             //      2         -          Début Pointe Mobile 2
+    TimeLabel FPM2  = {0};             //      2         -          Fin Pointe Mobile 2
+    TimeLabel DPM3  = {0};             //      2         -          Début Pointe Mobile 3
+    TimeLabel FPM3  = {0};             //      2         -          Fin Pointe Mobile 3
+
+    char MSG1[33]   = {0};             //      32        -          Message court
+    char MSG2[17]   = {0};             //      16        -          Message Ultra court 
+    char PRM[15]    = {0};             //      14        -          PRM En mode standard la TIC retransmet le PRM.
+    char RELAIS[4]  = {0};             //      3         -          Etat des relais: Les données transmises correspondent à l’état des 8 relais dont 1 réel et 7 virtuels.
+    char NTARF[3]   = {0};             //      2         -          Numéro de l’index tarifaire en cours
+    char NJOURF[3]  = {0};             //      2         -          Numéro du jour en cours calendrier fournisseur
+    char NJOURF_1[3]= {0};             //      2         -          Numéro du prochain jour calendrier fournisseur
+    char PJOURF_1[99]= {0};            //      98        -          Profil du prochain jour calendrier fournisseur 
+    char PPOINTE[99]= {0};             //      98        -          Profil du prochain jour de pointe
+
+}LinkyDataStd;
 
 #define TYPE_STRING 0
 #define TYPE_UINT8  1
@@ -98,6 +198,13 @@ enum LinkyMode
     MODE_STANDARD,
     AUTO
 }; // The state of the UART buffer
+
+typedef union
+{
+    LinkyDataHist *hist;
+    LinkyDataStd *std;
+} LinkyData;
+
 class Linky
 {
 
@@ -107,13 +214,15 @@ public:
     char update();                         // Update the data
     void print();                          // Print the data
                                            //
-    LinkyData data;
-    void begin(); // Begin the linky
+    LinkyData data;                        // The data
+    void begin();                          // Begin the linky
     // void rx_task(void *arg);
 
     uint16_t index = 0;             // The index of the UART buffer
     char buffer[BUFFER_SIZE] = {0}; // The UART buffer
     LinkyMode mode = MODE_HISTORIQUE;
+    void setMode(LinkyMode mode);
+    time_t decodeTime(char *time); // Decode the time
 
 private:
     char UARTRX = 0;                // The RX pin of the linky

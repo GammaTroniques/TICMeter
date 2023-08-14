@@ -12,22 +12,32 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
     for (int i = 0; i < dataIndex; i++)      // Add data to the array
     {
         cJSON *dataItem = cJSON_CreateObject();
-        cJSON_AddNumberToObject(dataItem, "DATE", data[i].timestamp);
-        cJSON_AddStringToObject(dataItem, "ADCO", data[i].ADCO);
-        cJSON_AddStringToObject(dataItem, "OPTARIF", data[i].OPTARIF);
-        cJSON_AddNumberToObject(dataItem, "ISOUSC", data[i].ISOUSC);
-        if (data[i].BASE != 0)
-            cJSON_AddNumberToObject(dataItem, "BASE", data[i].BASE);
-        if (data[i].HCHC != 0)
-            cJSON_AddNumberToObject(dataItem, "HCHC", data[i].HCHC);
-        if (data[i].HCHP != 0)
-            cJSON_AddNumberToObject(dataItem, "HCHP", data[i].HCHP);
-        cJSON_AddStringToObject(dataItem, "PTEC", data[i].PTEC);
-        cJSON_AddNumberToObject(dataItem, "IINST", data[i].IINST);
-        cJSON_AddNumberToObject(dataItem, "IMAX", data[i].IMAX);
-        cJSON_AddNumberToObject(dataItem, "PAPP", data[i].PAPP);
-        cJSON_AddStringToObject(dataItem, "HHPHC", data[i].HHPHC);
-        cJSON_AddStringToObject(dataItem, "MOTDETAT", data[i].MOTDETAT);
+        switch (linky.mode)
+        {
+        case MODE_HISTORIQUE:
+            cJSON_AddNumberToObject(dataItem, "DATE", data[i].hist->timestamp);
+            cJSON_AddStringToObject(dataItem, "ADCO", data[i].hist->ADCO);
+            cJSON_AddStringToObject(dataItem, "OPTARIF", data[i].hist->OPTARIF);
+            cJSON_AddNumberToObject(dataItem, "ISOUSC", data[i].hist->ISOUSC);
+            if (data[i].hist->BASE != 0)
+                cJSON_AddNumberToObject(dataItem, "BASE", data[i].hist->BASE);
+            if (data[i].hist->HCHC != 0)
+                cJSON_AddNumberToObject(dataItem, "HCHC", data[i].hist->HCHC);
+            if (data[i].hist->HCHP != 0)
+                cJSON_AddNumberToObject(dataItem, "HCHP", data[i].hist->HCHP);
+            cJSON_AddStringToObject(dataItem, "PTEC", data[i].hist->PTEC);
+            cJSON_AddNumberToObject(dataItem, "IINST", data[i].hist->IINST);
+            cJSON_AddNumberToObject(dataItem, "IMAX", data[i].hist->IMAX);
+            cJSON_AddNumberToObject(dataItem, "PAPP", data[i].hist->PAPP);
+            cJSON_AddStringToObject(dataItem, "HHPHC", data[i].hist->HHPHC);
+            cJSON_AddStringToObject(dataItem, "MOTDETAT", data[i].hist->MOTDETAT);
+            break;
+        case MODE_STANDARD:
+            ESP_LOGI("WEB", "MODE_STANDARD not implemented yet");
+            break;
+        default:
+            break;
+        }
         cJSON_AddItemToArray(dataObject, dataItem);
     }
 
