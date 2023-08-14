@@ -22,7 +22,7 @@ struct sensorConfig
     char device_class[32] = "";
     char unit_of_measurement[32] = "";
     char value_template[32] = "";
-    uint8_t valueType = TYPE_STRING;
+    LinkyLabelType valueType = STRING;
     uint8_t realTime = 0;
     char icon[32] = "";
 };
@@ -31,21 +31,21 @@ struct sensorConfig
 // clang-format off
 struct sensorConfig sensors[] = {
     // TYPE          Name                         Unique ID              Device class   Unit        Value template           Value type  Real time
-    {TYPE_SENSOR, "Identifiant",                "ADCO",                 "",             "",     "",                         TYPE_STRING, STATIC_VALUE,   "mdi:card-account-details" },
-    {TYPE_SENSOR, "Option tarifaire",           "OPTARIF",              "",             "",     "",                         TYPE_STRING, STATIC_VALUE,   "mdi:cash-multiple"        },
-    {TYPE_SENSOR, "Intensité souscrite",        "ISOUSC",               "current",      "A",    "",                         TYPE_UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Index Base",                 "BASE",                 "energy",       "Wh",   "",                         TYPE_UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Index Heures Creuses",       "HCHC",                 "energy",       "Wh",   "",                         TYPE_UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Index Heures Pleines",       "HCHP",                 "energy",       "Wh",   "",                         TYPE_UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Période tarifaire en cours", "PTEC",                 "",             "",     "",                         TYPE_STRING, STATIC_VALUE,   "mdi:calendar-clock"       },
-    {TYPE_SENSOR, "Intensité instantanée",      "IINST",                "current",      "A",    "",                         TYPE_UINT32, REAL_TIME,      ""                           },
-    {TYPE_SENSOR, "Intensité maximale",         "IMAX",                 "current",      "A",    "",                         TYPE_UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Puissance apparente",        "PAPP",                 "power",        "VA",   "",                         TYPE_UINT32, REAL_TIME,      ""                           },
-    {TYPE_SENSOR, "Horaire HC",                 "HHPHC",                "",             "",     "",                         TYPE_STRING, STATIC_VALUE,   "mdi:home-clock"           },
-    {TYPE_SENSOR, "Mot d'état du compteur",     "MOTDETAT",             "",             "",     "",                         TYPE_STRING, STATIC_VALUE,   "mdi:state-machine"        },
-    {TYPE_SENSOR, "Timestamp",                  "Timestamp",            "timestamp",    "",     "{{ as_datetime(value) }}", TYPE_UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Refresh Rate",               "currentRefreshRate",   "",             "sec",  "",                         TYPE_UINT16, STATIC_VALUE,   "mdi:refresh"              },
-    {TYPE_NUMBER, "Refresh Rate",               "RefreshRate",          "",             "sec",  "",                         TYPE_UINT32, STATIC_VALUE,   "mdi:refresh"              },
+    {TYPE_SENSOR, "Identifiant",                "ADCO",                 "",             "",     "",                         STRING, STATIC_VALUE,   "mdi:card-account-details" },
+    {TYPE_SENSOR, "Option tarifaire",           "OPTARIF",              "",             "",     "",                         STRING, STATIC_VALUE,   "mdi:cash-multiple"        },
+    {TYPE_SENSOR, "Intensité souscrite",        "ISOUSC",               "current",      "A",    "",                         UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Index Base",                 "BASE",                 "energy",       "Wh",   "",                         UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Index Heures Creuses",       "HCHC",                 "energy",       "Wh",   "",                         UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Index Heures Pleines",       "HCHP",                 "energy",       "Wh",   "",                         UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Période tarifaire en cours", "PTEC",                 "",             "",     "",                         STRING, STATIC_VALUE,   "mdi:calendar-clock"       },
+    {TYPE_SENSOR, "Intensité instantanée",      "IINST",                "current",      "A",    "",                         UINT32, REAL_TIME,      ""                           },
+    {TYPE_SENSOR, "Intensité maximale",         "IMAX",                 "current",      "A",    "",                         UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Puissance apparente",        "PAPP",                 "power",        "VA",   "",                         UINT32, REAL_TIME,      ""                           },
+    {TYPE_SENSOR, "Horaire HC",                 "HHPHC",                "",             "",     "",                         STRING, STATIC_VALUE,   "mdi:home-clock"           },
+    {TYPE_SENSOR, "Mot d'état du compteur",     "MOTDETAT",             "",             "",     "",                         STRING, STATIC_VALUE,   "mdi:state-machine"        },
+    {TYPE_SENSOR, "Timestamp",                  "Timestamp",            "timestamp",    "",     "{{ as_datetime(value) }}", UINT32, STATIC_VALUE,   ""                           },
+    {TYPE_SENSOR, "Refresh Rate",               "currentRefreshRate",   "",             "sec",  "",                         UINT16, STATIC_VALUE,   "mdi:refresh"              },
+    {TYPE_NUMBER, "Refresh Rate",               "RefreshRate",          "",             "sec",  "",                         UINT32, STATIC_VALUE,   "mdi:refresh"              },
 };
 // clang-format on
 
@@ -354,9 +354,9 @@ void sendHAMqtt(LinkyData *linky)
 
     mqttSendTimout = MILLIS + 10000;
     mqttSendCount = 0;
-    linky->hist->timestamp = getTimestamp();
+    linky->hist.timestamp = getTimestamp();
 
-    const void *values[] = {&linky->hist->ADCO, &linky->hist->OPTARIF, &linky->hist->ISOUSC, &linky->hist->BASE, &linky->hist->HCHC, &linky->hist->HCHP, &linky->hist->PTEC, &linky->hist->IINST, &linky->hist->IMAX, &linky->hist->PAPP, &linky->hist->HHPHC, &linky->hist->MOTDETAT, &linky->hist->timestamp, &config.values.refreshRate};
+    const void *values[] = {&linky->hist.ADCO, &linky->hist.OPTARIF, &linky->hist.ISOUSC, &linky->hist.BASE, &linky->hist.HCHC, &linky->hist.HCHP, &linky->hist.PTEC, &linky->hist.IINST, &linky->hist.IMAX, &linky->hist.PAPP, &linky->hist.HHPHC, &linky->hist.MOTDETAT, &linky->hist.timestamp, &config.values.refreshRate};
 
     const uint8_t sensorsCount = sizeof(values) / sizeof(values[0]);
     for (int i = 0; i < sensorsCount; i++)
@@ -365,12 +365,12 @@ void sendHAMqtt(LinkyData *linky)
         {
             continue;
         }
-        if (sensors[i].valueType == TYPE_UINT32)
+        if (sensors[i].valueType == UINT32)
         {
             sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)sensors[i].unique_id);
             sprintf(value, "%lu", *(uint32_t *)(values[i]));
         }
-        else if (sensors[i].valueType == TYPE_UINT16)
+        else if (sensors[i].valueType == UINT16)
         {
             sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)sensors[i].unique_id);
             sprintf(value, "%u", *(int16_t *)(values[i]));
@@ -407,9 +407,9 @@ void sendTuyaMqtt(LinkyData *linky)
     json["msgId"] = "1";
     json["time"] = now;
     json["sys"]["ack"] = 1;
-    json["data"]["HCHP"]["value"] = linky->hist->BASE;
+    json["data"]["HCHP"]["value"] = linky->hist.BASE;
     json["data"]["HCHP"]["time"] = now;
-    json["data"]["HCHC"]["value"] = linky->hist->HCHC;
+    json["data"]["HCHC"]["value"] = linky->hist.HCHC;
     json["data"]["HCHC"]["time"] = now;
 
     char mqttBuffer[1024];

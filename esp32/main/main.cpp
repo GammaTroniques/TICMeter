@@ -29,7 +29,7 @@
 
 Config config;
 
-#define MAX_DATA_INDEX 15 // 10 + 5 in case of error
+#define MAX_DATA_INDEX 5 // 10 + 5 in case of error
 // ------------Global variables stored in RTC memory to keep their values after deep sleep
 RTC_DATA_ATTR LinkyData dataArray[MAX_DATA_INDEX];
 RTC_DATA_ATTR unsigned int dataIndex = 0;
@@ -62,7 +62,6 @@ extern "C" void app_main(void)
     }
   }
 
-  linky.begin();
   ESP_LOGI(MAIN_TAG, "Size of LinkyData: %d", sizeof(LinkyData));
   // ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
   // check vcondo and sleep if not ok
@@ -103,21 +102,18 @@ extern "C" void app_main(void)
     break;
   }
   // start linky fetch task
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 
-  char test[50] = "H081225223518";
-  time_t timestamp = linky.decodeTime(test);
-  ESP_LOGI(MAIN_TAG, "Timestamp: %lld", timestamp);
-  strftime(test, 20, "%Y-%m-%d %H:%M:%S", localtime(&timestamp));
-  ESP_LOGI(MAIN_TAG, "Date: %s", test);
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  ESP_LOGI(MAIN_TAG, "FREE HEAP: %ld", esp_get_free_heap_size());
 }
 
 void fetchLinkyDataTask(void *pvParameters)
 {
+  linky.begin();
   while (1)
   {
     if (!linky.update() ||
-        (strlen(linky.data.hist->ADCO) == 0))
+        !linky.presence())
     {
       ESP_LOGI(MAIN_TAG, "Linky update failed");
       startLedPattern(PATTERN_LINKY_ERR);
@@ -125,7 +121,6 @@ void fetchLinkyDataTask(void *pvParameters)
       vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
       continue;
     }
-
     linky.print();
     switch (config.values.mode)
     {
@@ -135,8 +130,8 @@ void fetchLinkyDataTask(void *pvParameters)
         dataIndex = 0;
       }
       dataArray[dataIndex] = linky.data;
-      dataArray[dataIndex++].hist->timestamp = getTimestamp();
-      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].hist->timestamp);
+      dataArray[dataIndex++].hist.timestamp = getTimestamp();
+      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].hist.timestamp);
       if (dataIndex > 2)
       {
         char json[1024] = {0};

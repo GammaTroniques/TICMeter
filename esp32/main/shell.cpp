@@ -682,6 +682,17 @@ esp_err_t esp_console_register_linky_command()
         return err;
     }
 
+    esp_console_cmd_t print = {
+        .command = "print-linky",
+        .help = "Print Linky data",
+        .func = &linky_print_command};
+
+    err = esp_console_cmd_register(&print);
+    if (err != ESP_OK)
+    {
+        return err;
+    }
+
     static struct
     {
         struct arg_int *mode;
@@ -729,5 +740,15 @@ int set_linky_mode_command(int argc, char **argv)
     config.write();
     printf("Mode saved\n");
     get_linky_mode_command(1, NULL);
+    return 0;
+}
+
+int linky_print_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    linky.print();
     return 0;
 }
