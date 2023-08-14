@@ -104,6 +104,12 @@ extern "C" void app_main(void)
   }
   // start linky fetch task
   xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 8192, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+
+  char test[50] = "H081225223518";
+  time_t timestamp = linky.decodeTime(test);
+  ESP_LOGI(MAIN_TAG, "Timestamp: %lld", timestamp);
+  strftime(test, 20, "%Y-%m-%d %H:%M:%S", localtime(&timestamp));
+  ESP_LOGI(MAIN_TAG, "Date: %s", test);
 }
 
 void fetchLinkyDataTask(void *pvParameters)
@@ -111,7 +117,7 @@ void fetchLinkyDataTask(void *pvParameters)
   while (1)
   {
     if (!linky.update() ||
-        (strlen(linky.data.ADCO) == 0))
+        (strlen(linky.data.hist->ADCO) == 0))
     {
       ESP_LOGI(MAIN_TAG, "Linky update failed");
       startLedPattern(PATTERN_LINKY_ERR);
@@ -129,8 +135,8 @@ void fetchLinkyDataTask(void *pvParameters)
         dataIndex = 0;
       }
       dataArray[dataIndex] = linky.data;
-      dataArray[dataIndex++].timestamp = getTimestamp();
-      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].BASE);
+      dataArray[dataIndex++].hist->timestamp = getTimestamp();
+      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].hist->timestamp);
       if (dataIndex > 2)
       {
         char json[1024] = {0};

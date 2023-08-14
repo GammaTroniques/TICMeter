@@ -54,4 +54,8 @@ int set_tuya_command(int argc, char **argv);
 int get_tuya_command(int argc, char **argv);
 esp_err_t esp_console_register_tuya_command();
 
+int set_linky_mode_command(int argc, char **argv);
+int get_linky_mode_command(int argc, char **argv);
+esp_err_t esp_console_register_linky_command();
+
 #endif
