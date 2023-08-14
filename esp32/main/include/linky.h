@@ -173,23 +173,21 @@ typedef struct
     char NTARF[3]   = {0};             //      2         -          Numéro de l’index tarifaire en cours
     char NJOURF[3]  = {0};             //      2         -          Numéro du jour en cours calendrier fournisseur
     char NJOURF_1[3]= {0};             //      2         -          Numéro du prochain jour calendrier fournisseur
-    char PJOURF_1[99]= {0};            //      98        -          Profil du prochain jour calendrier fournisseur 
+    char PJOURF_1[99]={0};            //      98        -          Profil du prochain jour calendrier fournisseur 
     char PPOINTE[99]= {0};             //      98        -          Profil du prochain jour de pointe
+
+    time_t timestamp    = 0;
 
 }LinkyDataStd;
 
-#define TYPE_STRING 0
-#define TYPE_UINT8  1
-#define TYPE_UINT16 2
-#define TYPE_UINT32 3
-#define TYPE_UINT64 4
-
-struct LinkyGroup
-{
-    char label[10] = {0};
-    void *data = NULL;
-    uint8_t type = TYPE_STRING;
-};
+typedef enum{
+    UINT8,
+    UINT16,
+    UINT32,
+    UINT64,
+    STRING,
+    UINT64_TIME
+} LinkyLabelType;
 
 // clang-format on
 enum LinkyMode
@@ -199,10 +197,18 @@ enum LinkyMode
     AUTO
 }; // The state of the UART buffer
 
-typedef union
+struct LinkyGroup
 {
-    LinkyDataHist *hist;
-    LinkyDataStd *std;
+    char label[10] = {0};
+    void *data = NULL;
+    LinkyLabelType type = STRING;
+    LinkyMode mode = MODE_HISTORIQUE;
+};
+
+typedef struct
+{
+    LinkyDataHist hist;
+    LinkyDataStd std;
 } LinkyData;
 
 class Linky
@@ -222,7 +228,7 @@ public:
     char buffer[BUFFER_SIZE] = {0}; // The UART buffer
     LinkyMode mode = MODE_HISTORIQUE;
     void setMode(LinkyMode mode);
-    time_t decodeTime(char *time); // Decode the time
+    uint8_t presence();
 
 private:
     char UARTRX = 0;                // The RX pin of the linky
@@ -235,6 +241,7 @@ private:
     void read();                                        // Read the UART buffer
     char decode();                                      // Decode the frame
     char checksum(char *label, char *data, char *time); // Check the checksum
+    time_t decodeTime(char *time);                      // Decode the time
 };
 
 extern Linky linky;
