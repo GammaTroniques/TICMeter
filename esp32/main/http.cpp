@@ -312,7 +312,7 @@ esp_err_t save_config_handler(httpd_req_t *req)
     strcpy(config.values.web.token, web_token);
     strcpy(config.values.web.configUrl, web_config_url);
     strcpy(config.values.web.postUrl, web_post_url);
-    config.values.linkyMode = linky_mode;
+    config.values.linkyMode = (LinkyMode)linky_mode;
     strcpy(config.values.mqtt.host, mqtt_host);
     config.values.mqtt.port = mqtt_port;
     strcpy(config.values.mqtt.username, mqtt_user);
