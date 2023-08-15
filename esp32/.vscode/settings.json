@@ -24,7 +24,8 @@
     "cstdlib": "cpp",
     "esp_zigbee_zcl_power_config.h": "c",
     "inttypes.h": "c",
-    "random": "cpp"
+    "random": "cpp",
+    "system_error": "cpp"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH"

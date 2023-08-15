@@ -3,6 +3,7 @@
 #define __GPIO_H__
 #include <stdio.h>
 
+#define RX_LINKY 17
 #define V_CONDO_PIN ADC_CHANNEL_5
 #define V_USB_PIN (gpio_num_t)3
 #define PAIRING_PIN (gpio_num_t)6 // io6
