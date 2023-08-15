@@ -9,45 +9,8 @@
 #define STATIC_VALUE 0
 #define REAL_TIME 1
 
-#define TYPE_SENSOR "sensor"
-#define TYPE_NUMBER "number"
-
 #define MQTT_NAME "Linky"
 #define MQTT_ID "linky"
-struct sensorConfig
-{
-    char type[32] = TYPE_SENSOR;
-    char name[32] = "";
-    char unique_id[32] = "";
-    char device_class[32] = "";
-    char unit_of_measurement[32] = "";
-    char value_template[32] = "";
-    LinkyLabelType valueType = STRING;
-    uint8_t realTime = 0;
-    char icon[32] = "";
-};
-#define member_size(type, member) sizeof(((type *)0)->member)
-
-// clang-format off
-struct sensorConfig sensors[] = {
-    // TYPE          Name                         Unique ID              Device class   Unit        Value template           Value type  Real time
-    {TYPE_SENSOR, "Identifiant",                "ADCO",                 "",             "",     "",                         STRING, STATIC_VALUE,   "mdi:card-account-details" },
-    {TYPE_SENSOR, "Option tarifaire",           "OPTARIF",              "",             "",     "",                         STRING, STATIC_VALUE,   "mdi:cash-multiple"        },
-    {TYPE_SENSOR, "Intensité souscrite",        "ISOUSC",               "current",      "A",    "",                         UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Index Base",                 "BASE",                 "energy",       "Wh",   "",                         UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Index Heures Creuses",       "HCHC",                 "energy",       "Wh",   "",                         UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Index Heures Pleines",       "HCHP",                 "energy",       "Wh",   "",                         UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Période tarifaire en cours", "PTEC",                 "",             "",     "",                         STRING, STATIC_VALUE,   "mdi:calendar-clock"       },
-    {TYPE_SENSOR, "Intensité instantanée",      "IINST",                "current",      "A",    "",                         UINT32, REAL_TIME,      ""                           },
-    {TYPE_SENSOR, "Intensité maximale",         "IMAX",                 "current",      "A",    "",                         UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Puissance apparente",        "PAPP",                 "power",        "VA",   "",                         UINT32, REAL_TIME,      ""                           },
-    {TYPE_SENSOR, "Horaire HC",                 "HHPHC",                "",             "",     "",                         STRING, STATIC_VALUE,   "mdi:home-clock"           },
-    {TYPE_SENSOR, "Mot d'état du compteur",     "MOTDETAT",             "",             "",     "",                         STRING, STATIC_VALUE,   "mdi:state-machine"        },
-    {TYPE_SENSOR, "Timestamp",                  "Timestamp",            "timestamp",    "",     "{{ as_datetime(value) }}", UINT32, STATIC_VALUE,   ""                           },
-    {TYPE_SENSOR, "Refresh Rate",               "currentRefreshRate",   "",             "sec",  "",                         UINT16, STATIC_VALUE,   "mdi:refresh"              },
-    {TYPE_NUMBER, "Refresh Rate",               "RefreshRate",          "",             "sec",  "",                         UINT32, STATIC_VALUE,   "mdi:refresh"              },
-};
-// clang-format on
 
 uint32_t mqttConnected = 0;
 esp_mqtt_client_handle_t mqttClient = NULL;
@@ -73,31 +36,17 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
     {
     case MQTT_EVENT_CONNECTED:
         mqttConnected = 1;
-        // msg_id = esp_mqtt_client_publish(client, "/topic/qos1", "data_3", 0, 1, 0);
-        // ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
-
-        // msg_id = esp_mqtt_client_subscribe(client, "/topic/qos0", 0);
-        // ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-        // msg_id = esp_mqtt_client_subscribe(client, "/topic/qos1", 1);
-        // ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
-
-        // msg_id = esp_mqtt_client_unsubscribe(client, "/topic/qos1");
-        // ESP_LOGI(TAG, "sent unsubscribe successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_DISCONNECTED:
-        // ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
         mqttConnected = 0;
         break;
 
     case MQTT_EVENT_SUBSCRIBED:
-        // ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_PUBLISHED:
-        // ESP_LOGI(TAG, "MQTT_EVENT_PUBLISHED, msg_id=%d", event->msg_id);
         mqttSendCount++;
         break;
     case MQTT_EVENT_DATA:
@@ -244,19 +193,19 @@ void mqtt_app_start(void)
     if (config.values.mode != MODE_TUYA)
     {
         // HOME ASSISTANT / MQTT
-        for (int i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++)
+        for (int i = 0; i < LinkyLabelListSize; i++)
         {
-            if (strcmp(sensors[i].type, TYPE_NUMBER) == 0)
+            if (LinkyLabelList[i].type == HA_NUMBER)
             {
                 char topic[100];
-                sprintf(topic, MQTT_ID "/%s", sensors[i].unique_id);
+                sprintf(topic, MQTT_ID "/%s", LinkyLabelList[i].label);
                 esp_mqtt_client_subscribe(mqttClient, topic, 1);
             }
         }
     }
 }
 
-void createSensor(char *json, char *config_topic, sensorConfig sensor)
+void createSensor(char *json, char *config_topic, LinkyGroup sensor)
 {
 
     DynamicJsonDocument device(1024);
@@ -271,14 +220,19 @@ void createSensor(char *json, char *config_topic, sensorConfig sensor)
     DynamicJsonDocument sensorConfig(1024);
     sensorConfig["~"] = config.values.mqtt.topic;
     sensorConfig["name"] = sensor.name;
-    sensorConfig["unique_id"] = sensor.unique_id;
-    sensorConfig["object_id"] = sensor.unique_id;
+    sensorConfig["unique_id"] = sensor.label;
+    sensorConfig["object_id"] = sensor.label;
 
     char state_topic[100];
-    sprintf(state_topic, "~/%s", sensor.unique_id);
-    sprintf(config_topic, "homeassistant/%s/%s/%s/config", sensor.type, MQTT_ID, sensor.unique_id);
+    sprintf(state_topic, "~/%s", sensor.label);
+    char type[50] = "sensor";
+    if (sensor.type == HA_NUMBER)
+    {
+        sprintf(type, "number");
+    }
+    sprintf(config_topic, "homeassistant/%s/%s/%s/config", type, MQTT_ID, sensor.label);
 
-    if (strcmp(sensor.type, TYPE_NUMBER) == 0)
+    if (sensor.type == HA_NUMBER)
     {
         sensorConfig["command_topic"] = state_topic;
         sensorConfig["mode"] = "box";
@@ -291,26 +245,47 @@ void createSensor(char *json, char *config_topic, sensorConfig sensor)
     {
         sensorConfig["state_topic"] = state_topic;
     }
-    if (strlen(sensor.device_class) > 0)
-    {
-        sensorConfig["device_class"] = sensor.device_class;
-    }
-    if (strlen(sensor.unit_of_measurement) > 0)
-    {
-        sensorConfig["unit_of_measurement"] = sensor.unit_of_measurement;
-    }
-    if (strlen(sensor.value_template) > 0)
-    {
-        sensorConfig["value_template"] = sensor.value_template;
-    }
+    if (sensor.device_class == TIMESTAMP)
+        sensorConfig["value_template"] = "{{ as_datetime(value) }}";
+    if (sensor.device_class != NONE_CLASS)
+        sensorConfig["device_class"] = HADeviceClassStr[sensor.device_class];
     if (strlen(sensor.icon) > 0)
-    {
         sensorConfig["icon"] = sensor.icon;
-    }
-    if (sensor.realTime)
+    switch (sensor.device_class)
     {
-        sensorConfig["expire_after"] = config.values.refreshRate * 2;
+    case CURRENT:
+        sensorConfig["unit_of_measurement"] = "A";
+        break;
+    case POWER_VA:
+        sensorConfig["unit_of_measurement"] = "VA";
+        break;
+    case POWER_kVA:
+        sensorConfig["unit_of_measurement"] = "kVA";
+        break;
+    case POWER_W:
+        sensorConfig["unit_of_measurement"] = "W";
+        break;
+    case POWER_Q:
+        sensorConfig["unit_of_measurement"] = "VAr";
+        break;
+    case ENERGY:
+        sensorConfig["unit_of_measurement"] = "Wh";
+        break;
+    case ENERGY_Q:
+        sensorConfig["unit_of_measurement"] = "VArh";
+        break;
+    case TIMESTAMP:
+        sensorConfig["unit_of_measurement"] = "sec";
+        break;
+    case TENSION:
+        sensorConfig["unit_of_measurement"] = "V";
+        break;
+    default:
+        break;
     }
+
+    if (sensor.realTime == REAL_TIME)
+        sensorConfig["expire_after"] = config.values.refreshRate * 2;
     sensorConfig["device"] = device;
     serializeJson(sensorConfig, json, 1024);
 }
@@ -331,15 +306,50 @@ void setupHomeAssistantDiscovery()
     char mqttBuffer[1024];
     char config_topic[100];
 
-    for (int i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++)
+    for (int i = 0; i < LinkyLabelListSize; i++)
     {
-        createSensor(mqttBuffer, config_topic, sensors[i]);
+        if (LinkyLabelList[i].mode != linky.mode && LinkyLabelList[i].mode != ANY)
+            continue;
+        switch (LinkyLabelList[i].type)
+        {
+        case UINT8:
+            if (*(uint8_t *)LinkyLabelList[i].data == UINT8_MAX)
+                continue;
+            break;
+        case UINT16:
+            if (*(uint16_t *)LinkyLabelList[i].data == UINT16_MAX)
+                continue;
+            break;
+        case UINT32:
+            if (*(uint32_t *)LinkyLabelList[i].data == UINT32_MAX)
+                continue;
+            break;
+        case UINT64:
+            if (*(uint64_t *)LinkyLabelList[i].data == UINT64_MAX)
+                continue;
+            break;
+        case STRING:
+            if (strlen((char *)LinkyLabelList[i].data) == 0)
+                continue;
+            break;
+        case UINT32_TIME:
+            if (((TimeLabel *)LinkyLabelList[i].data)->value == UINT32_MAX)
+                continue;
+            break;
+        case HA_NUMBER:
+            break;
+        default:
+            continue;
+            break;
+        }
+
+        createSensor(mqttBuffer, config_topic, LinkyLabelList[i]);
         esp_mqtt_client_publish(mqttClient, config_topic, mqttBuffer, 0, 2, 1);
     }
     ESP_LOGI(TAG, "Home Assistant Discovery done");
 }
 
-void sendHAMqtt(LinkyData *linky)
+void sendHAMqtt(LinkyData *linkydata)
 {
     static uint8_t HAConfigured = 0;
     vTaskDelay(500 / portTICK_PERIOD_MS);
@@ -350,37 +360,78 @@ void sendHAMqtt(LinkyData *linky)
     }
 
     char topic[150];
-    char value[20];
+    char strValue[20];
 
     mqttSendTimout = MILLIS + 10000;
     mqttSendCount = 0;
-    linky->hist.timestamp = getTimestamp();
-
-    const void *values[] = {&linky->hist.ADCO, &linky->hist.OPTARIF, &linky->hist.ISOUSC, &linky->hist.BASE, &linky->hist.HCHC, &linky->hist.HCHP, &linky->hist.PTEC, &linky->hist.IINST, &linky->hist.IMAX, &linky->hist.PAPP, &linky->hist.HHPHC, &linky->hist.MOTDETAT, &linky->hist.timestamp, &config.values.refreshRate};
-
-    const uint8_t sensorsCount = sizeof(values) / sizeof(values[0]);
-    for (int i = 0; i < sensorsCount; i++)
+    linkydata->timestamp = getTimestamp();
+    uint16_t sensorsCount = 0;
+    for (int i = 0; i < LinkyLabelListSize; i++)
     {
-        if (strcmp(sensors[i].type, TYPE_NUMBER) == 0)
-        {
+        if (LinkyLabelList[i].mode != linky.mode && LinkyLabelList[i].mode != ANY)
             continue;
-        }
-        if (sensors[i].valueType == UINT32)
+        sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)LinkyLabelList[i].label);
+        switch (LinkyLabelList[i].type)
         {
-            sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)sensors[i].unique_id);
-            sprintf(value, "%lu", *(uint32_t *)(values[i]));
-        }
-        else if (sensors[i].valueType == UINT16)
+        case UINT8:
         {
-            sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)sensors[i].unique_id);
-            sprintf(value, "%u", *(int16_t *)(values[i]));
+            uint8_t *value = (uint8_t *)LinkyLabelList[i].data;
+            if (*value == UINT8_MAX)
+                continue;
+            sprintf(strValue, "%d", *value);
+            break;
         }
-        else
+        case UINT16:
         {
-            sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)sensors[i].unique_id);
-            sprintf(value, "%s", (char *)(values[i]));
+            uint16_t *value = (uint16_t *)LinkyLabelList[i].data;
+            if (*value == UINT16_MAX)
+                continue;
+            sprintf(strValue, "%d", *value);
+            break;
         }
-        esp_mqtt_client_publish(mqttClient, topic, value, 0, 2, 0);
+        case UINT32:
+        {
+            uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
+            if (*value == UINT32_MAX)
+                continue;
+            sprintf(strValue, "%ld", *value);
+            break;
+        }
+        case UINT64:
+        {
+            uint64_t *value = (uint64_t *)LinkyLabelList[i].data;
+            if (*value == UINT64_MAX)
+                continue;
+            sprintf(strValue, "%lld", *value);
+            break;
+        }
+        case STRING:
+        {
+            char *value = (char *)LinkyLabelList[i].data;
+            if (strlen(value) == 0)
+                continue;
+            sprintf(strValue, "%s", value);
+            break;
+        }
+        case UINT32_TIME:
+        {
+
+            TimeLabel *timeLabel = (TimeLabel *)LinkyLabelList[i].data;
+            if (timeLabel->value == UINT32_MAX)
+                continue;
+            sprintf(topic, "%s/%s", config.values.mqtt.topic, (char *)LinkyLabelList[i].label);
+            sprintf(strValue, "%lu", timeLabel->value);
+            break;
+        }
+        case HA_NUMBER:
+            continue;
+            break;
+
+        default:
+            break;
+        }
+        sensorsCount++;
+        esp_mqtt_client_publish(mqttClient, topic, strValue, 0, 2, 0);
     }
 
     // vTaskDelay(5000 / portTICK_PERIOD_MS);

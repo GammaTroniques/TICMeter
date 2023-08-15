@@ -4,7 +4,7 @@
 #include "linky.h"
 #include "config.h"
 
-Linky linky(MODE_HISTORIQUE, 16, 17);
+Linky linky(AUTO, 16, 17);
 Config config;
 
 // #include <PubSubClient.h>

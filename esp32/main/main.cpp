@@ -29,9 +29,10 @@
 
 Config config;
 
-#define MAX_DATA_INDEX 5 // 10 + 5 in case of error
+#define MAX_DATA_INDEX 5
 // ------------Global variables stored in RTC memory to keep their values after deep sleep
 RTC_DATA_ATTR LinkyData dataArray[MAX_DATA_INDEX];
+
 RTC_DATA_ATTR unsigned int dataIndex = 0;
 // RTC_DATA_ATTR uint8_t firstBoot = 1;
 // ---------------------------------------------------------------------------------------
@@ -43,6 +44,7 @@ TaskHandle_t pairingTaskHandle = NULL;
 #define MAIN_TAG "MAIN"
 extern "C" void app_main(void)
 {
+  // sizeof(dataArray);
   // setCPUFreq(10);
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   initPins();
@@ -115,9 +117,8 @@ void fetchLinkyDataTask(void *pvParameters)
     if (!linky.update() ||
         !linky.presence())
     {
-      ESP_LOGI(MAIN_TAG, "Linky update failed");
+      ESP_LOGE(MAIN_TAG, "Linky update failed");
       startLedPattern(PATTERN_LINKY_ERR);
-      linky.index = 0;
       vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
       continue;
     }
@@ -130,8 +131,8 @@ void fetchLinkyDataTask(void *pvParameters)
         dataIndex = 0;
       }
       dataArray[dataIndex] = linky.data;
-      dataArray[dataIndex++].hist.timestamp = getTimestamp();
-      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].hist.timestamp);
+      dataArray[dataIndex++].timestamp = getTimestamp();
+      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].timestamp);
       if (dataIndex > 2)
       {
         char json[1024] = {0};
