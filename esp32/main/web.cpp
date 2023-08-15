@@ -15,7 +15,7 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
         switch (linky.mode)
         {
         case MODE_HISTORIQUE:
-            cJSON_AddNumberToObject(dataItem, "DATE", data[i].hist.timestamp);
+            cJSON_AddNumberToObject(dataItem, "DATE", data[i].timestamp);
             cJSON_AddStringToObject(dataItem, "ADCO", data[i].hist.ADCO);
             cJSON_AddStringToObject(dataItem, "OPTARIF", data[i].hist.OPTARIF);
             cJSON_AddNumberToObject(dataItem, "ISOUSC", data[i].hist.ISOUSC);
