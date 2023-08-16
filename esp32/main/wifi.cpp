@@ -52,25 +52,25 @@ uint8_t connectToWifi()
 
     ESP_ERROR_CHECK(esp_netif_init());
 
-retry:
+    // retry:
     // ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_err_t err = esp_event_loop_create_default();
-    if (err != ESP_OK)
-    {
-        if (err == ESP_ERR_INVALID_STATE)
-        {
-            ESP_LOGI(TAG, "esp_event_loop_delete_default");
-            ESP_ERROR_CHECK(esp_event_loop_delete_default());
-            goto retry;
-        }
-        else
-        {
-            ESP_LOGE(TAG, "esp_event_loop_create_default failed with %d", err);
-            disconectFromWifi();
-            return 0;
-        }
-        return 0;
-    }
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    // if (err != ESP_OK)
+    // {
+    //     if (err == ESP_ERR_INVALID_STATE)
+    //     {
+    //         ESP_LOGI(TAG, "esp_event_loop_delete_default");
+    //         ESP_ERROR_CHECK(esp_event_loop_delete_default());
+    //         goto retry;
+    //     }
+    //     else
+    //     {
+    //         ESP_LOGE(TAG, "esp_event_loop_create_default failed with %d", err);
+    //         disconectFromWifi();
+    //         return 0;
+    //     }
+    //     return 0;
+    // }
 
     // if (sta_netif)
     // {

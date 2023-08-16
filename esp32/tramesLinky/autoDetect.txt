@@ -1,0 +1,62 @@
+I (274604) Linky: Changed mode to MODE_STANDARD
+E (274604) MAIN: Linky update failed
+I (289004) GPIO: No action
+I (337984) Linky: Read 1023 bytes, remaning:1620
+I (338084) Linky: Read 1023 bytes, remaning:1520
+I (338184) Linky: Read 1023 bytes, remaning:1420
+I (338284) Linky: Read 1023 bytes, remaning:1320
+I (338384) Linky: Read 1023 bytes, remaning:1220
+I (338484) Linky: Read 1023 bytes, remaning:1120
+I (338584) Linky: Read 1023 bytes, remaning:1020
+I (338684) Linky: Read 1023 bytes, remaning:920
+I (338784) Linky: Read 1023 bytes, remaning:820
+I (338884) Linky: Read 1023 bytes, remaning:720
+I (338984) Linky: Read 1023 bytes, remaning:620
+I (339084) Linky: Read 1023 bytes, remaning:520
+I (339184) Linky: Read 1023 bytes, remaning:420
+I (339284) Linky: Read 1023 bytes, remaning:320
+I (339384) Linky: Read 1023 bytes, remaning:220
+I (339484) Linky: Read 1023 bytes, remaning:120
+I (339584) Linky: Read 1023 bytes, remaning:20
+E (339684) Linky: Error: Frame not found
+I (339684) Linky: Auto mode: Mode Standard Not Found! Try Mode Historique
+I (339684) Linky: Changed mode to MODE_HISTORIQUE
+E (339684) MAIN: Linky update failed
+I (400184) Linky: Read 0 bytes, remaning:4500
+I (401204) Linky: Read 120 bytes, remaning:3480
+I (402204) Linky: Read 240 bytes, remaning:2480
+I (403234) Linky: Read 360 bytes, remaning:1450
+I (403334) Linky: Start of frame: 85
+I (403334) Linky: End of frame: 317
+I (403334) Linky: ADCO: 031976306475
+I (403334) Linky: OPTARIF: BASE
+I (403334) Linky: ISOUSC: 30
+I (403334) Linky: BASE: 62152063
+I (403334) Linky: PTEC: TH..
+I (403334) Linky: IINST1: 1
+I (403334) Linky: IINST2: 0
+I (403334) Linky: IINST3: 1
+I (403334) Linky: IMAX1: 60
+I (403334) Linky: IMAX2: 60
+I (403334) Linky: IMAX3: 60
+I (403334) Linky: PAPP: 580
+I (403334) Linky: PMAX: 5207
+I (403334) Linky: PPOT: 0
+I (403334) Linky: HHPHC: 0
+I (403334) Linky: MOTDETAT: 000000
+I (403454) WIFI: Connecting to AFDD
+I (406274) WIFI: IP:192.168.1.24
+I (406274) WIFI: Connected to ap SSID:AFDD
+I (406274) MAIN: Sending data to MQTT
+E (416284) esp-tls: [sock=54] select() timeout
+E (416284) transport_base: Failed to open a new connection: 32774
+E (416284) mqtt_client: Error transport connect
+I (416284) MQTT: MQTT_EVENT_ERROR
+E (416284) MQTT: Last error reported from esp-tls: 0x8006
+I (416284) MQTT: Last errno string (Success)
+E (416284) mqtt_client: Client has not connected
+I (416784) MQTT: MQTT not connected, skipping Home Assistant Discovery
+E (420784) WIFI: Failed to get time from NTP server, return last time
+I (420784) WIFI: The current date/time is: Tue Aug 15 17:09:26 2023
+E (426784) MQTT: Send Timeout
+I (432284) WIFI: Disconnected
