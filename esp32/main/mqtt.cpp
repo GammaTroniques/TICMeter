@@ -53,7 +53,7 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
     {
         char topic[100] = {0};
         memcpy(topic, event->topic, event->topic_len); // copy to not const string (add \0)
-        if (strcmp(topic, MQTT_ID "/RefreshRate") == 0)
+        if (strcmp(topic, MQTT_ID "/Refresh") == 0)
         {
             uint16_t refreshRate = atoi(event->data);
             if (config.values.refreshRate != refreshRate)
@@ -275,7 +275,6 @@ void createSensor(char *json, char *config_topic, LinkyGroup sensor)
         sensorConfig["unit_of_measurement"] = "VArh";
         break;
     case TIMESTAMP:
-        sensorConfig["unit_of_measurement"] = "sec";
         break;
     case TENSION:
         sensorConfig["unit_of_measurement"] = "V";

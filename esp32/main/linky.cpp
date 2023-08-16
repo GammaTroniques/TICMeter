@@ -147,7 +147,7 @@ const struct LinkyGroup LinkyLabelList[] =
 
     { "Date & Heure",                   "timestamp",   &linky.data.timestamp,         UINT64,       ANY,             STATIC_VALUE,  TIMESTAMP,   ""                                 },
     { "Temps d'actualisation",          "currRfsh",    &config.values.refreshRate,    UINT16,       ANY,             STATIC_VALUE,  NONE_CLASS,        "mdi:refresh"                    },
-    { "Temps d'actualisation",          "setRfsh",     &config.values.refreshRate,    HA_NUMBER,    ANY,             STATIC_VALUE,  NONE_CLASS,        "mdi:refresh"                    },
+    { "Temps d'actualisation",          "Refresh",     &config.values.refreshRate,    HA_NUMBER,    ANY,             STATIC_VALUE,  NONE_CLASS,        "mdi:refresh"                    },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
