@@ -25,15 +25,15 @@ const struct LinkyGroup LinkyLabelList[] =
     {"Index Heures de Pointe Mobile",   "EJPHPM",      &linky.data.hist.EJPHPM,       UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                },
     {"Préavis Début EJP",               "PEJP",        &linky.data.hist.PEJP,         UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  BOOL,        "mdi:clock",                     },
     
-    {"Heures Creuses Jours Bleus",      "BBRHCJB",     &linky.data.hist.BBRHCJB,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,       "",                               },
-    {"Heures Pleines Jours Bleus",      "BBRHPJB",     &linky.data.hist.BBRHPJB,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,       "",                               },
-    {"Heures Creuses Jours Blancs",     "BBRHCJW",     &linky.data.hist.BBRHCJW,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,       "",                               },
-    {"Heures Pleines Jours Blancs",     "BBRHPJW",     &linky.data.hist.BBRHPJW,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,       "",                               },
-    {"Heures Creuses Jours Rouges",     "BBRHCJR",     &linky.data.hist.BBRHCJR,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,       "",                               },
-    {"Heures Pleines Jours Rouges",     "BBRHPJR",     &linky.data.hist.BBRHPJR,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,       "",                               },
+    {"Heures Creuses Jours Bleus",      "BBRHCJB",     &linky.data.hist.BBRHCJB,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                },
+    {"Heures Pleines Jours Bleus",      "BBRHPJB",     &linky.data.hist.BBRHPJB,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                },
+    {"Heures Creuses Jours Blancs",     "BBRHCJW",     &linky.data.hist.BBRHCJW,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                },
+    {"Heures Pleines Jours Blancs",     "BBRHPJW",     &linky.data.hist.BBRHPJW,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                },
+    {"Heures Creuses Jours Rouges",     "BBRHCJR",     &linky.data.hist.BBRHCJR,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                },
+    {"Heures Pleines Jours Rouges",     "BBRHPJR",     &linky.data.hist.BBRHPJR,      UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                },
     
-    {"Période tarifaire en cours",      "PTEC",        &linky.data.hist.PTEC,         STRING,       MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,        "mdi:calendar-clock",            },
-    {"Couleur du lendemain",            "DEMAIN",      &linky.data.hist.DEMAIN,       STRING,       MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,        "",                                },
+    {"Période tarifaire en cours",      "PTEC",        &linky.data.hist.PTEC,         STRING,       MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",            },
+    {"Couleur du lendemain",            "DEMAIN",      &linky.data.hist.DEMAIN,       STRING,       MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "",                                },
     
     {"Intensité instantanée",           "IINST",       &linky.data.hist.IINST,        UINT16,       MODE_HISTORIQUE, REAL_TIME,     CURRENT,     "",                                },
     {"Intensité instantanée Phase 1",   "IINST1",      &linky.data.hist.IINST1,       UINT16,       MODE_HISTORIQUE, REAL_TIME,     CURRENT,     "",                                },
@@ -50,17 +50,17 @@ const struct LinkyGroup LinkyLabelList[] =
     
     {"Puissance apparente",             "PAPP",        &linky.data.hist.PAPP,         UINT32,       MODE_HISTORIQUE, REAL_TIME,     POWER_VA,    "",                                },
     {"Puissance maximale triphasée",    "PMAX",        &linky.data.hist.PMAX,         UINT32,       MODE_HISTORIQUE, STATIC_VALUE,  POWER_W,     "",                                },
-    {"Présence des potentiels",         "PPOT",        &linky.data.hist.PPOT,         UINT32,       MODE_HISTORIQUE, REAL_TIME,     NONE_CLASS,        "",                                },
+    {"Présence des potentiels",         "PPOT",        &linky.data.hist.PPOT,         UINT32,       MODE_HISTORIQUE, REAL_TIME,     NONE_CLASS,  "",                                },
         
-    {"Horaire Heures Creuses",          "HHPHC",       &linky.data.hist.HHPHC,        UINT8,        MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,   "mdi:home-clock",                },
-    {"Mot d'état du compteur",          "MOTDETAT",    &linky.data.hist.MOTDETAT,     STRING,       MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,        "mdi:state-machine",             },
+    {"Horaire Heures Creuses",          "HHPHC",       &linky.data.hist.HHPHC,        UINT8,        MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:home-clock",                },
+    {"Mot d'état du compteur",          "MOTDETAT",    &linky.data.hist.MOTDETAT,     STRING,       MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",             },
 
     //------------------------ MODE STANDARD -----------------------
-    {"Identifiant",                     "ADSC",        &linky.data.std.ADSC,          STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:card-account-details",      },
-    {"Version de la TIC",               "VTIC",        &linky.data.std.VTIC,          STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:tag",                       },
-    {"Date et heure courante",          "DATE",        &linky.data.std.DATE,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:clipboard-text-clock",      },
-    {"Nom du calendrier tarifaire",     "NGTF",        &linky.data.std.NGTF,          STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:calendar-clock",            },
-    {"Libellé tarif en cours",          "LTARF",       &linky.data.std.LTARF,         STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:tag-text",                  },
+    {"Identifiant",                     "ADSC",        &linky.data.std.ADSC,          STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",      },
+    {"Version de la TIC",               "VTIC",        &linky.data.std.VTIC,          STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:tag",                       },
+    {"Date et heure courante",          "DATE",        &linky.data.std.DATE,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:clipboard-text-clock",      },
+    {"Nom du calendrier tarifaire",     "NGTF",        &linky.data.std.NGTF,          STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",            },
+    {"Libellé tarif en cours",          "LTARF",       &linky.data.std.LTARF,         STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:tag-text",                  },
 
     {"Index Total Energie soutirée",    "EAST",        &linky.data.std.EAST,          UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                },
     {"Index 1 Energie soutirée",        "EASF01",      &linky.data.std.EASF01,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                },
@@ -116,38 +116,38 @@ const struct LinkyGroup LinkyLabelList[] =
     {"Puissance max injectée Auj.",     "SMAXIN",      &linky.data.std.SMAXIN,        UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                },
     {"Puissance max injectée Hier",     "SMAXIN-1",    &linky.data.std.SMAXIN_1,      UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                },
 
-    {"Point n courbe soutirée",         "CCASN",       &linky.data.std.CCASN,         UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"Point n-1 courbe soutirée",       "CCASN-1",     &linky.data.std.CCASN_1,       UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"Point n courbe injectée",         "CCAIN",       &linky.data.std.CCAIN,         UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"Point n-1 courbe injectée",       "CCAIN-1",     &linky.data.std.CCAIN_1,       UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
+    {"Point n courbe soutirée",         "CCASN",       &linky.data.std.CCASN,         UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"Point n-1 courbe soutirée",       "CCASN-1",     &linky.data.std.CCASN_1,       UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"Point n courbe injectée",         "CCAIN",       &linky.data.std.CCAIN,         UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"Point n-1 courbe injectée",       "CCAIN-1",     &linky.data.std.CCAIN_1,       UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
 
     {"Tension moyenne Phase 1",         "UMOY1",       &linky.data.std.UMOY1,         UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                },
     {"Tension moyenne Phase 2",         "UMOY2",       &linky.data.std.UMOY2,         UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                },
     {"Tension moyenne Phase 3",         "UMOY3",       &linky.data.std.UMOY3,         UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                },
 
-    {"Registre de Statuts",             "STGE",        &linky.data.std.STGE,          STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:state-machine",             },
+    {"Registre de Statuts",             "STGE",        &linky.data.std.STGE,          STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",             },
 
-    {"Début Pointe Mobile 1",           "DPM1",        &linky.data.std.DPM1,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"Fin Pointe Mobile 1",             "FPM1",        &linky.data.std.FPM1,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"Début Pointe Mobile 2",           "DPM2",        &linky.data.std.DPM2,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"Fin Pointe Mobile 2",             "FPM2",        &linky.data.std.FPM2,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"Début Pointe Mobile 3",           "DPM3",        &linky.data.std.DPM3,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"Fin Pointe Mobile 3",             "FPM3",        &linky.data.std.FPM3,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
+    {"Début Pointe Mobile 1",           "DPM1",        &linky.data.std.DPM1,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"Fin Pointe Mobile 1",             "FPM1",        &linky.data.std.FPM1,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"Début Pointe Mobile 2",           "DPM2",        &linky.data.std.DPM2,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"Fin Pointe Mobile 2",             "FPM2",        &linky.data.std.FPM2,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"Début Pointe Mobile 3",           "DPM3",        &linky.data.std.DPM3,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"Fin Pointe Mobile 3",             "FPM3",        &linky.data.std.FPM3,          UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
 
     {"Message court",                   "MSG1",        &linky.data.std.MSG1,          STRING,       MODE_STANDARD,   STATIC_VALUE,  TEXT,        "mdi:message-text-outline",      },
     {"Message Ultra court",             "MSG2",        &linky.data.std.MSG2,          STRING,       MODE_STANDARD,   STATIC_VALUE,  TEXT,        "mdi:message-outline",           },
-    {"PRM",                             "PRM",         &linky.data.std.PRM,           STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"Relais",                          "RELAIS",      &linky.data.std.RELAIS,        STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:toggle-switch-outline",     },
-    {"Index tarifaire en cours",        "NTARF",       &linky.data.std.NTARF,         STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"N° jours en cours fournisseur",   "NJOURF",      &linky.data.std.NJOURF,        STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"N° prochain jour fournisseur",    "NJOURF+1",    &linky.data.std.NJOURF_1,      STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "",                                },
-    {"Profil du prochain jour",         "PJOURF+1",    &linky.data.std.MSG2,          STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:sun-clock",                 },
-    {"Profil du prochain jour pointe",  "PPOINTE",     &linky.data.std.PPOINTE,       STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:sun-clock",                 },
+    {"PRM",                             "PRM",         &linky.data.std.PRM,           STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"Relais",                          "RELAIS",      &linky.data.std.RELAIS,        STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:toggle-switch-outline",     },
+    {"Index tarifaire en cours",        "NTARF",       &linky.data.std.NTARF,         STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"N° jours en cours fournisseur",   "NJOURF",      &linky.data.std.NJOURF,        STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"N° prochain jour fournisseur",    "NJOURF+1",    &linky.data.std.NJOURF_1,      STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                },
+    {"Profil du prochain jour",         "PJOURF+1",    &linky.data.std.MSG2,          STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                 },
+    {"Profil du prochain jour pointe",  "PPOINTE",     &linky.data.std.PPOINTE,       STRING,       MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                 },
     //---------------------------Home Assistant Specific ------------------------------------------------
 
-    { "Date & Heure",                   "timestamp",   &linky.data.timestamp,         UINT64,       ANY,             STATIC_VALUE,  TIMESTAMP,   ""                                 },
-    { "Temps d'actualisation",          "currRfsh",    &config.values.refreshRate,    UINT16,       ANY,             STATIC_VALUE,  NONE_CLASS,        "mdi:refresh"                    },
-    { "Temps d'actualisation",          "Refresh",     &config.values.refreshRate,    HA_NUMBER,    ANY,             STATIC_VALUE,  NONE_CLASS,        "mdi:refresh"                    },
+    { "Dernière actualisation",         "timestamp",   &linky.data.timestamp,         UINT64,       ANY,             STATIC_VALUE,  TIMESTAMP,   ""                                 },
+    { "Temps d'actualisation",          "currRfsh",    &config.values.refreshRate,    UINT16,       ANY,             STATIC_VALUE,  NONE_CLASS,  "mdi:refresh"                    },
+    { "Temps d'actualisation",          "Refresh",     &config.values.refreshRate,    HA_NUMBER,    ANY,             STATIC_VALUE,  NONE_CLASS,  "mdi:refresh"                    },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
@@ -322,7 +322,7 @@ char Linky::decode()
                 if (strlen(data.hist.ADCO) > 0)
                 {
                     ESP_LOGI(LINKY_TAG, "Auto mode: Mode Historique Found!");
-                    config.values.mode = MODE_HISTORIQUE;
+                    config.values.linkyMode = MODE_HISTORIQUE;
                     config.write();
                 }
                 else
@@ -335,7 +335,7 @@ char Linky::decode()
                 if (strlen(data.std.ADSC) > 0)
                 {
                     ESP_LOGI(LINKY_TAG, "Auto mode: Mode Standard Found!");
-                    config.values.mode = MODE_STANDARD;
+                    config.values.linkyMode = MODE_STANDARD;
                     config.write();
                 }
                 else

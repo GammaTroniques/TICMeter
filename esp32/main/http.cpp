@@ -305,7 +305,7 @@ esp_err_t save_config_handler(httpd_req_t *req)
     }
     else
     {
-        config.values.mode = server_mode;
+        config.values.mode = (connectivity_t)server_mode;
     }
 
     strcpy(config.values.web.host, web_url);

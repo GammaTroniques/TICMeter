@@ -105,7 +105,7 @@ extern "C" void app_main(void)
   }
   // start linky fetch task
 
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
   ESP_LOGI(MAIN_TAG, "FREE HEAP: %ld", esp_get_free_heap_size());
 }
 
@@ -161,6 +161,9 @@ void fetchLinkyDataTask(void *pvParameters)
       {
         startLedPattern(PATTERN_SEND_ERR);
       }
+      break;
+    default:
+      break;
     }
     vTaskDelay((abs(config.values.refreshRate - 5) * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
   }

@@ -419,7 +419,7 @@ int set_mode_command(int argc, char **argv)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    config.values.mode = atoi(argv[1]);
+    config.values.mode = (connectivity_t)atoi(argv[1]);
     config.write();
     printf("Mode saved\n");
     return 0;

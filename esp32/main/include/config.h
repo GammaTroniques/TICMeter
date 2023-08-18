@@ -20,12 +20,15 @@
 
 #define NVS_TAG "NVS"
 
-#define MODE_WEB 0
-#define MODE_MQTT 1
-#define MODE_MQTT_HA 2
-#define MODE_ZIGBEE 3
-#define MODE_MATTER 4
-#define MODE_TUYA 5
+enum connectivity_t : uint8_t
+{
+    MODE_WEB,
+    MODE_MQTT,
+    MODE_MQTT_HA,
+    MODE_ZIGBEE,
+    MODE_MATTER,
+    MODE_TUYA,
+};
 
 extern const char *MODES[];
 extern const char *TUYA_SERVERS[];
@@ -53,7 +56,7 @@ struct mqttConfig_t
     char topic[100] = "";
 };
 
-enum tuya_server_t
+enum tuya_server_t : uint8_t
 {
     TUYA_REGION_CN = 0,
     TUYA_REGION_EU = 1,
@@ -78,7 +81,7 @@ struct config_t
     char password[50] = "";
 
     LinkyMode linkyMode = MODE_HISTORIQUE;
-    uint8_t mode = MODE_WEB;
+    connectivity_t mode = MODE_WEB;
     webConfig_t web;
     mqttConfig_t mqtt;
     tuyaConfig_t tuya;
