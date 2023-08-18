@@ -174,7 +174,7 @@ typedef struct
 
 }LinkyDataStd;
 
-typedef enum{
+typedef enum : uint8_t{
     UINT8,
     UINT16,
     UINT32,
