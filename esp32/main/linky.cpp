@@ -246,11 +246,12 @@ void Linky::read()
     uart_flush(UART_NUM_1);                                               // clear the UART buffer
     uint32_t timeout = (xTaskGetTickCount() * portTICK_PERIOD_MS) + 5000; // 5 seconds timeout
     memset(buffer, 0, sizeof buffer);                                     // clear the buffer
+    rxBytes = 0;
 
     uint32_t startOfFrame = UINT_MAX; // store the index of the start frame
     uint32_t endOfFrame = UINT_MAX;   // store the index of the end frame
 
-    debugFrame();
+    // debugFrame();
     do
     {
         rxBytes += uart_read_bytes(UART_NUM_1, buffer + rxBytes, (RX_BUF_SIZE - 1) - rxBytes, 500 / portTICK_PERIOD_MS);
@@ -288,7 +289,9 @@ void Linky::read()
         frameSize = endOfFrame - startOfFrame;
         frame = buffer + startOfFrame;
     }
-    // ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_INFO);
+    ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_INFO);
+    ESP_LOGI(LINKY_TAG, "-------------------");
+    ESP_LOGI(LINKY_TAG, "Buffer: %s", buffer);
 }
 
 /**
@@ -384,7 +387,7 @@ char Linky::decode()
     if (startOfGroupIndex != endOfGroupIndex) // if the number of starts is not equal to the number of ends: Error
     {
         // error: number of start and end frames are not equal
-        ESP_LOGI(LINKY_TAG, "error: number of start and end frames are not equal: %d %d", startOfGroupIndex, endOfGroupIndex);
+        ESP_LOGI(LINKY_TAG, "error: number of start and end group are not equal: %d %d", startOfGroupIndex, endOfGroupIndex);
         return 0;
     }
 

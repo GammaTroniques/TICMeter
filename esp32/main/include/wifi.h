@@ -39,6 +39,13 @@ void event_handler(void *arg, esp_event_base_t event_base,
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 
+/**
+ * @brief Create a Http Url (http://host/path)
+ *
+ * @param url the destination url
+ * @param host the host
+ * @param path the path
+ */
 void createHttpUrl(char *url, const char *host, const char *path);
 
 /**
