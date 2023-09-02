@@ -1,7 +1,7 @@
 {
   "idf.adapterTargetName": "esp32c6",
   "idf.flashType": "UART",
-  "idf.portWin": "COM7",
+  "idf.portWin": "COM19",
   "files.associations": {
     "*.vhd": "vhdl",
     "*.yaml": "home-assistant",
@@ -25,7 +25,14 @@
     "esp_zigbee_zcl_power_config.h": "c",
     "inttypes.h": "c",
     "random": "cpp",
-    "system_error": "cpp"
+    "system_error": "cpp",
+    "deque": "cpp",
+    "list": "cpp",
+    "string": "cpp",
+    "unordered_map": "cpp",
+    "vector": "cpp",
+    "string_view": "cpp",
+    "initializer_list": "cpp"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH"
