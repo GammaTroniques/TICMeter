@@ -44,7 +44,6 @@ TaskHandle_t pairingTaskHandle = NULL;
 #define MAIN_TAG "MAIN"
 extern "C" void app_main(void)
 {
-  // sizeof(dataArray);
   // setCPUFreq(10);
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   initPins();
@@ -64,8 +63,7 @@ extern "C" void app_main(void)
     }
   }
 
-  ESP_LOGI(MAIN_TAG, "Size of LinkyData: %d", sizeof(LinkyData));
-  // ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
+  ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
   // check vcondo and sleep if not ok
   // if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
   // {
@@ -105,8 +103,8 @@ extern "C" void app_main(void)
   }
   // start linky fetch task
 
-  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
-  ESP_LOGI(MAIN_TAG, "FREE HEAP: %ld", esp_get_free_heap_size());
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  // ESP_LOGI(MAIN_TAG, "FREE HEAP: %ld", esp_get_free_heap_size());
 }
 
 void fetchLinkyDataTask(void *pvParameters)

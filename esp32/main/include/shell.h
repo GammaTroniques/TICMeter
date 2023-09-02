@@ -58,5 +58,8 @@ int set_linky_mode_command(int argc, char **argv);
 int get_linky_mode_command(int argc, char **argv);
 int linky_print_command(int argc, char **argv);
 esp_err_t esp_console_register_linky_command();
+int wifi_start_captive_portal_command(int argc, char **argv);
+int mqtt_discovery_command(int argc, char **argv);
+int test_led_command(int argc, char **argv);
 
 #endif

@@ -7,6 +7,62 @@
 
 #define TAG "SHELL"
 
+struct shell_cmd_t
+{
+    const char *command;
+    const char *help;
+    int (*func)(int argc, char **argv);
+    const uint8_t args_num;
+    const char *args[5];
+    const char *hint[5];
+};
+// clang-format off
+
+struct shell_cmd_t shell_cmds[]
+{
+    // commands                       Help                                        Function                            Args num, Args, Hint
+    {"reset",                       "Reset the device",                         &esp_reset_command,                 0, {}, {}},
+    {"get-wifi",                    "Get wifi config",                          &get_wifi_command,                  0, {}, {}},
+    {"set-wifi",                    "Set wifi config",                          &set_wifi_command,                  2, {"<ssid>", "<password>"}, {"SSID of AP", "Password of AP"}},
+    {"wifi-connect",                "Connect to wifi",                          &connect_wifi_command,              0, {}, {}},
+    {"wifi-reconnect",              "Reconnect to wifi",                        &reconnect_wifi_command,            0, {}, {}},
+    {"wifi-disconnect",             "Disconnect from wifi",                     &wifi_disconnect_command,           0, {}, {}},
+    {"wifi-status",                 "Get wifi status",                          &wifi_status_command,               0, {}, {}},
+    {"wifi-start-captive-portal",   "Start captive portal",                     &wifi_start_captive_portal_command, 0, {}, {}},
+    {"get-web",                     "Get web config",                           &get_web_command,                   0, {}, {}},
+    {"set-web",                     "Set web config",                           &set_web_command,                   4, {"<host>", "<postUrl>", "<configUrl>", "<token>"}, {"Host of web server e.g. 192.168.1.10", "Url for posting data e.g. /post", "Url for getting config e.g. /config", "Token for authorization"}},
+
+    //mqtt
+    {"get-mqtt",                    "Get mqtt config",                          &get_mqtt_command,                  0, {}, {}},
+    {"set-mqtt",                    "Set mqtt config",                          &set_mqtt_command,                  5, {"<host>", "<port>","<topic>", "<username>","<password>"}, {"Host of mqtt server e.g. 192.168.1.10", "Port of mqtt server e.g. 1883", "Topic for publishing data e.g. /topic", "Username for authorization", "Password for authorization"}},
+    {"mqtt-connect",                "Connect to mqtt server",                   &mqtt_connect_command,              0, {}, {}},
+    {"mqtt-send",                   "Send message to mqtt server",              &mqtt_send_command,                 0, {}, {}},
+    {"mqtt-discovery",              "Send discovery message to mqtt server",    &mqtt_discovery_command,            0, {}, {}},
+
+    //mode
+    {"get-mode",                    "Get mode",                                 &get_mode_command,                  0, {}, {}},
+    {"set-mode",                    "Set mode\n"
+                                    "0 - Wifi - Webserver\n"
+                                    "1 - Wifi - MQTT\n"
+                                    "2 - Wifi - MQTT Home Assistant\n"
+                                    "3 - Zigbee\n"
+                                    "4 - Matter\n",                             &set_mode_command,                  1, {"<mode>"}, {"Mode of operation"}},
+
+    {"get-config",                  "Get config",                               &get_config_command,                0, {}, {}},
+    {"set-config",                  "Set config",                               &set_config_command,                2, {"<key>", "<value>"}, {"Key", "Value"}},
+    {"get-VCondo",                  "Get VCondo",                               &get_VCondo_command,                0, {}, {}},
+    {"test-led",                    "Test led",                                 &test_led_command,                  0, {}, {}},
+    {"ota-check",                   "Check for OTA update",                     &ota_check_command,                 0, {}, {}},
+    {"set-tuya",                    "Set tuya config",                          &set_tuya_command,                  2, {"<region>", "<key>"}, {"Region", "Key"}},
+    {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
+    {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
+    {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
+    {"linky-print",                  "Print linky data",                        &linky_print_command,               0, {}, {}},
+
+
+};
+// clang-format on
+
 void shellInit()
 {
     esp_console_repl_t *repl = NULL;
@@ -14,6 +70,58 @@ void shellInit()
 
     repl_config.prompt = "$";
     repl_config.max_cmdline_length = 100;
+
+    // for (int i = 0; i < sizeof(shell_cmds) / sizeof(shell_cmd_t); i++)
+    // {
+    //     ESP_LOGI(TAG, "Registering command %s", shell_cmds[i].command);
+    //     ESP_LOGI(TAG, "Help: %s", shell_cmds[i].help);
+    //     ESP_LOGI(TAG, "Func: %p", shell_cmds[i].func);
+    //     ESP_LOGI(TAG, "Args num: %d", shell_cmds[i].args_num);
+
+    //     esp_console_cmd_t cmd = {
+    //         .command = shell_cmds[i].command,
+    //         .help = shell_cmds[i].help,
+    //         .func = shell_cmds[i].func};
+
+    //     struct
+    //     {
+    //         struct arg_str **args;
+    //         struct arg_end *end;
+    //     } argtable;
+
+    //     if (shell_cmds[i].args_num > 0)
+    //     {
+    //         struct arg_str *args[shell_cmds[i].args_num + 1];
+    //         for (int j = 0; j < shell_cmds[i].args_num; j++)
+    //         {
+    //             ESP_LOGI(TAG, "Adding args: %s", shell_cmds[i].args[j]);
+    //             ESP_LOGI(TAG, "Adding hint: %s", shell_cmds[i].hint[j]);
+    //             args[j] = arg_str1(NULL, NULL, shell_cmds[i].args[j], shell_cmds[i].hint[j]);
+    //         }
+    //         struct arg_end *end = arg_end(shell_cmds[i].args_num);
+    //         args[shell_cmds[i].args_num] = (arg_str *)end;
+    //         ESP_LOGI(TAG, "Adding argtable");
+    //         ESP_LOGI(TAG, "arg ptr: %p, end ptr: %p", argtable.args, argtable.end);
+    //         cmd.argtable = &argtable;
+    //     }
+    //     static struct
+    //     {
+    //         struct arg_str *ssid;
+    //         struct arg_str *password;
+    //         struct arg_end *end;
+    //     } set_wifi_args;
+
+    //     set_wifi_args.ssid = arg_str1(NULL, NULL, "<ssid>", "SSID of AP");
+    //     set_wifi_args.password = arg_str1(NULL, NULL, "<password>", "Password of AP");
+    //     set_wifi_args.end = arg_end(2);
+    //     esp_console_cmd_t set = {
+    //         .command = "set-wifi",
+    //         .help = "Set wifi config",
+    //         .func = &set_wifi_command,
+    //         .argtable = &set_wifi_args};
+
+    //     esp_console_cmd_register(&cmd);
+    // }
 
     esp_console_register_help_command();
     esp_console_register_wifi_command();
