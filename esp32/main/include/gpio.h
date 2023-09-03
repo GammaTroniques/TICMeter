@@ -5,8 +5,9 @@
 
 #define RX_LINKY 17
 #define V_CONDO_PIN ADC_CHANNEL_4
-#define V_USB_PIN (gpio_num_t)1
+#define V_USB_PIN ADC_CHANNEL_1
 #define PAIRING_PIN (gpio_num_t)3
+#define BOOT_PIN (gpio_num_t)9
 
 #define LED_EN (gpio_num_t)0
 #define LED_DATA (gpio_num_t)5
@@ -27,12 +28,7 @@
 
 void initPins();
 
-/**
- * @brief Get the VUSB
- *
- * @return 1 if VUSB is present, 0 if not
- */
-uint8_t getVUSB();
+float getVUSB();
 
 /**
  * @brief Get the tension of the condo
