@@ -78,11 +78,6 @@ void initPins()
     // ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_CONDO_PIN, &config));
 }
 
-uint8_t getVUSB()
-{
-    // return adc1_get_raw(ADC1_CHANNEL_3) > 3700 ? 1 : 0;
-    return gpio_get_level(V_USB_PIN);
-}
 static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
     adc_cali_handle_t handle = NULL;
@@ -172,6 +167,37 @@ float getVCondo()
     return vCondo;
 }
 
+float getVUSB()
+{
+    adc_oneshot_unit_init_cfg_t init_config1 = {};
+    init_config1.unit_id = ADC_UNIT_1;
+
+    adc_oneshot_chan_cfg_t config = {
+        .atten = ADC_ATTEN_DB_11,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_USB_PIN, &config));
+
+    adc_cali_handle_t adc_cali_handle = NULL;
+    bool do_calibration = example_adc_calibration_init(ADC_UNIT_1, V_USB_PIN, ADC_ATTEN_DB_11, &adc_cali_handle);
+
+    int raw = 0;
+    ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, V_USB_PIN, &raw));
+    adc_oneshot_del_unit(adc1_handle);
+    ESP_LOGI(TAG, "VUSB raw: %d", raw);
+    int vADC = 0;
+    if (do_calibration)
+    {
+        ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc_cali_handle, raw, &vADC));
+        ESP_LOGI(TAG, "VUSB voltage cali: %d", vADC);
+        uint32_t vUSB = (vADC * 280) / 180;
+        return (float)vUSB / 1000;
+    }
+    float vUSB = (float)(raw * 5) / 3988; // get VUSB from ADC after voltage divider
+    ESP_LOGI(TAG, "VUSB: %f", vUSB);
+    return vUSB;
+}
 void led_blink_task(void *pvParameter)
 {
     gpio_reset_pin(LED_RED);

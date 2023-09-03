@@ -9,12 +9,12 @@
 
 struct shell_cmd_t
 {
-    const char *command;
-    const char *help;
+    const char command[28];
+    const char help[128];
     int (*func)(int argc, char **argv);
     const uint8_t args_num;
-    const char *args[5];
-    const char *hint[5];
+    const char args[5][20];
+    const char hint[5][64];
 };
 // clang-format off
 
@@ -57,7 +57,8 @@ struct shell_cmd_t shell_cmds[]
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
-    {"linky-print",                  "Print linky data",                        &linky_print_command,               0, {}, {}},
+    {"linky-print",                 "Print linky data",                         &linky_print_command,               0, {}, {}},
+    {"get-voltage",                 "Get Voltages",                             &get_voltages,                      0, {}, {}},
 
 
 };
@@ -71,70 +72,31 @@ void shellInit()
     repl_config.prompt = "$";
     repl_config.max_cmdline_length = 100;
 
-    // for (int i = 0; i < sizeof(shell_cmds) / sizeof(shell_cmd_t); i++)
-    // {
-    //     ESP_LOGI(TAG, "Registering command %s", shell_cmds[i].command);
-    //     ESP_LOGI(TAG, "Help: %s", shell_cmds[i].help);
-    //     ESP_LOGI(TAG, "Func: %p", shell_cmds[i].func);
-    //     ESP_LOGI(TAG, "Args num: %d", shell_cmds[i].args_num);
+    for (int i = 0; i < sizeof(shell_cmds) / sizeof(shell_cmd_t); i++)
+    {
+        // ESP_LOGI(TAG, "Registering command %s", shell_cmds[i].command);
+        // ESP_LOGI(TAG, "Help: %s", shell_cmds[i].help);
+        // ESP_LOGI(TAG, "Func: %p", shell_cmds[i].func);
+        // ESP_LOGI(TAG, "Args num: %d", shell_cmds[i].args_num);
+        esp_console_cmd_t cmd = {
+            .command = shell_cmds[i].command,
+            .help = shell_cmds[i].help,
+            .func = shell_cmds[i].func};
 
-    //     esp_console_cmd_t cmd = {
-    //         .command = shell_cmds[i].command,
-    //         .help = shell_cmds[i].help,
-    //         .func = shell_cmds[i].func};
+        struct arg_str *args[shell_cmds[i].args_num + 1] = {0};
 
-    //     struct
-    //     {
-    //         struct arg_str **args;
-    //         struct arg_end *end;
-    //     } argtable;
-
-    //     if (shell_cmds[i].args_num > 0)
-    //     {
-    //         struct arg_str *args[shell_cmds[i].args_num + 1];
-    //         for (int j = 0; j < shell_cmds[i].args_num; j++)
-    //         {
-    //             ESP_LOGI(TAG, "Adding args: %s", shell_cmds[i].args[j]);
-    //             ESP_LOGI(TAG, "Adding hint: %s", shell_cmds[i].hint[j]);
-    //             args[j] = arg_str1(NULL, NULL, shell_cmds[i].args[j], shell_cmds[i].hint[j]);
-    //         }
-    //         struct arg_end *end = arg_end(shell_cmds[i].args_num);
-    //         args[shell_cmds[i].args_num] = (arg_str *)end;
-    //         ESP_LOGI(TAG, "Adding argtable");
-    //         ESP_LOGI(TAG, "arg ptr: %p, end ptr: %p", argtable.args, argtable.end);
-    //         cmd.argtable = &argtable;
-    //     }
-    //     static struct
-    //     {
-    //         struct arg_str *ssid;
-    //         struct arg_str *password;
-    //         struct arg_end *end;
-    //     } set_wifi_args;
-
-    //     set_wifi_args.ssid = arg_str1(NULL, NULL, "<ssid>", "SSID of AP");
-    //     set_wifi_args.password = arg_str1(NULL, NULL, "<password>", "Password of AP");
-    //     set_wifi_args.end = arg_end(2);
-    //     esp_console_cmd_t set = {
-    //         .command = "set-wifi",
-    //         .help = "Set wifi config",
-    //         .func = &set_wifi_command,
-    //         .argtable = &set_wifi_args};
-
-    //     esp_console_cmd_register(&cmd);
-    // }
-
-    esp_console_register_help_command();
-    esp_console_register_wifi_command();
-    esp_console_register_web_command();
-    esp_console_register_mqtt_command();
-    esp_console_register_mode_command();
-    esp_console_register_config_command();
-    esp_console_register_reset_command();
-    esp_console_register_VCondo_command();
-    esp_console_register_test_led_command();
-    esp_console_register_ota_check_command();
-    esp_console_register_tuya_command();
-    esp_console_register_linky_command();
+        if (shell_cmds[i].args_num > 0)
+        {
+            for (int j = 0; j < shell_cmds[i].args_num; j++)
+            {
+                args[j] = arg_str1(NULL, NULL, shell_cmds[i].args[j], shell_cmds[i].hint[j]);
+            }
+            struct arg_end *end = arg_end(shell_cmds[i].args_num);
+            args[shell_cmds[i].args_num] = (arg_str *)end;
+            cmd.argtable = &args;
+        }
+        esp_console_cmd_register(&cmd);
+    }
     esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
 
@@ -146,15 +108,6 @@ int esp_reset_command(int argc, char **argv)
     ESP_LOGI(TAG, "Resetting the device");
     esp_restart();
     return 0;
-}
-esp_err_t esp_console_register_reset_command(void)
-{
-    esp_console_cmd_t reset = {
-        .command = "reset",
-        .help = "Reset the device",
-        .func = &esp_reset_command};
-
-    return esp_console_cmd_register(&reset);
 }
 
 int get_wifi_command(int argc, char **argv)
@@ -210,93 +163,6 @@ int wifi_start_captive_portal_command(int argc, char **argv)
     start_captive_portal();
     return 0;
 }
-esp_err_t esp_console_register_wifi_command(void)
-{
-    esp_console_cmd_t get = {
-        .command = "get-wifi",
-        .help = "Get wifi config",
-        .func = &get_wifi_command};
-    esp_err_t err = esp_console_cmd_register(&get);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    static struct
-    {
-        struct arg_str *ssid;
-        struct arg_str *password;
-        struct arg_end *end;
-    } set_wifi_args;
-
-    set_wifi_args.ssid = arg_str1(NULL, NULL, "<ssid>", "SSID of AP");
-    set_wifi_args.password = arg_str1(NULL, NULL, "<password>", "Password of AP");
-    set_wifi_args.end = arg_end(2);
-
-    esp_console_cmd_t set = {
-        .command = "set-wifi",
-        .help = "Set wifi config",
-        .func = &set_wifi_command,
-        .argtable = &set_wifi_args};
-    err = esp_console_cmd_register(&set);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    esp_console_cmd_t connect = {
-        .command = "wifi-connect",
-        .help = "Connect to wifi",
-        .func = &connect_wifi_command};
-    err = esp_console_cmd_register(&connect);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    esp_console_cmd_t reconnect = {
-        .command = "wifi-reconnect",
-        .help = "Reconnect to wifi",
-        .func = &reconnect_wifi_command};
-    err = esp_console_cmd_register(&reconnect);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    esp_console_cmd_t disconnect = {
-        .command = "wifi-disconnect",
-        .help = "Disconnect from wifi",
-        .func = &wifi_disconnect_command};
-    err = esp_console_cmd_register(&disconnect);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    esp_console_cmd_t status = {
-        .command = "wifi-status",
-        .help = "Get wifi status",
-        .func = &wifi_status_command};
-    err = esp_console_cmd_register(&status);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    esp_console_cmd_t start_captive_portal = {
-        .command = "wifi-start-captive-portal",
-        .help = "Start captive portal",
-        .func = &wifi_start_captive_portal_command};
-    err = esp_console_cmd_register(&start_captive_portal);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    return ESP_OK;
-}
-
 int set_web_command(int argc, char **argv)
 {
     if (argc != 5)
@@ -322,47 +188,6 @@ int get_web_command(int argc, char **argv)
     printf("ConfigUrl: %s\n", config.values.web.configUrl);
     printf("Token: %s\n", config.values.web.token);
     return 0;
-}
-esp_err_t esp_console_register_web_command()
-{
-    esp_console_cmd_t get = {
-        .command = "get-web",
-        .help = "Get web config",
-        .func = &get_web_command};
-
-    esp_err_t err = esp_console_cmd_register(&get);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    static struct
-    {
-        struct arg_str *host;
-        struct arg_str *postUrl;
-        struct arg_str *configUrl;
-        struct arg_str *token;
-        struct arg_end *end;
-    } set_web_args;
-
-    set_web_args.host = arg_str1(NULL, NULL, "<host>", "Host of web server e.g. 192.168.1.10");
-    set_web_args.postUrl = arg_str1(NULL, NULL, "<postUrl>", "Url for posting data e.g. /post");
-    set_web_args.configUrl = arg_str1(NULL, NULL, "<configUrl>", "Url for getting config e.g. /config");
-    set_web_args.token = arg_str1(NULL, NULL, "<token>", "Token for authorization");
-    set_web_args.end = arg_end(4);
-
-    esp_console_cmd_t set = {
-        .command = "set-web",
-        .help = "Set web config",
-        .func = &set_web_command,
-        .argtable = &set_web_args};
-    err = esp_console_cmd_register(&set);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    return ESP_OK;
 }
 
 int get_mqtt_command(int argc, char **argv)
@@ -427,90 +252,6 @@ int mqtt_discovery_command(int argc, char **argv)
     setupHomeAssistantDiscovery();
     return 0;
 }
-esp_err_t esp_console_register_mqtt_command()
-{
-    esp_console_cmd_t get = {
-        .command = "get-mqtt",
-        .help = "Get mqtt config",
-        .func = &get_mqtt_command};
-
-    esp_err_t err = esp_console_cmd_register(&get);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    static struct
-    {
-        struct arg_str *host;
-        struct arg_int *port;
-        struct arg_str *topic;
-        struct arg_str *username;
-        struct arg_str *password;
-        struct arg_end *end;
-    } set_mqtt_args;
-
-    set_mqtt_args.host = arg_str1(NULL, NULL, "<host>", "Host of mqtt server e.g. 192.168.1.10");
-    set_mqtt_args.port = arg_int1(NULL, NULL, "<port>", "Port of mqtt server e.g. 1883");
-    set_mqtt_args.topic = arg_str1(NULL, NULL, "<topic>", "Topic for publishing data e.g. /topic");
-    set_mqtt_args.username = arg_str1(NULL, NULL, "<username>", "Username for authorization");
-    set_mqtt_args.password = arg_str1(NULL, NULL, "<password>", "Password for authorization");
-    set_mqtt_args.end = arg_end(5);
-
-    esp_console_cmd_t set = {
-        .command = "set-mqtt",
-        .help = "Set mqtt config",
-        .func = &set_mqtt_command,
-        .argtable = &set_mqtt_args};
-    err = esp_console_cmd_register(&set);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-    esp_console_cmd_t connect = {
-        .command = "mqtt-connect",
-        .help = "Connect to mqtt server",
-        .func = &mqtt_connect_command};
-
-    err = esp_console_cmd_register(&connect);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    static struct
-    {
-        struct arg_str *message;
-        struct arg_end *end;
-    } send_args;
-
-    send_args.message = arg_str1(NULL, NULL, "<message>", "Message to send");
-    send_args.end = arg_end(1);
-
-    esp_console_cmd_t send = {
-        .command = "mqtt-send",
-        .help = "Send message to mqtt server",
-        .func = &mqtt_send_command,
-        .argtable = &send_args};
-    err = esp_console_cmd_register(&send);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    esp_console_cmd_t discovery = {
-        .command = "mqtt-discovery",
-        .help = "Send discovery message to mqtt server",
-        .func = &mqtt_discovery_command};
-
-    err = esp_console_cmd_register(&discovery);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    return ESP_OK;
-}
 
 int get_mode_command(int argc, char **argv)
 {
@@ -531,47 +272,6 @@ int set_mode_command(int argc, char **argv)
     config.write();
     printf("Mode saved\n");
     return 0;
-}
-esp_err_t esp_console_register_mode_command()
-{
-    esp_console_cmd_t get = {
-        .command = "get-mode",
-        .help = "Get mode",
-        .func = &get_mode_command};
-
-    esp_err_t err = esp_console_cmd_register(&get);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    static struct
-    {
-        struct arg_int *mode;
-        struct arg_end *end;
-    } set_mode_args;
-
-    set_mode_args.mode = arg_int1(NULL, NULL, "<mode>", "Mode of operation");
-    set_mode_args.end = arg_end(1);
-
-    esp_console_cmd_t set = {
-        .command = "set-mode",
-        .help = "Set mode\n"
-                "0 - Wifi - Webserver\n"
-                "1 - Wifi - MQTT\n"
-                "2 - Wifi - MQTT Home Assistant\n"
-                "3 - Zigbee\n"
-                "4 - Matter\n",
-
-        .func = &set_mode_command,
-        .argtable = &set_mode_args};
-    err = esp_console_cmd_register(&set);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    return ESP_OK;
 }
 
 int get_config_command(int argc, char **argv)
@@ -594,31 +294,6 @@ int set_config_command(int argc, char **argv)
     printf("Config saved\n");
     return 0;
 }
-esp_err_t esp_console_register_config_command()
-{
-    esp_console_cmd_t get = {
-        .command = "get-config",
-        .help = "Get config",
-        .func = &get_config_command};
-
-    esp_err_t err = esp_console_cmd_register(&get);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    esp_console_cmd_t set = {
-        .command = "set-config",
-        .help = "Set config",
-        .func = &set_config_command};
-    err = esp_console_cmd_register(&set);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    return ESP_OK;
-}
 
 int get_VCondo_command(int argc, char **argv)
 {
@@ -628,22 +303,6 @@ int get_VCondo_command(int argc, char **argv)
     }
     printf("VCondo: %f\n", getVCondo());
     return 0;
-}
-
-esp_err_t esp_console_register_VCondo_command()
-{
-    esp_console_cmd_t get = {
-        .command = "get-VCondo",
-        .help = "Get VCondo",
-        .func = &get_VCondo_command};
-
-    esp_err_t err = esp_console_cmd_register(&get);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    return ESP_OK;
 }
 
 int test_led_command(int argc, char **argv)
@@ -657,31 +316,6 @@ int test_led_command(int argc, char **argv)
     return 0;
 }
 
-esp_err_t esp_console_register_test_led_command()
-{
-    static struct
-    {
-        struct arg_int *mode;
-        struct arg_end *end;
-    } set_mode_args;
-
-    set_mode_args.mode = arg_int1(NULL, NULL, "<pattern>", "Pattern to test");
-    set_mode_args.end = arg_end(1);
-
-    esp_console_cmd_t set = {
-        .command = "led-pattern",
-        .help = "Test led pattern\n",
-        .func = &test_led_command,
-        .argtable = &set_mode_args};
-    esp_err_t err = esp_console_cmd_register(&set);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    return ESP_OK;
-}
-
 int ota_check_command(int argc, char **argv)
 {
     if (argc != 1)
@@ -690,21 +324,6 @@ int ota_check_command(int argc, char **argv)
     }
     check_ota_update();
     return 0;
-}
-esp_err_t esp_console_register_ota_check_command()
-{
-    esp_console_cmd_t get = {
-        .command = "ota-check",
-        .help = "Check for ota update",
-        .func = &ota_check_command};
-
-    esp_err_t err = esp_console_cmd_register(&get);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    return ESP_OK;
 }
 
 int set_tuya_command(int argc, char **argv)
@@ -734,97 +353,6 @@ int get_tuya_command(int argc, char **argv)
     printf("Product ID: %s\n", config.values.tuya.productId);
     printf("Server: %s\n", TUYA_SERVERS[config.values.tuya.server]);
     return 0;
-}
-
-esp_err_t esp_console_register_tuya_command()
-{
-    static struct
-    {
-        struct arg_str *deviceId;
-        struct arg_str *deviceSecret;
-        struct arg_str *productId;
-        struct arg_int *server;
-        struct arg_end *end;
-    } set_mode_args;
-
-    set_mode_args.deviceId = arg_str1(NULL, NULL, "<deviceId>", "Device ID");
-    set_mode_args.deviceSecret = arg_str1(NULL, NULL, "<deviceSecret>", "Device Secret");
-    set_mode_args.productId = arg_str1(NULL, NULL, "<productId>", "Product ID");
-    set_mode_args.server = arg_int1(NULL, NULL, "<server>", "Server (0: CN, 1: EU, 2: US)");
-    set_mode_args.end = arg_end(1);
-
-    esp_console_cmd_t set = {
-        .command = "set-tuya",
-        .help = "Set Tuya config\n",
-        .func = &set_tuya_command,
-        .argtable = &set_mode_args};
-    esp_err_t err = esp_console_cmd_register(&set);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    esp_console_cmd_t get = {
-        .command = "get-tuya",
-        .help = "Get Tuya config\n",
-        .func = &get_tuya_command};
-    err = esp_console_cmd_register(&get);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    return ESP_OK;
-}
-
-esp_err_t esp_console_register_linky_command()
-{
-    esp_console_cmd_t get = {
-        .command = "get-linky",
-        .help = "Get Linky mode",
-        .func = &get_linky_mode_command};
-
-    esp_err_t err = esp_console_cmd_register(&get);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    esp_console_cmd_t print = {
-        .command = "print-linky",
-        .help = "Print Linky data",
-        .func = &linky_print_command};
-
-    err = esp_console_cmd_register(&print);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    static struct
-    {
-        struct arg_int *mode;
-        struct arg_end *end;
-    } set_mode_args;
-
-    set_mode_args.mode = arg_int1(NULL, NULL, "<mode>", "Mode of operation");
-    set_mode_args.end = arg_end(1);
-
-    esp_console_cmd_t set = {
-        .command = "set-linky",
-        .help = "Set Linky mode\n"
-                "0: MODE_HISTORIQUE\n"
-                "1: MODE_STANDARD\n"
-                "2: MODE_AUTO",
-        .func = &set_linky_mode_command,
-        .argtable = &set_mode_args};
-    err = esp_console_cmd_register(&set);
-    if (err != ESP_OK)
-    {
-        return err;
-    }
-
-    return ESP_OK;
 }
 
 int get_linky_mode_command(int argc, char **argv)
@@ -858,5 +386,16 @@ int linky_print_command(int argc, char **argv)
         return ESP_ERR_INVALID_ARG;
     }
     linky.print();
+    return 0;
+}
+
+int get_voltages(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    printf("VCondo: %f\n", getVCondo());
+    printf("VUSB: %f\n", getVUSB());
     return 0;
 }
