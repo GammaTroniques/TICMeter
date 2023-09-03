@@ -22,44 +22,34 @@ int connect_wifi_command(int argc, char **argv);
 int reconnect_wifi_command(int argc, char **argv);
 int wifi_disconnect_command(int argc, char **argv);
 int wifi_status_command(int argc, char **argv);
-esp_err_t esp_console_register_wifi_command(void);
 
 int set_web_command(int argc, char **argv);
 int get_web_command(int argc, char **argv);
-esp_err_t esp_console_register_web_command();
 
 int get_mqtt_command(int argc, char **argv);
 int set_mqtt_command(int argc, char **argv);
 int mqtt_connect_command(int argc, char **argv);
 int mqtt_send_command(int argc, char **argv);
-esp_err_t esp_console_register_mqtt_command();
 
 int get_mode_command(int argc, char **argv);
 int set_mode_command(int argc, char **argv);
-esp_err_t esp_console_register_mode_command();
 
 int get_config_command(int argc, char **argv);
 int set_config_command(int argc, char **argv);
-esp_err_t esp_console_register_config_command();
 
 int get_VCondo_command(int argc, char **argv);
-esp_err_t esp_console_register_VCondo_command();
-
-esp_err_t esp_console_register_test_led_command();
-
 int ota_check_command(int argc, char **argv);
-esp_err_t esp_console_register_ota_check_command();
 
 int set_tuya_command(int argc, char **argv);
 int get_tuya_command(int argc, char **argv);
-esp_err_t esp_console_register_tuya_command();
 
 int set_linky_mode_command(int argc, char **argv);
 int get_linky_mode_command(int argc, char **argv);
 int linky_print_command(int argc, char **argv);
-esp_err_t esp_console_register_linky_command();
 int wifi_start_captive_portal_command(int argc, char **argv);
 int mqtt_discovery_command(int argc, char **argv);
 int test_led_command(int argc, char **argv);
+
+int get_voltages(int argc, char **argv);
 
 #endif

@@ -63,14 +63,14 @@ extern "C" void app_main(void)
     }
   }
 
-  ESP_LOGI(MAIN_TAG, "VCondo: %f", getVCondo());
-  // check vcondo and sleep if not ok
-  // if (!getVUSB() && config.values.enableDeepSleep && getVCondo() < 4.5)
-  // {
-  //   ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
-  //   esp_sleep_enable_timer_wakeup(1 * 1000000);
-  //   esp_deep_sleep_start();
-  // }
+  // check if VCondo is too low and go to deep sleep
+  // the BOOT_PIN is used to prevent deep sleep when the device is plugged to a computer for debug
+  if (getVUSB() < 4.5 && getVCondo() < 4.5 && config.values.enableDeepSleep && gpio_get_level(BOOT_PIN))
+  {
+    ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
+    esp_sleep_enable_timer_wakeup(1 * 1000000);
+    esp_deep_sleep_start();
+  }
 
   switch (config.values.mode)
   {
