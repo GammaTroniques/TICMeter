@@ -115,7 +115,7 @@ void fetchLinkyDataTask(void *pvParameters)
     if (!linky.update() ||
         !linky.presence())
     {
-      ESP_LOGE(MAIN_TAG, "Linky update failed");
+      ESP_LOGE(MAIN_TAG, "Linky update failed: \n %s", linky.buffer);
       startLedPattern(PATTERN_LINKY_ERR);
       vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
       continue;

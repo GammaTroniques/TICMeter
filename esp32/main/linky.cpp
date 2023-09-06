@@ -244,15 +244,16 @@ void Linky::setMode(LinkyMode newMode)
  */
 void Linky::read()
 {
-    uart_flush(UART_NUM_1);                                               // clear the UART buffer
     uint32_t timeout = (xTaskGetTickCount() * portTICK_PERIOD_MS) + 5000; // 5 seconds timeout
     memset(buffer, 0, sizeof buffer);                                     // clear the buffer
     rxBytes = 0;
+    uart_flush(UART_NUM_1); // clear the UART buffer
 
     uint32_t startOfFrame = UINT_MAX; // store the index of the start frame
     uint32_t endOfFrame = UINT_MAX;   // store the index of the end frame
 
     // debugFrame();
+    bool hasFrame = false;
     do
     {
         rxBytes += uart_read_bytes(UART_NUM_1, buffer + rxBytes, (RX_BUF_SIZE - 1) - rxBytes, 500 / portTICK_PERIOD_MS);
@@ -261,7 +262,7 @@ void Linky::read()
         // Firt step: find the start and end of the frame
         //----------------------------------------------------------
 
-        for (int i = 0; i < BUFFER_SIZE; i++) // for each character in the buffer
+        for (int i = 0; i < rxBytes; i++) // for each character in the buffer
         {
             if (buffer[i] == START_OF_FRAME) // if the character is a start of frame
             {
@@ -274,7 +275,8 @@ void Linky::read()
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
-    } while ((endOfFrame == UINT_MAX || startOfFrame == UINT_MAX || (startOfFrame > endOfFrame)) && ((xTaskGetTickCount() * portTICK_PERIOD_MS) < timeout));
+        hasFrame = (endOfFrame != UINT_MAX && startOfFrame != UINT_MAX && (startOfFrame < endOfFrame));
+    } while ((!hasFrame || rxBytes < 256) && (MILLIS < timeout) && rxBytes < RX_BUF_SIZE - 1);
 
     if (endOfFrame == UINT_MAX || startOfFrame == UINT_MAX || (startOfFrame > endOfFrame)) // if a start of frame and an end of frame has been found
     {
