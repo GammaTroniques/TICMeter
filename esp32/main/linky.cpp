@@ -166,6 +166,7 @@ Linky::Linky(LinkyMode mode, int RX)
     // mode Historique: 0x20
     // mode Standard: 0x09
     GROUP_SEPARATOR = (mode == MODE_HISTORIQUE) ? 0x20 : 0x09;
+    esp_log_level_set(LINKY_TAG, ESP_LOG_INFO);
 }
 
 /**
@@ -289,9 +290,9 @@ void Linky::read()
         frameSize = endOfFrame - startOfFrame;
         frame = buffer + startOfFrame;
     }
-    ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_INFO);
-    ESP_LOGI(LINKY_TAG, "-------------------");
-    ESP_LOGI(LINKY_TAG, "Buffer: %s", buffer);
+    // ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_INFO);
+    // ESP_LOGI(LINKY_TAG, "-------------------");
+    ESP_LOGD(LINKY_TAG, "Buffer: %s", buffer);
 }
 
 /**

@@ -5,6 +5,7 @@
 #include "gpio.h"
 #include "driver/gpio.h"
 #include "esp_sntp.h"
+#include <time.h>
 #include "esp_netif_sntp.h"
 
 #define TAG "WIFI"
@@ -292,12 +293,22 @@ time_t getTimestamp()
     struct tm timeinfo;
     if (wifiConnected)
     {
-        esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(NTP_SERVER);
-        config.sync_cb = time_sync_notification_cb; // Note: This is only needed if we want
-        esp_netif_sntp_init(&config);
+        static bool sntp_started = false;
+        static esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(NTP_SERVER);
 
+        if (!sntp_started)
+        {
+            sntp_started = true;
+            config.sync_cb = time_sync_notification_cb; // Note: This is only needed if we want
+            sntp_set_sync_interval(0);                  // sync now
+            esp_netif_sntp_init(&config);
+        }
+        else
+        {
+            sntp_restart();
+        }
+        // sntp_set_sync_status(SNTP_SYNC_STATUS_RESET);
         int retry = 0;
-        sntp_set_sync_status(SNTP_SYNC_STATUS_RESET);
         esp_err_t err;
         do
         {
@@ -305,18 +316,11 @@ time_t getTimestamp()
             // ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d) %d", retry, 3, err);
         } while (err == ESP_ERR_TIMEOUT && ++retry < 2);
 
-        // time_t now = 0;
-        // time(&now);
-        // time_t timeout = MILLIS + 3000;
-        // while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && (MILLIS < timeout))
-        // {
-        //     vTaskDelay(100 / portTICK_PERIOD_MS);
-        // }
         if (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET)
         {
             ESP_LOGE(TAG, "Failed to get time from NTP server, return last time");
         }
-        esp_netif_sntp_deinit();
+        // esp_netif_sntp_deinit();
     }
     time(&now);
     localtime_r(&now, &timeinfo);

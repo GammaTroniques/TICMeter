@@ -23,16 +23,9 @@ adc_oneshot_unit_handle_t adc1_handle;
 led_strip_handle_t led;
 void initPins()
 {
-    // gpio_reset_pin(LED_RED);
-    // gpio_reset_pin(LED_GREEN);
-    // gpio_set_direction(LED_RED, GPIO_MODE_OUTPUT);
-    // gpio_set_direction(LED_GREEN, GPIO_MODE_OUTPUT);
-
-    // gpio_set_level(LED_RED, 0);
-    // gpio_set_level(LED_GREEN, 0);
-
     gpio_set_direction(LED_EN, GPIO_MODE_OUTPUT);
-    gpio_set_level(LED_EN, 0);
+    // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
+    gpio_set_level(LED_EN, 1);
 
     /* LED strip initialization with the GPIO and pixels number*/
     led_strip_config_t strip_config = {
@@ -55,27 +48,34 @@ void initPins()
 
     ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led));
 
-    // led_strip_set_pixel(led, 0, 255, 0, 0);
-    // led_strip_refresh(led);
-    // vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // led_strip_set_pixel(led, 0, 0, 255, 0);
-    // led_strip_refresh(led);
-    // vTaskDelay(1000 / portTICK_PERIOD_MS);
-    // led_strip_set_pixel(led, 0, 0, 0, 255);
-    // led_strip_refresh(led);
-    // vTaskDelay(1000 / portTICK_PERIOD_MS);
     led_strip_clear(led);
     led_strip_refresh(led);
+    // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
+}
 
-    // adc_oneshot_unit_init_cfg_t init_config1 = {};
-    // init_config1.unit_id = ADC_UNIT_1;
+void setLedColor(uint32_t color)
+{
+    if (color == 0)
+    {
+        led_strip_clear(led);
+        led_strip_refresh(led);
+        gpio_set_level(LED_EN, 0);
+        // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
+        return;
+    }
+    gpio_set_level(LED_EN, 1);
+    // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8) & 0xFF;
+    uint8_t b = (color >> 0) & 0xFF;
+    // set brightness to 50%
+    uint8_t brightness = 50;
+    r = (r * brightness) / 100;
+    g = (g * brightness) / 100;
+    b = (b * brightness) / 100;
 
-    // adc_oneshot_chan_cfg_t config = {
-    //     .atten = ADC_ATTEN_DB_0,
-    //     .bitwidth = ADC_BITWIDTH_DEFAULT,
-    // };
-    // ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
-    // ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_CONDO_PIN, &config));
+    led_strip_set_pixel(led, 0, r, g, b);
+    led_strip_refresh(led);
 }
 
 static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
@@ -120,11 +120,7 @@ static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel,
 #endif
 
     *out_handle = handle;
-    if (ret == ESP_OK)
-    {
-        ESP_LOGI(TAG, "Calibration Success");
-    }
-    else if (ret == ESP_ERR_NOT_SUPPORTED || !calibrated)
+    if (ret == ESP_ERR_NOT_SUPPORTED || !calibrated)
     {
         ESP_LOGW(TAG, "eFuse not burnt, skip software calibration");
     }
@@ -153,17 +149,14 @@ float getVCondo()
     int raw = 0;
     ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, V_CONDO_PIN, &raw));
     adc_oneshot_del_unit(adc1_handle);
-    ESP_LOGI(TAG, "VCondo raw: %d", raw);
     int vADC = 0;
     if (do_calibration)
     {
         ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc_cali_handle, raw, &vADC));
-        ESP_LOGI(TAG, "VCondo voltage cali: %d", vADC);
         uint32_t vCondo = (vADC * 280) / 180;
         return (float)vCondo / 1000;
     }
     float vCondo = (float)(raw * 5) / 3988; // get VCondo from ADC after voltage divider
-    ESP_LOGI(TAG, "VCondo: %f", vCondo);
     return vCondo;
 }
 
@@ -185,43 +178,15 @@ float getVUSB()
     int raw = 0;
     ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, V_USB_PIN, &raw));
     adc_oneshot_del_unit(adc1_handle);
-    ESP_LOGI(TAG, "VUSB raw: %d", raw);
     int vADC = 0;
     if (do_calibration)
     {
         ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc_cali_handle, raw, &vADC));
-        ESP_LOGI(TAG, "VUSB voltage cali: %d", vADC);
         uint32_t vUSB = (vADC * 280) / 180;
         return (float)vUSB / 1000;
     }
     float vUSB = (float)(raw * 5) / 3988; // get VUSB from ADC after voltage divider
-    ESP_LOGI(TAG, "VUSB: %f", vUSB);
     return vUSB;
-}
-void led_blink_task(void *pvParameter)
-{
-    gpio_reset_pin(LED_RED);
-    gpio_reset_pin(LED_GREEN);
-    gpio_set_direction(LED_RED, GPIO_MODE_OUTPUT);
-    gpio_set_direction(LED_GREEN, GPIO_MODE_OUTPUT);
-    uint8_t led_red_state = 0;
-    while (1)
-    {
-        // ESP_LOGI(TAG, "Turning the LED %s!", led_red_state == true ? "ON" : "OFF");
-        // ESP_LOGI(TAG, "%lld", esp_log_timestamp());
-        // ESP_LOGI(TAG, "%lu", xTaskGetTickCount());
-        // ESP_LOGI(TAG, "%lu", );
-
-        gpio_set_level(LED_RED, led_red_state);
-        led_red_state = !led_red_state;
-        vTaskDelay(950 / portTICK_PERIOD_MS);
-
-        gpio_set_level(LED_RED, led_red_state);
-        led_red_state = !led_red_state;
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-
-        // gpio_set_level(LED_GREEN, getVUSB());
-    }
 }
 
 void loop(void *arg)
@@ -370,45 +335,35 @@ void pairingButtonTask(void *pvParameters)
 
 typedef struct ledPattern_t
 {
-    gpio_num_t led;
+    uint32_t color;
     uint32_t tOn;
     uint32_t tOff;
 } ledPattern_t;
 
 #define PATTERN_SIZE 3
 
+// clang-format off
 const ledPattern_t ledPattern[][PATTERN_SIZE] = {
-    {{LED_GREEN, 100, 900}, {LED_GREEN, 100, 900}, {LED_GREEN, 100, 900}}, // WIFI_CONNECTING
-    {{LED_GREEN, 100, 100}, {LED_GREEN, 100, 100}, {LED_RED, 100, 100}},   // WIFI_RETRY, new try
-    {{LED_GREEN, 100, 100}, {LED_RED, 500, 100}, {LED_RED, 500, 100}},     // WIFI_FAILED
-    {{LED_GREEN, 500, 100}},                                               // LINKY_OK
-    {{LED_RED, 1000, 100}},                                                // LINKY_ERR
-    {{LED_GREEN, 200, 100}, {LED_GREEN, 200, 100}},                        // SEND_OK
-    {{LED_RED, 500, 100}, {LED_RED, 500, 100}},                            // SEND_ERR
-    {{LED_RED, 50, 100}, {LED_RED, 50, 100}, {LED_RED, 50, 100}},          // NO_CONFIG
-    {{LED_RED, 50, 0}},                                                    // START
+    {{0x0008FF,      100, 900}                                                          }, // WIFI_CONNECTING
+    {{0xFF8000,      100, 100}                                                          }, // WIFI_RETRY, new try
+    {{0xFF0000,      100, 100},                                                         }, // WIFI_FAILED
+    {{0x5EFF00,      500, 100}                                                          }, // LINKY_OK
+    {{0xFF00F2,     1000, 100}                                                          }, // LINKY_ERR
+    {{0x5EFF00,      200, 100}, {0x5EFF00,      200, 100}                             }, // SEND_OK
+    {{0xFF0000,      200, 100}, {0xFF0000,      200, 100}                             }, // SEND_ERR
+    {{0xFF0000,       50, 100}, {0xFF0000,       50, 100}, {0xFF0000,       50, 100}}, // NO_CONFIG
+    {{0xE5FF00,       50,   0}                                                          }, // START
 };
+// clang-format on
 
 void ledPatternTask(void *pvParameters)
 {
     uint8_t id = *(uint8_t *)pvParameters;
     for (int i = 0; i < PATTERN_SIZE; i++)
     {
-        if (ledPattern[id][i].led == LED_GREEN)
-        {
-            gpio_set_level(LED_GREEN, 1);
-            gpio_set_level(LED_RED, 0);
-        }
-        else
-        {
-            gpio_set_level(LED_GREEN, 0);
-            gpio_set_level(LED_RED, 1);
-        }
+        setLedColor(ledPattern[id][i].color);
         vTaskDelay(ledPattern[id][i].tOn / portTICK_PERIOD_MS);
-
-        gpio_set_level(LED_GREEN, 0);
-        gpio_set_level(LED_RED, 0);
-
+        setLedColor(0);
         vTaskDelay(ledPattern[id][i].tOff / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); // Delete this task
