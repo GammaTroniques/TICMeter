@@ -68,8 +68,8 @@ void setLedColor(uint32_t color)
     uint8_t r = (color >> 16) & 0xFF;
     uint8_t g = (color >> 8) & 0xFF;
     uint8_t b = (color >> 0) & 0xFF;
-    // set brightness to 50%
-    uint8_t brightness = 50;
+    // set brightness
+    uint8_t brightness = 25; // %
     r = (r * brightness) / 100;
     g = (g * brightness) / 100;
     b = (b * brightness) / 100;
@@ -187,30 +187,6 @@ float getVUSB()
     }
     float vUSB = (float)(raw * 5) / 3988; // get VUSB from ADC after voltage divider
     return vUSB;
-}
-
-void loop(void *arg)
-{
-    // static int adc_raw[2][10];
-    // //-------------ADC1 Init---------------//
-    // adc_oneshot_unit_handle_t adc1_handle = NULL;
-    // adc_oneshot_unit_init_cfg_t init_config1 = {};
-    // init_config1.unit_id = ADC_UNIT_1;
-
-    // ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
-
-    // //-------------ADC1 Config---------------//
-    // adc_oneshot_chan_cfg_t config = {};
-    // config.bitwidth = ADC_BITWIDTH_DEFAULT;
-    // config.atten = ADC_ATTEN_DB_11;
-
-    // ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_5, &config));
-    // while (1)
-    // {
-    //     ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, ADC_CHANNEL_5, &adc_raw[0][0]));
-    //     ESP_LOGI(TAG, "ADC%d Channel[%d] Raw Data: %d", ADC_UNIT_1 + 1, ADC_CHANNEL_5, adc_raw[0][0]);
-    //     vTaskDelay(pdMS_TO_TICKS(1000));
-    // }
 }
 
 void pairingButtonTask(void *pvParameters)
@@ -344,14 +320,14 @@ typedef struct ledPattern_t
 
 // clang-format off
 const ledPattern_t ledPattern[][PATTERN_SIZE] = {
-    {{0x0008FF,      100, 900}                                                          }, // WIFI_CONNECTING
-    {{0xFF8000,      100, 100}                                                          }, // WIFI_RETRY, new try
-    {{0xFF0000,      100, 100},                                                         }, // WIFI_FAILED
+    {{0x0008FF,      200, 900}                                                          }, // WIFI_CONNECTING
+    {{0xFF8000,      200, 100}                                                          }, // WIFI_RETRY, new try
+    {{0xFF0000,      200, 100},                                                         }, // WIFI_FAILED
     {{0x5EFF00,      500, 100}                                                          }, // LINKY_OK
     {{0xFF00F2,     1000, 100}                                                          }, // LINKY_ERR
-    {{0x5EFF00,      200, 100}, {0x5EFF00,      200, 100}                             }, // SEND_OK
-    {{0xFF0000,      200, 100}, {0xFF0000,      200, 100}                             }, // SEND_ERR
-    {{0xFF0000,       50, 100}, {0xFF0000,       50, 100}, {0xFF0000,       50, 100}}, // NO_CONFIG
+    {{0x5EFF00,      200, 100},  {0x5EFF00,      200, 100}                             }, // SEND_OK
+    {{0xFF0000,      200, 1000}, {0xFF0000,      200, 1000}                             }, // SEND_ERR
+    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100}}, // NO_CONFIG
     {{0xE5FF00,       50,   0}                                                          }, // START
 };
 // clang-format on
