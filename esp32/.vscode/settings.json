@@ -32,7 +32,8 @@
     "unordered_map": "cpp",
     "vector": "cpp",
     "string_view": "cpp",
-    "initializer_list": "cpp"
+    "initializer_list": "cpp",
+    "time.h": "c"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH"
