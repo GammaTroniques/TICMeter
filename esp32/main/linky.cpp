@@ -254,6 +254,11 @@ void Linky::read()
 
     // debugFrame();
     bool hasFrame = false;
+    buffer[0] = 0x02;
+    buffer[2] = 0x02;
+    buffer[3] = 0x02;
+    buffer[4] = 0x03;
+    rxBytes = 5;
     do
     {
         rxBytes += uart_read_bytes(UART_NUM_1, buffer + rxBytes, (RX_BUF_SIZE - 1) - rxBytes, 500 / portTICK_PERIOD_MS);
@@ -266,17 +271,29 @@ void Linky::read()
         {
             if (buffer[i] == START_OF_FRAME) // if the character is a start of frame
             {
-                startOfFrame = i; // store the index
+                if (i + 1 < rxBytes) // we have a char after
+                {
+                    if (buffer[i + 1] == START_OF_GROUP) // valid start of frame
+                    {
+                        startOfFrame = i; // store the index
+                    }
+                }
             }
             else if (buffer[i] == END_OF_FRAME && i > startOfFrame) // if the character is an end of frame and an start of frame has been found
             {
-                endOfFrame = i; // store the index
-                break;          // stop the loop
+                if (i - 1 >= 0)
+                {
+                    if (buffer[i - 1] == END_OF_GROUP) // valid end of frame
+                    {
+                        endOfFrame = i; // store the index
+                        break;          // stop the loop
+                    }
+                }
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
         hasFrame = (endOfFrame != UINT_MAX && startOfFrame != UINT_MAX && (startOfFrame < endOfFrame));
-    } while ((!hasFrame || rxBytes < 256) && (MILLIS < timeout) && rxBytes < RX_BUF_SIZE - 1);
+    } while (!hasFrame && (MILLIS < timeout) && rxBytes < RX_BUF_SIZE - 1);
 
     if (endOfFrame == UINT_MAX || startOfFrame == UINT_MAX || (startOfFrame > endOfFrame)) // if a start of frame and an end of frame has been found
     {
@@ -294,7 +311,7 @@ void Linky::read()
     }
     // ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_INFO);
     // ESP_LOGI(LINKY_TAG, "-------------------");
-    ESP_LOGD(LINKY_TAG, "Buffer: %s", buffer);
+    // ESP_LOGD(LINKY_TAG, "Buffer: %s", buffer);
 }
 
 /**
@@ -493,11 +510,15 @@ char Linky::decode()
  */
 char Linky::update()
 {
+    reading = 1;
+    xTaskCreate(linkyReadingLedTask, "linkyReadingLedTask", 2048, NULL, 10, NULL);
     read();       // read the UART
     if (decode()) // decode the frame
     {
+        reading = 0;
         return 1;
     }
+    reading = 0;
     return 0;
 }
 
@@ -675,7 +696,7 @@ void Linky::debugFrame()
         {"OT", "00", '#'},
     };
     sprintf(debugGroups[3].value, "%lld", getTimestamp());
-    debugGroups[3].checksum = checksum(debugGroups[3].name, debugGroups[3].value, "");
+    debugGroups[3].checksum = checksum(debugGroups[3].name, debugGroups[3].value, NULL);
     const uint16_t debugGroupCount = sizeof(debugGroups) / sizeof(debugGroups[0]);
     rxBytes = 0;
     buffer[rxBytes++] = START_OF_FRAME;

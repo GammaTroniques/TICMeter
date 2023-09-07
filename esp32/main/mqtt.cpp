@@ -1,6 +1,7 @@
 
 #include "mqtt.h"
 #include "wifi.h"
+#include "gpio.h"
 #include <ArduinoJson.h>
 #include "esp_ota_ops.h"
 #include "mbedtls/md.h"
@@ -478,6 +479,8 @@ void sendToMqtt(LinkyData *linky)
         ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
         return;
     }
+    sendingValues = 1;
+    xTaskCreate(sendingLedTask, "sendingLedTask", 2048, NULL, 1, NULL);
     if (!mqttConnected)
     {
         mqtt_app_start();
@@ -501,6 +504,7 @@ void sendToMqtt(LinkyData *linky)
     }
     mqtt_stop();
     mqttConnected = false;
+    sendingValues = 0;
 }
 
 void mqtt_stop()

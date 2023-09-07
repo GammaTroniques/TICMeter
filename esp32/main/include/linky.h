@@ -18,6 +18,7 @@
 
 #define RX_BUF_SIZE     1024 // The size of the UART buffer
 #define BUFFER_SIZE     1024 // The size of the UART buffer
+#define FRAME_COUNT     5   // The max number of frame in buffer
 #define FRAME_SIZE      500   // The size of one frame buffer
 #define GROUP_COUNT     50
 
@@ -269,6 +270,7 @@ public:
     LinkyMode mode = MODE_HISTORIQUE;
     void setMode(LinkyMode mode);
     uint8_t presence();
+    uint8_t reading = 0;
 
 private:
     char UARTRX = 0;                // The RX pin of the linky
