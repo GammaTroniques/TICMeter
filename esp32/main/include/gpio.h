@@ -38,9 +38,10 @@ float getVUSB();
 float getVCondo();
 void pairingButtonTask(void *pvParameter);
 void startLedPattern(uint8_t pattern);
-void loop(void *arg);
 void noConfigLedTask(void *pvParameters);
-
+void wifiConnectLedTask(void *pvParameters);
+void linkyReadingLedTask(void *pvParameters);
+void sendingLedTask(void *pvParameters);
 /**
  * @brief set the CPU frequency to the given value
  *
