@@ -12,6 +12,8 @@
 
 static int s_retry_num = 0;
 uint8_t wifiConnected = 0;
+uint8_t sendingValues = 0;
+
 #ifndef MAC2STR
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
@@ -45,8 +47,7 @@ uint8_t connectToWifi()
     }
 
     setCPUFreq(80);
-    startLedPattern(PATTERN_WIFI_CONNECTING);
-
+    xTaskCreate(wifiConnectLedTask, "wifiConnectLedTask", 4096, NULL, 1, NULL); // start wifi connect led task
     s_retry_num = 0;
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
     s_wifi_event_group = xEventGroupCreate();
@@ -182,7 +183,6 @@ void event_handler(void *arg, esp_event_base_t event_base,
             esp_wifi_connect();
             s_retry_num++;
             ESP_LOGI(TAG, "Retry to connect to the AP: %d/%d", s_retry_num, ESP_MAXIMUM_RETRY);
-            startLedPattern(PATTERN_WIFI_RETRY);
         }
         else
         {
@@ -351,6 +351,9 @@ uint8_t sendToServer(const char *json)
         ESP_LOGE(TAG, "host or postUrl not set");
         return 0;
     }
+    sendingValues = 1;
+    xTaskCreate(sendingLedTask, "sendingLedTask", 2048, NULL, 1, NULL);
+
     char url[100] = {0};
     createHttpUrl(url, config.values.web.host, config.values.web.postUrl);
     // setup post request
@@ -369,6 +372,7 @@ uint8_t sendToServer(const char *json)
     // send post request
     esp_http_client_perform(client);
     esp_http_client_cleanup(client);
+    sendingValues = 0;
     return 1;
 }
 

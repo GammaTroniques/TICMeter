@@ -72,6 +72,7 @@ esp_err_t send_data_handler(esp_http_client_event_handle_t evt);
 uint8_t sendToServer(const char *json);
 
 extern uint8_t wifiConnected;
+extern uint8_t sendingValues;
 
 void start_captive_portal();
 

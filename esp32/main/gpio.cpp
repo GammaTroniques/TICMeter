@@ -69,7 +69,7 @@ void setLedColor(uint32_t color)
     uint8_t g = (color >> 8) & 0xFF;
     uint8_t b = (color >> 0) & 0xFF;
     // set brightness
-    uint8_t brightness = 25; // %
+    uint8_t brightness = 5; // %
     r = (r * brightness) / 100;
     g = (g * brightness) / 100;
     b = (b * brightness) / 100;
@@ -320,14 +320,14 @@ typedef struct ledPattern_t
 
 // clang-format off
 const ledPattern_t ledPattern[][PATTERN_SIZE] = {
-    {{0x0008FF,      200, 900}                                                          }, // WIFI_CONNECTING
-    {{0xFF8000,      200, 100}                                                          }, // WIFI_RETRY, new try
+    {{0x0008FF,      100, 400}                                                          }, // WIFI_CONNECTING // TODO: remove 
+    {{0xFF8000,      200, 100}                                                          }, // WIFI_RETRY, new try // TODO: remove 
     {{0xFF0000,      200, 100},                                                         }, // WIFI_FAILED
-    {{0x5EFF00,      500, 100}                                                          }, // LINKY_OK
+    {{0x5EFF00,      500, 100}                                                          }, // LINKY_OK // TODO: remove 
     {{0xFF00F2,     1000, 100}                                                          }, // LINKY_ERR
-    {{0x5EFF00,      200, 100},  {0x5EFF00,      200, 100}                             }, // SEND_OK
+    {{0x00FF00,      200, 500},  {0x00FF00,      200, 500}                             }, // SEND_OK
     {{0xFF0000,      200, 1000}, {0xFF0000,      200, 1000}                             }, // SEND_ERR
-    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100}}, // NO_CONFIG
+    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100}}, // NO_CONFIG // TODO: remove 
     {{0xE5FF00,       50,   0}                                                          }, // START
 };
 // clang-format on
@@ -355,11 +355,53 @@ void startLedPattern(uint8_t pattern)
 
 void noConfigLedTask(void *pvParameters)
 {
-    while (1)
+    while (config.verify())
     {
-        startLedPattern(PATTERN_NO_CONFIG);
+        for (int i = 0; i < 3; i++)
+        {
+            setLedColor(0xFF0000);
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+            setLedColor(0);
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
         vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
+}
+
+void wifiConnectLedTask(void *pvParameters)
+{
+    while (!wifiConnected)
+    {
+        setLedColor(0x0008FF);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        setLedColor(0);
+        vTaskDelay(900 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL); // Delete this task
+}
+
+void linkyReadingLedTask(void *pvParameters)
+{
+    while (linky.reading)
+    {
+        setLedColor(0xFF8000);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        setLedColor(0);
+        vTaskDelay(900 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL); // Delete this task
+}
+
+void sendingLedTask(void *pvParameters)
+{
+    while (sendingValues)
+    {
+        setLedColor(0xc300ff);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        setLedColor(0);
+        vTaskDelay(900 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL); // Delete this task
 }
 
 void setCPUFreq(int32_t speedInMhz)
