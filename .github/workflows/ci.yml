@@ -2,9 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ master ]
   pull_request:
-    branches: [ master ]
 
 jobs:
   build:
@@ -15,6 +13,13 @@ jobs:
         with:
           submodules: 'recursive'
           
+      - name: Copy IDF patch
+        run: | 
+          mkdir -p /opt/esp/idf/components/esp_netif/include/
+          mkdir -p /opt/esp/idf/components/esp_hw_support/
+          cp /app/xmow49/LinkyTeleinfoESP32/firmware/patch/esp_netif_sntp.h /opt/esp/idf/components/esp_netif/include/esp_netif_sntp.h
+          cp /app/xmow49/LinkyTeleinfoESP32/firmware/patch/sleep_modes.c /opt/esp/idf/components/esp_hw_support/sleep_modes.c
+      
       - name: ESP-IDF build
         uses: espressif/esp-idf-ci-action@v1
         with:
