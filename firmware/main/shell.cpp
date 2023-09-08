@@ -66,6 +66,17 @@ struct shell_cmd_t shell_cmds[]
 
 void shellInit()
 {
+    esp_log_level_set("wifi", ESP_LOG_ERROR);
+    esp_log_level_set("wifi_init", ESP_LOG_ERROR);
+    esp_log_level_set("esp_adapter", ESP_LOG_ERROR);
+    esp_log_level_set("pp", ESP_LOG_ERROR);
+    esp_log_level_set("net80211", ESP_LOG_ERROR);
+    esp_log_level_set("esp_netif_handlers", ESP_LOG_ERROR);
+    esp_log_level_set("phy_version", ESP_LOG_ERROR);
+    esp_log_level_set("phy_init", ESP_LOG_ERROR);
+    esp_log_level_set("gpio", ESP_LOG_ERROR);
+    // esp_log_level_set("*", ESP_LOG_WARN);
+
     esp_console_repl_t *repl = NULL;
     esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
 
@@ -97,8 +108,11 @@ void shellInit()
         }
         esp_console_cmd_register(&cmd);
     }
-    esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
+    // esp_console_dev_usb_serial_jtag_config_t hw_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
+    // ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
+
+    esp_console_dev_uart_config_t hw_config = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
 
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 }

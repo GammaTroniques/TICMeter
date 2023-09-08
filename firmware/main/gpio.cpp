@@ -87,7 +87,7 @@ static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel,
 #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
     if (!calibrated)
     {
-        ESP_LOGI(TAG, "calibration scheme version is %s", "Curve Fitting");
+        // ESP_LOGI(TAG, "calibration scheme version is %s", "Curve Fitting");
         adc_cali_curve_fitting_config_t cali_config = {
             .unit_id = unit,
             .chan = channel,
@@ -120,19 +120,23 @@ static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel,
 #endif
 
     *out_handle = handle;
-    if (ret == ESP_ERR_NOT_SUPPORTED || !calibrated)
+    if (ret == ESP_OK)
+    {
+        // ESP_LOGI(TAG, "Calibration Success");
+    }
+    else if (ret == ESP_ERR_NOT_SUPPORTED || !calibrated)
     {
         ESP_LOGW(TAG, "eFuse not burnt, skip software calibration");
     }
     else
     {
-        ESP_LOGE(TAG, "Invalid arg or no memory");
+        ESP_LOGE(TAG, "Invalid arg or no memory: %s, cal: %d", esp_err_to_name(ret), calibrated);
     }
-
     return calibrated;
 }
 float getVCondo()
 {
+    esp_log_level_set("ADC", ESP_LOG_DEBUG);
     adc_oneshot_unit_init_cfg_t init_config1 = {};
     init_config1.unit_id = ADC_UNIT_1;
 
@@ -154,10 +158,11 @@ float getVCondo()
     {
         ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc_cali_handle, raw, &vADC));
         uint32_t vCondo = (vADC * 280) / 180;
+        ESP_LOGD("ADC", "VUSB: %ld", vCondo);
         return (float)vCondo / 1000;
     }
-    float vCondo = (float)(raw * 5) / 3988; // get VCondo from ADC after voltage divider
-    return vCondo;
+    // float vCondo = (float)(raw * 5) / 3988; // get VCondo from ADC after voltage divider
+    return 0.0;
 }
 
 float getVUSB()
@@ -183,10 +188,11 @@ float getVUSB()
     {
         ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc_cali_handle, raw, &vADC));
         uint32_t vUSB = (vADC * 280) / 180;
+        ESP_LOGD("ADC", "VUSB: %ld", vUSB);
         return (float)vUSB / 1000;
     }
-    float vUSB = (float)(raw * 5) / 3988; // get VUSB from ADC after voltage divider
-    return vUSB;
+    // float vUSB = (float)(raw * 5) / 3988; // get VUSB from ADC after voltage divider
+    return 0.0;
 }
 
 void pairingButtonTask(void *pvParameters)

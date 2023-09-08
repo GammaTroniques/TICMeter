@@ -28,28 +28,15 @@
 #include "zigbee.h"
 
 Config config;
-
-#define MAX_DATA_INDEX 5
-// ------------Global variables stored in RTC memory to keep their values after deep sleep
-RTC_DATA_ATTR LinkyData dataArray[MAX_DATA_INDEX];
-
-RTC_DATA_ATTR unsigned int dataIndex = 0;
-// RTC_DATA_ATTR uint8_t firstBoot = 1;
-// ---------------------------------------------------------------------------------------
-
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
-TaskHandle_t pushButtonTaskHandle = NULL;
-TaskHandle_t pairingTaskHandle = NULL;
 
 #define MAIN_TAG "MAIN"
 extern "C" void app_main(void)
 {
-  // setCPUFreq(10);
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   initPins();
   startLedPattern(PATTERN_START);
-  xTaskCreate(pairingButtonTask, "pushButtonTask", 8192, NULL, 1, &pushButtonTaskHandle); // start push button task
-
+  xTaskCreate(pairingButtonTask, "pairingButtonTask", 8192, NULL, 1, NULL); // start push button task
   config.begin();
   shellInit(); // init shell
 
@@ -65,10 +52,10 @@ extern "C" void app_main(void)
 
   // check if VCondo is too low and go to deep sleep
   // the BOOT_PIN is used to prevent deep sleep when the device is plugged to a computer for debug
-  if (getVUSB() < 4.5 && getVCondo() < 4.5 && config.values.enableDeepSleep && gpio_get_level(BOOT_PIN))
+  if (getVUSB() < 3 && getVCondo() < 3.5 && config.values.enableDeepSleep && gpio_get_level(BOOT_PIN))
   {
     ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
-    esp_sleep_enable_timer_wakeup(1 * 1000000);
+    esp_sleep_enable_timer_wakeup(10 * 1000000); // 10 second
     esp_deep_sleep_start();
   }
 
@@ -104,11 +91,13 @@ extern "C" void app_main(void)
   // start linky fetch task
 
   xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
-  // ESP_LOGI(MAIN_TAG, "FREE HEAP: %ld", esp_get_free_heap_size());
 }
 
 void fetchLinkyDataTask(void *pvParameters)
 {
+#define MAX_DATA_INDEX 5
+  LinkyData dataArray[MAX_DATA_INDEX];
+  unsigned int dataIndex = 0;
   linky.begin();
   while (1)
   {
@@ -163,6 +152,30 @@ void fetchLinkyDataTask(void *pvParameters)
     default:
       break;
     }
-    vTaskDelay((abs(config.values.refreshRate - 5) * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
+
+    uint32_t sleepTime = abs(config.values.refreshRate - 5);
+    if (config.values.enableDeepSleep && getVUSB() < 3) // if deepsleep is enable and we are not connected to USB
+    {
+      ESP_LOGI(MAIN_TAG, "Going to sleep for %ld seconds", sleepTime);
+      esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
+      esp_light_sleep_start();
+    }
+    else
+    {
+      ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
+
+      while (sleepTime > 0)
+      {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        sleepTime--;
+        if (getVUSB() < 3)
+        {
+          ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", sleepTime);
+          esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
+          sleepTime = 0;
+          esp_light_sleep_start();
+        }
+      }
+    }
   }
 }

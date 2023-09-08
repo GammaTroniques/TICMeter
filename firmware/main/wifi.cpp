@@ -29,14 +29,6 @@ esp_event_handler_instance_t instance_any_id;
 esp_event_handler_instance_t instance_got_ip;
 uint8_t connectToWifi()
 {
-    esp_log_level_set("wifi", ESP_LOG_ERROR);
-    esp_log_level_set("wifi_init", ESP_LOG_ERROR);
-    esp_log_level_set("esp_adapter", ESP_LOG_ERROR);
-    esp_log_level_set("pp", ESP_LOG_ERROR);
-    esp_log_level_set("net80211", ESP_LOG_ERROR);
-    esp_log_level_set("esp_netif_handlers", ESP_LOG_ERROR);
-    esp_log_level_set("phy_version", ESP_LOG_ERROR);
-
     if (wifiConnected)
         return 1;
 
