@@ -1,0 +1,23 @@
+name: Build
+
+on:
+  push:
+    branches: [ V2-Zigbee ]
+  pull_request:
+    branches: [ V2-Zigbee ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+          
+      - name: ESP-IDF build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.1
+          target: esp32c6
+          path: 'firmware'
