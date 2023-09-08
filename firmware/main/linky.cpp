@@ -254,11 +254,6 @@ void Linky::read()
 
     // debugFrame();
     bool hasFrame = false;
-    buffer[0] = 0x02;
-    buffer[2] = 0x02;
-    buffer[3] = 0x02;
-    buffer[4] = 0x03;
-    rxBytes = 5;
     do
     {
         rxBytes += uart_read_bytes(UART_NUM_1, buffer + rxBytes, (RX_BUF_SIZE - 1) - rxBytes, 500 / portTICK_PERIOD_MS);
@@ -304,14 +299,14 @@ void Linky::read()
     }
     else
     {
-        ESP_LOGI(LINKY_TAG, "Start of frame: %lu", startOfFrame);
-        ESP_LOGI(LINKY_TAG, "End of frame: %lu", endOfFrame);
+        ESP_LOGD(LINKY_TAG, "Start of frame: %lu", startOfFrame);
+        ESP_LOGD(LINKY_TAG, "End of frame: %lu", endOfFrame);
         frameSize = endOfFrame - startOfFrame;
         frame = buffer + startOfFrame;
     }
-    // ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_INFO);
-    // ESP_LOGI(LINKY_TAG, "-------------------");
-    // ESP_LOGD(LINKY_TAG, "Buffer: %s", buffer);
+    ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, buffer, rxBytes, ESP_LOG_DEBUG);
+    ESP_LOGD(LINKY_TAG, "-------------------");
+    ESP_LOGD(LINKY_TAG, "Buffer: %s", buffer);
 }
 
 /**
@@ -528,6 +523,7 @@ char Linky::update()
  */
 void Linky::print()
 {
+    ESP_LOGI(LINKY_TAG, "-------------------");
     for (uint32_t i = 0; i < LinkyLabelListSize; i++)
     {
         if (mode != LinkyLabelList[i].mode)
@@ -570,6 +566,7 @@ void Linky::print()
             break;
         }
     }
+    ESP_LOGI(LINKY_TAG, "-------------------");
 }
 
 /**
