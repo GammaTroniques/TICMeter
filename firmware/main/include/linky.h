@@ -176,13 +176,13 @@ typedef struct
 }LinkyDataStd;
 
 typedef enum : uint8_t{
-    UINT8,
-    UINT16,
-    UINT32,
-    UINT64,
-    STRING,
-    UINT32_TIME,
-    HA_NUMBER,
+    UINT8 = 1,
+    UINT16 = 2,
+    UINT32 = 4,
+    UINT64 = 8,
+    STRING = 0,
+    UINT32_TIME = 12,
+    HA_NUMBER = 13,
 } LinkyLabelType;
 
 // clang-format on
@@ -234,14 +234,16 @@ const char *const HADeviceClassStr[] = {
 
 struct LinkyGroup
 {
-    char name[32] = {0};
-    char label[10] = {0};
+    const char *name = {0};
+    const char *label = {0};
     void *data = NULL;
-    LinkyLabelType type = STRING;
-    LinkyMode mode = MODE_HISTORIQUE;
-    RealTime realTime = STATIC_VALUE;
-    HADeviceClass device_class = NONE_CLASS;
-    char icon[32] = "";
+    const LinkyLabelType type = STRING;
+    const LinkyMode mode = MODE_HISTORIQUE;
+    const RealTime realTime = STATIC_VALUE;
+    const HADeviceClass device_class = NONE_CLASS;
+    const char *icon = "";
+    const uint16_t clusterID = 0;
+    const uint16_t attributeID = 0;
 };
 typedef struct
 {
@@ -268,6 +270,7 @@ public:
 
     char buffer[BUFFER_SIZE] = {0}; // The UART buffer
     LinkyMode mode = MODE_HISTORIQUE;
+    uint8_t treePhase = 0;
     void setMode(LinkyMode mode);
     uint8_t presence();
     uint8_t reading = 0;

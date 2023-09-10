@@ -82,7 +82,7 @@ extern "C" void app_main(void)
     }
     break;
   case MODE_ZIGBEE:
-    init_zigbee();
+    // init_zigbee();
     // zigbee_task(0);
     break;
   default:
@@ -149,6 +149,8 @@ void fetchLinkyDataTask(void *pvParameters)
         startLedPattern(PATTERN_SEND_ERR);
       }
       break;
+    case MODE_ZIGBEE:
+      sendToZigbee(&linky.data);
     default:
       break;
     }
@@ -162,6 +164,7 @@ void fetchLinkyDataTask(void *pvParameters)
     }
     else
     {
+      ESP_LOGI(MAIN_TAG, "PAPP: %d", (uint16_t) * &linky.data.hist.PAPP);
       ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
 
       while (sleepTime > 0)

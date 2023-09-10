@@ -285,7 +285,7 @@ void createSensor(char *json, char *config_topic, LinkyGroup sensor)
     }
 
     if (sensor.realTime == REAL_TIME)
-        sensorConfig["expire_after"] = config.values.refreshRate * 2;
+        sensorConfig["expire_after"] = config.values.refreshRate * 4;
     sensorConfig["device"] = device;
     serializeJson(sensorConfig, json, 1024);
 }
