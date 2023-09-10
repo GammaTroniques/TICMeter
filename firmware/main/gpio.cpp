@@ -15,6 +15,7 @@
 #include "config.h"
 #include "wifi.h"
 #include "main.h"
+#include "zigbee.h"
 
 #define TAG "GPIO"
 
@@ -295,6 +296,7 @@ void pairingButtonTask(void *pvParameters)
                         pairingState = 1;
                         ESP_LOGI(TAG, "Zigbee pairing TODO");
                         // start_zigbee_pairing();
+                        esp_zb_factory_reset();
                         break;
                     default:
                         ESP_LOGI(TAG, "No pairing mode");
@@ -372,6 +374,7 @@ void noConfigLedTask(void *pvParameters)
         }
         vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
+    vTaskDelete(NULL); // Delete this task
 }
 
 void wifiConnectLedTask(void *pvParameters)
