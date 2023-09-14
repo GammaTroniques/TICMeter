@@ -52,4 +52,7 @@ int test_led_command(int argc, char **argv);
 
 int get_voltages(int argc, char **argv);
 
+int set_sleep_command(int argc, char **argv);
+int get_sleep_command(int argc, char **argv);
+
 #endif

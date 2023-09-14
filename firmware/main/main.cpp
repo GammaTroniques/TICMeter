@@ -26,6 +26,7 @@
 #include "gpio.h"
 #include "web.h"
 #include "zigbee.h"
+#include "tuya.h"
 
 Config config;
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
@@ -85,6 +86,12 @@ extern "C" void app_main(void)
     // init_zigbee();
     // zigbee_task(0);
     break;
+  case MODE_TUYA:
+    if (connectToWifi())
+    {
+      init_tuya();
+    }
+    break;
   default:
     break;
   }
@@ -136,7 +143,6 @@ void fetchLinkyDataTask(void *pvParameters)
       break;
     case MODE_MQTT:
     case MODE_MQTT_HA: // send data to mqtt server
-    case MODE_TUYA:
       if (connectToWifi())
       {
         ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
@@ -148,6 +154,9 @@ void fetchLinkyDataTask(void *pvParameters)
       {
         startLedPattern(PATTERN_SEND_ERR);
       }
+      break;
+    case MODE_TUYA:
+      send_tuya_data(&linky.data);
       break;
     case MODE_ZIGBEE:
       sendToZigbee(&linky.data);
