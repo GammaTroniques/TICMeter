@@ -234,6 +234,7 @@ const char *const HADeviceClassStr[] = {
 
 struct LinkyGroup
 {
+    uint8_t id = 0;
     const char *name = {0};
     const char *label = {0};
     void *data = NULL;

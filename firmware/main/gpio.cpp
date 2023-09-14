@@ -218,7 +218,7 @@ void pairingButtonTask(void *pvParameters)
             if (pushTime > 5000)
             {
                 ledState = !ledState;
-                ESP_LOGI(TAG, "%d", ledState);
+                // ESP_LOGI(TAG, "%d", ledState);
                 gpio_set_level(LED_RED, ledState);
                 gpio_set_level(LED_GREEN, 0);
             }
@@ -236,7 +236,8 @@ void pairingButtonTask(void *pvParameters)
         }
         else
         {
-            if (lastState == 0)
+            // if (lastState == 0)
+            if (0)
             {
                 // ESP_LOGI(MAIN_TAG, "Button pushed for %lu ms", pushTime);
                 if (pushTime > 5000)

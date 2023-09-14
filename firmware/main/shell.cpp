@@ -53,12 +53,14 @@ struct shell_cmd_t shell_cmds[]
     {"get-VCondo",                  "Get VCondo",                               &get_VCondo_command,                0, {}, {}},
     {"test-led",                    "Test led",                                 &test_led_command,                  0, {}, {}},
     {"ota-check",                   "Check for OTA update",                     &ota_check_command,                 0, {}, {}},
-    {"set-tuya",                    "Set tuya config",                          &set_tuya_command,                  2, {"<region>", "<key>"}, {"Region", "Key"}},
+    {"set-tuya",                    "Set tuya config",                          &set_tuya_command,                  2, {"<device_id>", "<device_secret>", "<product_id>", "<server>"}, {"Device ID", "Device Secret", "Product ID", "Server URL"}},
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
     {"linky-print",                 "Print linky data",                         &linky_print_command,               0, {}, {}},
     {"get-voltage",                 "Get Voltages",                             &get_voltages,                      0, {}, {}},
+    {"set-sleep",                   "Enable/Disable sleep",                     &set_sleep_command,                 1, {"<enable>"}, {"Enable/Disable deep sleep"}},
+    {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
 
 
 };
@@ -286,6 +288,7 @@ int set_mode_command(int argc, char **argv)
     config.values.mode = (connectivity_t)atoi(argv[1]);
     config.write();
     printf("Mode saved\n");
+    get_mode_command(1, NULL);
     return 0;
 }
 
@@ -412,5 +415,28 @@ int get_voltages(int argc, char **argv)
     }
     printf("VCondo: %f\n", getVCondo());
     printf("VUSB: %f\n", getVUSB());
+    return 0;
+}
+
+int set_sleep_command(int argc, char **argv)
+{
+    if (argc != 2)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    config.values.enableDeepSleep = atoi(argv[1]);
+    config.write();
+    printf("Sleep saved\n");
+    get_sleep_command(1, NULL);
+    return 0;
+}
+
+int get_sleep_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    printf("Sleep: %d\n", config.values.enableDeepSleep);
     return 0;
 }
