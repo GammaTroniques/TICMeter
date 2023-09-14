@@ -5,6 +5,7 @@
 #include "tuya_iot.h"
 #include "cJSON.h"
 #include "qrcode.h"
+#include "ArduinoJson.h"
 
 #define TAG "TUYA"
 #define TUYA_PRODUCT_KEY "unwxvj8rhwjn1yvh" // for test
@@ -122,6 +123,70 @@ uint8_t send_tuya_data(LinkyData *linky)
 
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
+        if (LinkyLabelList[i].id <= 100)
+        {
+            continue; // dont send data for label < 100
+        }
+
+        // json
+        DynamicJsonDocument device(1024);
+        char strId[5];
+        sprintf(strId, "%d", LinkyLabelList[i].id);
+
+        switch (LinkyLabelList[i].type)
+        {
+        case UINT8:
+        {
+            uint8_t *value = (uint8_t *)LinkyLabelList[i].data;
+            if (value == NULL || *value == UINT8_MAX)
+                continue;
+            device[strId] = *value;
+            break;
+        }
+        case UINT16:
+        {
+            uint16_t *value = (uint16_t *)LinkyLabelList[i].data;
+            if (value == NULL || *value == UINT16_MAX)
+                continue;
+            device[strId] = *value;
+            break;
+        }
+        case UINT32:
+        {
+            uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
+            if (value == NULL || *value == UINT32_MAX)
+                continue;
+            device[strId] = *value;
+            break;
+        }
+        case UINT32_TIME:
+        {
+            uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
+            if (value == NULL || *value == UINT32_MAX)
+                continue;
+            device[strId] = *value;
+            break;
+        }
+        case UINT64:
+        {
+            uint64_t *value = (uint64_t *)LinkyLabelList[i].data;
+            if (value == NULL || *value == UINT64_MAX)
+                continue;
+            device[strId] = *value;
+            break;
+        }
+        case STRING:
+        {
+            char *value = (char *)LinkyLabelList[i].data;
+            if (value == NULL || strlen(value) == 0)
+                continue;
+            device[strId] = value;
+            break;
+        }
+        default:
+            break;
+        }
+
         // ESP_LOGI(TAG, "%s: %f", LinkyLabelList[i], linky->data[i]);
     }
 
