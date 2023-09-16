@@ -42,6 +42,7 @@ void initPins()
     led_strip_rmt_config_t rmt_config = {
         .clk_src = RMT_CLK_SRC_DEFAULT,    // different clock source can lead to different power consumption
         .resolution_hz = 10 * 1000 * 1000, // 10MHz
+        .mem_block_symbols = 0,
         .flags = {
             .with_dma = false, // whether to enable the DMA feature
         },
@@ -416,11 +417,11 @@ void sendingLedTask(void *pvParameters)
 
 void setCPUFreq(int32_t speedInMhz)
 {
-    esp_log_level_set("pm", ESP_LOG_ERROR);
-    esp_pm_config_t pm_config = {
-        .max_freq_mhz = speedInMhz,
-        .min_freq_mhz = speedInMhz,
-        .light_sleep_enable = false};
+    // esp_log_level_set("pm", ESP_LOG_ERROR);
+    // esp_pm_config_t pm_config = {
+    //     .max_freq_mhz = speedInMhz,
+    //     .min_freq_mhz = speedInMhz,
+    //     .light_sleep_enable = false};
 
     // TODO: fix this with zigbee
     // ESP_ERROR_CHECK(esp_pm_configure(&pm_config));

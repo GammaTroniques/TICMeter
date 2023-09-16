@@ -53,7 +53,7 @@ struct shell_cmd_t shell_cmds[]
     {"get-VCondo",                  "Get VCondo",                               &get_VCondo_command,                0, {}, {}},
     {"test-led",                    "Test led",                                 &test_led_command,                  0, {}, {}},
     {"ota-check",                   "Check for OTA update",                     &ota_check_command,                 0, {}, {}},
-    {"set-tuya",                    "Set tuya config",                          &set_tuya_command,                  2, {"<device_id>", "<device_secret>", "<product_id>", "<server>"}, {"Device ID", "Device Secret", "Product ID", "Server URL"}},
+    {"set-tuya",                    "Set tuya config",                          &set_tuya_command,                  3, {"<productID>", "<deviceUUID>", "<deviceAuth>"}, {"Product ID", "Device UUID", "Device Auth Key"}},
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
@@ -77,6 +77,7 @@ void shellInit()
     esp_log_level_set("phy_version", ESP_LOG_ERROR);
     esp_log_level_set("phy_init", ESP_LOG_ERROR);
     esp_log_level_set("gpio", ESP_LOG_ERROR);
+    esp_log_level_set("uart", ESP_LOG_ERROR);
     // esp_log_level_set("*", ESP_LOG_WARN);
 
     esp_console_repl_t *repl = NULL;
@@ -346,16 +347,16 @@ int ota_check_command(int argc, char **argv)
 
 int set_tuya_command(int argc, char **argv)
 {
-    if (argc != 5)
+    if (argc != 4)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    memcpy(config.values.tuya.deviceId, argv[1], 23);
-    memcpy(config.values.tuya.deviceSecret, argv[2], 17);
-    memcpy(config.values.tuya.productId, argv[3], 16);
-    config.values.tuya.server = (tuya_server_t)atoi(argv[4]);
+    memcpy(config.values.tuya.productID, argv[1], sizeof(config.values.tuya.productID));
+    memcpy(config.values.tuya.deviceUUID, argv[2], sizeof(config.values.tuya.deviceUUID));
+    memcpy(config.values.tuya.deviceAuth, argv[3], sizeof(config.values.tuya.deviceAuth));
     config.write();
     printf("Tuya config saved\n");
+    get_tuya_command(1, NULL);
     return 0;
 }
 
@@ -366,10 +367,9 @@ int get_tuya_command(int argc, char **argv)
         return ESP_ERR_INVALID_ARG;
     }
     printf("Tuya config:\n");
-    printf("Device ID: %s\n", config.values.tuya.deviceId);
-    printf("Device Secret: %s\n", config.values.tuya.deviceSecret);
-    printf("Product ID: %s\n", config.values.tuya.productId);
-    printf("Server: %s\n", TUYA_SERVERS[config.values.tuya.server]);
+    printf("Product ID: %s\n", config.values.tuya.productID);
+    printf("Device UUID: %s\n", config.values.tuya.deviceUUID);
+    printf("Device Auth: %s\n", config.values.tuya.deviceAuth);
     return 0;
 }
 

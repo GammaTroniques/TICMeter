@@ -102,7 +102,7 @@ static int pv22_packet_encode(const uint8_t *key, const pv22_packet_object_t *in
 	// data
 	size_t encrypt_len = 0;
 	uint8_t *encrypt_data;
-	rt = aes128_ecb_encode((const uint8_t *)input->data, input->datalen, &encrypt_data, (uint32_t *)&encrypt_len, key);
+	rt = aes128_ecb_encode((const uint8_t *)input->data, input->datalen, &encrypt_data, (unsigned int *)&encrypt_len, key);
 	if (OPRT_OK != rt)
 	{
 		TY_LOGE("encrypt fail:%d", rt);
@@ -169,7 +169,7 @@ static int pv22_packet_decode(const uint8_t *key, const uint8_t *input, size_t i
 	// decrypt buffer
 	uint8_t *decrypt_data;
 	size_t decrypt_len = 0;
-	int rt = aes128_ecb_decode((const uint8_t *)data, data_len, &decrypt_data, (uint32_t *)&decrypt_len, key);
+	int rt = aes128_ecb_decode((const uint8_t *)data, data_len, &decrypt_data, (unsigned int *)&decrypt_len, key);
 	if (OPRT_OK != rt)
 	{
 		TY_LOGE("mqtt data decrypt fail:%d", rt);
