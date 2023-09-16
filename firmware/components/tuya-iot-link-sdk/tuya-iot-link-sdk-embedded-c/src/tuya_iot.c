@@ -484,7 +484,7 @@ static int run_state_reset(tuya_iot_client_t *client)
 
 int tuya_iot_init(tuya_iot_client_t *client, const tuya_iot_config_t *config)
 {
-    log_set_level(LOG_INFO);
+    // log_set_level(LOG_INFO);
     int ret = OPRT_OK;
     TY_LOGI("tuya_iot_init");
     if (NULL == client || NULL == config)

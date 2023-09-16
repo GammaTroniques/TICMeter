@@ -131,7 +131,7 @@ uint8_t Config::verify()
         break;
 
     case MODE_TUYA:
-        if (strlen(config.values.tuya.deviceId) == 0 || strlen(config.values.tuya.deviceSecret) == 0 || strlen(config.values.tuya.productId) == 0)
+        if (strlen(config.values.tuya.productID) == 0 || strlen(config.values.tuya.deviceUUID) == 0 || strlen(config.values.tuya.deviceAuth) == 0)
         {
             // No Tuya key, id, version or region
             return 1;

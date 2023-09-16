@@ -56,22 +56,11 @@ struct mqttConfig_t
     char topic[100] = "";
 };
 
-enum tuya_server_t : uint8_t
-{
-    TUYA_REGION_CN = 0,
-    TUYA_REGION_EU = 1,
-    TUYA_REGION_US_W = 2,
-    TUYA_REGION_US_E = 3,
-    TUYA_REGION_EU_W = 4,
-    TUYA_REGION_IN = 5
-};
-
 struct tuyaConfig_t
 {
-    char productId[50] = "";
-    char deviceId[50] = "";
-    char deviceSecret[50] = "";
-    enum tuya_server_t server = TUYA_REGION_CN;
+    char productID[50] = "";
+    char deviceUUID[50] = "";
+    char deviceAuth[50] = "";
 };
 
 struct config_t
