@@ -6,11 +6,10 @@
 #include "cJSON.h"
 #include "qrcode.h"
 #include "ArduinoJson.h"
+#include "esp_ota_ops.h"
 
 #define TAG "TUYA"
-#define TUYA_PRODUCT_KEY "unwxvj8rhwjn1yvh" // for test
-#define TUYA_DEVICE_UUID "uuid69ce06fcabad0183"
-#define TUYA_DEVICE_AUTHKEY "fkXiV5eVSM9bB4r2OC1K7XYG7fBLMGTu"
+
 tuya_iot_client_t client;
 TaskHandle_t tuyaTaskHandle = NULL;
 
@@ -87,12 +86,17 @@ static void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *e
 static void tuya_link_app_task(void *pvParameters)
 {
     int ret = OPRT_OK;
+    const esp_app_desc_t *app_desc = esp_app_get_description();
+
     const tuya_iot_config_t tuya_config = {
-        .productkey = TUYA_PRODUCT_KEY,
-        .uuid = TUYA_DEVICE_UUID,
-        .authkey = TUYA_DEVICE_AUTHKEY,
-        .software_ver = "1.0.0",
+        .productkey = config.values.tuya.productID,
+        .uuid = config.values.tuya.deviceUUID,
+        .authkey = config.values.tuya.deviceAuth,
+        .software_ver = app_desc->version,
+        .modules = NULL,
+        .skill_param = NULL,
         .storage_namespace = "tuya_kv",
+        .firmware_key = NULL,
         .event_handler = user_event_handler_on,
     };
 
@@ -107,7 +111,7 @@ static void tuya_link_app_task(void *pvParameters)
     {
         /* Loop to receive packets, and handles client keepalive */
         tuya_iot_yield(&client);
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        // vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
@@ -120,16 +124,16 @@ void init_tuya()
 uint8_t send_tuya_data(LinkyData *linky)
 {
     ESP_LOGI(TAG, "Send data to tuya");
+    DynamicJsonDocument device(1024);
 
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
-        if (LinkyLabelList[i].id <= 100)
+        if (LinkyLabelList[i].id < 101)
         {
-            continue; // dont send data for label < 100
+            continue; // dont send data for label < 101 : they are not used by tuya
         }
 
         // json
-        DynamicJsonDocument device(1024);
         char strId[5];
         sprintf(strId, "%d", LinkyLabelList[i].id);
 
@@ -186,11 +190,12 @@ uint8_t send_tuya_data(LinkyData *linky)
         default:
             break;
         }
-
-        // ESP_LOGI(TAG, "%s: %f", LinkyLabelList[i], linky->data[i]);
     }
-
-    const char int_value[] = {"{\"104\":123}"};
-    tuya_iot_dp_report_json(&client, int_value);
+    // ESP_LOGI(TAG, "%s: %f", LinkyLabelList[i], linky->data[i]);
+    char json[1024];
+    serializeJson(device, json);
+    ESP_LOGI(TAG, "JSON: %s", json);
+    int ret = tuya_iot_dp_report_json(&client, json);
+    ESP_LOGI(TAG, "ret: %d", ret);
     return 0;
 }

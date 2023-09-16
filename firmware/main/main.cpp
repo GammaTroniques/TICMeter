@@ -90,6 +90,9 @@ extern "C" void app_main(void)
     if (connectToWifi())
     {
       init_tuya();
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskSuspend(tuyaTaskHandle);
+      disconectFromWifi();
     }
     break;
   default:
@@ -156,7 +159,16 @@ void fetchLinkyDataTask(void *pvParameters)
       }
       break;
     case MODE_TUYA:
-      send_tuya_data(&linky.data);
+      if (connectToWifi())
+      {
+        ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
+        vTaskResume(tuyaTaskHandle);
+        send_tuya_data(&linky.data);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        vTaskSuspend(tuyaTaskHandle);
+        disconectFromWifi();
+        startLedPattern(PATTERN_SEND_OK);
+      }
       break;
     case MODE_ZIGBEE:
       sendToZigbee(&linky.data);

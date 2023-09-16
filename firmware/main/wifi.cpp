@@ -122,9 +122,9 @@ uint8_t connectToWifi()
     }
     else
     {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT");
-        esp_wifi_deinit();
-        return 0;
+        ESP_LOGE(TAG, "UNEXPECTED EVENT: %ld", bits);
+        // esp_wifi_deinit();
+        // return 0;
     }
     return 1;
 }
@@ -159,17 +159,18 @@ void disconectFromWifi()
     // ESP_ERROR_CHECK(esp_wifi_stop());
 }
 
-void event_handler(void *arg, esp_event_base_t event_base,
-                   int32_t event_id, void *event_data)
+void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
 
     // ESP_LOGI(TAG, "GOT EVENT: event_base: %s, event_id: %ld", event_base, event_id);
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
+        wifiConnected = 0;
         esp_wifi_connect();
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) // && wifiConnected == 1)
     {
+        wifiConnected = 0;
         if (s_retry_num < ESP_MAXIMUM_RETRY)
         {
             esp_wifi_connect();
@@ -183,6 +184,11 @@ void event_handler(void *arg, esp_event_base_t event_base,
             startLedPattern(PATTERN_WIFI_FAILED);
         }
         wifiConnected = 0;
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED)
+    {
+        ESP_LOGI(TAG, "Connected");
+        wifiConnected = 1;
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
