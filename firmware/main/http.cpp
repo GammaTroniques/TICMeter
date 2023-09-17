@@ -155,6 +155,46 @@ esp_err_t get_req_handler(httpd_req_t *req)
 esp_err_t get_req_204_handler(httpd_req_t *req)
 {
     // Set status
+    httpd_resp_set_status(req, "204 No Content");
+    // Redirect to the "/" root directory
+    httpd_resp_set_hdr(req, "Location", "/");
+    // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
+    httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
+
+    ESP_LOGI(TAG, "Redirecting to root");
+    return ESP_OK;
+}
+
+esp_err_t get_req_404_handler(httpd_req_t *req)
+{
+    // Set status
+    httpd_resp_set_status(req, "404 Not Found");
+    // Redirect to the "/" root directory
+    httpd_resp_set_hdr(req, "Location", "/");
+    // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
+    httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
+
+    ESP_LOGI(TAG, "Redirecting to root");
+    return ESP_OK;
+}
+
+esp_err_t get_req_logout_handler(httpd_req_t *req)
+{
+    // http://logout.net
+    // Set status
+    httpd_resp_set_status(req, "302 Temporary Redirect");
+    // Redirect to the "/" root directory
+    httpd_resp_set_hdr(req, "Location", "http://logout.net");
+    // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
+    httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
+
+    ESP_LOGI(TAG, "Redirecting to root");
+    return ESP_OK;
+}
+
+esp_err_t get_req_redirect_handler(httpd_req_t *req)
+{
+    // Set status
     httpd_resp_set_status(req, "302 Temporary Redirect");
     // Redirect to the "/" root directory
     httpd_resp_set_hdr(req, "Location", "/");
@@ -346,6 +386,8 @@ esp_err_t get_config_handler(httpd_req_t *req)
     cJSON_AddStringToObject(jsonObject, "mqtt-user", config.values.mqtt.username);
     cJSON_AddStringToObject(jsonObject, "mqtt-password", config.values.mqtt.password);
     cJSON_AddStringToObject(jsonObject, "mqtt-topic", config.values.mqtt.topic);
+    cJSON_AddStringToObject(jsonObject, "tuya-productID", config.values.tuya.productID);
+    cJSON_AddStringToObject(jsonObject, "tuya-deviceUUID", config.values.tuya.deviceUUID);
 
     char *jsonString = cJSON_PrintUnformatted(jsonObject);
     httpd_resp_set_type(req, "application/json");
@@ -365,6 +407,30 @@ httpd_uri_t uri_204 = {
     .uri = "/gen_204",
     .method = HTTP_GET,
     .handler = get_req_204_handler,
+    .user_ctx = NULL};
+
+httpd_uri_t uri_wpad = {
+    .uri = "/wpad.dat",
+    .method = HTTP_GET,
+    .handler = get_req_404_handler,
+    .user_ctx = NULL};
+
+httpd_uri_t uri_chat = {
+    .uri = "/chat",
+    .method = HTTP_GET,
+    .handler = get_req_404_handler,
+    .user_ctx = NULL};
+
+httpd_uri_t uri_connecttest = {
+    .uri = "/connecttest.txt",
+    .method = HTTP_GET,
+    .handler = get_req_logout_handler,
+    .user_ctx = NULL};
+
+httpd_uri_t uri_redirect = {
+    .uri = "/redirect",
+    .method = HTTP_GET,
+    .handler = get_req_redirect_handler,
     .user_ctx = NULL};
 
 httpd_uri_t uri_2044 = {
@@ -394,7 +460,7 @@ httpd_handle_t setup_server(void)
     config.max_open_sockets = 7;
     config.lru_purge_enable = true;
     config.uri_match_fn = httpd_uri_match_wildcard;
-
+    config.max_uri_handlers = 12;
     if (httpd_start(&server, &config) == ESP_OK)
     {
         httpd_register_err_handler(server, HTTPD_404_NOT_FOUND, http_404_error_handler);
@@ -402,6 +468,12 @@ httpd_handle_t setup_server(void)
         httpd_register_uri_handler(server, &uri_2044);
         httpd_register_uri_handler(server, &uri_save_config);
         httpd_register_uri_handler(server, &uri_get_config);
+        httpd_register_uri_handler(server, &uri_wpad);
+        httpd_register_uri_handler(server, &uri_chat);
+        httpd_register_uri_handler(server, &uri_connecttest);
+        httpd_register_uri_handler(server, &uri_redirect);
+
+        //
         httpd_register_uri_handler(server, &uri_get);
 
         // httpd_register_uri_handler(server, &uri_on);

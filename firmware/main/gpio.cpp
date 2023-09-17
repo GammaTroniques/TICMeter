@@ -285,34 +285,37 @@ void pairingButtonTask(void *pvParameters)
                     case MODE_WEB:
                     case MODE_MQTT:
                     case MODE_MQTT_HA:
+                    case MODE_TUYA:
                         ESP_LOGI(TAG, "Web pairing");
                         pairingState = 1;
-                        vTaskSuspend(fetchLinkyDataTaskHandle);
+                        if (fetchLinkyDataTaskHandle != NULL)
+                        {
+                            vTaskSuspend(fetchLinkyDataTaskHandle);
+                        }
                         if (wifiConnected)
                         {
                             disconectFromWifi();
                             vTaskDelay(1000 / portTICK_PERIOD_MS);
                         }
+                        ESP_LOGI(TAG, "Starting captive portal");
                         start_captive_portal();
+                        // if (config.values.mode == MODE_TUYA)
+                        // {
+                        //     ESP_LOGI(TAG, "Tuya pairing");
+                        //     reset_tuya();
+                        //     init_tuya();
+                        //     while (tuya_waiting_bind())
+                        //     {
+                        //         vTaskDelay(100 / portTICK_PERIOD_MS);
+                        //     }
+                        //     ESP_LOGI(TAG, "Tuya pairing done");
+                        // }
                         break;
                     case MODE_ZIGBEE:
                         pairingState = 1;
                         ESP_LOGI(TAG, "Zigbee pairing TODO");
                         // start_zigbee_pairing();
                         esp_zb_factory_reset();
-                        break;
-                    case MODE_TUYA:
-                        ESP_LOGI(TAG, "Tuya pairing");
-                        if (connectToWifi())
-                        {
-                            reset_tuya();
-                            init_tuya();
-                            while (tuya_waiting_bind())
-                            {
-                                vTaskDelay(100 / portTICK_PERIOD_MS);
-                            }
-                            ESP_LOGI(TAG, "Tuya pairing done");
-                        }
                         break;
                     default:
                         ESP_LOGI(TAG, "No pairing mode");
