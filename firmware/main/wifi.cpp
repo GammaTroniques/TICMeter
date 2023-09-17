@@ -397,8 +397,10 @@ static void wifi_init_softap(void)
     ESP_ERROR_CHECK(esp_wifi_start());
 
     esp_netif_ip_info_t ip_info;
-    esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
-
+    IP4_ADDR(&ip_info.ip, 172, 217, 28, 1);
+    IP4_ADDR(&ip_info.gw, 172, 217, 28, 1);
+    IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
+    // esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
     char ip_addr[16];
     inet_ntoa_r(ip_info.ip.addr, ip_addr, 16);
     ESP_LOGI(TAG, "Set up softAP with IP: %s", ip_addr);
@@ -413,7 +415,7 @@ void stop_captive_portal_task(void *pvParameter)
 
     while (1)
     {
-        if (!getVUSB())
+        if (getVUSB() < 3)
         {
             readCount++;
         }
@@ -426,15 +428,16 @@ void stop_captive_portal_task(void *pvParameter)
             ESP_LOGI(TAG, "VUSB is not connected, stop captive portal");
             esp_restart();
         }
-        gpio_set_level(LED_GREEN, 1);
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-        gpio_set_level(LED_GREEN, 0);
+        // gpio_set_level(LED_GREEN, 1);
+        // vTaskDelay(50 / portTICK_PERIOD_MS);
+        // gpio_set_level(LED_GREEN, 0);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
 void start_captive_portal()
 {
+    ESP_LOGI(TAG, "Start captive portal");
     xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, 1, NULL);
     // Initialize networking stack
     ESP_ERROR_CHECK(esp_netif_init());
