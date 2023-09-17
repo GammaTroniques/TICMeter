@@ -61,6 +61,7 @@ struct shell_cmd_t shell_cmds[]
     {"get-voltage",                 "Get Voltages",                             &get_voltages,                      0, {}, {}},
     {"set-sleep",                   "Enable/Disable sleep",                     &set_sleep_command,                 1, {"<enable>"}, {"Enable/Disable deep sleep"}},
     {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
+    {"read-nvs",                    "Read all nvs",                             &read_nvs,                          0, {}, {}},
 
 
 };
@@ -424,7 +425,7 @@ int set_sleep_command(int argc, char **argv)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    config.values.enableDeepSleep = atoi(argv[1]);
+    config.values.sleep = atoi(argv[1]);
     config.write();
     printf("Sleep saved\n");
     get_sleep_command(1, NULL);
@@ -437,6 +438,24 @@ int get_sleep_command(int argc, char **argv)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    printf("Sleep: %d\n", config.values.enableDeepSleep);
+    printf("Sleep: %d\n", config.values.sleep);
+    return 0;
+}
+
+int read_nvs(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    // nvs_iterator_t it = nvs_entry_find(part, NULL, NVS_TYPE_ANY);
+    // nvs_entry_info_t info;
+    // while (it)
+    // {
+    //     nvs_entry_info(it, &info);
+    //     printf("%s::%s type=%d\n", info.namespace_name, info.key, info.type);
+    //     it = nvs_entry_next(it);
+    // }
     return 0;
 }

@@ -1,7 +1,40 @@
 #include "config.h"
+#include "linky.h"
 
 const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER", "TUYA"};
-const char *TUYA_SERVERS[] = {"m1.tuyacn.com", "m1.tuyaeu.com", "m1.tuyaus.com", "m1-ueaz.tuyaus.com", "m1-weaz.tuyaeu.com", "m1.tuyain.com"};
+
+struct config_item_t
+{
+    const char *name;
+    const LinkyLabelType type = UINT8;
+    void *value = NULL;
+    size_t size = 0;
+    nvs_open_mode_t access = NVS_READWRITE;
+    nvs_handle_t handle;
+};
+
+// clang-format off
+struct config_item_t config_items[] = {
+    {"wifi-ssid",   STRING, &config.values.ssid,        sizeof(config.values.ssid),         NVS_READWRITE, NULL},
+    {"wifi-pw"  ,   STRING, &config.values.password,    sizeof(config.values.password),     NVS_READWRITE, NULL},
+
+    {"linky-mode",   UINT8, &config.values.linkyMode,   sizeof(config.values.linkyMode),    NVS_READWRITE, NULL},
+    {"connect-mode", UINT8, &config.values.mode,        sizeof(config.values.mode),         NVS_READWRITE, NULL},
+
+    {"web-conf",      BLOB, &config.values.web,         sizeof(config.values.web),          NVS_READWRITE, NULL},
+    {"mqtt-conf",     BLOB, &config.values.mqtt,        sizeof(config.values.mqtt),         NVS_READWRITE, NULL},
+    {"tuya-conf",     BLOB, &config.values.tuya,        sizeof(config.values.tuya),         NVS_READWRITE, NULL},
+
+    {"version",     STRING, &config.values.version,     sizeof(config.values.version),      NVS_READWRITE, NULL},
+    {"refresh",     UINT16, &config.values.refreshRate, sizeof(config.values.refreshRate),  NVS_READWRITE, NULL},
+    {"sleep",        UINT8, &config.values.sleep,       sizeof(config.values.sleep),        NVS_READWRITE, NULL},
+    {"checksum",    UINT16, &config.values.checksum,    sizeof(config.values.checksum),     NVS_READWRITE, NULL},
+
+};
+
+const int32_t config_items_size = sizeof(config_items) / sizeof(config_items[0]);
+
+// clang-format on
 Config::Config()
 {
 }
@@ -9,16 +42,18 @@ Config::Config()
 int16_t Config::calculateChecksum()
 {
     int16_t checksum = 0;
-    for (int i = 0; i < sizeof(config_t) - sizeof(this->values.checksum); i++)
+    int i;
+    for (i = 0; i < sizeof(config_t) - sizeof(this->values.checksum); i++)
     {
         checksum += ((uint8_t *)&this->values)[i];
     }
+    ESP_LOGI(NVS_TAG, "Config calculated checksum: %x, i: %d", checksum, i);
     return checksum;
 }
 
 int8_t Config::erase()
 {
-    Config blank_config;
+    Config blank_config = {};
     this->values = blank_config.values;
     return 0;
 }
@@ -35,62 +70,164 @@ int8_t Config::begin()
     }
     ESP_ERROR_CHECK(err);
 
-    printf("\n");
-    printf("Opening Non-Volatile Storage (NVS) handle... ");
-    err = nvs_open("config", NVS_READWRITE, &nvsHandle);
-    if (err != ESP_OK)
+    for (int i = 0; i < config_items_size; i++)
     {
-        printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-    }
-    else
-    {
-        printf("Done\n");
+        ESP_LOGI(NVS_TAG, "Config item %s", config_items[i].name);
+        err = nvs_open(config_items[i].name, config_items[i].access, &config_items[i].handle);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(NVS_TAG, "Error (%s) opening %s\n", esp_err_to_name(err), config_items[i].name);
+            continue;
+        }
     }
 
+    // err = nvs_open("config", NVS_READWRITE, &nvsHandle);
+    // if (err != ESP_OK)
+    // {
+    //     printf("Error (%s) opening NVS handle!\n", esp_err_to_name(err));
+    // }
+    // else
+    // {
+    //     printf("Done\n");
+    // }
+
     this->read();
-    ESP_LOGI(NVS_TAG, "Config read checksum: %x", this->values.checksum);
-    ESP_LOGI(NVS_TAG, "Config calculated checksum: %x", this->calculateChecksum());
-    if (this->values.checksum != this->calculateChecksum())
-    {
-        ESP_LOGI(NVS_TAG, "Config checksum error: %x != %x", this->values.checksum, this->calculateChecksum());
-        this->erase();
-        ESP_LOGI(NVS_TAG, "Config erased");
-        this->write();
-        return 1;
-    }
+    // ESP_LOG_BUFFER_HEXDUMP(NVS_TAG, &this->values, sizeof(config_t), ESP_LOG_INFO);
+    // ESP_LOGI(NVS_TAG, "Config read checksum: %x", this->values.checksum);
+    // ESP_LOGI(NVS_TAG, "Config calculated checksum: %x", this->calculateChecksum());
+    // if (this->values.checksum != this->calculateChecksum())
+    // {
+    //     ESP_LOGI(NVS_TAG, "Config checksum error: %x != %x", this->values.checksum, this->calculateChecksum());
+    //     this->erase();
+    //     ESP_LOGI(NVS_TAG, "Config erased");
+    //     this->write();
+    //     ESP_LOG_BUFFER_HEXDUMP(NVS_TAG, &this->values, sizeof(config_t), ESP_LOG_INFO);
+    //     return 1;
+    // }
+
     ESP_LOGI(NVS_TAG, "Config OK");
     return 0;
 }
 
 int8_t Config::read()
 {
-    size_t bytesRead = sizeof(config_t);
-    esp_err_t err = nvs_get_blob(nvsHandle, "config", &this->values, &bytesRead);
-    if (err != ESP_OK)
+    // size_t bytesRead = sizeof(config_t);
+    // esp_err_t err = nvs_get_blob(nvsHandle, "config", &this->values, &bytesRead);
+    // if (err != ESP_OK)
+    // {
+    //     ESP_LOGI(NVS_TAG, "Error (%s) reading!\n", esp_err_to_name(err));
+    //     return 1;
+    // }
+    esp_err_t err = 0;
+    size_t totalBytesRead = 0;
+    for (int i = 0; i < config_items_size; i++)
     {
-        ESP_LOGI(NVS_TAG, "Error (%s) reading!\n", esp_err_to_name(err));
-        return 1;
+        size_t bytesRead = 0;
+        switch (config_items[i].type)
+        {
+        case UINT8:
+            err = nvs_get_u8(config_items[i].handle, config_items[i].name, (uint8_t *)config_items[i].value);
+            bytesRead = sizeof(uint8_t);
+            break;
+        case UINT16:
+            err = nvs_get_u16(config_items[i].handle, config_items[i].name, (uint16_t *)config_items[i].value);
+            bytesRead = sizeof(uint16_t);
+            break;
+        case UINT32:
+            err = nvs_get_u32(config_items[i].handle, config_items[i].name, (uint32_t *)config_items[i].value);
+            bytesRead = sizeof(uint32_t);
+            break;
+        case UINT64:
+            err = nvs_get_u64(config_items[i].handle, config_items[i].name, (uint64_t *)config_items[i].value);
+            bytesRead = sizeof(uint64_t);
+            break;
+        case STRING:
+            err = nvs_get_str(config_items[i].handle, config_items[i].name, (char *)config_items[i].value, &config_items[i].size);
+            break;
+        case BLOB:
+            err = nvs_get_blob(config_items[i].handle, config_items[i].name, config_items[i].value, &config_items[i].size);
+            break;
+        default:
+            break;
+        }
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(NVS_TAG, "Error (%s) reading %s\n", esp_err_to_name(err), config_items[i].name);
+            continue;
+        }
+        totalBytesRead += bytesRead;
     }
-    ESP_LOGI(NVS_TAG, "Config read %d bytes", bytesRead);
+
+    ESP_LOGI(NVS_TAG, "Config read %d bytes", totalBytesRead);
     return 0;
 }
 
 int8_t Config::write()
 {
-    this->values.checksum = this->calculateChecksum();
-    esp_err_t err = nvs_set_blob(nvsHandle, "config", &this->values, sizeof(config_t));
-    if (err != ESP_OK)
+    // this->values.checksum = this->calculateChecksum();
+    // esp_err_t err = nvs_set_blob(nvsHandle, "config", &this->values, sizeof(config_t));
+    // if (err != ESP_OK)
+    // {
+    //     ESP_LOGI(NVS_TAG, "Error (%s) writing!\n", esp_err_to_name(err));
+    //     return 1;
+    // }
+    // err = nvs_commit(nvsHandle);
+    // if (err != ESP_OK)
+    // {
+    //     ESP_LOGI(NVS_TAG, "Error (%s) committing!\n", esp_err_to_name(err));
+    //     return 1;
+    // }
+
+    esp_err_t err = 0;
+    size_t totalBytesWritten = 0;
+    for (int i = 0; i < config_items_size; i++)
     {
-        ESP_LOGI(NVS_TAG, "Error (%s) writing!\n", esp_err_to_name(err));
-        return 1;
+        size_t bytesWritten = 0;
+        switch (config_items[i].type)
+        {
+        case UINT8:
+            err = nvs_set_u8(config_items[i].handle, config_items[i].name, *(uint8_t *)config_items[i].value);
+            bytesWritten = sizeof(uint8_t);
+            break;
+        case UINT16:
+            err = nvs_set_u16(config_items[i].handle, config_items[i].name, *(uint16_t *)config_items[i].value);
+            bytesWritten = sizeof(uint16_t);
+            break;
+        case UINT32:
+            err = nvs_set_u32(config_items[i].handle, config_items[i].name, *(uint32_t *)config_items[i].value);
+            bytesWritten = sizeof(uint32_t);
+            break;
+        case UINT64:
+            err = nvs_set_u64(config_items[i].handle, config_items[i].name, *(uint64_t *)config_items[i].value);
+            bytesWritten = sizeof(uint64_t);
+            break;
+        case STRING:
+            err = nvs_set_str(config_items[i].handle, config_items[i].name, (char *)config_items[i].value);
+            bytesWritten = strlen((char *)config_items[i].value);
+            break;
+        case BLOB:
+            err = nvs_set_blob(config_items[i].handle, config_items[i].name, config_items[i].value, config_items[i].size);
+            bytesWritten = config_items[i].size;
+            break;
+        default:
+            break;
+        }
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(NVS_TAG, "Error (%s) writing %s\n", esp_err_to_name(err), config_items[i].name);
+            continue;
+        }
+
+        err = nvs_commit(config_items[i].handle);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(NVS_TAG, "Error (%s) committing %s\n", esp_err_to_name(err), config_items[i].name);
+            continue;
+        }
+        totalBytesWritten += bytesWritten;
     }
-    err = nvs_commit(nvsHandle);
-    if (err != ESP_OK)
-    {
-        ESP_LOGI(NVS_TAG, "Error (%s) committing!\n", esp_err_to_name(err));
-        return 1;
-    }
-    ESP_LOGI(NVS_TAG, "Config written");
+    ESP_LOGI(NVS_TAG, "Config written %d bytes", totalBytesWritten);
+
     return 0;
 }
 
@@ -131,7 +268,7 @@ uint8_t Config::verify()
         break;
 
     case MODE_TUYA:
-        if (strlen(config.values.tuya.productID) == 0 || strlen(config.values.tuya.deviceUUID) == 0 || strlen(config.values.tuya.deviceAuth) == 0)
+        if (strlen(config.values.tuya.productID) == 0 || strlen(config.values.tuya.deviceUUID) == 0 || strlen(config.values.tuya.deviceAuth) == 0 || config.values.tuya.binded == 0)
         {
             // No Tuya key, id, version or region
             return 1;

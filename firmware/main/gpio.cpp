@@ -16,6 +16,7 @@
 #include "wifi.h"
 #include "main.h"
 #include "zigbee.h"
+#include "tuya.h"
 
 #define TAG "GPIO"
 
@@ -237,10 +238,9 @@ void pairingButtonTask(void *pvParameters)
         }
         else
         {
-            // if (lastState == 0)
-            if (0)
+            if (lastState == 0)
             {
-                // ESP_LOGI(MAIN_TAG, "Button pushed for %lu ms", pushTime);
+                ESP_LOGI(TAG, "Button pushed for %lu ms", pushTime);
                 if (pushTime > 5000)
                 {
                     ESP_LOGI(TAG, "Changing mode");
@@ -260,6 +260,7 @@ void pairingButtonTask(void *pvParameters)
                         gpio_set_level(LED_RED, 0);
                         gpio_set_level(LED_GREEN, 1);
                         break;
+
                     default:
                         ESP_LOGI(TAG, "Changing to web");
                         config.values.mode = MODE_WEB;
@@ -299,6 +300,19 @@ void pairingButtonTask(void *pvParameters)
                         ESP_LOGI(TAG, "Zigbee pairing TODO");
                         // start_zigbee_pairing();
                         esp_zb_factory_reset();
+                        break;
+                    case MODE_TUYA:
+                        ESP_LOGI(TAG, "Tuya pairing");
+                        if (connectToWifi())
+                        {
+                            reset_tuya();
+                            init_tuya();
+                            while (tuya_waiting_bind())
+                            {
+                                vTaskDelay(100 / portTICK_PERIOD_MS);
+                            }
+                            ESP_LOGI(TAG, "Tuya pairing done");
+                        }
                         break;
                     default:
                         ESP_LOGI(TAG, "No pairing mode");
