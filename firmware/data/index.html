@@ -58,6 +58,10 @@
                     <input type="radio" name="server-mode" value="1">
                     <img src="mqtt.jpg" alt="MQTT">
                 </label>
+                <label>
+                    <input type="radio" name="server-mode" value="2">
+                    <img src="tuya.jpg" alt="Tuya">
+                </label>
             </div>
 
             <div class="web">
@@ -105,7 +109,10 @@
                     <input type="checkbox" name="mqtt-ha-discovery" value="1" />
                 </div>
             </div>
-
+            <div class="tuya">
+                <span id="tuya-text"></span>
+                <a href="" id="tuyalink">Go Tuya</a>
+            </div>
         </div>
         <input type="submit" value="Engregistrer">
     </form>
@@ -120,16 +127,23 @@
             console.log(event.target.value);
             const web = document.querySelector(".web");
             const mqtt = document.querySelector(".mqtt");
+            const tuya = document.querySelector(".tuya");
+            web.style.display = "none";
+            mqtt.style.display = "none";
+            tuya.style.display = "none";
             if (event.target.value == 0) {
-                web.style.display = "flex";
-                mqtt.style.display = "none";
-            } else {
-                web.style.display = "none";
-                mqtt.style.display = "flex";
+                web.style.display = "block";
+            } else if (event.target.value == 1) {
+                mqtt.style.display = "block";
+            } else if (event.target.value == 2) {
+                tuya.style.display = "block";
             }
         });
     });
-
+    var tuya = {
+        productId: "",
+        uuid: "",
+    }
     //fetch config
     fetch("/config")
         .then((response) => response.json())
@@ -170,6 +184,21 @@
             if ("linky-mode" in data) {
                 const linkyMode = document.querySelector(`[name="linky-mode"][value="${data["linky-mode"]}"]`);
                 linkyMode.checked = true;
+            }
+
+            if ("tuya-productID" in data) {
+                tuya.productId = data["tuya-productID"];
+                const tuyaText = document.querySelector("#tuya-text");
+                tuyaText.innerHTML = `Product ID: ${tuya.productId}`;
+                const tuyaLink = document.querySelector("#tuyalink");
+                tuyaLink.href = `https://smartapp.tuya.com/s/p?p=${tuya.productId}&uuid=${tuya.uuid}&v=2.0`;
+            }
+            if ("tuya-uuid" in data) {
+                tuya.uuid = data["tuya-uuid"];
+                const tuyaText = document.querySelector("#tuya-text");
+                tuyaText.innerHTML = `Product ID: ${tuya.productId}`;
+                const tuyaLink = document.querySelector("#tuyalink");
+                tuyaLink.href = `https://smartapp.tuya.com/s/p?p=${tuya.productId}&uuid=${tuya.uuid}&v=2.0`;
             }
         });
 
