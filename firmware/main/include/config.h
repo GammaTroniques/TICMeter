@@ -58,9 +58,10 @@ struct mqttConfig_t
 
 struct tuyaConfig_t
 {
-    char productID[50] = "";
-    char deviceUUID[50] = "";
-    char deviceAuth[50] = "";
+    char productID[30] = "";
+    char deviceUUID[30] = "";
+    char deviceAuth[40] = "";
+    uint8_t binded = 0;
 };
 
 struct config_t
@@ -77,8 +78,7 @@ struct config_t
 
     char version[10] = "";
     uint16_t refreshRate = 60;
-    uint8_t enableDeepSleep = 1;
-    uint8_t dataCount = 3;
+    uint8_t sleep = 1;
     uint16_t checksum = 0;
 };
 
