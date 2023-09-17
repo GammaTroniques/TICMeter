@@ -183,6 +183,7 @@ typedef enum : uint8_t{
     STRING = 0,
     UINT32_TIME = 12,
     HA_NUMBER = 13,
+    BLOB = 14,
 } LinkyLabelType;
 
 // clang-format on

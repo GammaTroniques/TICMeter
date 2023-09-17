@@ -71,10 +71,6 @@ static void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *e
     {
 
         ESP_LOGI(TAG, "TUYA_EVENT_DP_RECEIVE");
-        tuya_iot_dp_download(client, (const char *)event->value.asString);
-        const char int_value[] = {"{\"104\":123}"};
-        tuya_iot_dp_report_json(client, int_value);
-        ESP_LOGI(TAG, "Repport");
         break;
     }
 
@@ -121,8 +117,15 @@ void init_tuya()
     xTaskCreate(tuya_link_app_task, "tuya_link", 1024 * 6, NULL, 4, &tuyaTaskHandle);
 }
 
+void send_cb(int result, void *user_data)
+{
+    uint8_t *sendComplete = (uint8_t *)user_data;
+    *sendComplete = 1;
+}
+
 uint8_t send_tuya_data(LinkyData *linky)
 {
+    // tuya_iot_reconnect(&client);
     ESP_LOGI(TAG, "Send data to tuya");
     DynamicJsonDocument device(1024);
 
@@ -191,11 +194,53 @@ uint8_t send_tuya_data(LinkyData *linky)
             break;
         }
     }
-    // ESP_LOGI(TAG, "%s: %f", LinkyLabelList[i], linky->data[i]);
+    device["120"] = MILLIS;
+
     char json[1024];
     serializeJson(device, json);
     ESP_LOGI(TAG, "JSON: %s", json);
-    int ret = tuya_iot_dp_report_json(&client, json);
-    ESP_LOGI(TAG, "ret: %d", ret);
-    return 0;
+    uint8_t sendComplete = 0;
+    time_t timout = MILLIS + 3000;
+    tuya_iot_dp_report_json_with_notify(&client, json, NULL, send_cb, &sendComplete, 1000);
+    while (sendComplete == 0 && MILLIS < timout)
+    {
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+    if (sendComplete == 0)
+    {
+        ESP_LOGI(TAG, "Send data to tuya timeout");
+        return 0;
+    }
+    ESP_LOGI(TAG, "Send data to tuya OK");
+    return 1;
+}
+
+void reset_tuya()
+{
+    ESP_LOGI(TAG, "Reset Tuya");
+    config.values.tuya.binded = 0;
+    tuya_iot_activated_data_remove(&client);
+}
+
+uint8_t tuya_waiting_bind()
+{
+
+    // 1. STATE_TOKEN_PENDING
+    // 2. STATE_ACTIVATING
+    // 3. STATE_MQTT_CONNECT_START
+    // 4. STATE_MQTT_YIELD
+    switch (client.state)
+    {
+    case STATE_TOKEN_PENDING:
+    case STATE_ACTIVATING:
+    case STATE_MQTT_CONNECT_START:
+        return 1;
+        break;
+    case STATE_MQTT_YIELD:
+        config.values.tuya.binded = 1;
+        return 0;
+        break;
+    default:
+        return 0;
+    }
 }

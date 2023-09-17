@@ -54,5 +54,6 @@ int get_voltages(int argc, char **argv);
 
 int set_sleep_command(int argc, char **argv);
 int get_sleep_command(int argc, char **argv);
+int read_nvs(int argc, char **argv);
 
 #endif

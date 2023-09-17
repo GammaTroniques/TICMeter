@@ -53,7 +53,7 @@ extern "C" void app_main(void)
 
   // check if VCondo is too low and go to deep sleep
   // the BOOT_PIN is used to prevent deep sleep when the device is plugged to a computer for debug
-  if (getVUSB() < 3 && getVCondo() < 3.5 && config.values.enableDeepSleep && gpio_get_level(BOOT_PIN))
+  if (getVUSB() < 3 && getVCondo() < 3.5 && config.values.sleep && gpio_get_level(BOOT_PIN))
   {
     ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
     esp_sleep_enable_timer_wakeup(10 * 1000000); // 10 second
@@ -90,9 +90,9 @@ extern "C" void app_main(void)
     if (connectToWifi())
     {
       init_tuya();
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
-      vTaskSuspend(tuyaTaskHandle);
-      disconectFromWifi();
+      // vTaskDelay(1000 / portTICK_PERIOD_MS);
+      // vTaskSuspend(tuyaTaskHandle);
+      // disconectFromWifi();
     }
     break;
   default:
@@ -162,11 +162,11 @@ void fetchLinkyDataTask(void *pvParameters)
       if (connectToWifi())
       {
         ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
-        vTaskResume(tuyaTaskHandle);
+        // vTaskResume(tuyaTaskHandle);
         send_tuya_data(&linky.data);
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
-        vTaskSuspend(tuyaTaskHandle);
-        disconectFromWifi();
+        // vTaskDelay(5000 / portTICK_PERIOD_MS);
+        // vTaskSuspend(tuyaTaskHandle);
+        // disconectFromWifi();
         startLedPattern(PATTERN_SEND_OK);
       }
       break;
@@ -177,7 +177,7 @@ void fetchLinkyDataTask(void *pvParameters)
     }
 
     uint32_t sleepTime = abs(config.values.refreshRate - 5);
-    if (config.values.enableDeepSleep && getVUSB() < 3) // if deepsleep is enable and we are not connected to USB
+    if (config.values.sleep && getVUSB() < 3) // if deepsleep is enable and we are not connected to USB
     {
       ESP_LOGI(MAIN_TAG, "Going to sleep for %ld seconds", sleepTime);
       esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
@@ -185,9 +185,7 @@ void fetchLinkyDataTask(void *pvParameters)
     }
     else
     {
-      ESP_LOGI(MAIN_TAG, "PAPP: %d", (uint16_t) * &linky.data.hist.PAPP);
       ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
-
       while (sleepTime > 0)
       {
         vTaskDelay(1000 / portTICK_PERIOD_MS);

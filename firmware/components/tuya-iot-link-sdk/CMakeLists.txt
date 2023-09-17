@@ -1,4 +1,4 @@
-set(TUYALINK_DIR ${COMPONENT_DIR}/tuya-iot-link-sdk-embedded-c)
+set(TUYALINK_DIR ${COMPONENT_DIR}/tuya-connect-kit-for-mqtt-embedded-c)
 
 include( ${TUYALINK_DIR}/tuyaFilePaths.cmake )
 include( ${TUYALINK_DIR}/libraries/coreJSON/jsonFilePaths.cmake )
