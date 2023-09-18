@@ -376,6 +376,16 @@ uint8_t sendToServer(const char *json)
 
 static void wifi_init_softap(void)
 {
+    // Initialize Wi-Fi including netif with default config
+    esp_netif_t *wifiAP = esp_netif_create_default_wifi_ap();
+    esp_netif_ip_info_t ip_info;
+    IP4_ADDR(&ip_info.ip, 4, 3, 2, 1);
+    IP4_ADDR(&ip_info.gw, 4, 3, 2, 1);
+    IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
+    esp_netif_dhcps_stop(wifiAP);
+    esp_netif_set_ip_info(wifiAP, &ip_info);
+    esp_netif_dhcps_start(wifiAP);
+
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
@@ -396,10 +406,6 @@ static void wifi_init_softap(void)
     ESP_ERROR_CHECK(esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    esp_netif_ip_info_t ip_info;
-    IP4_ADDR(&ip_info.ip, 172, 217, 28, 1);
-    IP4_ADDR(&ip_info.gw, 172, 217, 28, 1);
-    IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
     // esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
     char ip_addr[16];
     inet_ntoa_r(ip_info.ip.addr, ip_addr, 16);
@@ -438,7 +444,7 @@ void stop_captive_portal_task(void *pvParameter)
 void start_captive_portal()
 {
     ESP_LOGI(TAG, "Start captive portal");
-    xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, 1, NULL);
+    // xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, 1, NULL);
     // Initialize networking stack
     ESP_ERROR_CHECK(esp_netif_init());
 
@@ -448,16 +454,12 @@ void start_captive_portal()
     // Initialize NVS needed by Wi-Fi
     ESP_ERROR_CHECK(nvs_flash_init());
 
-    // Initialize Wi-Fi including netif with default config
-    esp_netif_create_default_wifi_ap();
-
     // Initialise ESP32 in SoftAP mode
     wifi_init_softap();
 
     initi_web_page_buffer();
     // Start the server for the first time
     setup_server();
-
     // Start the DNS server that will redirect all queries to the softAP IP
     start_dns_server();
 }
