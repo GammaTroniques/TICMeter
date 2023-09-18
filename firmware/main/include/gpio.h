@@ -6,8 +6,8 @@
 #define RX_LINKY 17
 #define V_CONDO_PIN ADC_CHANNEL_4
 #define V_USB_PIN ADC_CHANNEL_1
-// #define PAIRING_PIN (gpio_num_t)3
-#define PAIRING_PIN (gpio_num_t)9
+#define PAIRING_PIN (gpio_num_t)3
+// #define PAIRING_PIN (gpio_num_t)9
 #define BOOT_PIN (gpio_num_t)9
 
 #define LED_EN (gpio_num_t)0
@@ -26,6 +26,7 @@
 #define PATTERN_SEND_ERR 6
 #define PATTERN_NO_CONFIG 7
 #define PATTERN_START 8
+#define PATTERN_PAIRING 9
 
 void initPins();
 
@@ -43,6 +44,7 @@ void noConfigLedTask(void *pvParameters);
 void wifiConnectLedTask(void *pvParameters);
 void linkyReadingLedTask(void *pvParameters);
 void sendingLedTask(void *pvParameters);
+void pairingLedTask(void *pvParameters);
 /**
  * @brief set the CPU frequency to the given value
  *

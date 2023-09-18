@@ -7,6 +7,7 @@
 
 extern TaskHandle_t fetchLinkyDataTaskHandle;
 extern TaskHandle_t sendDataTaskHandle;
+extern TaskHandle_t noConfigLedTaskHandle;
 
 void fetchLinkyDataTask(void *pvParameters);
 
