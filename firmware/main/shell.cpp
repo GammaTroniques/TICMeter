@@ -9,16 +9,16 @@
 
 struct shell_cmd_t
 {
-    const char command[28];
-    const char help[128];
+    const char *command;
+    const char *help;
     int (*func)(int argc, char **argv);
     const uint8_t args_num;
-    const char args[5][20];
-    const char hint[5][64];
+    const char *args[5] = {0};
+    const char *hint[5] = {0};
 };
 // clang-format off
 
-struct shell_cmd_t shell_cmds[]
+const struct shell_cmd_t shell_cmds[]
 {
     // commands                       Help                                        Function                            Args num, Args, Hint
     {"reset",                       "Reset the device",                         &esp_reset_command,                 0, {}, {}},
