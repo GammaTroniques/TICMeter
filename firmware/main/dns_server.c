@@ -158,10 +158,7 @@ static int parse_dns_request(char *req, size_t req_len, char *dns_reply, size_t 
             answer->ttl = htonl(ANS_TTL_SEC);
 
             esp_netif_ip_info_t ip_info;
-            IP4_ADDR(&ip_info.ip, 172, 217, 28, 1);
-            IP4_ADDR(&ip_info.gw, 172, 217, 28, 1);
-            IP4_ADDR(&ip_info.netmask, 255, 255, 255, 0);
-            // esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
+            esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
             ESP_LOGD(TAG, "Answer with PTR offset: 0x%" PRIX16 " and IP 0x%" PRIX32, ntohs(answer->ptr_offset), ip_info.ip.addr);
 
             answer->addr_len = htons(sizeof(ip_info.ip.addr));
