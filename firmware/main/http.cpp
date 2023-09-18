@@ -7,6 +7,9 @@
 
 static const char *TAG = "HTTP"; // TAG for debug
 #define INDEX_HTML_PATH "/spiffs/index.html"
+
+#define LOCAL_IP "http://4.3.2.1"
+
 char response_data[4096];
 void reboot_task(void *pvParameter)
 {
@@ -139,7 +142,7 @@ esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
     // Set status
     httpd_resp_set_status(req, "302 Temporary Redirect");
     // Redirect to the "/" root directory
-    httpd_resp_set_hdr(req, "Location", "/");
+    httpd_resp_set_hdr(req, "Location", LOCAL_IP);
     // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
     httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
 
@@ -155,9 +158,9 @@ esp_err_t get_req_handler(httpd_req_t *req)
 esp_err_t get_req_204_handler(httpd_req_t *req)
 {
     // Set status
-    httpd_resp_set_status(req, "204 No Content");
+    httpd_resp_set_status(req, "302 Temporary Redirect");
     // Redirect to the "/" root directory
-    httpd_resp_set_hdr(req, "Location", "/");
+    httpd_resp_set_hdr(req, "Location", LOCAL_IP);
     // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
     httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
 
@@ -170,9 +173,9 @@ esp_err_t get_req_404_handler(httpd_req_t *req)
     // Set status
     httpd_resp_set_status(req, "404 Not Found");
     // Redirect to the "/" root directory
-    httpd_resp_set_hdr(req, "Location", "/");
+    // httpd_resp_set_hdr(req, "Location", "/");
     // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
-    httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
+    // httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
 
     ESP_LOGI(TAG, "Redirecting to root");
     return ESP_OK;
@@ -197,9 +200,22 @@ esp_err_t get_req_redirect_handler(httpd_req_t *req)
     // Set status
     httpd_resp_set_status(req, "302 Temporary Redirect");
     // Redirect to the "/" root directory
-    httpd_resp_set_hdr(req, "Location", "/");
+    httpd_resp_set_hdr(req, "Location", LOCAL_IP);
     // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
     httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
+
+    ESP_LOGI(TAG, "Redirecting to root");
+    return ESP_OK;
+}
+
+esp_err_t get_req_200_handler(httpd_req_t *req)
+{
+    // Set status
+    httpd_resp_set_status(req, "200 OK");
+    // Redirect to the "/" root directory
+    // httpd_resp_set_hdr(req, "Location", "/");
+    // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
+    // httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
 
     ESP_LOGI(TAG, "Redirecting to root");
     return ESP_OK;
@@ -397,87 +413,57 @@ esp_err_t get_config_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-httpd_uri_t uri_get = {
-    .uri = "/*",
-    .method = HTTP_GET,
-    .handler = get_req_handler,
-    .user_ctx = NULL};
+struct request_item_t
+{
+    const char *uri;
+    httpd_method_t method;
+    esp_err_t (*handler)(httpd_req_t *req);
+};
 
-httpd_uri_t uri_204 = {
-    .uri = "/gen_204",
-    .method = HTTP_GET,
-    .handler = get_req_204_handler,
-    .user_ctx = NULL};
+// clang-format off
+struct request_item_t requests[] = {
+    {"/gen_204",                HTTP_GET,   get_req_204_handler},
+    {"/generate_204",           HTTP_GET,   get_req_204_handler},
+    {"/save-config",            HTTP_POST,  save_config_handler},
+    {"/config",                 HTTP_GET,   get_config_handler},
+    {"/wpad.dat",               HTTP_GET,   get_req_404_handler},
+    {"/chat",                   HTTP_GET,   get_req_404_handler},
+    {"/connecttest.txt",        HTTP_GET,   get_req_logout_handler},
+    {"/redirect",               HTTP_GET,   get_req_redirect_handler},
+    {"/hotspot-detect.html",    HTTP_GET,   get_req_redirect_handler},
+    {"/canonical.html",         HTTP_GET,   get_req_redirect_handler},
+    {"/success.txt",            HTTP_GET,   get_req_200_handler},
+    {"/ncsi.txt",               HTTP_GET,   get_req_redirect_handler},
 
-httpd_uri_t uri_wpad = {
-    .uri = "/wpad.dat",
-    .method = HTTP_GET,
-    .handler = get_req_404_handler,
-    .user_ctx = NULL};
+    {"/*",                      HTTP_GET,   get_req_handler},
+};
 
-httpd_uri_t uri_chat = {
-    .uri = "/chat",
-    .method = HTTP_GET,
-    .handler = get_req_404_handler,
-    .user_ctx = NULL};
+// clang-format on
 
-httpd_uri_t uri_connecttest = {
-    .uri = "/connecttest.txt",
-    .method = HTTP_GET,
-    .handler = get_req_logout_handler,
-    .user_ctx = NULL};
-
-httpd_uri_t uri_redirect = {
-    .uri = "/redirect",
-    .method = HTTP_GET,
-    .handler = get_req_redirect_handler,
-    .user_ctx = NULL};
-
-httpd_uri_t uri_2044 = {
-    .uri = "/generate_204",
-    .method = HTTP_GET,
-    .handler = get_req_204_handler,
-    .user_ctx = NULL};
-
-httpd_uri_t uri_save_config = {
-    .uri = "/save-config",
-    .method = HTTP_POST,
-    .handler = save_config_handler,
-    .user_ctx = NULL};
-
-httpd_uri_t uri_get_config = {
-    .uri = "/config",
-    .method = HTTP_GET,
-    .handler = get_config_handler,
-    .user_ctx = NULL};
+const uint8_t request_count = sizeof(requests) / sizeof(requests[0]);
 
 httpd_handle_t setup_server(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.stack_size = 8192;
+    config.stack_size = 32 * 1024;
     httpd_handle_t server = NULL;
 
     config.max_open_sockets = 7;
     config.lru_purge_enable = true;
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 12;
+    config.max_uri_handlers = request_count + 1;
     if (httpd_start(&server, &config) == ESP_OK)
     {
         httpd_register_err_handler(server, HTTPD_404_NOT_FOUND, http_404_error_handler);
-        httpd_register_uri_handler(server, &uri_204);
-        httpd_register_uri_handler(server, &uri_2044);
-        httpd_register_uri_handler(server, &uri_save_config);
-        httpd_register_uri_handler(server, &uri_get_config);
-        httpd_register_uri_handler(server, &uri_wpad);
-        httpd_register_uri_handler(server, &uri_chat);
-        httpd_register_uri_handler(server, &uri_connecttest);
-        httpd_register_uri_handler(server, &uri_redirect);
-
-        //
-        httpd_register_uri_handler(server, &uri_get);
-
-        // httpd_register_uri_handler(server, &uri_on);
-        // httpd_register_uri_handler(server, &uri_off);
+        for (int i = 0; i < request_count; i++)
+        {
+            httpd_uri_t uri = {
+                .uri = requests[i].uri,
+                .method = requests[i].method,
+                .handler = requests[i].handler,
+                .user_ctx = NULL};
+            httpd_register_uri_handler(server, &uri);
+        }
     }
 
     return server;
