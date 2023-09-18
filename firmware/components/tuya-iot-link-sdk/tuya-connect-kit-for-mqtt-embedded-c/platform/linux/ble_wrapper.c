@@ -8,6 +8,7 @@ extern "C" {
 
 OPERATE_RET tkl_ble_stack_init(uint8_t role)
 {
+    
     return OPRT_OK;
 }
 

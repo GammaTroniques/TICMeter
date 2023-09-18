@@ -203,37 +203,71 @@ void pairingButtonTask(void *pvParameters)
     uint32_t startPushTime = 0;
     uint8_t lastState = 1;
     uint32_t pushTime = MILLIS - startPushTime;
-    uint8_t ledState = 0;
+    // RED: ZIGBEE
+    // ORANGE: TUYA
+    // GREEN: WEB/MQTT-HA/MQTT
+    enum
+    {
+        NO_FLASH,
+        PAIRING_FLASH,
+        WEB_FLASH = 0x0008FF,
+        ZIGBEE_FLASH = 0xFF0000,
+        TUYA_FLASH = 0xFF8000,
+    } ledState = NO_FLASH;
     uint8_t pairingState = 0;
     while (1)
     {
         if (gpio_get_level(PAIRING_PIN) == 0) // if button is pushed
         {
-            if (lastState == 1)
-            {
-                gpio_set_level(LED_GREEN, 1);
-                vTaskDelay(10 / portTICK_PERIOD_MS);
-                gpio_set_level(LED_GREEN, 0);
-            }
-            lastState = 0;
+            ESP_LOGI(TAG, "LED state: %d", ledState);
+            lastState = NO_FLASH;
             pushTime = MILLIS - startPushTime;
-            if (pushTime > 5000)
+            if (pushTime > 4000)
             {
-                ledState = !ledState;
-                // ESP_LOGI(TAG, "%d", ledState);
-                gpio_set_level(LED_RED, ledState);
-                gpio_set_level(LED_GREEN, 0);
+                // Color Wheel
+                ESP_LOGI(TAG, "pushTime: %lu, %%: %lu", pushTime, pushTime % 1000);
+                if (pushTime % 1000 == 0)
+                {
+                    switch (ledState)
+                    {
+                    case NO_FLASH:
+                        ledState = WEB_FLASH;
+                        break;
+                    case PAIRING_FLASH:
+                        ledState = WEB_FLASH;
+                        break;
+                    case WEB_FLASH:
+                        ledState = ZIGBEE_FLASH;
+                        break;
+                    case ZIGBEE_FLASH:
+                        ledState = TUYA_FLASH;
+                        break;
+                    case TUYA_FLASH:
+                        ledState = WEB_FLASH;
+                        break;
+                    default:
+                        break;
+                    }
+                    ESP_LOGI(TAG, "------------------------LED state: %d", ledState);
+                    setLedColor(ledState);
+                }
             }
             else if (pushTime > 2000)
             {
-                ledState = !ledState;
-                gpio_set_level(LED_RED, 0);
-                gpio_set_level(LED_GREEN, ledState);
+                // Announce pairing mode
+                if (ledState == NO_FLASH)
+                {
+                    ledState = PAIRING_FLASH; // flash pairing led
+                    if (noConfigLedTaskHandle != NULL)
+                    {
+                        vTaskSuspend(noConfigLedTaskHandle);
+                    }
+                    startLedPattern(PATTERN_PAIRING);
+                }
             }
             else
             {
-                gpio_set_level(LED_RED, 0);
-                gpio_set_level(LED_GREEN, 0);
+                ledState = NO_FLASH;
             }
         }
         else
@@ -243,38 +277,34 @@ void pairingButtonTask(void *pvParameters)
                 ESP_LOGI(TAG, "Button pushed for %lu ms", pushTime);
                 if (pushTime > 5000)
                 {
-                    ESP_LOGI(TAG, "Changing mode");
-                    switch (config.values.mode)
+                    if (noConfigLedTaskHandle != NULL)
                     {
-                    case MODE_WEB:
-                    case MODE_MQTT:
-                    case MODE_MQTT_HA:
-                        ESP_LOGI(TAG, "Changing to zigbee");
+                        vTaskDelete(noConfigLedTaskHandle);
+                        noConfigLedTaskHandle = NULL;
+                    }
+                    ESP_LOGI(TAG, "Changing mode");
+                    switch (ledState)
+                    {
+                    case WEB_FLASH:
+                        config.values.mode = MODE_WEB;
+                        break;
+                    case ZIGBEE_FLASH:
                         config.values.mode = MODE_ZIGBEE;
-                        gpio_set_level(LED_RED, 1);
-                        gpio_set_level(LED_GREEN, 0);
                         break;
-                    case MODE_ZIGBEE:
-                        ESP_LOGI(TAG, "Changing to web");
-                        config.values.mode = MODE_WEB;
-                        gpio_set_level(LED_RED, 0);
-                        gpio_set_level(LED_GREEN, 1);
+                    case TUYA_FLASH:
+                        config.values.mode = MODE_TUYA;
                         break;
-
                     default:
-                        ESP_LOGI(TAG, "Changing to web");
-                        config.values.mode = MODE_WEB;
-                        gpio_set_level(LED_RED, 0);
-                        gpio_set_level(LED_GREEN, 1);
                         break;
                     }
                     config.write();
-                    vTaskDelay(5000 / portTICK_PERIOD_MS);
+                    vTaskDelay(2000 / portTICK_PERIOD_MS);
                     esp_restart();
                 }
-                else if (pushTime > 2000 && pushTime <= 5000)
+                else if (pushTime > 2000 && pushTime <= 4000)
                 {
                     ESP_LOGI(TAG, "Pairing mode");
+                    xTaskCreate(pairingLedTask, "pairingLedTask", 2048, NULL, 5, NULL);
                     if (pairingState)
                     {
                         // already in pairing mode
@@ -324,13 +354,16 @@ void pairingButtonTask(void *pvParameters)
                 }
                 else
                 {
+                    if (noConfigLedTaskHandle != NULL)
+                    {
+                        vTaskResume(noConfigLedTaskHandle);
+                    }
                     ESP_LOGI(TAG, "No action");
                 }
-                gpio_set_level(LED_RED, 0);
-                gpio_set_level(LED_GREEN, 0);
             }
             lastState = 1;
             startPushTime = MILLIS;
+            ledState = NO_FLASH;
         }
         vTaskDelay(50 / portTICK_PERIOD_MS);
     }
@@ -354,8 +387,9 @@ const ledPattern_t ledPattern[][PATTERN_SIZE] = {
     {{0xFF00F2,     1000, 100}                                                          }, // LINKY_ERR
     {{0x00FF00,      200, 500},  {0x00FF00,      200, 500}                             }, // SEND_OK
     {{0xFF0000,      200, 1000}, {0xFF0000,      200, 1000}                             }, // SEND_ERR
-    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100}}, // NO_CONFIG // TODO: remove 
+    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100    }}, // NO_CONFIG // TODO: remove 
     {{0xE5FF00,       50,   0}                                                          }, // START
+    {{0x8803FC,       100,  400}                                                          }, // PAIRING
 };
 // clang-format on
 
@@ -384,6 +418,7 @@ void noConfigLedTask(void *pvParameters)
 {
     while (config.verify())
     {
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
         for (int i = 0; i < 3; i++)
         {
             setLedColor(0xFF0000);
@@ -391,7 +426,6 @@ void noConfigLedTask(void *pvParameters)
             setLedColor(0);
             vTaskDelay(100 / portTICK_PERIOD_MS);
         }
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); // Delete this task
 }
@@ -425,6 +459,18 @@ void sendingLedTask(void *pvParameters)
     while (sendingValues)
     {
         setLedColor(0xc300ff);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        setLedColor(0);
+        vTaskDelay(900 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL); // Delete this task
+}
+
+void pairingLedTask(void *pvParameters)
+{
+    while (1)
+    {
+        setLedColor(0x8803FC);
         vTaskDelay(100 / portTICK_PERIOD_MS);
         setLedColor(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);

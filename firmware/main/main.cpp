@@ -30,6 +30,7 @@
 
 Config config;
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
+TaskHandle_t noConfigLedTaskHandle = NULL;
 
 #define MAIN_TAG "MAIN"
 extern "C" void app_main(void)
@@ -43,7 +44,7 @@ extern "C" void app_main(void)
 
   if (config.verify())
   {
-    xTaskCreate(noConfigLedTask, "noConfigLedTask", 1024, NULL, 1, NULL); // start no config led task
+    xTaskCreate(noConfigLedTask, "noConfigLedTask", 1024, NULL, 1, &noConfigLedTaskHandle); // start no config led task
     ESP_LOGI(MAIN_TAG, "No config found. Waiting for config...");
     while (config.verify())
     {
