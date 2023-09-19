@@ -234,9 +234,26 @@ void Linky::setMode(LinkyMode newMode)
     default:
         break;
     }
-    uart_driver_install(UART_NUM_1, RX_BUF_SIZE, 0, 0, NULL, 0); // set UART1 buffer size
-    uart_param_config(UART_NUM_1, &uart_config);
-    uart_set_pin(UART_NUM_1, UART_PIN_NO_CHANGE, UARTRX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    esp_err_t ret = uart_driver_install(UART_NUM_1, RX_BUF_SIZE, 0, 0, NULL, 0); // set UART1 buffer size
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(LINKY_TAG, "uart_driver_install failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    ret = uart_param_config(UART_NUM_1, &uart_config);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(LINKY_TAG, "uart_param_config failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    ESP_LOGI(LINKY_TAG, "UART configured: pins RX:%d", UARTRX);
+    ret = uart_set_pin(UART_NUM_1, UART_PIN_NO_CHANGE, UARTRX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(LINKY_TAG, "uart_set_pin failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    ESP_LOGI(LINKY_TAG, "UART set up");
 }
 
 /**
