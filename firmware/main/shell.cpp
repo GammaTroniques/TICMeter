@@ -371,6 +371,7 @@ int get_tuya_command(int argc, char **argv)
     printf("Product ID: %s\n", config.values.tuyaKeys.productID);
     printf("Device UUID: %s\n", config.values.tuyaKeys.deviceUUID);
     printf("Device Auth: %s\n", config.values.tuyaKeys.deviceAuth);
+    printf("Tuya Bind Status: %d\n", config.values.tuyaBinded);
     return 0;
 }
 

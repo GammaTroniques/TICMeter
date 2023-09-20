@@ -58,6 +58,7 @@ void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps)
 /* Tuya SDK event callback */
 static void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
 {
+    ESP_LOGI(TAG, "TUYA_EVENT: %s", EVENT_ID2STR(event->id));
     switch (event->id)
     {
     case TUYA_EVENT_BIND_START:
@@ -70,11 +71,23 @@ static void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *e
 
     case TUYA_EVENT_DP_RECEIVE:
     {
-
         ESP_LOGI(TAG, "TUYA_EVENT_DP_RECEIVE");
         break;
     }
+    case TUYA_EVENT_RESET:
+        ESP_LOGI(TAG, "Tuya unbined");
+        config.values.tuyaBinded = 2; // want to be binded on next boot
+        config.write();
+        break;
+    case TUYA_EVENT_BIND_TOKEN_ON:
+        // start of binding
 
+        break;
+    case TUYA_EVENT_ACTIVATE_SUCCESSED:
+        ESP_LOGI(TAG, "Tuya binded");
+        config.values.tuyaBinded = 1; // binded
+        config.write();
+        break;
     default:
         break;
     }
@@ -223,28 +236,28 @@ void reset_tuya()
     tuya_iot_activated_data_remove(&client);
 }
 
-uint8_t tuya_waiting_bind()
-{
+// uint8_t tuya_waiting_bind()
+// {
 
-    // 1. STATE_TOKEN_PENDING
-    // 2. STATE_ACTIVATING
-    // 3. STATE_MQTT_CONNECT_START
-    // 4. STATE_MQTT_YIELD
-    switch (client.state)
-    {
-    case STATE_TOKEN_PENDING:
-    case STATE_ACTIVATING:
-    case STATE_MQTT_CONNECT_START:
-        return 1;
-        break;
-    case STATE_MQTT_YIELD:
-        config.values.tuyaBinded = 1;
-        return 0;
-        break;
-    default:
-        return 0;
-    }
-}
+//     // 1. STATE_TOKEN_PENDING
+//     // 2. STATE_ACTIVATING
+//     // 3. STATE_MQTT_CONNECT_START
+//     // 4. STATE_MQTT_YIELD
+//     switch (client.state)
+//     {
+//     case STATE_TOKEN_PENDING:
+//     case STATE_ACTIVATING:
+//     case STATE_MQTT_CONNECT_START:
+//         return 1;
+//         break;
+//     case STATE_MQTT_YIELD:
+//         config.values.tuyaBinded = 1;
+//         return 0;
+//         break;
+//     default:
+//         return 0;
+//     }
+// }
 
 void tuyaPairingTask(void *pvParameters)
 {
@@ -256,7 +269,7 @@ void tuyaPairingTask(void *pvParameters)
     }
     reset_tuya();
     init_tuya();
-    while (tuya_waiting_bind())
+    while (config.values.tuyaBinded != 1)
     {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
