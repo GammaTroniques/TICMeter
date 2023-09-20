@@ -4,16 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include "cJSON.h"
+#include "tuya.h"
 
 static const char *TAG = "HTTP"; // TAG for debug
 #define INDEX_HTML_PATH "/spiffs/index.html"
 
 #define LOCAL_IP "http://4.3.2.1"
 
-char response_data[4096];
 void reboot_task(void *pvParameter)
 {
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    vTaskDelay(3000 / portTICK_PERIOD_MS);
     esp_restart();
 }
 void urldecode(char *dst, const char *src)
@@ -84,7 +84,7 @@ esp_err_t send_web_page(httpd_req_t *req)
         return ret;
     }
 
-    ESP_LOGI(TAG, "Allocating memory %ld bytes for %s", st.st_size, url);
+    // ESP_LOGI(TAG, "Allocating memory %ld bytes for %s", st.st_size, url);
     char *data = (char *)malloc(st.st_size);
     memset((void *)data, 0, st.st_size);
     FILE *fp = fopen(url, "r");
@@ -103,7 +103,7 @@ esp_err_t send_web_page(httpd_req_t *req)
         ESP_LOGE(TAG, "Extension not found");
         return ESP_FAIL;
     }
-    ESP_LOGI(TAG, "Extension: %s", ext);
+    // ESP_LOGI(TAG, "Extension: %s", ext);
 
     // check jpg
     if (strcmp(ext, ".jpg") == 0)
@@ -145,8 +145,6 @@ esp_err_t http_404_error_handler(httpd_req_t *req, httpd_err_code_t err)
     httpd_resp_set_hdr(req, "Location", LOCAL_IP);
     // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
     httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
-
-    ESP_LOGI(TAG, "Redirecting to root");
     return ESP_OK;
 }
 
@@ -163,8 +161,6 @@ esp_err_t get_req_204_handler(httpd_req_t *req)
     httpd_resp_set_hdr(req, "Location", LOCAL_IP);
     // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
     httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
-
-    ESP_LOGI(TAG, "Redirecting to root");
     return ESP_OK;
 }
 
@@ -172,12 +168,6 @@ esp_err_t get_req_404_handler(httpd_req_t *req)
 {
     // Set status
     httpd_resp_set_status(req, "404 Not Found");
-    // Redirect to the "/" root directory
-    // httpd_resp_set_hdr(req, "Location", "/");
-    // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
-    // httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
-
-    ESP_LOGI(TAG, "Redirecting to root");
     return ESP_OK;
 }
 
@@ -190,8 +180,6 @@ esp_err_t get_req_logout_handler(httpd_req_t *req)
     httpd_resp_set_hdr(req, "Location", "http://logout.net");
     // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
     httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
-
-    ESP_LOGI(TAG, "Redirecting to root");
     return ESP_OK;
 }
 
@@ -203,8 +191,6 @@ esp_err_t get_req_redirect_handler(httpd_req_t *req)
     httpd_resp_set_hdr(req, "Location", LOCAL_IP);
     // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
     httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
-
-    ESP_LOGI(TAG, "Redirecting to root");
     return ESP_OK;
 }
 
@@ -212,12 +198,6 @@ esp_err_t get_req_200_handler(httpd_req_t *req)
 {
     // Set status
     httpd_resp_set_status(req, "200 OK");
-    // Redirect to the "/" root directory
-    // httpd_resp_set_hdr(req, "Location", "/");
-    // iOS requires content in the response to detect a captive portal, simply redirecting is not sufficient.
-    // httpd_resp_send(req, "Redirect to the captive portal", HTTPD_RESP_USE_STRLEN);
-
-    ESP_LOGI(TAG, "Redirecting to root");
     return ESP_OK;
 }
 
@@ -368,18 +348,32 @@ esp_err_t save_config_handler(httpd_req_t *req)
     strcpy(config.values.web.token, web_token);
     strcpy(config.values.web.configUrl, web_config_url);
     strcpy(config.values.web.postUrl, web_post_url);
+    if (linky_mode > AUTO)
+        linky_mode = AUTO;
     config.values.linkyMode = (LinkyMode)linky_mode;
     strcpy(config.values.mqtt.host, mqtt_host);
     config.values.mqtt.port = mqtt_port;
     strcpy(config.values.mqtt.username, mqtt_user);
     strcpy(config.values.mqtt.password, mqtt_password);
     strcpy(config.values.mqtt.topic, mqtt_topic);
-    config.write();
 
-    //  redirect to the reboot page
-    httpd_resp_set_status(req, "302 Temporary Redirect");
-    httpd_resp_set_hdr(req, "Location", "/reboot.html");
-    httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
+    if (config.values.mode == MODE_TUYA)
+    {
+        config.values.tuyaBinded = 2; // reboot to bind
+        //  redirect to the reboot page
+        httpd_resp_set_status(req, "302 Temporary Redirect");
+        httpd_resp_set_hdr(req, "Location", "/tuya.html");
+        httpd_resp_send(req, "Redirect to tuta", HTTPD_RESP_USE_STRLEN);
+        ESP_LOGI(TAG, "Reboot to bind tuya");
+    }
+    else
+    {
+        //  redirect to the reboot page
+        httpd_resp_set_status(req, "302 Temporary Redirect");
+        httpd_resp_set_hdr(req, "Location", "/reboot.html");
+        httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
+    }
+    config.write();
 
     // reboot the device
     xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 5, NULL);
@@ -402,8 +396,8 @@ esp_err_t get_config_handler(httpd_req_t *req)
     cJSON_AddStringToObject(jsonObject, "mqtt-user", config.values.mqtt.username);
     cJSON_AddStringToObject(jsonObject, "mqtt-password", config.values.mqtt.password);
     cJSON_AddStringToObject(jsonObject, "mqtt-topic", config.values.mqtt.topic);
-    cJSON_AddStringToObject(jsonObject, "tuya-productID", config.values.tuya.productID);
-    cJSON_AddStringToObject(jsonObject, "tuya-deviceUUID", config.values.tuya.deviceUUID);
+    cJSON_AddStringToObject(jsonObject, "tuya-productID", config.values.tuyaKeys.productID);
+    cJSON_AddStringToObject(jsonObject, "tuya-deviceUUID", config.values.tuyaKeys.deviceUUID);
 
     char *jsonString = cJSON_PrintUnformatted(jsonObject);
     httpd_resp_set_type(req, "application/json");

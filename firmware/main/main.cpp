@@ -37,10 +37,20 @@ extern "C" void app_main(void)
 {
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   initPins();
-  startLedPattern(PATTERN_START);
-  xTaskCreate(pairingButtonTask, "pairingButtonTask", 8192, NULL, 1, NULL); // start push button task
   config.begin();
-  shellInit(); // init shell
+  startLedPattern();
+  xTaskCreate(pairingButtonTask, "pairingButtonTask", 8192, NULL, 1, NULL); // start push button task
+  shellInit();                                                              // init shell
+
+  if (/*getVUSB() > 3 && */ config.values.tuyaBinded == 2) //
+  {
+    ESP_LOGI(MAIN_TAG, "Tuya pairing");
+    xTaskCreate(tuyaPairingTask, "tuyaPairingTask", 8192, NULL, 1, NULL); // start tuya pairing task
+    while (config.values.tuyaBinded == 2)
+    {
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+  }
 
   if (config.verify())
   {
@@ -50,16 +60,19 @@ extern "C" void app_main(void)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    ESP_LOGI(MAIN_TAG, "Config found, restarting... in 5s");
+    esp_restart();
   }
 
   // check if VCondo is too low and go to deep sleep
   // the BOOT_PIN is used to prevent deep sleep when the device is plugged to a computer for debug
-  if (getVUSB() < 3 && getVCondo() < 3.5 && config.values.sleep && gpio_get_level(BOOT_PIN))
-  {
-    ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
-    esp_sleep_enable_timer_wakeup(10 * 1000000); // 10 second
-    esp_deep_sleep_start();
-  }
+  // if (getVUSB() < 3 && getVCondo() < 3.5 && config.values.sleep && gpio_get_level(BOOT_PIN))
+  // {
+  //   ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
+  //   esp_sleep_enable_timer_wakeup(10 * 1000000); // 10 second
+  //   esp_deep_sleep_start();
+  // }
 
   switch (config.values.mode)
   {

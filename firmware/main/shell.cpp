@@ -352,9 +352,9 @@ int set_tuya_command(int argc, char **argv)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    memcpy(config.values.tuya.productID, argv[1], sizeof(config.values.tuya.productID));
-    memcpy(config.values.tuya.deviceUUID, argv[2], sizeof(config.values.tuya.deviceUUID));
-    memcpy(config.values.tuya.deviceAuth, argv[3], sizeof(config.values.tuya.deviceAuth));
+    memcpy(config.values.tuyaKeys.productID, argv[1], sizeof(config.values.tuyaKeys.productID));
+    memcpy(config.values.tuyaKeys.deviceUUID, argv[2], sizeof(config.values.tuyaKeys.deviceUUID));
+    memcpy(config.values.tuyaKeys.deviceAuth, argv[3], sizeof(config.values.tuyaKeys.deviceAuth));
     config.write();
     printf("Tuya config saved\n");
     get_tuya_command(1, NULL);
@@ -368,9 +368,9 @@ int get_tuya_command(int argc, char **argv)
         return ESP_ERR_INVALID_ARG;
     }
     printf("Tuya config:\n");
-    printf("Product ID: %s\n", config.values.tuya.productID);
-    printf("Device UUID: %s\n", config.values.tuya.deviceUUID);
-    printf("Device Auth: %s\n", config.values.tuya.deviceAuth);
+    printf("Product ID: %s\n", config.values.tuyaKeys.productID);
+    printf("Device UUID: %s\n", config.values.tuyaKeys.deviceUUID);
+    printf("Device Auth: %s\n", config.values.tuyaKeys.deviceAuth);
     return 0;
 }
 

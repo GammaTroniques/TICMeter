@@ -31,7 +31,6 @@ enum connectivity_t : uint8_t
 };
 
 extern const char *MODES[];
-extern const char *TUYA_SERVERS[];
 
 #define CONNECTION_TYPE_WIFI 0
 #define CONNECTION_TYPE_ZIGBEE 1
@@ -61,7 +60,6 @@ struct tuyaConfig_t
     char productID[30] = "";
     char deviceUUID[30] = "";
     char deviceAuth[40] = "";
-    uint8_t binded = 0;
 };
 
 struct config_t
@@ -74,7 +72,8 @@ struct config_t
     connectivity_t mode = MODE_WEB;
     webConfig_t web;
     mqttConfig_t mqtt;
-    tuyaConfig_t tuya;
+    tuyaConfig_t tuyaKeys;
+    uint8_t tuyaBinded = 0;
 
     char version[10] = "";
     uint16_t refreshRate = 60;

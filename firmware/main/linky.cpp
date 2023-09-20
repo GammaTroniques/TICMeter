@@ -71,10 +71,10 @@ const struct LinkyGroup LinkyLabelList[] =
     {113, "Index 9 Energie soutirée",        "EASF09",      &linky.data.std.EASF09,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
     {114, "Index 10 Energie soutirée",       "EASF10",      &linky.data.std.EASF10,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
 
-    {0, "Index 1 Energie soutirée Distr",  "EASD01",      &linky.data.std.EASD01,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {0, "Index 2 Energie soutirée Distr",  "EASD02",      &linky.data.std.EASD02,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {0, "Index 3 Energie soutirée Distr",  "EASD03",      &linky.data.std.EASD03,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {0, "Index 4 Energie soutirée Distr",  "EASD04",      &linky.data.std.EASD04,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
+    {0,   "Index 1 Energie soutirée Distr",  "EASD01",      &linky.data.std.EASD01,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
+    {0,   "Index 2 Energie soutirée Distr",  "EASD02",      &linky.data.std.EASD02,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
+    {0,   "Index 3 Energie soutirée Distr",  "EASD03",      &linky.data.std.EASD03,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
+    {0,   "Index 4 Energie soutirée Distr",  "EASD04",      &linky.data.std.EASD04,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
 
     {124, "Energie injectée totale",         "EAIT",        &linky.data.std.EAIT,          UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "mdi:transmission-tower-export",     0x0000, 0x0000   },
 
@@ -84,30 +84,30 @@ const struct LinkyGroup LinkyLabelList[] =
     {7,   "Energie réactive Q4 totale",      "ERQ4",        &linky.data.std.ERQ4,          UINT32,       MODE_STANDARD,   STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x0A0E,  },
 
     {117, "Courant efficace Phase 1",        "IRMS1",       &linky.data.std.IRMS1,         UINT16,       MODE_STANDARD,   STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0508,  },
-    {0, "Courant efficace Phase 2",        "IRMS2",       &linky.data.std.IRMS2,         UINT16,       MODE_STANDARD,   STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0908,  },
-    {0, "Courant efficace Phase 3",        "IRMS3",       &linky.data.std.IRMS3,         UINT16,       MODE_STANDARD,   STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0A08,  },
+    {0,   "Courant efficace Phase 2",        "IRMS2",       &linky.data.std.IRMS2,         UINT16,       MODE_STANDARD,   STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0908,  },
+    {0,   "Courant efficace Phase 3",        "IRMS3",       &linky.data.std.IRMS3,         UINT16,       MODE_STANDARD,   STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0A08,  },
 
     {125, "Tension efficace Phase 1",        "URMS1",       &linky.data.std.URMS1,         UINT16,       MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0505,  },
-    {0, "Tension efficace Phase 2",        "URMS2",       &linky.data.std.URMS2,         UINT16,       MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0905,  },
-    {0, "Tension efficace Phase 3",        "URMS3",       &linky.data.std.URMS3,         UINT16,       MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0A05,  },
+    {0,   "Tension efficace Phase 2",        "URMS2",       &linky.data.std.URMS2,         UINT16,       MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0905,  },
+    {0,   "Tension efficace Phase 3",        "URMS3",       &linky.data.std.URMS3,         UINT16,       MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0A05,  },
 
     {126, "Puissance app. de référence",     "PREF",        &linky.data.std.PREF,          UINT8,        MODE_STANDARD,   STATIC_VALUE,  POWER_kVA,   "",                                    0x0000, 0x0000,  },
     {127, "Puissance app. de coupure",       "PCOUP",       &linky.data.std.PCOUP,         UINT8,        MODE_STANDARD,   STATIC_VALUE,  POWER_kVA,   "",                                    0x0000, 0x0000,  },
 
     {120, "Puissance soutirée",              "SINSTS",      &linky.data.std.SINSTS,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0306,  }, //0x050F (mono) et 0x0306 tri
-    {0, "Puissance soutirée Phase 1",      "SINSTS1",     &linky.data.std.SINSTS1,       UINT32,       MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050F,  },
-    {0, "Puissance soutirée Phase 2",      "SINSTS2",     &linky.data.std.SINSTS2,       UINT32,       MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090F,  },
-    {0, "Puissance soutirée Phase 3",      "SINSTS3",     &linky.data.std.SINSTS3,       UINT32,       MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0F,  },
+    {0,   "Puissance soutirée Phase 1",      "SINSTS1",     &linky.data.std.SINSTS1,       UINT32,       MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050F,  },
+    {0,   "Puissance soutirée Phase 2",      "SINSTS2",     &linky.data.std.SINSTS2,       UINT32,       MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090F,  },
+    {0,   "Puissance soutirée Phase 3",      "SINSTS3",     &linky.data.std.SINSTS3,       UINT32,       MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0F,  },
 
     {121, "Puissance max soutirée Auj.",     "SMAXSN",      &linky.data.std.SMAXSN,        UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0304,  }, //0x0304 tri et 0x050D mono
-    {0, "Puissance max soutirée Auj. 1",   "SMAXSN1",     &linky.data.std.SMAXSN1,       UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050D,  },
-    {0, "Puissance max soutirée Auj. 2",   "SMAXSN2",     &linky.data.std.SMAXSN2,       UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090D,  },
-    {0, "Puissance max soutirée Auj. 3",   "SMAXSN3",     &linky.data.std.SMAXSN3,       UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0D,  },
+    {0,   "Puissance max soutirée Auj. 1",   "SMAXSN1",     &linky.data.std.SMAXSN1,       UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050D,  },
+    {0,   "Puissance max soutirée Auj. 2",   "SMAXSN2",     &linky.data.std.SMAXSN2,       UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090D,  },
+    {0,   "Puissance max soutirée Auj. 3",   "SMAXSN3",     &linky.data.std.SMAXSN3,       UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0D,  },
 
-    {0, "Puissance max soutirée Hier",     "SMAXSN-1",    &linky.data.std.SMAXSN_1,      UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
-    {0, "Puissance max soutirée Hier 1",   "SMAXSN1-1",   &linky.data.std.SMAXSN1_1,     UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
-    {0, "Puissance max soutirée Hier 2",   "SMAXSN2-1",   &linky.data.std.SMAXSN2_1,     UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
-    {0, "Puissance max soutirée Hier 3",   "SMAXSN3-1",   &linky.data.std.SMAXSN3_1,     UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
+    {0,   "Puissance max soutirée Hier",     "SMAXSN-1",    &linky.data.std.SMAXSN_1,      UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
+    {0,   "Puissance max soutirée Hier 1",   "SMAXSN1-1",   &linky.data.std.SMAXSN1_1,     UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
+    {0,   "Puissance max soutirée Hier 2",   "SMAXSN2-1",   &linky.data.std.SMAXSN2_1,     UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
+    {0,   "Puissance max soutirée Hier 3",   "SMAXSN3-1",   &linky.data.std.SMAXSN3_1,     UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
 
     {128, "Puissance injectée",              "SINSTI",      &linky.data.std.SINSTI,        UINT32,       MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "mdi:transmission-tower-export",     0x0000, 0x0000,  },
     {129, "Puissance max injectée Auj.",     "SMAXIN",      &linky.data.std.SMAXIN,        UINT32_TIME,  MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
@@ -262,6 +262,17 @@ void Linky::setMode(LinkyMode newMode)
  */
 void Linky::read()
 {
+    switch (mode)
+    {
+    case MODE_HISTORIQUE:
+    case MODE_STANDARD:
+    case AUTO:
+        break;
+    default:
+        ESP_LOGE(LINKY_TAG, "UART mode not set");
+        return;
+    }
+
     uint32_t timeout = (xTaskGetTickCount() * portTICK_PERIOD_MS) + 5000; // 5 seconds timeout
     memset(buffer, 0, sizeof buffer);                                     // clear the buffer
     rxBytes = 0;
