@@ -37,8 +37,6 @@ uint8_t connectToWifi()
         ESP_LOGI(TAG, "No Wifi SSID or password");
         return 0;
     }
-
-    setCPUFreq(80);
     xTaskCreate(wifiConnectLedTask, "wifiConnectLedTask", 4096, NULL, 1, NULL); // start wifi connect led task
     s_retry_num = 0;
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
@@ -155,9 +153,6 @@ void disconectFromWifi()
     // ESP_ERROR_CHECK(esp_netif_deinit());
     esp_netif_destroy(sta_netif);
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
-    // change cpu to 10Mhz
-    setCPUFreq(10);
-
     // ESP_ERROR_CHECK(esp_wifi_stop());
 }
 

@@ -213,16 +213,20 @@ void pairingButtonTask(void *pvParameters)
     uint32_t startPushTime = 0;
     uint8_t lastState = 1;
     uint32_t pushTime = MILLIS - startPushTime;
-    // RED: ZIGBEE
-    // ORANGE: TUYA
-    // GREEN: WEB/MQTT-HA/MQTT
     led_state_t ledState = NO_FLASH;
     uint8_t pairingState = 0;
     while (1)
     {
         if (gpio_get_level(PAIRING_PIN) == 0) // if button is pushed
         {
-            lastState = NO_FLASH;
+            if (lastState == 1)
+            {
+                ESP_LOGI(TAG, "Start pushing");
+                suspendTask(tuyaTaskHandle);
+                lastState = 0;
+                ledState = NO_FLASH;
+                startPushTime = MILLIS;
+            }
             pushTime = MILLIS - startPushTime;
             if (pushTime > 4000)
             {
@@ -260,10 +264,7 @@ void pairingButtonTask(void *pvParameters)
                 if (ledState == NO_FLASH)
                 {
                     ledState = PAIRING_FLASH; // flash pairing led
-                    if (noConfigLedTaskHandle != NULL)
-                    {
-                        vTaskSuspend(noConfigLedTaskHandle);
-                    }
+                    suspendTask(noConfigLedTaskHandle);
                     startLedPattern(PATTERN_PAIRING);
                 }
             }
@@ -272,9 +273,9 @@ void pairingButtonTask(void *pvParameters)
                 ledState = NO_FLASH;
             }
         }
-        else
+        else // if button is not pushed
         {
-            if (lastState == 0)
+            if (lastState == 0) // button was released
             {
                 ESP_LOGI(TAG, "Button pushed for %lu ms", pushTime);
                 if (pushTime > 5000)
@@ -320,10 +321,7 @@ void pairingButtonTask(void *pvParameters)
                     case MODE_TUYA:
                         ESP_LOGI(TAG, "Web pairing");
                         pairingState = 1;
-                        if (fetchLinkyDataTaskHandle != NULL)
-                        {
-                            vTaskSuspend(fetchLinkyDataTaskHandle);
-                        }
+                        suspendTask(fetchLinkyDataTaskHandle);
                         if (wifiConnected)
                         {
                             disconectFromWifi();
@@ -345,16 +343,13 @@ void pairingButtonTask(void *pvParameters)
                 }
                 else
                 {
-                    if (noConfigLedTaskHandle != NULL)
-                    {
-                        vTaskResume(noConfigLedTaskHandle);
-                    }
+                    resumeTask(noConfigLedTaskHandle);
+                    resumeTask(tuyaTaskHandle);
                     ESP_LOGI(TAG, "No action");
                 }
+                lastState = 1;
+                ledState = NO_FLASH;
             }
-            lastState = 1;
-            startPushTime = MILLIS;
-            ledState = NO_FLASH;
         }
         vTaskDelay(50 / portTICK_PERIOD_MS);
     }
@@ -402,7 +397,6 @@ void startLedPattern(uint8_t pattern)
     static TaskHandle_t ledPatternTaskHandle = NULL;
     static uint8_t lastPattern;
     lastPattern = pattern;
-
     xTaskCreate(ledPatternTask, "ledPatternTask", 2048, &lastPattern, 5, &ledPatternTaskHandle);
 }
 
@@ -492,16 +486,4 @@ void pairingLedTask(void *pvParameters)
         vTaskDelay(900 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); // Delete this task
-}
-
-void setCPUFreq(int32_t speedInMhz)
-{
-    // esp_log_level_set("pm", ESP_LOG_ERROR);
-    // esp_pm_config_t pm_config = {
-    //     .max_freq_mhz = speedInMhz,
-    //     .min_freq_mhz = speedInMhz,
-    //     .light_sleep_enable = false};
-
-    // TODO: fix this with zigbee
-    // ESP_ERROR_CHECK(esp_pm_configure(&pm_config));
 }
