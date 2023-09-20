@@ -189,6 +189,7 @@ void Linky::begin()
     default:
         break;
     }
+    // esp_log_level_set(LINKY_TAG, ESP_LOG_DEBUG);
 }
 
 void Linky::setMode(LinkyMode newMode)
@@ -219,19 +220,18 @@ void Linky::setMode(LinkyMode newMode)
     };
     switch (mode)
     {
-    case MODE_HISTORIQUE:
-        // start the serial communication at 1200 bauds, 7E1
-        uart_config.baud_rate = 1200;
-        mode = MODE_HISTORIQUE;
-        GROUP_SEPARATOR = 0x20;
-        break;
     case MODE_STANDARD:
         // start the serial communication at 9600 bauds, 7E1
         uart_config.baud_rate = 9600;
         mode = MODE_STANDARD;
         GROUP_SEPARATOR = 0x09;
         break;
+    case MODE_HISTORIQUE:
     default:
+        // start the serial communication at 1200 bauds, 7E1
+        uart_config.baud_rate = 1200;
+        mode = MODE_HISTORIQUE;
+        GROUP_SEPARATOR = 0x20;
         break;
     }
     esp_err_t ret = uart_driver_install(UART_NUM_1, RX_BUF_SIZE, 0, 0, NULL, 0); // set UART1 buffer size
@@ -262,17 +262,6 @@ void Linky::setMode(LinkyMode newMode)
  */
 void Linky::read()
 {
-    switch (mode)
-    {
-    case MODE_HISTORIQUE:
-    case MODE_STANDARD:
-    case AUTO:
-        break;
-    default:
-        ESP_LOGE(LINKY_TAG, "UART mode not set");
-        return;
-    }
-
     uint32_t timeout = (xTaskGetTickCount() * portTICK_PERIOD_MS) + 5000; // 5 seconds timeout
     memset(buffer, 0, sizeof buffer);                                     // clear the buffer
     rxBytes = 0;
@@ -395,6 +384,7 @@ char Linky::decode()
                 break;
             }
         }
+
         return 0;
     }
     // ESP_LOG_BUFFER_HEXDUMP(LINKY_TAG, frame, endOfFrame - startOfFrame, ESP_LOG_INFO);
