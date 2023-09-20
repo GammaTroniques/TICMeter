@@ -11,6 +11,7 @@
 #include "nvs.h"
 #include "esp_log.h"
 #include "linky.h"
+#include "common.h"
 
 #define EEPROM_SIZE sizeof(config_t)
 

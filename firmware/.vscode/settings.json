@@ -34,7 +34,8 @@
     "string_view": "cpp",
     "initializer_list": "cpp",
     "time.h": "c",
-    "mqtt_bind.h": "c"
+    "mqtt_bind.h": "c",
+    "freertos.h": "c"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH"
