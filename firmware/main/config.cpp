@@ -15,20 +15,21 @@ struct config_item_t
 
 // clang-format off
 struct config_item_t config_items[] = {
-    {"wifi-ssid",   STRING, &config.values.ssid,        sizeof(config.values.ssid),         NVS_READWRITE, NULL},
-    {"wifi-pw"  ,   STRING, &config.values.password,    sizeof(config.values.password),     NVS_READWRITE, NULL},
+    {"wifi-ssid",   STRING, &config.values.ssid,        sizeof(config.values.ssid),         NVS_READWRITE, 0},
+    {"wifi-pw"  ,   STRING, &config.values.password,    sizeof(config.values.password),     NVS_READWRITE, 0},
 
-    {"linky-mode",   UINT8, &config.values.linkyMode,   sizeof(config.values.linkyMode),    NVS_READWRITE, NULL},
-    {"connect-mode", UINT8, &config.values.mode,        sizeof(config.values.mode),         NVS_READWRITE, NULL},
+    {"linky-mode",   UINT8, &config.values.linkyMode,   sizeof(config.values.linkyMode),    NVS_READWRITE, 0},
+    {"connect-mode", UINT8, &config.values.mode,        sizeof(config.values.mode),         NVS_READWRITE, 0},
 
-    {"web-conf",      BLOB, &config.values.web,         sizeof(config.values.web),          NVS_READWRITE, NULL},
-    {"mqtt-conf",     BLOB, &config.values.mqtt,        sizeof(config.values.mqtt),         NVS_READWRITE, NULL},
-    {"tuya-conf",     BLOB, &config.values.tuya,        sizeof(config.values.tuya),         NVS_READWRITE, NULL},
+    {"web-conf",      BLOB, &config.values.web,         sizeof(config.values.web),          NVS_READWRITE, 0},
+    {"mqtt-conf",     BLOB, &config.values.mqtt,        sizeof(config.values.mqtt),         NVS_READWRITE, 0},
+    {"tuya-keys",     BLOB, &config.values.tuyaKeys,    sizeof(config.values.tuyaKeys),     NVS_READWRITE, 0},
+    {"tuya-bind",    UINT8, &config.values.tuyaBinded,  sizeof(config.values.tuyaBinded),   NVS_READWRITE, 0},
 
-    {"version",     STRING, &config.values.version,     sizeof(config.values.version),      NVS_READWRITE, NULL},
-    {"refresh",     UINT16, &config.values.refreshRate, sizeof(config.values.refreshRate),  NVS_READWRITE, NULL},
-    {"sleep",        UINT8, &config.values.sleep,       sizeof(config.values.sleep),        NVS_READWRITE, NULL},
-    {"checksum",    UINT16, &config.values.checksum,    sizeof(config.values.checksum),     NVS_READWRITE, NULL},
+    {"version",     STRING, &config.values.version,     sizeof(config.values.version),      NVS_READWRITE, 0},
+    {"refresh",     UINT16, &config.values.refreshRate, sizeof(config.values.refreshRate),  NVS_READWRITE, 0},
+    {"sleep",        UINT8, &config.values.sleep,       sizeof(config.values.sleep),        NVS_READWRITE, 0},
+    {"checksum",    UINT16, &config.values.checksum,    sizeof(config.values.checksum),     NVS_READWRITE, 0},
 
 };
 
@@ -72,7 +73,6 @@ int8_t Config::begin()
 
     for (int i = 0; i < config_items_size; i++)
     {
-        ESP_LOGI(NVS_TAG, "Config item %s", config_items[i].name);
         err = nvs_open(config_items[i].name, config_items[i].access, &config_items[i].handle);
         if (err != ESP_OK)
         {
@@ -268,7 +268,7 @@ uint8_t Config::verify()
         break;
 
     case MODE_TUYA:
-        if (strlen(config.values.tuya.productID) == 0 || strlen(config.values.tuya.deviceUUID) == 0 || strlen(config.values.tuya.deviceAuth) == 0 || config.values.tuya.binded == 0)
+        if (strlen(config.values.tuyaKeys.productID) == 0 || strlen(config.values.tuyaKeys.deviceUUID) == 0 || strlen(config.values.tuyaKeys.deviceAuth) == 0 || config.values.tuyaBinded == 0)
         {
             // No Tuya key, id, version or region
             return 1;

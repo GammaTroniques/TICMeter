@@ -45,6 +45,7 @@ void wifiConnectLedTask(void *pvParameters);
 void linkyReadingLedTask(void *pvParameters);
 void sendingLedTask(void *pvParameters);
 void pairingLedTask(void *pvParameters);
+void startLedPattern();
 /**
  * @brief set the CPU frequency to the given value
  *

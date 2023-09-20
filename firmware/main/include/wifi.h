@@ -20,6 +20,7 @@
 #include "config.h"
 
 #define ESP_MAXIMUM_RETRY 5
+#define WIFI_CONNECT_TIMEOUT 10000
 // #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 /**
  * @brief set the CPU frequency to 240Mhz and connect to wifi
