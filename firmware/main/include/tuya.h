@@ -31,5 +31,5 @@ uint8_t send_tuya_data(LinkyData *linky);
 void reset_tuya();
 
 uint8_t tuya_waiting_bind();
-
+void tuyaPairingTask(void *pvParameters);
 #endif

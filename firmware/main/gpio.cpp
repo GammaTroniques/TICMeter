@@ -23,6 +23,16 @@
 adc_oneshot_unit_handle_t adc1_handle;
 
 led_strip_handle_t led;
+
+enum led_state_t
+{
+    NO_FLASH,
+    PAIRING_FLASH,
+    WEB_FLASH = 0x0008FF,
+    ZIGBEE_FLASH = 0xFF0000,
+    TUYA_FLASH = 0xFA650F,
+};
+
 void initPins()
 {
     gpio_set_direction(LED_EN, GPIO_MODE_OUTPUT);
@@ -206,20 +216,12 @@ void pairingButtonTask(void *pvParameters)
     // RED: ZIGBEE
     // ORANGE: TUYA
     // GREEN: WEB/MQTT-HA/MQTT
-    enum
-    {
-        NO_FLASH,
-        PAIRING_FLASH,
-        WEB_FLASH = 0x0008FF,
-        ZIGBEE_FLASH = 0xFF0000,
-        TUYA_FLASH = 0xFF8000,
-    } ledState = NO_FLASH;
+    led_state_t ledState = NO_FLASH;
     uint8_t pairingState = 0;
     while (1)
     {
         if (gpio_get_level(PAIRING_PIN) == 0) // if button is pushed
         {
-            ESP_LOGI(TAG, "LED state: %d", ledState);
             lastState = NO_FLASH;
             pushTime = MILLIS - startPushTime;
             if (pushTime > 4000)
@@ -329,17 +331,6 @@ void pairingButtonTask(void *pvParameters)
                         }
                         ESP_LOGI(TAG, "Starting captive portal");
                         start_captive_portal();
-                        // if (config.values.mode == MODE_TUYA)
-                        // {
-                        //     ESP_LOGI(TAG, "Tuya pairing");
-                        //     reset_tuya();
-                        //     init_tuya();
-                        //     while (tuya_waiting_bind())
-                        //     {
-                        //         vTaskDelay(100 / portTICK_PERIOD_MS);
-                        //     }
-                        //     ESP_LOGI(TAG, "Tuya pairing done");
-                        // }
                         break;
                     case MODE_ZIGBEE:
                         pairingState = 1;
@@ -385,11 +376,11 @@ const ledPattern_t ledPattern[][PATTERN_SIZE] = {
     {{0xFF0000,      200, 100},                                                         }, // WIFI_FAILED
     {{0x5EFF00,      500, 100}                                                          }, // LINKY_OK // TODO: remove 
     {{0xFF00F2,     1000, 100}                                                          }, // LINKY_ERR
-    {{0x00FF00,      200, 500},  {0x00FF00,      200, 500}                             }, // SEND_OK
+    {{0x00FF00,      200, 500},  {0x00FF00,      200, 500}                              }, // SEND_OK
     {{0xFF0000,      200, 1000}, {0xFF0000,      200, 1000}                             }, // SEND_ERR
-    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100    }}, // NO_CONFIG // TODO: remove 
+    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100   }}, // NO_CONFIG // TODO: remove 
     {{0xE5FF00,       50,   0}                                                          }, // START
-    {{0x8803FC,       100,  400}                                                          }, // PAIRING
+    {{0x8803FC,       100,  400}                                                        }, // PAIRING
 };
 // clang-format on
 
@@ -411,7 +402,31 @@ void startLedPattern(uint8_t pattern)
     static TaskHandle_t ledPatternTaskHandle = NULL;
     static uint8_t lastPattern;
     lastPattern = pattern;
+
     xTaskCreate(ledPatternTask, "ledPatternTask", 2048, &lastPattern, 5, &ledPatternTaskHandle);
+}
+
+void startLedPattern()
+{
+    switch (config.values.mode)
+    {
+    case MODE_WEB:
+    case MODE_MQTT:
+    case MODE_MQTT_HA:
+        setLedColor(WEB_FLASH);
+        break;
+
+    case MODE_TUYA:
+        setLedColor(TUYA_FLASH);
+        break;
+    case MODE_ZIGBEE:
+        setLedColor(ZIGBEE_FLASH);
+        break;
+    default:
+        break;
+    }
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    setLedColor(0);
 }
 
 void noConfigLedTask(void *pvParameters)
@@ -432,9 +447,10 @@ void noConfigLedTask(void *pvParameters)
 
 void wifiConnectLedTask(void *pvParameters)
 {
-    while (!wifiConnected)
+    uint32_t timout = MILLIS + WIFI_CONNECT_TIMEOUT;
+    while (!wifiConnected && MILLIS < timout)
     {
-        setLedColor(0x0008FF);
+        setLedColor(WEB_FLASH);
         vTaskDelay(100 / portTICK_PERIOD_MS);
         setLedColor(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);

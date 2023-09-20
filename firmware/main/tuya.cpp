@@ -5,6 +5,7 @@
 #include "tuya_iot.h"
 #include "cJSON.h"
 #include "qrcode.h"
+#include "wifi.h"
 #include "ArduinoJson.h"
 #include "esp_ota_ops.h"
 
@@ -85,9 +86,9 @@ static void tuya_link_app_task(void *pvParameters)
     const esp_app_desc_t *app_desc = esp_app_get_description();
 
     const tuya_iot_config_t tuya_config = {
-        .productkey = config.values.tuya.productID,
-        .uuid = config.values.tuya.deviceUUID,
-        .authkey = config.values.tuya.deviceAuth,
+        .productkey = config.values.tuyaKeys.productID,
+        .uuid = config.values.tuyaKeys.deviceUUID,
+        .authkey = config.values.tuyaKeys.deviceAuth,
         .software_ver = app_desc->version,
         .modules = NULL,
         .skill_param = NULL,
@@ -218,7 +219,7 @@ uint8_t send_tuya_data(LinkyData *linky)
 void reset_tuya()
 {
     ESP_LOGI(TAG, "Reset Tuya");
-    config.values.tuya.binded = 0;
+    config.values.tuyaBinded = 0;
     tuya_iot_activated_data_remove(&client);
 }
 
@@ -237,10 +238,29 @@ uint8_t tuya_waiting_bind()
         return 1;
         break;
     case STATE_MQTT_YIELD:
-        config.values.tuya.binded = 1;
+        config.values.tuyaBinded = 1;
         return 0;
         break;
     default:
         return 0;
     }
+}
+
+void tuyaPairingTask(void *pvParameters)
+{
+    ESP_LOGI(TAG, "Tuya pairing");
+    if (!connectToWifi())
+    {
+        ESP_LOGE(TAG, "Tuya pairing failed: no wifi");
+        vTaskDelete(NULL);
+    }
+    reset_tuya();
+    init_tuya();
+    while (tuya_waiting_bind())
+    {
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+    ESP_LOGI(TAG, "Tuya pairing done");
+    config.write();
+    vTaskDelete(NULL);
 }

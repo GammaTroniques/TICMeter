@@ -163,17 +163,31 @@
             if ("server-mode" in data) {
                 const web = document.querySelector(".web");
                 const mqtt = document.querySelector(".mqtt");
+                const tuya = document.querySelector(".tuya");
                 const radio = document.getElementsByName("server-mode");
                 if (data["server-mode"] == 0) {
                     web.style.display = "flex";
                     mqtt.style.display = "none";
+                    tuya.style.display = "none";
                     radio[0].checked = true;
                     radio[1].checked = false;
-                } else {
+                    radio[2].checked = false;
+                }
+                else if (data["server-mode"] == 5) {
+                    web.style.display = "none";
+                    mqtt.style.display = "none";
+                    tuya.style.display = "block";
+                    radio[0].checked = false;
+                    radio[1].checked = false;
+                    radio[2].checked = true;
+                }
+                else {
                     web.style.display = "none";
                     mqtt.style.display = "flex";
+                    tuya.style.display = "none";
                     radio[0].checked = false;
                     radio[1].checked = true;
+                    radio[2].checked = false;
                     if (data["server-mode"] == 2) { //mqtt + ha
                         const mqttHaDiscovery = document.querySelector(`[name="mqtt-ha-discovery"]`);
                         mqttHaDiscovery.checked = 1;
