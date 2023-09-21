@@ -3,6 +3,7 @@
 #include "mqtt.h"
 #include "main.h"
 #include "gpio.h"
+#include "esp_ota_ops.h"
 #include "ota.h"
 
 #define TAG "SHELL"
@@ -62,6 +63,7 @@ const struct shell_cmd_t shell_cmds[]
     {"set-sleep",                   "Enable/Disable sleep",                     &set_sleep_command,                 1, {"<enable>"}, {"Enable/Disable deep sleep"}},
     {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
     {"read-nvs",                    "Read all nvs",                             &read_nvs,                          0, {}, {}},
+    {"info",                        "Get system info",                          &info_command,                      0, {}, {}},
 
 
 };
@@ -367,11 +369,11 @@ int get_tuya_command(int argc, char **argv)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    printf("Tuya config:\n");
+    printf("%cTuya config:\n", 0x02);
     printf("Product ID: %s\n", config.values.tuyaKeys.productID);
     printf("Device UUID: %s\n", config.values.tuyaKeys.deviceUUID);
     printf("Device Auth: %s\n", config.values.tuyaKeys.deviceAuth);
-    printf("Tuya Bind Status: %d\n", config.values.tuyaBinded);
+    printf("Tuya Bind Status: %d%c\n", config.values.tuyaBinded, 0x03);
     return 0;
 }
 
@@ -458,5 +460,21 @@ int read_nvs(int argc, char **argv)
     //     printf("%s::%s type=%d\n", info.namespace_name, info.key, info.type);
     //     it = nvs_entry_next(it);
     // }
+    return 0;
+}
+
+int info_command(int argc, char **argv)
+{
+    if (argc != 1)
+    {
+        return ESP_ERR_INVALID_ARG;
+    }
+    const esp_app_desc_t *app_desc = esp_app_get_description();
+    printf("%cApp version: %s\n", 0x02, app_desc->version);
+    printf("Git commit: %s\n", GIT_REV);
+    printf("Git tag: %s\n", GIT_TAG);
+    printf("Git branch: %s\n", GIT_BRANCH);
+    printf("Build time: %s\n", BUILD_TIME);
+    printf("%c", 3);
     return 0;
 }
