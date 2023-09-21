@@ -100,4 +100,9 @@ private:
 
 extern Config config;
 
+extern const char *GIT_TAG;
+extern const char *GIT_REV;
+extern const char *GIT_BRANCH;
+extern const char *BUILD_TIME;
+
 #endif
