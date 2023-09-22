@@ -11,18 +11,10 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
         with:
-          submodules: 'recursive'
-          
-      - name: Copy IDF patch
-        run: | 
-          ls -l /app/
-          ls -l /app/xmow49/
-          ls -l /app/xmow49/LinkyTeleinfoESP32/
-          ls -l /app/xmow49/LinkyTeleinfoESP32/patch
-          mkdir -p /opt/esp/idf/components/esp_netif/include/
-          mkdir -p /opt/esp/idf/components/esp_hw_support/
-          cp /app/xmow49/LinkyTeleinfoESP32/firmware/patch/esp_netif_sntp.h /opt/esp/idf/components/esp_netif/include/esp_netif_sntp.h
-          cp /app/xmow49/LinkyTeleinfoESP32/firmware/patch/sleep_modes.c /opt/esp/idf/components/esp_hw_support/sleep_modes.c
+          submodules: 'recursive'        
+#      - name: Copy IDF patch
+#        run: | 
+#          ls -l /app/
       
       - name: ESP-IDF build
         uses: espressif/esp-idf-ci-action@v1
