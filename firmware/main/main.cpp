@@ -181,15 +181,16 @@ void fetchLinkyDataTask(void *pvParameters)
         {
           ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
           startLedPattern(PATTERN_SEND_ERR);
-          break;
+          goto tuya_disconect;
         }
 
         if (send_tuya_data(&linky.data))
         {
           ESP_LOGE(MAIN_TAG, "Tuya SEND ERROR");
           startLedPattern(PATTERN_SEND_ERR);
-          break;
+          goto tuya_disconect;
         }
+      tuya_disconect:
         disconectFromWifi();
         waitTuyaEvent(TUYA_EVENT_MQTT_DISCONNECT, 5000);
         suspendTask(tuyaTaskHandle);
