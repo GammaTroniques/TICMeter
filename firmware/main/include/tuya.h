@@ -1,6 +1,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "Linky.h"
+#include "tuya_iot.h"
 
 #ifndef TUYA_H
 #define TUYA_H
@@ -29,7 +30,6 @@ typedef enum
 void init_tuya();
 uint8_t send_tuya_data(LinkyData *linky);
 void reset_tuya();
-
-uint8_t tuya_waiting_bind();
 void tuyaPairingTask(void *pvParameters);
+uint8_t waitTuyaEvent(tuya_event_id_t event, uint32_t timeout);
 #endif
