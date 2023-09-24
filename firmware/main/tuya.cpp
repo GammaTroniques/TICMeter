@@ -213,7 +213,7 @@ uint8_t send_tuya_data(LinkyData *linky)
             break;
         }
     }
-    device["120"] = MILLIS;
+    device["134"] = MILLIS / 1000 / 60; // uptime in minutes
 
     char json[1024];
     serializeJson(device, json);

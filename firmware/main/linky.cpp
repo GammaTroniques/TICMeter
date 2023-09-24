@@ -147,6 +147,7 @@ const struct LinkyGroup LinkyLabelList[] =
     // {133, "Mode Elec",                      "mode-tri",    &linky.treePhase,              UINT16,       ANY,             STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     {0,   "Dernière actualisation",         "timestamp",   &linky.data.timestamp,         UINT64,       ANY,             STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
     {0,   "Dernière actualisation",         "timestamp",   &linky.data.timestamp,         UINT64,       ANY,             STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
+    {134, "Temps de fonctionnement",        "uptime",      NULL,                          UINT64,       ANY,                REAL_TIME,  NONE_CLASS,   "",                                    0x0000, 0x0000,  },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
