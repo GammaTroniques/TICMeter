@@ -56,6 +56,9 @@ void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps)
 }
 
 /* Tuya SDK event callback */
+
+tuya_event_id_t lastEvent = TUYA_EVENT_RESET;
+uint8_t newEvent = 0;
 static void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
 {
     ESP_LOGI(TAG, "TUYA_EVENT: %s", EVENT_ID2STR(event->id));
@@ -91,6 +94,8 @@ static void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *e
     default:
         break;
     }
+    newEvent = 1;
+    lastEvent = event->id;
 }
 
 static void tuya_link_app_task(void *pvParameters)
@@ -223,10 +228,10 @@ uint8_t send_tuya_data(LinkyData *linky)
     if (sendComplete == 0)
     {
         ESP_LOGI(TAG, "Send data to tuya timeout");
-        return 0;
+        return 1;
     }
     ESP_LOGI(TAG, "Send data to tuya OK");
-    return 1;
+    return 0;
 }
 
 void reset_tuya()
@@ -235,29 +240,6 @@ void reset_tuya()
     config.values.tuyaBinded = 0;
     tuya_iot_activated_data_remove(&client);
 }
-
-// uint8_t tuya_waiting_bind()
-// {
-
-//     // 1. STATE_TOKEN_PENDING
-//     // 2. STATE_ACTIVATING
-//     // 3. STATE_MQTT_CONNECT_START
-//     // 4. STATE_MQTT_YIELD
-//     switch (client.state)
-//     {
-//     case STATE_TOKEN_PENDING:
-//     case STATE_ACTIVATING:
-//     case STATE_MQTT_CONNECT_START:
-//         return 1;
-//         break;
-//     case STATE_MQTT_YIELD:
-//         config.values.tuyaBinded = 1;
-//         return 0;
-//         break;
-//     default:
-//         return 0;
-//     }
-// }
 
 void tuyaPairingTask(void *pvParameters)
 {
@@ -276,4 +258,22 @@ void tuyaPairingTask(void *pvParameters)
     ESP_LOGI(TAG, "Tuya pairing done");
     config.write();
     vTaskDelete(NULL);
+}
+
+uint8_t waitTuyaEvent(tuya_event_id_t event, uint32_t timeout)
+{
+    uint32_t timout = MILLIS + timeout;
+    while (MILLIS < timout)
+    {
+        if (newEvent == 1)
+        {
+            newEvent = 0;
+            if (lastEvent == event)
+            {
+                return 0;
+            }
+        }
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+    }
+    return 1;
 }

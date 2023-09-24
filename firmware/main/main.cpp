@@ -13,10 +13,10 @@
 #include "esp_log.h"
 #include "esp_sleep.h"
 #include "cJSON.h"
-
+#include "string.h"
 #include "sdkconfig.h"
 
-#include "string.h"
+#include "common.h"
 #include "linky.h"
 #include "main.h"
 #include "config.h"
@@ -176,11 +176,23 @@ void fetchLinkyDataTask(void *pvParameters)
       if (connectToWifi())
       {
         ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
-        // vTaskResume(tuyaTaskHandle);
-        send_tuya_data(&linky.data);
-        // vTaskDelay(5000 / portTICK_PERIOD_MS);
-        // vTaskSuspend(tuyaTaskHandle);
-        // disconectFromWifi();
+        resumeTask(tuyaTaskHandle); // resume tuya task
+        if (waitTuyaEvent(TUYA_EVENT_MQTT_CONNECTED, 5000))
+        {
+          ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
+          startLedPattern(PATTERN_SEND_ERR);
+          break;
+        }
+
+        if (send_tuya_data(&linky.data))
+        {
+          ESP_LOGE(MAIN_TAG, "Tuya SEND ERROR");
+          startLedPattern(PATTERN_SEND_ERR);
+          break;
+        }
+        disconectFromWifi();
+        waitTuyaEvent(TUYA_EVENT_MQTT_DISCONNECT, 5000);
+        suspendTask(tuyaTaskHandle);
         startLedPattern(PATTERN_SEND_OK);
       }
       break;
