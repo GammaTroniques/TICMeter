@@ -122,7 +122,7 @@ static void tuya_link_app_task(void *pvParameters)
 
     /* Start tuya iot task */
     tuya_iot_start(&client);
-    while (1)
+    tuya_iot_ while (1)
     {
         /* Loop to receive packets, and handles client keepalive */
         tuya_iot_yield(&client);

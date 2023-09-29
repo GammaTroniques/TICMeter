@@ -55,12 +55,12 @@ extern "C" void app_main(void)
   if (config.verify())
   {
     xTaskCreate(noConfigLedTask, "noConfigLedTask", 1024, NULL, 1, &noConfigLedTaskHandle); // start no config led task
-    ESP_LOGI(MAIN_TAG, "No config found. Waiting for config...");
+    ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config.verify())
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    vTaskDelay(5000 / portTICK_PERIOD_MS); // wait 5s to be sure that the web page is sent
     ESP_LOGI(MAIN_TAG, "Config found, restarting... in 5s");
     esp_restart();
   }
@@ -83,7 +83,7 @@ extern "C" void app_main(void)
       getTimestamp();               // get timestamp from ntp server
       getConfigFromServer(&config); // get config from server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
-      disconectFromWifi();
+      disconnectFromWifi();
     }
     break;
   case MODE_MQTT:
@@ -93,7 +93,7 @@ extern "C" void app_main(void)
     {
       getTimestamp(); // get timestamp from ntp server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
-      disconectFromWifi();
+      disconnectFromWifi();
     }
     break;
   case MODE_ZIGBEE:
@@ -106,7 +106,7 @@ extern "C" void app_main(void)
       init_tuya();
       // vTaskDelay(1000 / portTICK_PERIOD_MS);
       // vTaskSuspend(tuyaTaskHandle);
-      // disconectFromWifi();
+      // disconnectFromWifi();
     }
     break;
   default:
@@ -154,7 +154,7 @@ void fetchLinkyDataTask(void *pvParameters)
           ESP_LOGI(MAIN_TAG, "POST: %s", json);
           sendToServer(json);
         }
-        disconectFromWifi();
+        disconnectFromWifi();
         dataIndex = 0;
       }
       break;
@@ -164,7 +164,7 @@ void fetchLinkyDataTask(void *pvParameters)
       {
         ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
         sendToMqtt(&linky.data);
-        disconectFromWifi();
+        disconnectFromWifi();
         startLedPattern(PATTERN_SEND_OK);
       }
       else
@@ -191,7 +191,7 @@ void fetchLinkyDataTask(void *pvParameters)
           goto tuya_disconect;
         }
       tuya_disconect:
-        disconectFromWifi();
+        disconnectFromWifi();
         waitTuyaEvent(TUYA_EVENT_MQTT_DISCONNECT, 5000);
         suspendTask(tuyaTaskHandle);
         startLedPattern(PATTERN_SEND_OK);
