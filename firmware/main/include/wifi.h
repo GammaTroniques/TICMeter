@@ -19,7 +19,7 @@
 
 #include "config.h"
 
-#define ESP_MAXIMUM_RETRY 5
+#define ESP_MAXIMUM_RETRY 4
 #define WIFI_CONNECT_TIMEOUT 10000
 // #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 /**
@@ -29,7 +29,7 @@
  */
 uint8_t connectToWifi();
 
-void disconectFromWifi();
+void disconnectFromWifi();
 
 void event_handler(void *arg, esp_event_base_t event_base,
                    int32_t event_id, void *event_data);

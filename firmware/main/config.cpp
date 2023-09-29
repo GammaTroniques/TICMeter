@@ -268,10 +268,15 @@ uint8_t Config::verify()
         break;
 
     case MODE_TUYA:
-        if (strlen(config.values.tuyaKeys.productID) == 0 || strlen(config.values.tuyaKeys.deviceUUID) == 0 || strlen(config.values.tuyaKeys.deviceAuth) == 0 || config.values.tuyaBinded == 0)
+        if (strlen(config.values.tuyaKeys.productID) == 0 || strlen(config.values.tuyaKeys.deviceUUID) == 0 || strlen(config.values.tuyaKeys.deviceAuth) == 0)
         {
             // No Tuya key, id, version or region
             return 1;
+        }
+        if (config.values.tuyaBinded == 0)
+        {
+            // Tuya not binded
+            return 0;
         }
         break;
     default:

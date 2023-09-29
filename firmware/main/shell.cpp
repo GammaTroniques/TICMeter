@@ -169,7 +169,7 @@ int reconnect_wifi_command(int argc, char **argv)
 int wifi_disconnect_command(int argc, char **argv)
 {
     printf("Disconnecting from wifi\n");
-    disconectFromWifi();
+    disconnectFromWifi();
     return 0;
 }
 int wifi_status_command(int argc, char **argv)
