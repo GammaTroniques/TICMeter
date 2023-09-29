@@ -29,6 +29,7 @@ esp_event_handler_instance_t instance_any_id;
 esp_event_handler_instance_t instance_got_ip;
 uint8_t connectToWifi()
 {
+    esp_err_t err = ESP_OK;
     if (wifiConnected)
         return 1;
 
@@ -42,47 +43,71 @@ uint8_t connectToWifi()
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
     s_wifi_event_group = xEventGroupCreate();
 
-    ESP_ERROR_CHECK(esp_netif_init());
+    err = esp_netif_init();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_netif_init failed with 0x%X", err);
+        wifiConnected = 2; // error
+        disconnectFromWifi();
+        return 0;
+    }
 
-    // retry:
-    // ESP_ERROR_CHECK(esp_event_loop_create_default());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    // if (err != ESP_OK)
-    // {
-    //     if (err == ESP_ERR_INVALID_STATE)
-    //     {
-    //         ESP_LOGI(TAG, "esp_event_loop_delete_default");
-    //         ESP_ERROR_CHECK(esp_event_loop_delete_default());
-    //         goto retry;
-    //     }
-    //     else
-    //     {
-    //         ESP_LOGE(TAG, "esp_event_loop_create_default failed with %d", err);
-    //         disconectFromWifi();
-    //         return 0;
-    //     }
-    //     return 0;
-    // }
+    err = esp_event_loop_create_default();
+    switch (err)
+    {
+    case ESP_OK:
+        break;
+    case ESP_ERR_INVALID_STATE:
+        ESP_LOGW(TAG, "esp_event_loop_create_default failed with 0x%X: possibly already exist", err);
+        wifiConnected = 2; // error
+        disconnectFromWifi();
+        return 0;
+        break;
+    default:
+        ESP_LOGE(TAG, "esp_event_loop_create_default failed with 0x%X", err);
+        wifiConnected = 2; // error
+        disconnectFromWifi();
+        return 0;
+        break;
+    }
 
-    // if (sta_netif)
-    // {
-    //     esp_netif_destroy(sta_netif);
-    // }
     sta_netif = esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    err = esp_wifi_init(&cfg);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_init failed with 0x%X", err);
+        wifiConnected = 2; // error
+        disconnectFromWifi();
+        return 0;
+    }
 
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
-                                                        IP_EVENT_STA_GOT_IP,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_got_ip));
+    err = esp_event_handler_instance_register(WIFI_EVENT,
+                                              ESP_EVENT_ANY_ID,
+                                              &event_handler,
+                                              NULL,
+                                              &instance_any_id);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_event_handler_instance_register failed with 0x%X", err);
+        wifiConnected = 2; // error
+        disconnectFromWifi();
+        return 0;
+    }
+
+    err = esp_event_handler_instance_register(IP_EVENT,
+                                              IP_EVENT_STA_GOT_IP,
+                                              &event_handler,
+                                              NULL,
+                                              &instance_got_ip);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_event_handler_instance_register failed with 0x%X", err);
+        wifiConnected = 2; // error
+        disconnectFromWifi();
+        return 0;
+    }
 
     wifi_config_t wifi_config = {};
 
@@ -93,12 +118,31 @@ uint8_t connectToWifi()
     strcpy((char *)wifi_config.sta.ssid, config.values.ssid);
     strcpy((char *)wifi_config.sta.password, config.values.password);
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    err = esp_wifi_set_mode(WIFI_MODE_STA);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
+        wifiConnected = 2; // error
+        disconnectFromWifi();
+        return 0;
+    }
+    err = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_config failed with 0x%X", err);
+        wifiConnected = 2; // error
+        disconnectFromWifi();
+        return 0;
+    }
+    err = esp_wifi_start();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_start failed with 0x%X", err);
+        wifiConnected = 2; // error
+        disconnectFromWifi();
+        return 0;
+    }
 
-    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
-     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
     ESP_LOGI(TAG, "Connecting to %s", (char *)wifi_config.sta.ssid);
 retry:
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
@@ -117,7 +161,7 @@ retry:
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
-        // disconectFromWifi();
+        // disconnectFromWifi();
         return 0;
     }
     else
@@ -129,31 +173,59 @@ retry:
     }
 }
 
-void disconectFromWifi()
+void disconnectFromWifi()
 {
-    if (!wifiConnected)
+    esp_err_t err = ESP_OK;
+    if (wifiConnected == 0) // already disconnected
     {
-        ESP_LOGI(TAG, "wifi already not connected");
+        ESP_LOGD(TAG, "wifi already not connected");
         return;
     }
     wifiConnected = 0;
     ESP_LOGI(TAG, "Disconnected");
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
-    ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
 
-    esp_wifi_disconnect();
-    esp_wifi_stop();
-    esp_wifi_deinit();
+    err = esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_event_handler_instance_unregister failed with 0x%X", err);
+    }
+    err = esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_event_handler_instance_unregister failed with 0x%X", err);
+    }
+
+    err = esp_wifi_disconnect();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_disconnect failed with 0x%X", err);
+    }
+    err = esp_wifi_stop();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_stop failed with 0x%X", err);
+    }
+    err = esp_wifi_deinit();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_deinit failed with 0x%X", err);
+    }
+
     vEventGroupDelete(s_wifi_event_group);
-    ESP_ERROR_CHECK(esp_event_loop_delete_default());
-    ESP_ERROR_CHECK(esp_wifi_clear_default_wifi_driver_and_handlers(sta_netif));
+    err = esp_event_loop_delete_default();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_event_loop_delete_default failed with 0x%X", err);
+    }
 
-    // esp_netif_t *netif = esp_netif_get_default_netif();
-    // esp_netif_destroy_default_wifi(netif);
-    // ESP_ERROR_CHECK(esp_netif_deinit());
+    err = esp_wifi_clear_default_wifi_driver_and_handlers(sta_netif);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_clear_default_wifi_driver_and_handlers failed with 0x%X", err);
+    }
+
     esp_netif_destroy(sta_netif);
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
-    // ESP_ERROR_CHECK(esp_wifi_stop());
 }
 
 void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -172,12 +244,12 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
         {
             esp_wifi_connect();
             s_retry_num++;
-            ESP_LOGI(TAG, "Retry to connect to the AP: %d/%d", s_retry_num, ESP_MAXIMUM_RETRY);
+            ESP_LOGW(TAG, "Retry to connect to the AP: %d/%d", s_retry_num, ESP_MAXIMUM_RETRY);
         }
         else
         {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-            ESP_LOGI(TAG, "Connect to the AP fail");
+            ESP_LOGE(TAG, "Connect to the AP fail");
             startLedPattern(PATTERN_WIFI_FAILED);
         }
         wifiConnected = 0;

@@ -11,7 +11,7 @@ import io
 total = len(sys.argv)
 cmdargs = str(sys.argv)
 
-if total != 3:
+if total < 3:
     print("You need to pass the arguments: <COMx> <excel file>")
     sys.exit(1)
 # read by default 1st sheet of an excel file
@@ -69,6 +69,8 @@ def textEncode(text):
 save = startupCheck()
 ser = serial.Serial(sys.argv[1], 115200, timeout=1)
 
+if len(sys.argv) >= 4 and sys.argv[3] == '-r':
+    save["tuyaIndex"] = 0
 
 def sendTuya():
     tuyaIndex = save["tuyaIndex"]

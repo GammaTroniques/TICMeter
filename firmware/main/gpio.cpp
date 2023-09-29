@@ -324,7 +324,7 @@ void pairingButtonTask(void *pvParameters)
                         suspendTask(fetchLinkyDataTaskHandle);
                         if (wifiConnected)
                         {
-                            disconectFromWifi();
+                            disconnectFromWifi();
                             vTaskDelay(1000 / portTICK_PERIOD_MS);
                         }
                         ESP_LOGI(TAG, "Starting captive portal");
