@@ -1,7 +1,7 @@
 {
   "idf.adapterTargetName": "esp32c6",
   "idf.flashType": "UART",
-  "idf.portWin": "COM18",
+  "idf.portWin": "COM3",
   "files.associations": {
     "*.vhd": "vhdl",
     "*.yaml": "home-assistant",

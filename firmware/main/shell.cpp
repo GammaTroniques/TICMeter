@@ -163,7 +163,7 @@ int connect_wifi_command(int argc, char **argv)
 }
 int reconnect_wifi_command(int argc, char **argv)
 {
-    ESP_LOGI(TAG, "%f", getVCondo());
+    ESP_LOGI(TAG, "%f", gpio_get_vcondo());
     return 0;
 }
 int wifi_disconnect_command(int argc, char **argv)
@@ -260,7 +260,7 @@ int mqtt_send_command(int argc, char **argv)
     // data.hist->timestamp = getTimestamp();
     // data.hist->BASE = 5050;
     // data.hist->IINST = 10;
-    sendToMqtt(&data);
+    mqtt_send(&data);
     return 0;
 }
 int mqtt_discovery_command(int argc, char **argv)
@@ -270,7 +270,7 @@ int mqtt_discovery_command(int argc, char **argv)
         return ESP_ERR_INVALID_ARG;
     }
     printf("MQTT discovery\n");
-    setupHomeAssistantDiscovery();
+    mqtt_setup_ha_discovery();
     return 0;
 }
 
@@ -323,7 +323,7 @@ int get_VCondo_command(int argc, char **argv)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    printf("VCondo: %f\n", getVCondo());
+    printf("VCondo: %f\n", gpio_get_vcondo());
     return 0;
 }
 
@@ -333,7 +333,7 @@ int test_led_command(int argc, char **argv)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    startLedPattern(atoi(argv[1]));
+    gpio_start_led_pattern(atoi(argv[1]));
     ESP_LOGI(TAG, "Test led pattern %d", atoi(argv[1]));
     return 0;
 }
@@ -417,8 +417,8 @@ int get_voltages(int argc, char **argv)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    printf("VCondo: %f\n", getVCondo());
-    printf("VUSB: %f\n", getVUSB());
+    printf("VCondo: %f\n", gpio_get_vcondo());
+    printf("VUSB: %f\n", gpio_get_vusb());
     return 0;
 }
 

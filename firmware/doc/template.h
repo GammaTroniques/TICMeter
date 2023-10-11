@@ -1,5 +1,5 @@
 /**
- * @file main.h
+ * @file
  * @author Dorian Benech
  * @brief
  * @version 1.0
@@ -9,13 +9,12 @@
  *
  */
 
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef TEMPLATE_H
+#define TEMPLATE_H
 
 /*==============================================================================
  Local Include
 ===============================================================================*/
-#include "linky.h"
 
 /*==============================================================================
  Public Defines
@@ -32,19 +31,9 @@
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
-extern TaskHandle_t fetchLinkyDataTaskHandle;
-extern TaskHandle_t sendDataTaskHandle;
-extern TaskHandle_t noConfigLedTaskHandle;
 
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
 
-/**
- * @brief The Linky data fetch task
- *
- * @param pvParameters Not used
- */
-void fetchLinkyDataTask(void *pvParameters);
-
-#endif /* MAIN_H */
+#endif /* TEMPLATE_H */

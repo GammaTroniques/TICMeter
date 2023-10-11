@@ -7,7 +7,7 @@ void preapareJsonData(LinkyData *data, char dataIndex, char *json, unsigned int 
 {
     cJSON *jsonObject = cJSON_CreateObject(); // Create the root object
     cJSON_AddStringToObject(jsonObject, "TOKEN", config.values.web.token);
-    cJSON_AddNumberToObject(jsonObject, "VCONDO", getVCondo());
+    cJSON_AddNumberToObject(jsonObject, "VCONDO", gpio_get_vcondo());
     cJSON *dataObject = cJSON_CreateArray(); // Create the data array
     for (int i = 0; i < dataIndex; i++)      // Add data to the array
     {
