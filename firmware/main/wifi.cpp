@@ -461,8 +461,8 @@ static void wifi_init_softap(void)
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 
     wifi_config_t wifi_config = {};
-    strcpy((char *)wifi_config.ap.ssid, AP_SSID);
-    strcpy((char *)wifi_config.ap.password, AP_PASS);
+    strncpy((char *)wifi_config.ap.ssid, AP_SSID, sizeof(wifi_config.ap.ssid));
+    strncpy((char *)wifi_config.ap.password, AP_PASS, sizeof(wifi_config.ap.password));
     wifi_config.ap.ssid_len = strlen(AP_SSID);
     wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
     wifi_config.ap.max_connection = 4;
