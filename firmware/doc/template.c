@@ -1,11 +1,11 @@
 /**
- * @file main.cpp
+ * @file
  * @author Dorian Benech
  * @brief
  * @version 1.0
  * @date 2023-10-11
  *
- * @copyright Copyright (c) 2023
+ * @copyright Copyright (c) 2023 GammaTroniques
  *
  */
 

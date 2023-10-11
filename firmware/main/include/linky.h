@@ -240,6 +240,7 @@ struct LinkyGroup
     const char *label = {0};
     void *data = NULL;
     const LinkyLabelType type = STRING;
+    const uint8_t size = 0;
     const LinkyMode mode = MODE_HISTORIQUE;
     const RealTime realTime = STATIC_VALUE;
     const HADeviceClass device_class = NONE_CLASS;
