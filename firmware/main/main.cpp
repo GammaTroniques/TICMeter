@@ -81,7 +81,7 @@ extern "C" void app_main(void)
   config.begin();
   gpio_boot_led_pattern();
   xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, 1, NULL); // start push button task
-  shellInit();                                                                            // init shell
+  shell_init();                                                                           // init shell
 
   if (/*gpio_get_vusb() > 3 && */ config.values.tuyaBinded == 2) //
   {

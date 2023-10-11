@@ -260,11 +260,11 @@ esp_err_t save_config_handler(httpd_req_t *req)
             value++;
             if (strcmp(key, "wifi-ssid") == 0)
             {
-                strcpy(ssid, value);
+                strncpy(ssid, value, sizeof(ssid));
             }
             else if (strcmp(key, "wifi-password") == 0)
             {
-                strcpy(password, value);
+                strncpy(password, value, sizeof(password));
             }
             else if (strcmp(key, "server-mode") == 0)
             {
@@ -272,19 +272,19 @@ esp_err_t save_config_handler(httpd_req_t *req)
             }
             else if (strcmp(key, "web-url") == 0)
             {
-                strcpy(web_url, value);
+                strncpy(web_url, value, sizeof(web_url));
             }
             else if (strcmp(key, "web-token") == 0)
             {
-                strcpy(web_token, value);
+                strncpy(web_token, value, sizeof(web_token));
             }
             else if (strcmp(key, "web-config") == 0)
             {
-                strcpy(web_config_url, value);
+                strncpy(web_config_url, value, sizeof(web_config_url));
             }
             else if (strcmp(key, "web-post") == 0)
             {
-                strcpy(web_post_url, value);
+                strncpy(web_post_url, value, sizeof(web_post_url));
             }
             else if (strcmp(key, "linky-mode") == 0)
             {
@@ -292,7 +292,7 @@ esp_err_t save_config_handler(httpd_req_t *req)
             }
             else if (strcmp(key, "mqtt-host") == 0)
             {
-                strcpy(mqtt_host, value);
+                strncpy(mqtt_host, value, sizeof(mqtt_host));
             }
             else if (strcmp(key, "mqtt-port") == 0)
             {
@@ -300,15 +300,15 @@ esp_err_t save_config_handler(httpd_req_t *req)
             }
             else if (strcmp(key, "mqtt-user") == 0)
             {
-                strcpy(mqtt_user, value);
+                strncpy(mqtt_user, value, sizeof(mqtt_user));
             }
             else if (strcmp(key, "mqtt-password") == 0)
             {
-                strcpy(mqtt_password, value);
+                strncpy(mqtt_password, value, sizeof(mqtt_password));
             }
             else if (strcmp(key, "mqtt-topic") == 0)
             {
-                strcpy(mqtt_topic, value);
+                strncpy(mqtt_topic, value, sizeof(mqtt_topic));
             }
             else if (strcmp(key, "mqtt-ha-discovery") == 0)
             {
@@ -332,8 +332,8 @@ esp_err_t save_config_handler(httpd_req_t *req)
     // ESP_LOGI(TAG, "mqtt_topic: %s", mqtt_topic);
 
     // save the parameters
-    strcpy(config.values.ssid, ssid);
-    strcpy(config.values.password, password);
+    strncpy(config.values.ssid, ssid, sizeof(config.values.ssid));
+    strncpy(config.values.password, password, sizeof(config.values.password));
 
     if (server_mode == MODE_MQTT && mqtt_HA_discovery == 1)
     {
@@ -344,18 +344,18 @@ esp_err_t save_config_handler(httpd_req_t *req)
         config.values.mode = (connectivity_t)server_mode;
     }
 
-    strcpy(config.values.web.host, web_url);
-    strcpy(config.values.web.token, web_token);
-    strcpy(config.values.web.configUrl, web_config_url);
-    strcpy(config.values.web.postUrl, web_post_url);
+    strncpy(config.values.web.host, web_url, sizeof(config.values.web.host));
+    strncpy(config.values.web.token, web_token, sizeof(config.values.web.token));
+    strncpy(config.values.web.configUrl, web_config_url, sizeof(config.values.web.configUrl));
+    strncpy(config.values.web.postUrl, web_post_url, sizeof(config.values.web.postUrl));
     if (linky_mode > AUTO)
         linky_mode = AUTO;
     config.values.linkyMode = (LinkyMode)linky_mode;
-    strcpy(config.values.mqtt.host, mqtt_host);
+    strncpy(config.values.mqtt.host, mqtt_host, sizeof(config.values.mqtt.host));
     config.values.mqtt.port = mqtt_port;
-    strcpy(config.values.mqtt.username, mqtt_user);
-    strcpy(config.values.mqtt.password, mqtt_password);
-    strcpy(config.values.mqtt.topic, mqtt_topic);
+    strncpy(config.values.mqtt.username, mqtt_user, sizeof(config.values.mqtt.username));
+    strncpy(config.values.mqtt.password, mqtt_password, sizeof(config.values.mqtt.password));
+    strncpy(config.values.mqtt.topic, mqtt_topic, sizeof(config.values.mqtt.topic));
 
     if (config.values.mode == MODE_TUYA)
     {

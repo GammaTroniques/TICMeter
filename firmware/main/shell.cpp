@@ -1,3 +1,17 @@
+/**
+ * @file shell.cpp
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 #include "shell.h"
 #include "wifi.h"
 #include "mqtt.h"
@@ -6,8 +20,18 @@
 #include "esp_ota_ops.h"
 #include "ota.h"
 
+/*==============================================================================
+ Local Define
+===============================================================================*/
 #define TAG "SHELL"
 
+/*==============================================================================
+ Local Macro
+===============================================================================*/
+
+/*==============================================================================
+ Local Type
+===============================================================================*/
 struct shell_cmd_t
 {
     const char *command;
@@ -17,9 +41,63 @@ struct shell_cmd_t
     const char *args[5] = {0};
     const char *hint[5] = {0};
 };
-// clang-format off
 
-const struct shell_cmd_t shell_cmds[]
+/*==============================================================================
+ Local Function Declaration
+===============================================================================*/
+static int get_wifi_command(int argc, char **argv);
+static int set_wifi_command(int argc, char **argv);
+static int connect_wifi_command(int argc, char **argv);
+static int reconnect_wifi_command(int argc, char **argv);
+static int wifi_disconnect_command(int argc, char **argv);
+static int wifi_status_command(int argc, char **argv);
+
+static int set_web_command(int argc, char **argv);
+static int get_web_command(int argc, char **argv);
+
+static int get_mqtt_command(int argc, char **argv);
+static int set_mqtt_command(int argc, char **argv);
+static int mqtt_connect_command(int argc, char **argv);
+static int mqtt_send_command(int argc, char **argv);
+
+static int get_mode_command(int argc, char **argv);
+static int set_mode_command(int argc, char **argv);
+
+static int get_config_command(int argc, char **argv);
+static int set_config_command(int argc, char **argv);
+
+static int get_VCondo_command(int argc, char **argv);
+static int ota_check_command(int argc, char **argv);
+
+static int set_tuya_command(int argc, char **argv);
+static int get_tuya_command(int argc, char **argv);
+
+static int set_linky_mode_command(int argc, char **argv);
+static int get_linky_mode_command(int argc, char **argv);
+static int linky_print_command(int argc, char **argv);
+static int wifi_start_captive_portal_command(int argc, char **argv);
+static int mqtt_discovery_command(int argc, char **argv);
+static int test_led_command(int argc, char **argv);
+
+static int get_voltages(int argc, char **argv);
+
+static int set_sleep_command(int argc, char **argv);
+static int get_sleep_command(int argc, char **argv);
+static int read_nvs(int argc, char **argv);
+
+static int info_command(int argc, char **argv);
+
+static int esp_reset_command(int argc, char **argv);
+static esp_err_t esp_console_register_reset_command(void);
+/*==============================================================================
+Public Variable
+===============================================================================*/
+
+/*==============================================================================
+ Local Variable
+===============================================================================*/
+// clang-format off
+static const struct shell_cmd_t shell_cmds[]
 {
     // commands                       Help                                        Function                            Args num, Args, Hint
     {"reset",                       "Reset the device",                         &esp_reset_command,                 0, {}, {}},
@@ -68,8 +146,11 @@ const struct shell_cmd_t shell_cmds[]
 
 };
 // clang-format on
+/*==============================================================================
+Function Implementation
+===============================================================================*/
 
-void shellInit()
+void shell_init()
 {
     esp_log_level_set("wifi", ESP_LOG_ERROR);
     esp_log_level_set("wifi_init", ESP_LOG_ERROR);
@@ -124,14 +205,14 @@ void shellInit()
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 }
 
-int esp_reset_command(int argc, char **argv)
+static int esp_reset_command(int argc, char **argv)
 {
     ESP_LOGI(TAG, "Resetting the device");
     esp_restart();
     return 0;
 }
 
-int get_wifi_command(int argc, char **argv)
+static int get_wifi_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -142,63 +223,63 @@ int get_wifi_command(int argc, char **argv)
 
     return 0;
 }
-int set_wifi_command(int argc, char **argv)
+static int set_wifi_command(int argc, char **argv)
 {
     if (argc != 3)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    strcpy(config.values.ssid, argv[1]);
-    strcpy(config.values.password, argv[2]);
+    strncpy(config.values.ssid, argv[1], sizeof(config.values.ssid));
+    strncpy(config.values.password, argv[2], sizeof(config.values.password));
     config.write();
     printf("Wifi credentials saved\n");
 
     return 0;
 }
-int connect_wifi_command(int argc, char **argv)
+static int connect_wifi_command(int argc, char **argv)
 {
     printf("Connecting to wifi\n");
     connectToWifi();
     return 0;
 }
-int reconnect_wifi_command(int argc, char **argv)
+static int reconnect_wifi_command(int argc, char **argv)
 {
     ESP_LOGI(TAG, "%f", gpio_get_vcondo());
     return 0;
 }
-int wifi_disconnect_command(int argc, char **argv)
+static int wifi_disconnect_command(int argc, char **argv)
 {
     printf("Disconnecting from wifi\n");
     disconnectFromWifi();
     return 0;
 }
-int wifi_status_command(int argc, char **argv)
+static int wifi_status_command(int argc, char **argv)
 {
     printf("Wifi status TODO\n");
     // TODO
     return 0;
 }
-int wifi_start_captive_portal_command(int argc, char **argv)
+static int wifi_start_captive_portal_command(int argc, char **argv)
 {
     printf("Starting captive portal TODO\n");
     start_captive_portal();
     return 0;
 }
-int set_web_command(int argc, char **argv)
+static int set_web_command(int argc, char **argv)
 {
     if (argc != 5)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    strcpy(config.values.web.host, argv[1]);
-    strcpy(config.values.web.postUrl, argv[2]);
-    strcpy(config.values.web.configUrl, argv[3]);
-    strcpy(config.values.web.token, argv[4]);
+    strncpy(config.values.web.host, argv[1], sizeof(config.values.web.host));
+    strncpy(config.values.web.postUrl, argv[2], sizeof(config.values.web.postUrl));
+    strncpy(config.values.web.configUrl, argv[3], sizeof(config.values.web.configUrl));
+    strncpy(config.values.web.token, argv[4], sizeof(config.values.web.token));
     config.write();
     printf("Web credentials saved\n");
     return 0;
 }
-int get_web_command(int argc, char **argv)
+static int get_web_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -211,7 +292,7 @@ int get_web_command(int argc, char **argv)
     return 0;
 }
 
-int get_mqtt_command(int argc, char **argv)
+static int get_mqtt_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -224,22 +305,22 @@ int get_mqtt_command(int argc, char **argv)
     printf("Password: %s\n", config.values.mqtt.password);
     return 0;
 }
-int set_mqtt_command(int argc, char **argv)
+static int set_mqtt_command(int argc, char **argv)
 {
     if (argc != 6)
     {
         return ESP_ERR_INVALID_ARG;
     }
-    strcpy(config.values.mqtt.host, argv[1]);
+    strncpy(config.values.mqtt.host, argv[1], sizeof(config.values.mqtt.host));
     config.values.mqtt.port = atoi(argv[2]);
-    strcpy(config.values.mqtt.topic, argv[3]);
-    strcpy(config.values.mqtt.username, argv[4]);
-    strcpy(config.values.mqtt.password, argv[5]);
+    strncpy(config.values.mqtt.topic, argv[3], sizeof(config.values.mqtt.topic));
+    strncpy(config.values.mqtt.username, argv[4], sizeof(config.values.mqtt.username));
+    strncpy(config.values.mqtt.password, argv[5], sizeof(config.values.mqtt.password));
     config.write();
     printf("MQTT credentials saved\n");
     return 0;
 }
-int mqtt_connect_command(int argc, char **argv)
+static int mqtt_connect_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -249,7 +330,7 @@ int mqtt_connect_command(int argc, char **argv)
     mqtt_app_start();
     return 0;
 }
-int mqtt_send_command(int argc, char **argv)
+static int mqtt_send_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -263,7 +344,7 @@ int mqtt_send_command(int argc, char **argv)
     mqtt_send(&data);
     return 0;
 }
-int mqtt_discovery_command(int argc, char **argv)
+static int mqtt_discovery_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -274,7 +355,7 @@ int mqtt_discovery_command(int argc, char **argv)
     return 0;
 }
 
-int get_mode_command(int argc, char **argv)
+static int get_mode_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -283,7 +364,7 @@ int get_mode_command(int argc, char **argv)
     printf("Mode: %d - %s\n", config.values.mode, MODES[config.values.mode]);
     return 0;
 }
-int set_mode_command(int argc, char **argv)
+static int set_mode_command(int argc, char **argv)
 {
     if (argc != 2)
     {
@@ -296,7 +377,7 @@ int set_mode_command(int argc, char **argv)
     return 0;
 }
 
-int get_config_command(int argc, char **argv)
+static int get_config_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -306,7 +387,7 @@ int get_config_command(int argc, char **argv)
     config.read();
     return 0;
 }
-int set_config_command(int argc, char **argv)
+static int set_config_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -317,7 +398,7 @@ int set_config_command(int argc, char **argv)
     return 0;
 }
 
-int get_VCondo_command(int argc, char **argv)
+static int get_VCondo_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -327,7 +408,7 @@ int get_VCondo_command(int argc, char **argv)
     return 0;
 }
 
-int test_led_command(int argc, char **argv)
+static int test_led_command(int argc, char **argv)
 {
     if (argc != 2)
     {
@@ -338,7 +419,7 @@ int test_led_command(int argc, char **argv)
     return 0;
 }
 
-int ota_check_command(int argc, char **argv)
+static int ota_check_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -348,7 +429,7 @@ int ota_check_command(int argc, char **argv)
     return 0;
 }
 
-int set_tuya_command(int argc, char **argv)
+static int set_tuya_command(int argc, char **argv)
 {
     if (argc != 4)
     {
@@ -363,7 +444,7 @@ int set_tuya_command(int argc, char **argv)
     return 0;
 }
 
-int get_tuya_command(int argc, char **argv)
+static int get_tuya_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -377,7 +458,7 @@ int get_tuya_command(int argc, char **argv)
     return 0;
 }
 
-int get_linky_mode_command(int argc, char **argv)
+static int get_linky_mode_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -388,7 +469,7 @@ int get_linky_mode_command(int argc, char **argv)
     printf("Configured Linky mode: %d: %s\n", config.values.linkyMode, modes[config.values.linkyMode]);
     return 0;
 }
-int set_linky_mode_command(int argc, char **argv)
+static int set_linky_mode_command(int argc, char **argv)
 {
     if (argc != 2)
     {
@@ -401,7 +482,7 @@ int set_linky_mode_command(int argc, char **argv)
     return 0;
 }
 
-int linky_print_command(int argc, char **argv)
+static int linky_print_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -411,7 +492,7 @@ int linky_print_command(int argc, char **argv)
     return 0;
 }
 
-int get_voltages(int argc, char **argv)
+static int get_voltages(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -422,7 +503,7 @@ int get_voltages(int argc, char **argv)
     return 0;
 }
 
-int set_sleep_command(int argc, char **argv)
+static int set_sleep_command(int argc, char **argv)
 {
     if (argc != 2)
     {
@@ -435,7 +516,7 @@ int set_sleep_command(int argc, char **argv)
     return 0;
 }
 
-int get_sleep_command(int argc, char **argv)
+static int get_sleep_command(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -445,7 +526,7 @@ int get_sleep_command(int argc, char **argv)
     return 0;
 }
 
-int read_nvs(int argc, char **argv)
+static int read_nvs(int argc, char **argv)
 {
     if (argc != 1)
     {
@@ -463,7 +544,7 @@ int read_nvs(int argc, char **argv)
     return 0;
 }
 
-int info_command(int argc, char **argv)
+static int info_command(int argc, char **argv)
 {
     if (argc != 1)
     {
