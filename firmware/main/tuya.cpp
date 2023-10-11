@@ -19,7 +19,7 @@ void example_qrcode_print(const char *productkey, const char *uuid)
     ESP_LOGI(TAG, "https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", productkey, uuid);
 
     char urlbuf[255];
-    sprintf(urlbuf, "https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", productkey, uuid);
+    snprintf(urlbuf, sizeof(urlbuf), "https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", productkey, uuid);
     qrcode_display(urlbuf);
 
     ESP_LOGI(TAG, "(Use this URL to generate a static QR code for the Tuya APP scan code binding)");
@@ -122,7 +122,7 @@ static void tuya_link_app_task(void *pvParameters)
 
     /* Start tuya iot task */
     tuya_iot_start(&client);
-    tuya_iot_ while (1)
+    while (1)
     {
         /* Loop to receive packets, and handles client keepalive */
         tuya_iot_yield(&client);
@@ -157,7 +157,7 @@ uint8_t send_tuya_data(LinkyData *linky)
 
         // json
         char strId[5];
-        sprintf(strId, "%d", LinkyLabelList[i].id);
+        snprintf(strId, sizeof(strId), "%d", LinkyLabelList[i].id);
 
         switch (LinkyLabelList[i].type)
         {

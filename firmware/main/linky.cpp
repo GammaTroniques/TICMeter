@@ -526,7 +526,7 @@ char Linky::decode()
 char Linky::update()
 {
     reading = 1;
-    xTaskCreate(linkyReadingLedTask, "linkyReadingLedTask", 2048, NULL, 10, NULL);
+    xTaskCreate(gpio_led_task_linky_reading, "gpio_led_task_linky_reading", 2048, NULL, 10, NULL);
     read();       // read the UART
     if (decode()) // decode the frame
     {
@@ -712,7 +712,7 @@ void Linky::debugFrame()
         {"MOTDETAT", "000000", 'B'},
         {"OT", "00", '#'},
     };
-    sprintf(debugGroups[3].value, "%lld", getTimestamp());
+    snprintf(debugGroups[3].value, sizeof(debugGroups[3].value), "%lld", getTimestamp());
     debugGroups[3].checksum = checksum(debugGroups[3].name, debugGroups[3].value, NULL);
     const uint16_t debugGroupCount = sizeof(debugGroups) / sizeof(debugGroups[0]);
     rxBytes = 0;

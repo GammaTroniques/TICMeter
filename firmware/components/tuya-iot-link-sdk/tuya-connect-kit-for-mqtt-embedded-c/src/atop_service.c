@@ -76,56 +76,56 @@ int atop_service_activate_request(const tuya_activite_request_t *request,
     size_t offset = 0;
 
     /* Requires params */
-    offset = sprintf(buffer, "{\"token\":\"%s\",\"softVer\":\"%s\",\"productKey\":\"%s\",\"protocolVer\":\"%s\",\"baselineVer\":\"%s\"",
-                     request->token, request->sw_ver, request->product_key, request->pv, request->bv);
+    offset = snprintf(buffer, prealloc_size, "{\"token\":\"%s\",\"softVer\":\"%s\",\"productKey\":\"%s\",\"protocolVer\":\"%s\",\"baselineVer\":\"%s\"",
+                      request->token, request->sw_ver, request->product_key, request->pv, request->bv);
 
     /* option params */
-    offset += sprintf(buffer + offset, ",\"options\": \"%s", "{");
+    offset += snprintf(buffer + offset, prealloc_size - offset, ",\"options\": \"%s", "{");
     if (request->firmware_key && request->firmware_key[0])
     {
-        offset += sprintf(buffer + offset, "\\\"isFK\\\":true");
+        offset += snprintf(buffer + offset, prealloc_size - offset, "\\\"isFK\\\":true");
     }
     else
     {
-        offset += sprintf(buffer + offset, "\\\"isFK\\\":false");
+        offset += snprintf(buffer + offset, prealloc_size - offset, "\\\"isFK\\\":false");
     }
-    offset += sprintf(buffer + offset, "}\"");
+    offset += snprintf(buffer + offset, prealloc_size - offset, "}\"");
 
     /* firmware_key */
     if (request->firmware_key && request->firmware_key[0])
     {
-        offset += sprintf(buffer + offset, ",\"productKeyStr\":\"%s\"", request->firmware_key);
+        offset += snprintf(buffer + offset, prealloc_size - offset, ",\"productKeyStr\":\"%s\"", request->firmware_key);
     }
 
     /* Activated atop */
     if (request->devid && strlen(request->devid) > 0)
     {
-        offset += sprintf(buffer + offset, ",\"devId\":\"%s\"", request->devid);
+        offset += snprintf(buffer + offset, prealloc_size - offset, ",\"devId\":\"%s\"", request->devid);
     }
 
     /* modules */
     if (request->modules && strlen(request->modules) > 0)
     {
-        offset += sprintf(buffer + offset, ",\"modules\":\"%s\"", request->modules);
+        offset += snprintf(buffer + offset, prealloc_size - offset, ",\"modules\":\"%s\"", request->modules);
     }
 
     /* feature */
     if (request->feature && strlen(request->feature) > 0)
     {
-        offset += sprintf(buffer + offset, ",\"feature\":\"%s\"", request->feature);
+        offset += snprintf(buffer + offset, prealloc_size - offset, ",\"feature\":\"%s\"", request->feature);
     }
 
     /* skill_param */
     if (request->skill_param && strlen(request->skill_param) > 0)
     {
-        offset += sprintf(buffer + offset, ",\"skillParam\":\"%s\"", request->skill_param);
+        offset += snprintf(buffer + offset, prealloc_size - offset, ",\"skillParam\":\"%s\"", request->skill_param);
     }
 
     /* default support device OTA */
-    offset += sprintf(buffer + offset, ",\"devAttribute\":%u", 1 << ATTRIBUTE_OTA);
+    offset += snprintf(buffer + offset, prealloc_size - offset, ",\"devAttribute\":%u", 1 << ATTRIBUTE_OTA);
 
-    offset += sprintf(buffer + offset, ",\"cadVer\":\"%s\",\"cdVer\":\"%s\",\"t\":%ld}",
-                      CAD_VER, CD_VER, timestamp);
+    offset += snprintf(buffer + offset, prealloc_size - offset, ",\"cadVer\":\"%s\",\"cdVer\":\"%s\",\"t\":%ld}",
+                       CAD_VER, CD_VER, timestamp);
 
     TY_LOGV("POST JSON:%s", buffer);
 

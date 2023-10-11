@@ -105,11 +105,11 @@ uint8_t check_ota_update()
     char request[512];
     const esp_app_desc_t *app_desc = esp_app_get_description();
 
-    sprintf(request, "GET %s HTTP/1.0\r\n"
-                     "Host: %s\r\n"
-                     "User-Agent: LinkyESP32 V%s\r\n"
-                     "\r\n",
-            OTA_VERSION_URL, OTA_DOMAIN, app_desc->version);
+    snprintf(request, sizeof(request), "GET %s HTTP/1.0\r\n"
+                                       "Host: %s\r\n"
+                                       "User-Agent: LinkyESP32 V%s\r\n"
+                                       "\r\n",
+             OTA_VERSION_URL, OTA_DOMAIN, app_desc->version);
 
     https_get_request(cfg, OTA_VERSION_URL, request);
     return 0;

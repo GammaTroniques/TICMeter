@@ -38,7 +38,7 @@ uint8_t connectToWifi()
         ESP_LOGI(TAG, "No Wifi SSID or password");
         return 0;
     }
-    xTaskCreate(wifiConnectLedTask, "wifiConnectLedTask", 4096, NULL, 1, NULL); // start wifi connect led task
+    xTaskCreate(gpio_led_task_wifi_connecting, "gpio_led_task_wifi_connecting", 4096, NULL, 1, NULL); // start wifi connect led task
     s_retry_num = 0;
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
     s_wifi_event_group = xEventGroupCreate();
@@ -115,8 +115,8 @@ uint8_t connectToWifi()
     wifi_config.sta.sae_pwe_h2e = WPA3_SAE_PWE_HUNT_AND_PECK;
     wifi_config.sta.sae_h2e_identifier[0] = '\0';
 
-    strcpy((char *)wifi_config.sta.ssid, config.values.ssid);
-    strcpy((char *)wifi_config.sta.password, config.values.password);
+    strncpy((char *)wifi_config.sta.ssid, config.values.ssid, sizeof(wifi_config.sta.ssid));
+    strncpy((char *)wifi_config.sta.password, config.values.password, sizeof(wifi_config.sta.password));
 
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err != ESP_OK)
@@ -161,12 +161,12 @@ retry:
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
-        // disconnectFromWifi();
+        disconnectFromWifi();
         return 0;
     }
     else
     {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT: %ld", bits);
+        ESP_LOGE(TAG, "UNEXPECTED EVENT: Timeout");
         goto retry;
         // esp_wifi_deinit();
         // return 0;
@@ -250,7 +250,7 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
         {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
             ESP_LOGE(TAG, "Connect to the AP fail");
-            startLedPattern(PATTERN_WIFI_FAILED);
+            gpio_start_led_pattern(PATTERN_WIFI_FAILED);
         }
         wifiConnected = 0;
     }
@@ -419,7 +419,7 @@ uint8_t sendToServer(const char *json)
         return 0;
     }
     sendingValues = 1;
-    xTaskCreate(sendingLedTask, "sendingLedTask", 2048, NULL, 1, NULL);
+    xTaskCreate(gpio_led_task_sending, "gpio_led_task_sending", 2048, NULL, 1, NULL);
 
     char url[100] = {0};
     createHttpUrl(url, config.values.web.host, config.values.web.postUrl);
@@ -490,7 +490,7 @@ void stop_captive_portal_task(void *pvParameter)
 
     while (1)
     {
-        if (getVUSB() < 3)
+        if (gpio_get_vusb() < 3)
         {
             readCount++;
         }
