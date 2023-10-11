@@ -19,7 +19,7 @@
 
 #include "config.h"
 
-#define ESP_MAXIMUM_RETRY 4
+#define ESP_MAXIMUM_RETRY 3
 #define WIFI_CONNECT_TIMEOUT 10000
 // #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 /**

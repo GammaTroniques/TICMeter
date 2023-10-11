@@ -1,3 +1,17 @@
+/**
+ * @file gpio.cpp
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -18,12 +32,19 @@
 #include "zigbee.h"
 #include "tuya.h"
 
+/*==============================================================================
+ Local Define
+===============================================================================*/
 #define TAG "GPIO"
+#define PATTERN_SIZE 3
 
-adc_oneshot_unit_handle_t adc1_handle;
+/*==============================================================================
+ Local Macro
+===============================================================================*/
 
-led_strip_handle_t led;
-
+/*==============================================================================
+ Local Type
+===============================================================================*/
 enum led_state_t
 {
     NO_FLASH,
@@ -33,7 +54,50 @@ enum led_state_t
     TUYA_FLASH = 0xFA650F,
 };
 
-void initPins()
+typedef struct ledPattern_t
+{
+    uint32_t color;
+    uint32_t tOn;
+    uint32_t tOff;
+} ledPattern_t;
+
+/*==============================================================================
+ Local Function Declaration
+===============================================================================*/
+static void gpio_set_led_color(uint32_t color);
+static bool gpio_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle);
+static void gpio_led_pattern_task(void *pvParameters);
+
+/*==============================================================================
+Public Variable
+===============================================================================*/
+
+/*==============================================================================
+ Local Variable
+===============================================================================*/
+static adc_oneshot_unit_handle_t adc1_handle;
+static led_strip_handle_t led;
+
+// clang-format off
+static const ledPattern_t ledPattern[][PATTERN_SIZE] = {
+    {{0x0008FF,      100, 400}                                                          }, // WIFI_CONNECTING // TODO: remove 
+    {{0xFF8000,      200, 100}                                                          }, // WIFI_RETRY, new try // TODO: remove 
+    {{0xFF0000,      200, 100},                                                         }, // WIFI_FAILED
+    {{0x5EFF00,      500, 100}                                                          }, // LINKY_OK // TODO: remove 
+    {{0xFF00F2,     1000, 100}                                                          }, // LINKY_ERR
+    {{0x00FF00,      200, 500},  {0x00FF00,      200, 500}                              }, // SEND_OK
+    {{0xFF0000,      200, 1000}, {0xFF0000,      200, 1000}                             }, // SEND_ERR
+    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100   }}, // NO_CONFIG // TODO: remove 
+    {{0xE5FF00,       50,   0}                                                          }, // START
+    {{0x8803FC,       100,  400}                                                        }, // PAIRING
+};
+// clang-format on
+
+/*==============================================================================
+Function Implementation
+===============================================================================*/
+
+void gpio_init_pins()
 {
     gpio_set_direction(LED_EN, GPIO_MODE_OUTPUT);
     // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
@@ -66,7 +130,7 @@ void initPins()
     // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
 }
 
-void setLedColor(uint32_t color)
+static void gpio_set_led_color(uint32_t color)
 {
     if (color == 0)
     {
@@ -91,7 +155,7 @@ void setLedColor(uint32_t color)
     led_strip_refresh(led);
 }
 
-static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
+static bool gpio_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
     adc_cali_handle_t handle = NULL;
     esp_err_t ret = ESP_FAIL;
@@ -147,7 +211,8 @@ static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel,
     }
     return calibrated;
 }
-float getVCondo()
+
+float gpio_get_vcondo()
 {
     esp_log_level_set("ADC", ESP_LOG_DEBUG);
     adc_oneshot_unit_init_cfg_t init_config1 = {};
@@ -161,7 +226,7 @@ float getVCondo()
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_CONDO_PIN, &config));
 
     adc_cali_handle_t adc_cali_handle = NULL;
-    bool do_calibration = example_adc_calibration_init(ADC_UNIT_1, V_CONDO_PIN, ADC_ATTEN_DB_11, &adc_cali_handle);
+    bool do_calibration = gpio_adc_calibration_init(ADC_UNIT_1, V_CONDO_PIN, ADC_ATTEN_DB_11, &adc_cali_handle);
 
     int raw = 0;
     ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, V_CONDO_PIN, &raw));
@@ -178,7 +243,7 @@ float getVCondo()
     return 0.0;
 }
 
-float getVUSB()
+float gpio_get_vusb()
 {
     adc_oneshot_unit_init_cfg_t init_config1 = {};
     init_config1.unit_id = ADC_UNIT_1;
@@ -191,7 +256,7 @@ float getVUSB()
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_USB_PIN, &config));
 
     adc_cali_handle_t adc_cali_handle = NULL;
-    bool do_calibration = example_adc_calibration_init(ADC_UNIT_1, V_USB_PIN, ADC_ATTEN_DB_11, &adc_cali_handle);
+    bool do_calibration = gpio_adc_calibration_init(ADC_UNIT_1, V_USB_PIN, ADC_ATTEN_DB_11, &adc_cali_handle);
 
     int raw = 0;
     ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, V_USB_PIN, &raw));
@@ -208,7 +273,7 @@ float getVUSB()
     return 0.0;
 }
 
-void pairingButtonTask(void *pvParameters)
+void gpio_pairing_button_task(void *pvParameters)
 {
     uint32_t startPushTime = 0;
     uint8_t lastState = 1;
@@ -255,7 +320,7 @@ void pairingButtonTask(void *pvParameters)
                         break;
                     }
                     ESP_LOGI(TAG, "------------------------LED state: %d", ledState);
-                    setLedColor(ledState);
+                    gpio_set_led_color(ledState);
                 }
             }
             else if (pushTime > 2000)
@@ -265,7 +330,7 @@ void pairingButtonTask(void *pvParameters)
                 {
                     ledState = PAIRING_FLASH; // flash pairing led
                     suspendTask(noConfigLedTaskHandle);
-                    startLedPattern(PATTERN_PAIRING);
+                    gpio_start_led_pattern(PATTERN_PAIRING);
                 }
             }
             else
@@ -307,7 +372,7 @@ void pairingButtonTask(void *pvParameters)
                 else if (pushTime > 2000 && pushTime <= 4000)
                 {
                     ESP_LOGI(TAG, "Pairing mode");
-                    xTaskCreate(pairingLedTask, "pairingLedTask", 2048, NULL, 5, NULL);
+                    xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 2048, NULL, 5, NULL);
                     if (pairingState)
                     {
                         // already in pairing mode
@@ -355,134 +420,110 @@ void pairingButtonTask(void *pvParameters)
     }
 }
 
-typedef struct ledPattern_t
-{
-    uint32_t color;
-    uint32_t tOn;
-    uint32_t tOff;
-} ledPattern_t;
-
-#define PATTERN_SIZE 3
-
-// clang-format off
-const ledPattern_t ledPattern[][PATTERN_SIZE] = {
-    {{0x0008FF,      100, 400}                                                          }, // WIFI_CONNECTING // TODO: remove 
-    {{0xFF8000,      200, 100}                                                          }, // WIFI_RETRY, new try // TODO: remove 
-    {{0xFF0000,      200, 100},                                                         }, // WIFI_FAILED
-    {{0x5EFF00,      500, 100}                                                          }, // LINKY_OK // TODO: remove 
-    {{0xFF00F2,     1000, 100}                                                          }, // LINKY_ERR
-    {{0x00FF00,      200, 500},  {0x00FF00,      200, 500}                              }, // SEND_OK
-    {{0xFF0000,      200, 1000}, {0xFF0000,      200, 1000}                             }, // SEND_ERR
-    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100   }}, // NO_CONFIG // TODO: remove 
-    {{0xE5FF00,       50,   0}                                                          }, // START
-    {{0x8803FC,       100,  400}                                                        }, // PAIRING
-};
-// clang-format on
-
-void ledPatternTask(void *pvParameters)
+static void gpio_led_pattern_task(void *pvParameters)
 {
     uint8_t id = *(uint8_t *)pvParameters;
     for (int i = 0; i < PATTERN_SIZE; i++)
     {
-        setLedColor(ledPattern[id][i].color);
+        gpio_set_led_color(ledPattern[id][i].color);
         vTaskDelay(ledPattern[id][i].tOn / portTICK_PERIOD_MS);
-        setLedColor(0);
+        gpio_set_led_color(0);
         vTaskDelay(ledPattern[id][i].tOff / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); // Delete this task
 }
 
-void startLedPattern(uint8_t pattern)
+void gpio_start_led_pattern(uint8_t pattern)
 {
     static TaskHandle_t ledPatternTaskHandle = NULL;
     static uint8_t lastPattern;
     lastPattern = pattern;
-    xTaskCreate(ledPatternTask, "ledPatternTask", 2048, &lastPattern, 5, &ledPatternTaskHandle);
+    xTaskCreate(gpio_led_pattern_task, "gpio_led_pattern_task", 2048, &lastPattern, 5, &ledPatternTaskHandle);
 }
 
-void startLedPattern()
+void gpio_boot_led_pattern()
 {
     switch (config.values.mode)
     {
     case MODE_WEB:
     case MODE_MQTT:
     case MODE_MQTT_HA:
-        setLedColor(WEB_FLASH);
+        gpio_set_led_color(WEB_FLASH);
         break;
 
     case MODE_TUYA:
-        setLedColor(TUYA_FLASH);
+        gpio_set_led_color(TUYA_FLASH);
         break;
     case MODE_ZIGBEE:
-        setLedColor(ZIGBEE_FLASH);
+        gpio_set_led_color(ZIGBEE_FLASH);
         break;
     default:
         break;
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
-    setLedColor(0);
+    gpio_set_led_color(0);
 }
 
-void noConfigLedTask(void *pvParameters)
+void gpio_led_task_no_config(void *pvParameters)
 {
     while (config.verify())
     {
         vTaskDelay(5000 / portTICK_PERIOD_MS);
         for (int i = 0; i < 3; i++)
         {
-            setLedColor(0xFF0000);
+            gpio_set_led_color(0xFF0000);
             vTaskDelay(50 / portTICK_PERIOD_MS);
-            setLedColor(0);
+            gpio_set_led_color(0);
             vTaskDelay(100 / portTICK_PERIOD_MS);
         }
     }
     vTaskDelete(NULL); // Delete this task
 }
 
-void wifiConnectLedTask(void *pvParameters)
+void gpio_led_task_wifi_connecting(void *pvParameters)
 {
     uint32_t timout = MILLIS + WIFI_CONNECT_TIMEOUT;
     while (!wifiConnected && MILLIS < timout)
     {
-        setLedColor(WEB_FLASH);
+        gpio_set_led_color(WEB_FLASH);
         vTaskDelay(100 / portTICK_PERIOD_MS);
-        setLedColor(0);
+        gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); // Delete this task
 }
 
-void linkyReadingLedTask(void *pvParameters)
+void gpio_led_task_linky_reading(void *pvParameters)
 {
     while (linky.reading)
     {
-        setLedColor(0xFF8000);
+        gpio_set_led_color(0xFF8000);
         vTaskDelay(100 / portTICK_PERIOD_MS);
-        setLedColor(0);
+        gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); // Delete this task
 }
 
-void sendingLedTask(void *pvParameters)
+void gpio_led_task_sending(void *pvParameters)
 {
     while (sendingValues)
     {
-        setLedColor(0xc300ff);
+        gpio_set_led_color(0xc300ff);
         vTaskDelay(100 / portTICK_PERIOD_MS);
-        setLedColor(0);
+        gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); // Delete this task
 }
 
-void pairingLedTask(void *pvParameters)
+void gpio_led_task_pairing(void *pvParameters)
 {
     while (1)
     {
-        setLedColor(0x8803FC);
+        gpio_set_led_color(0x8803FC);
         vTaskDelay(100 / portTICK_PERIOD_MS);
-        setLedColor(0);
+        gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); // Delete this task

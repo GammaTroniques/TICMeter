@@ -16,15 +16,23 @@ static QRcode *encode(const unsigned char *intext, int length)
 {
 	QRcode *code;
 
-	if(micro) {
-		if(eightbit) {
+	if (micro)
+	{
+		if (eightbit)
+		{
 			code = QRcode_encodeDataMQR(length, intext, version, level);
-		} else {
+		}
+		else
+		{
 			code = QRcode_encodeStringMQR((char *)intext, version, level, hint, casesensitive);
 		}
-	} else if(eightbit) {
+	}
+	else if (eightbit)
+	{
 		code = QRcode_encodeData(length, intext, version, level);
-	} else {
+	}
+	else
+	{
 		code = QRcode_encodeString((char *)intext, version, level, hint, casesensitive);
 	}
 
@@ -35,11 +43,15 @@ static FILE *openFile(const char *outfile)
 {
 	FILE *fp;
 
-	if(outfile == NULL || (outfile[0] == '-' && outfile[1] == '\0')) {
+	if (outfile == NULL || (outfile[0] == '-' && outfile[1] == '\0'))
+	{
 		fp = stdout;
-	} else {
+	}
+	else
+	{
 		fp = fopen(outfile, "wb");
-		if(fp == NULL) {
+		if (fp == NULL)
+		{
 			fprintf(stderr, "Failed to create file: %s\n", outfile);
 			perror(NULL);
 			exit(EXIT_FAILURE);
@@ -49,12 +61,13 @@ static FILE *openFile(const char *outfile)
 	return fp;
 }
 
-static void writeUTF8_margin(FILE* fp, int realwidth, const char* white,
-                             const char *reset, const char* full)
+static void writeUTF8_margin(FILE *fp, int realwidth, const char *white,
+							 const char *reset, const char *full)
 {
 	int x, y;
 
-	for (y = 0; y < margin/2; y++) {
+	for (y = 0; y < margin / 2; y++)
+	{
 		fputs(white, fp);
 		for (x = 0; x < realwidth; x++)
 			fputs(full, fp);
@@ -76,7 +89,8 @@ static int writeUTF8(const QRcode *qrcode, const char *outfile, int use_ansi, in
 	uphalf = "\342\226\200";
 	full = "\342\226\210";
 
-	if (invert) {
+	if (invert)
+	{
 		const char *tmp;
 
 		tmp = empty;
@@ -88,14 +102,20 @@ static int writeUTF8(const QRcode *qrcode, const char *outfile, int use_ansi, in
 		uphalf = tmp;
 	}
 
-	if (use_ansi){
-		if (use_ansi == 2) {
+	if (use_ansi)
+	{
+		if (use_ansi == 2)
+		{
 			white = "\033[38;5;231m\033[48;5;16m";
-		} else {
+		}
+		else
+		{
 			white = "\033[40;37;1m";
 		}
 		reset = "\033[0m";
-	} else {
+	}
+	else
+	{
 		white = "";
 		reset = "";
 	}
@@ -108,27 +128,38 @@ static int writeUTF8(const QRcode *qrcode, const char *outfile, int use_ansi, in
 	writeUTF8_margin(fp, realwidth, white, reset, full);
 
 	/* data */
-	for(y = 0; y < qrcode->width; y += 2) {
+	for (y = 0; y < qrcode->width; y += 2)
+	{
 		unsigned char *row1, *row2;
-		row1 = qrcode->data + y*qrcode->width;
+		row1 = qrcode->data + y * qrcode->width;
 		row2 = row1 + qrcode->width;
 
 		fputs(white, fp);
 
-		for (x = 0; x < margin; x++) {
+		for (x = 0; x < margin; x++)
+		{
 			fputs(full, fp);
 		}
 
-		for (x = 0; x < qrcode->width; x++) {
-			if(row1[x] & 1) {
-				if(y < qrcode->width - 1 && row2[x] & 1) {
+		for (x = 0; x < qrcode->width; x++)
+		{
+			if (row1[x] & 1)
+			{
+				if (y < qrcode->width - 1 && row2[x] & 1)
+				{
 					fputs(empty, fp);
-				} else {
+				}
+				else
+				{
 					fputs(lowhalf, fp);
 				}
-			} else if(y < qrcode->width - 1 && row2[x] & 1) {
+			}
+			else if (y < qrcode->width - 1 && row2[x] & 1)
+			{
 				fputs(uphalf, fp);
-			} else {
+			}
+			else
+			{
 				fputs(full, fp);
 			}
 		}
@@ -148,12 +179,12 @@ static int writeUTF8(const QRcode *qrcode, const char *outfile, int use_ansi, in
 	return 0;
 }
 
-void example_qrcode_print(const char* productkey, const char* uuid)
+void example_qrcode_print(const char *productkey, const char *uuid)
 {
 	char buffer[255];
 	printf("\r\n");
-	sprintf(buffer, "https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", productkey, uuid);
+	snprintf(buffer, sizeof(buffer), "https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", productkey, uuid);
 
-    QRcode* qrcode = encode((const unsigned char*)buffer, sizeof(buffer));
-    writeUTF8(qrcode, NULL, 0, 0);
+	QRcode *qrcode = encode((const unsigned char *)buffer, sizeof(buffer));
+	writeUTF8(qrcode, NULL, 0, 0);
 }

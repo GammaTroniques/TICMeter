@@ -1,3 +1,17 @@
+/**
+ * @file main.cpp
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023
+ *
+ */
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -28,21 +42,48 @@
 #include "zigbee.h"
 #include "tuya.h"
 
+/*==============================================================================
+ Local Define
+===============================================================================*/
+#define MAIN_TAG "MAIN"
+
+/*==============================================================================
+ Local Macro
+===============================================================================*/
+
+/*==============================================================================
+ Local Type
+===============================================================================*/
+
+/*==============================================================================
+ Local Function Declaration
+===============================================================================*/
+
+/*==============================================================================
+Public Variable
+===============================================================================*/
 Config config;
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
 TaskHandle_t noConfigLedTaskHandle = NULL;
 
-#define MAIN_TAG "MAIN"
+/*==============================================================================
+ Local Variable
+===============================================================================*/
+
+/*==============================================================================
+Function Implementation
+===============================================================================*/
+
 extern "C" void app_main(void)
 {
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
-  initPins();
+  gpio_init_pins();
   config.begin();
-  startLedPattern();
-  xTaskCreate(pairingButtonTask, "pairingButtonTask", 8192, NULL, 1, NULL); // start push button task
-  shellInit();                                                              // init shell
+  gpio_boot_led_pattern();
+  xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, 1, NULL); // start push button task
+  shellInit();                                                                            // init shell
 
-  if (/*getVUSB() > 3 && */ config.values.tuyaBinded == 2) //
+  if (/*gpio_get_vusb() > 3 && */ config.values.tuyaBinded == 2) //
   {
     ESP_LOGI(MAIN_TAG, "Tuya pairing");
     xTaskCreate(tuyaPairingTask, "tuyaPairingTask", 8192, NULL, 1, NULL); // start tuya pairing task
@@ -54,7 +95,7 @@ extern "C" void app_main(void)
 
   if (config.verify())
   {
-    xTaskCreate(noConfigLedTask, "noConfigLedTask", 1024, NULL, 1, &noConfigLedTaskHandle); // start no config led task
+    xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 1024, NULL, 1, &noConfigLedTaskHandle); // start no config led task
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config.verify())
     {
@@ -67,7 +108,7 @@ extern "C" void app_main(void)
 
   // check if VCondo is too low and go to deep sleep
   // the BOOT_PIN is used to prevent deep sleep when the device is plugged to a computer for debug
-  // if (getVUSB() < 3 && getVCondo() < 3.5 && config.values.sleep && gpio_get_level(BOOT_PIN))
+  // if (gpio_get_vusb() < 3 && gpio_get_vcondo() < 3.5 && config.values.sleep && gpio_get_level(BOOT_PIN))
   // {
   //   ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
   //   esp_sleep_enable_timer_wakeup(10 * 1000000); // 10 second
@@ -129,7 +170,7 @@ void fetchLinkyDataTask(void *pvParameters)
         !linky.presence())
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed: \n %s", linky.buffer);
-      startLedPattern(PATTERN_LINKY_ERR);
+      gpio_start_led_pattern(PATTERN_LINKY_ERR);
       vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
       continue;
     }
@@ -163,13 +204,13 @@ void fetchLinkyDataTask(void *pvParameters)
       if (connectToWifi())
       {
         ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
-        sendToMqtt(&linky.data);
+        mqtt_send(&linky.data);
         disconnectFromWifi();
-        startLedPattern(PATTERN_SEND_OK);
+        gpio_start_led_pattern(PATTERN_SEND_OK);
       }
       else
       {
-        startLedPattern(PATTERN_SEND_ERR);
+        gpio_start_led_pattern(PATTERN_SEND_ERR);
       }
       break;
     case MODE_TUYA:
@@ -180,21 +221,21 @@ void fetchLinkyDataTask(void *pvParameters)
         if (waitTuyaEvent(TUYA_EVENT_MQTT_CONNECTED, 5000))
         {
           ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
-          startLedPattern(PATTERN_SEND_ERR);
+          gpio_start_led_pattern(PATTERN_SEND_ERR);
           goto tuya_disconect;
         }
 
         if (send_tuya_data(&linky.data))
         {
           ESP_LOGE(MAIN_TAG, "Tuya SEND ERROR");
-          startLedPattern(PATTERN_SEND_ERR);
+          gpio_start_led_pattern(PATTERN_SEND_ERR);
           goto tuya_disconect;
         }
       tuya_disconect:
         disconnectFromWifi();
         waitTuyaEvent(TUYA_EVENT_MQTT_DISCONNECT, 5000);
         suspendTask(tuyaTaskHandle);
-        startLedPattern(PATTERN_SEND_OK);
+        gpio_start_led_pattern(PATTERN_SEND_OK);
       }
       break;
     case MODE_ZIGBEE:
@@ -204,7 +245,7 @@ void fetchLinkyDataTask(void *pvParameters)
     }
 
     uint32_t sleepTime = abs(config.values.refreshRate - 5);
-    if (config.values.sleep && getVUSB() < 3) // if deepsleep is enable and we are not connected to USB
+    if (config.values.sleep && gpio_get_vusb() < 3) // if deepsleep is enable and we are not connected to USB
     {
       ESP_LOGI(MAIN_TAG, "Going to sleep for %ld seconds", sleepTime);
       esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
@@ -217,7 +258,7 @@ void fetchLinkyDataTask(void *pvParameters)
       {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         sleepTime--;
-        if (getVUSB() < 3)
+        if (gpio_get_vusb() < 3)
         {
           ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", sleepTime);
           esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop

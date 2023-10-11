@@ -6,6 +6,7 @@
 #include <inttypes.h>
 #include "nvs_flash.h"
 #include <string.h>
+#include "esp_check.h"
 
 #include "config.h"
 
@@ -64,9 +65,30 @@ static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask)
     ESP_ERROR_CHECK(esp_zb_bdb_start_top_level_commissioning(mode_mask));
 }
 
-void attr_cb(uint8_t status, uint8_t endpoint, uint16_t cluster_id, uint16_t attr_id, void *new_value)
+static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message)
 {
-    ESP_LOGI(TAG, "cluster:0x%x, attribute:0x%x changed ", cluster_id, attr_id);
+    esp_err_t ret = ESP_OK;
+    ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
+    ESP_RETURN_ON_FALSE(message->info.status == ESP_ZB_ZCL_STATUS_SUCCESS, ESP_ERR_INVALID_ARG, TAG, "Received message: error status(%d)",
+                        message->info.status);
+    ESP_LOGI(TAG, "Received message: endpoint(0x%x), cluster(0x%x), attribute(0x%x), data size(%d)", message->info.dst_endpoint, message->info.cluster,
+             message->attribute.id, message->attribute.data.size);
+    return ret;
+}
+
+static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message)
+{
+    esp_err_t ret = ESP_OK;
+    switch (callback_id)
+    {
+    case ESP_ZB_CORE_SET_ATTR_VALUE_CB_ID:
+        ret = zb_attribute_handler((esp_zb_zcl_set_attr_value_message_t *)message);
+        break;
+    default:
+        ESP_LOGW(TAG, "Receive Zigbee action(0x%x) callback", callback_id);
+        break;
+    }
+    return ret;
 }
 
 void init_zigbee()
@@ -109,7 +131,7 @@ void zigbee_task(void *pvParameters)
 
     const esp_app_desc_t *app_desc = esp_app_get_description();
     uint8_t SWBuildID[35];
-    sprintf((char *)SWBuildID, "%c%s", strlen(app_desc->version), app_desc->version);
+    snprintf((char *)SWBuildID, sizeof(SWBuildID), "%c%s", strlen(app_desc->version), app_desc->version);
     esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_APPLICATION_VERSION_ID, &ApplicationVersion);
     esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_STACK_VERSION_ID, &StackVersion);
     esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_HW_VERSION_ID, &HWVersion);
@@ -145,7 +167,7 @@ void zigbee_task(void *pvParameters)
     // esp_zb_electrical_meas_cluster_add_attr(esp_zb_electrical_meas_cluster, ESP_ZB_ZCL_ATTR_ELECTRICAL_MEASUREMENT_APPARENT_POWER_ID, (uint16_t *)&linky.data.hist.PAPP);
 
     // ------------------ LinkyCustomCluster ------------------
-    char *test = "test";
+    char test[] = "test";
     esp_zb_attribute_list_t *esp_zb_linky_custom_cluster = esp_zb_zcl_attr_list_create(0xFF66);
     esp_zb_custom_cluster_add_custom_attr(esp_zb_linky_custom_cluster, 0x0001, ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, test);
     esp_zb_custom_cluster_add_custom_attr(esp_zb_linky_custom_cluster, 0x0002, ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, test);
@@ -173,8 +195,7 @@ void zigbee_task(void *pvParameters)
     esp_zb_device_register(esp_zb_ep_list);
 
     //------------------ Callbacks ------------------
-    esp_zb_device_add_set_attr_value_cb(attr_cb);
-    // esp_zb_device_add_report_attr_cb(attr_cb);
+    esp_zb_core_action_handler_register(zb_action_handler);
 
     esp_zb_set_primary_network_channel_set(ZIGBEE_CHANNEL_MASK);
     ESP_LOGI(TAG, "Primary channel mask");

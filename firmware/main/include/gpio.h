@@ -1,8 +1,25 @@
+/**
+ * @file gpio.h
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
 
 #ifndef __GPIO_H__
 #define __GPIO_H__
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 #include <stdio.h>
 
+/*==============================================================================
+ Public Defines
+==============================================================================*/
 #define RX_LINKY 17
 #define V_CONDO_PIN ADC_CHANNEL_4
 #define V_USB_PIN ADC_CHANNEL_1
@@ -28,23 +45,95 @@
 #define PATTERN_START 8
 #define PATTERN_PAIRING 9
 
-void initPins();
+/*==============================================================================
+ Public Macro
+==============================================================================*/
 
-float getVUSB();
+/*==============================================================================
+ Public Type
+==============================================================================*/
+
+/*==============================================================================
+ Public Variables Declaration
+==============================================================================*/
+
+/*==============================================================================
+ Public Functions Declaration
+==============================================================================*/
+
+/**
+ * @brief Init the GPIOs
+ *
+ */
+void gpio_init_pins();
+
+/**
+ * @brief  Get the tension of the USB
+ *
+ * @return float: voltage in V
+ */
+float gpio_get_vusb();
 
 /**
  * @brief Get the tension of the condo
  *
- * @return float
+ * @return float: voltage in V
  */
-float getVCondo();
-void pairingButtonTask(void *pvParameter);
-void startLedPattern(uint8_t pattern);
-void noConfigLedTask(void *pvParameters);
-void wifiConnectLedTask(void *pvParameters);
-void linkyReadingLedTask(void *pvParameters);
-void sendingLedTask(void *pvParameters);
-void pairingLedTask(void *pvParameters);
-void startLedPattern();
+float gpio_get_vcondo();
 
-#endif
+/**
+ * @brief The pairing button task
+ *
+ * @param pvParameter Not used
+ */
+void gpio_pairing_button_task(void *pvParameter);
+
+/**
+ * @brief Start a led pattern
+ *
+ * @param pattern: see ledPattern
+ */
+void gpio_start_led_pattern(uint8_t pattern);
+
+/**
+ * @brief The blink led task when no config is found
+ *
+ * @param pvParameters Not used
+ */
+void gpio_led_task_no_config(void *pvParameters);
+
+/**
+ * @brief The blink led task when wifi is connecting
+ *
+ * @param pvParameters Not used
+ */
+void gpio_led_task_wifi_connecting(void *pvParameters);
+
+/**
+ * @brief The blink led task when linky data is fetching
+ *
+ * @param pvParameters Not used
+ */
+void gpio_led_task_linky_reading(void *pvParameters);
+
+/**
+ * @brief The blink led task when data is sending
+ *
+ * @param pvParameters Not used
+ */
+void gpio_led_task_sending(void *pvParameters);
+
+/**
+ * @brief The blink led task when pairing is in progress
+ *
+ * @param pvParameters Not used
+ */
+void gpio_led_task_pairing(void *pvParameters);
+
+/**
+ * @brief Start a led pattern: Blink led when starting with the color of the mode
+ *
+ */
+void gpio_boot_led_pattern();
+
+#endif /* __GPIO_H__ */
