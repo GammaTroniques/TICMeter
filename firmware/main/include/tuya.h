@@ -1,6 +1,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "Linky.h"
+#include "linky.h"
 #include "tuya_iot.h"
 
 #ifndef TUYA_H
