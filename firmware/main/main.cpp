@@ -86,7 +86,7 @@ extern "C" void app_main(void)
   if (/*gpio_get_vusb() > 3 && */ config.values.tuyaBinded == 2) //
   {
     ESP_LOGI(MAIN_TAG, "Tuya pairing");
-    xTaskCreate(tuyaPairingTask, "tuyaPairingTask", 8192, NULL, 1, NULL); // start tuya pairing task
+    xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8192, NULL, 1, NULL); // start tuya pairing task
     while (config.values.tuyaBinded == 2)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -119,35 +119,35 @@ extern "C" void app_main(void)
   {
   case MODE_WEB:
     // connect to wifi
-    if (connectToWifi())
+    if (wifi_connect())
     {
-      getTimestamp();               // get timestamp from ntp server
-      getConfigFromServer(&config); // get config from server
+      wifi_get_timestamp();                      // get timestamp from ntp server
+      wifi_http_get_config_from_server(&config); // get config from server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
-      disconnectFromWifi();
+      wifi_disconnect();
     }
     break;
   case MODE_MQTT:
   case MODE_MQTT_HA:
     // connect to wifi
-    if (connectToWifi())
+    if (wifi_connect())
     {
-      getTimestamp(); // get timestamp from ntp server
+      wifi_get_timestamp(); // get timestamp from ntp server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
-      disconnectFromWifi();
+      wifi_disconnect();
     }
     break;
   case MODE_ZIGBEE:
-    // init_zigbee();
+    // zigbee_init_stack();
     // zigbee_task(0);
     break;
   case MODE_TUYA:
-    if (connectToWifi())
+    if (wifi_connect())
     {
-      init_tuya();
+      tuya_init();
       // vTaskDelay(1000 / portTICK_PERIOD_MS);
       // vTaskSuspend(tuyaTaskHandle);
-      // disconnectFromWifi();
+      // wifi_disconnect();
     }
     break;
   default:
@@ -183,29 +183,29 @@ void fetchLinkyDataTask(void *pvParameters)
         dataIndex = 0;
       }
       dataArray[dataIndex] = linky.data;
-      dataArray[dataIndex++].timestamp = getTimestamp();
+      dataArray[dataIndex++].timestamp = wifi_get_timestamp();
       ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].timestamp);
       if (dataIndex > 2)
       {
         char json[1024] = {0};
-        preapareJsonData(dataArray, dataIndex, json, sizeof(json));
+        web_preapare_json_data(dataArray, dataIndex, json, sizeof(json));
         ESP_LOGI(MAIN_TAG, "Sending data to server");
-        if (connectToWifi())
+        if (wifi_connect())
         {
           ESP_LOGI(MAIN_TAG, "POST: %s", json);
-          sendToServer(json);
+          wifi_send_to_server(json);
         }
-        disconnectFromWifi();
+        wifi_disconnect();
         dataIndex = 0;
       }
       break;
     case MODE_MQTT:
     case MODE_MQTT_HA: // send data to mqtt server
-      if (connectToWifi())
+      if (wifi_connect())
       {
         ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
         mqtt_send(&linky.data);
-        disconnectFromWifi();
+        wifi_disconnect();
         gpio_start_led_pattern(PATTERN_SEND_OK);
       }
       else
@@ -214,32 +214,32 @@ void fetchLinkyDataTask(void *pvParameters)
       }
       break;
     case MODE_TUYA:
-      if (connectToWifi())
+      if (wifi_connect())
       {
         ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
         resumeTask(tuyaTaskHandle); // resume tuya task
-        if (waitTuyaEvent(TUYA_EVENT_MQTT_CONNECTED, 5000))
+        if (tuya_wait_event(TUYA_EVENT_MQTT_CONNECTED, 5000))
         {
           ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
           gpio_start_led_pattern(PATTERN_SEND_ERR);
           goto tuya_disconect;
         }
 
-        if (send_tuya_data(&linky.data))
+        if (tuya_send_data(&linky.data))
         {
           ESP_LOGE(MAIN_TAG, "Tuya SEND ERROR");
           gpio_start_led_pattern(PATTERN_SEND_ERR);
           goto tuya_disconect;
         }
       tuya_disconect:
-        disconnectFromWifi();
-        waitTuyaEvent(TUYA_EVENT_MQTT_DISCONNECT, 5000);
+        wifi_disconnect();
+        tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
         suspendTask(tuyaTaskHandle);
         gpio_start_led_pattern(PATTERN_SEND_OK);
       }
       break;
     case MODE_ZIGBEE:
-      sendToZigbee(&linky.data);
+      zigbee_send(&linky.data);
     default:
       break;
     }

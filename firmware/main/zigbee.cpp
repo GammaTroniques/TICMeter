@@ -1,3 +1,17 @@
+/**
+ * @file zigbee.cpp
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-19
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 #include "zigbee.h"
 #include "esp_zigbee_core.h"
 #include "esp_app_desc.h"
@@ -9,8 +23,40 @@
 #include "esp_check.h"
 
 #include "config.h"
+/*==============================================================================
+ Local Define
+===============================================================================*/
 
 #define TAG "ZIGBEE"
+
+/*==============================================================================
+ Local Macro
+===============================================================================*/
+
+/*==============================================================================
+ Local Type
+===============================================================================*/
+
+/*==============================================================================
+ Local Function Declaration
+===============================================================================*/
+static void zigbee_bdb_start_top_level_commissioning_cb(uint8_t mode_mask);
+static esp_err_t zigbee_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message);
+static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message);
+static void zigbee_task(void *pvParameters);
+static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length);
+
+/*==============================================================================
+Public Variable
+===============================================================================*/
+
+/*==============================================================================
+ Local Variable
+===============================================================================*/
+
+/*==============================================================================
+Function Implementation
+===============================================================================*/
 
 void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
 {
@@ -51,7 +97,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         else
         {
             ESP_LOGI(TAG, "Network steering was not successful (status: %d)", err_status);
-            esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 1000);
+            esp_zb_scheduler_alarm((esp_zb_callback_t)zigbee_bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 1000);
         }
         break;
     default:
@@ -60,12 +106,12 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     }
 }
 
-static void bdb_start_top_level_commissioning_cb(uint8_t mode_mask)
+static void zigbee_bdb_start_top_level_commissioning_cb(uint8_t mode_mask)
 {
     ESP_ERROR_CHECK(esp_zb_bdb_start_top_level_commissioning(mode_mask));
 }
 
-static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message)
+static esp_err_t zigbee_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message)
 {
     esp_err_t ret = ESP_OK;
     ESP_RETURN_ON_FALSE(message, ESP_FAIL, TAG, "Empty message");
@@ -76,13 +122,13 @@ static esp_err_t zb_attribute_handler(const esp_zb_zcl_set_attr_value_message_t 
     return ret;
 }
 
-static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message)
+static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message)
 {
     esp_err_t ret = ESP_OK;
     switch (callback_id)
     {
     case ESP_ZB_CORE_SET_ATTR_VALUE_CB_ID:
-        ret = zb_attribute_handler((esp_zb_zcl_set_attr_value_message_t *)message);
+        ret = zigbee_attribute_handler((esp_zb_zcl_set_attr_value_message_t *)message);
         break;
     default:
         ESP_LOGW(TAG, "Receive Zigbee action(0x%x) callback", callback_id);
@@ -91,7 +137,7 @@ static esp_err_t zb_action_handler(esp_zb_core_action_callback_id_t callback_id,
     return ret;
 }
 
-void init_zigbee()
+void zigbee_init_stack()
 {
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_LOGI(TAG, "Initializing Zigbee stack");
@@ -103,7 +149,7 @@ void init_zigbee()
     xTaskCreate(zigbee_task, "Zigbee_main", 4096, NULL, 5, NULL);
 }
 
-void zigbee_task(void *pvParameters)
+static void zigbee_task(void *pvParameters)
 {
     // clang-format on
     // ESP_LOGI(TAG, "Resetting Zigbee stack");
@@ -195,7 +241,7 @@ void zigbee_task(void *pvParameters)
     esp_zb_device_register(esp_zb_ep_list);
 
     //------------------ Callbacks ------------------
-    esp_zb_core_action_handler_register(zb_action_handler);
+    esp_zb_core_action_handler_register(zigbee_action_handler);
 
     esp_zb_set_primary_network_channel_set(ZIGBEE_CHANNEL_MASK);
     ESP_LOGI(TAG, "Primary channel mask");
@@ -206,7 +252,7 @@ void zigbee_task(void *pvParameters)
     esp_zb_main_loop_iteration();
 }
 
-void reportAttribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length)
+static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length)
 {
     esp_zb_zcl_report_attr_cmd_t cmd = {
         .zcl_basic_cmd = {
@@ -226,13 +272,13 @@ void reportAttribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID,
     esp_zb_zcl_report_attr_cmd_req(&cmd);
 }
 
-uint8_t sendToZigbee(LinkyData *data)
+uint8_t zigbee_send(LinkyData *data)
 {
     static uint8_t fistCall = 0;
     if (fistCall == 0)
     {
         fistCall = 1;
-        init_zigbee();
+        zigbee_init_stack();
     }
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
@@ -241,7 +287,7 @@ uint8_t sendToZigbee(LinkyData *data)
             ESP_LOGI(TAG, "Repprting attribute: %s, value: %d", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
             if (LinkyLabelList[i].realTime == REAL_TIME)
             {
-                reportAttribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, LinkyLabelList[i].type);
+                zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, LinkyLabelList[i].type);
             }
             else
             {
