@@ -1,5 +1,20 @@
+/**
+ * @file linky.h
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
+
 #ifndef Linky_H
 #define Linky_H
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -7,28 +22,24 @@
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "string.h"
+/*==============================================================================
+ Public Defines
+==============================================================================*/
 
-// clang-format off
-#define START_OF_FRAME  0x02 // The start of frame character
-#define END_OF_FRAME    0x03   // The end of frame character
+/*==============================================================================
+ Public Macro
+==============================================================================*/
 
-#define START_OF_GROUP  0x0A  // The start of group character
-#define END_OF_GROUP    0x0D    // The end of group character
-
-
-#define RX_BUF_SIZE     1024 // The size of the UART buffer
-#define BUFFER_SIZE     1024 // The size of the UART buffer
-#define FRAME_COUNT     5   // The max number of frame in buffer
-#define FRAME_SIZE      500   // The size of one frame buffer
-#define GROUP_COUNT     50
-
-#define LINKY_TAG "Linky"
-
-typedef struct {
+/*==============================================================================
+ Public Type
+==============================================================================*/
+typedef struct
+{
     uint32_t value = UINT32_MAX;
     time_t timestamp = 0;
 } TimeLabel;
 
+// clang-format off
 typedef struct
 {
     //  Variables                   Taille      Unité       Description
@@ -175,7 +186,9 @@ typedef struct
 
 }LinkyDataStd;
 
-typedef enum : uint8_t{
+// clang-format on
+typedef enum : uint8_t
+{
     UINT8 = 1,
     UINT16 = 2,
     UINT32 = 4,
@@ -186,7 +199,6 @@ typedef enum : uint8_t{
     BLOB = 14,
 } LinkyLabelType;
 
-// clang-format on
 enum LinkyMode
 {
     MODE_HISTORIQUE,
@@ -218,21 +230,6 @@ enum HADeviceClass
     BOOL,
 };
 
-const char *const HADeviceClassStr[] = {
-    [NONE_CLASS] = "",
-    [CURRENT] = "current",
-    [POWER_VA] = "power",
-    [POWER_kVA] = "power",
-    [POWER_W] = "power",
-    [POWER_Q] = "power",
-    [ENERGY] = "energy",
-    [ENERGY_Q] = "energy",
-    [TIMESTAMP] = "timestamp",
-    [TENSION] = "voltage",
-    [TEXT] = "text",
-    [BOOL] = "binary_sensor",
-};
-
 struct LinkyGroup
 {
     uint8_t id = 0;
@@ -248,6 +245,7 @@ struct LinkyGroup
     const uint16_t clusterID = 0;
     const uint16_t attributeID = 0;
 };
+
 typedef struct
 {
     LinkyDataHist hist = {0};
@@ -255,45 +253,71 @@ typedef struct
     time_t timestamp = 0;
 } LinkyData;
 
-extern const struct LinkyGroup LinkyLabelList[];
-extern const int32_t LinkyLabelListSize;
-
-class Linky
-{
-
-public:
-    Linky(LinkyMode mode, int RX); // Constructor
-                                   //
-    char update();                 // Update the data
-    void print();                  // Print the data
-                                   //
-    LinkyData data;                // The data
-    void begin();                  // Begin the linky
-    // void rx_task(void *arg);
-
-    char buffer[BUFFER_SIZE] = {0}; // The UART buffer
-    LinkyMode mode = MODE_HISTORIQUE;
-    uint8_t treePhase = 0;
-    void setMode(LinkyMode mode);
-    uint8_t presence();
-    uint8_t reading = 0;
-
-private:
-    char UARTRX = 0;                // The RX pin of the linky
-    uint8_t GROUP_SEPARATOR = 0x20; // The group separator character (changes depending on the mode) (0x20 in historique mode, 0x09 in standard mode)
-
-    char *frame = NULL;     // The frame to send to the linky
-    uint16_t frameSize = 0; // The size of the frame
-
-    void read();                                        // Read the UART buffer
-    char decode();                                      // Decode the frame
-    char checksum(char *label, char *data, char *time); // Check the checksum
-    time_t decodeTime(char *time);                      // Decode the time
-    uint32_t rxBytes = 0;                               // store the number of bytes read
-
-    void debugFrame();
+/*==============================================================================
+ Public Variables Declaration
+==============================================================================*/
+const char *const HADeviceClassStr[] = {
+    [NONE_CLASS] = "",
+    [CURRENT] = "current",
+    [POWER_VA] = "power",
+    [POWER_kVA] = "power",
+    [POWER_W] = "power",
+    [POWER_Q] = "power",
+    [ENERGY] = "energy",
+    [ENERGY_Q] = "energy",
+    [TIMESTAMP] = "timestamp",
+    [TENSION] = "voltage",
+    [TEXT] = "text",
+    [BOOL] = "binary_sensor",
 };
 
-extern Linky linky;
+extern const struct LinkyGroup LinkyLabelList[];
+extern const int32_t LinkyLabelListSize;
+extern LinkyData linky_data; // The data
+extern LinkyMode linky_mode;
+extern uint8_t linky_tree_phase;
+extern uint8_t linky_reading;
+extern uint8_t linky_want_debug_frame;
 
-#endif
+/*==============================================================================
+ Public Functions Declaration
+==============================================================================*/
+
+/**
+ * @brief Init the linky
+ *
+ * @param mode: MODE_HISTORIQUE, MODE_STANDARD OR AUTO
+ * @param RX: The RX pin of the Linky
+ */
+void linky_init(LinkyMode mode, int RX);
+
+/**
+ * @brief Get new data from the linky (read, decode and store in linky_data)
+ *
+ * @return char: 1 if success, 0 if error
+ */
+char linky_update(); // Update the data
+
+/**
+ * @brief Print all data read from the linky
+ *        If no data, the print will be empty
+ *
+ */
+void linky_print();
+
+/**
+ * @brief Set the current mode of the linky
+ *
+ * @param mode: MODE_HISTORIQUE or MODE_STANDARD
+ */
+
+void linky_set_mode(LinkyMode mode);
+
+/**
+ * @brief Get if a linky is correctly connected
+ *
+ * @return uint8_t 1 if connected, 0 if not
+ */
+uint8_t linky_presence();
+
+#endif /* Linky_H */

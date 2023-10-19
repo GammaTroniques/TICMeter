@@ -168,7 +168,7 @@ static void mqtt_send_ha(LinkyData *linkydata)
     uint16_t sensorsCount = 0;
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
-        if (LinkyLabelList[i].mode != linky.mode && LinkyLabelList[i].mode != ANY)
+        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
             continue;
         snprintf(topic, sizeof(topic), "%s/%s", config.values.mqtt.topic, (char *)LinkyLabelList[i].label);
         switch (LinkyLabelList[i].type)
@@ -266,7 +266,7 @@ void mqtt_setup_ha_discovery()
 
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
-        if (LinkyLabelList[i].mode != linky.mode && LinkyLabelList[i].mode != ANY)
+        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
             continue;
         switch (LinkyLabelList[i].type)
         {

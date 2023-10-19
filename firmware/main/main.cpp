@@ -163,18 +163,18 @@ void fetchLinkyDataTask(void *pvParameters)
 #define MAX_DATA_INDEX 5
   LinkyData dataArray[MAX_DATA_INDEX];
   unsigned int dataIndex = 0;
-  linky.begin();
+  linky_init(MODE_HISTORIQUE, RX_LINKY);
   while (1)
   {
-    if (!linky.update() ||
-        !linky.presence())
+    if (!linky_update() ||
+        !linky_presence())
     {
-      ESP_LOGE(MAIN_TAG, "Linky update failed: \n %s", linky.buffer);
+      ESP_LOGE(MAIN_TAG, "Linky update failed:");
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
       vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
       continue;
     }
-    linky.print();
+    linky_print();
     switch (config.values.mode)
     {
     case MODE_WEB: // send data to web server
@@ -182,7 +182,7 @@ void fetchLinkyDataTask(void *pvParameters)
       {
         dataIndex = 0;
       }
-      dataArray[dataIndex] = linky.data;
+      dataArray[dataIndex] = linky_data;
       dataArray[dataIndex++].timestamp = wifi_get_timestamp();
       ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].timestamp);
       if (dataIndex > 2)
@@ -204,7 +204,7 @@ void fetchLinkyDataTask(void *pvParameters)
       if (wifi_connect())
       {
         ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
-        mqtt_send(&linky.data);
+        mqtt_send(&linky_data);
         wifi_disconnect();
         gpio_start_led_pattern(PATTERN_SEND_OK);
       }
@@ -225,7 +225,7 @@ void fetchLinkyDataTask(void *pvParameters)
           goto tuya_disconect;
         }
 
-        if (tuya_send_data(&linky.data))
+        if (tuya_send_data(&linky_data))
         {
           ESP_LOGE(MAIN_TAG, "Tuya SEND ERROR");
           gpio_start_led_pattern(PATTERN_SEND_ERR);
@@ -239,7 +239,7 @@ void fetchLinkyDataTask(void *pvParameters)
       }
       break;
     case MODE_ZIGBEE:
-      zigbee_send(&linky.data);
+      zigbee_send(&linky_data);
     default:
       break;
     }
