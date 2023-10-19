@@ -1,3 +1,17 @@
+/**
+ * @file tuya.cpp
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 #include "tuya.h"
 #include "config.h"
 
@@ -8,13 +22,64 @@
 #include "wifi.h"
 #include "ArduinoJson.h"
 #include "esp_ota_ops.h"
+/*==============================================================================
+ Local Define
+===============================================================================*/
 
 #define TAG "TUYA"
 
-tuya_iot_client_t client;
+/*==============================================================================
+ Local Macro
+===============================================================================*/
+#define STATE_ID2STR(S) \
+    ((S) == STATE_IDLE ? "STATE_IDLE" : ((S) == STATE_START ? "STATE_START" : ((S) == STATE_DATA_LOAD ? "STATE_DATA_LOAD" : ((S) == STATE_TOKEN_PENDING ? "STATE_TOKEN_PENDING" : ((S) == STATE_ACTIVATING ? "STATE_ACTIVATING" : ((S) == STATE_STARTUP_UPDATE ? "STATE_STARTUP_UPDATE" : ((S) == STATE_MQTT_CONNECT_START ? "STATE_MQTT_CONNECT_START" : ((S) == STATE_MQTT_CONNECTING ? "STATE_MQTT_CONNECTING" : ((S) == STATE_MQTT_RECONNECT ? "STATE_MQTT_RECONNECT" : ((S) == STATE_MQTT_YIELD ? "STATE_MQTT_YIELD" : ((S) == STATE_RESTART ? "STATE_RESTART" : ((S) == STATE_RESET ? "STATE_RESET" : ((S) == STATE_EXIT ? "STATE_EXIT" : "Unknown")))))))))))))
+/*==============================================================================
+ Local Type
+===============================================================================*/
+typedef enum
+{
+    STATE_IDLE,
+    STATE_START,
+    STATE_DATA_LOAD,
+    STATE_TOKEN_PENDING,
+    STATE_ACTIVATING,
+    STATE_STARTUP_UPDATE,
+    STATE_MQTT_CONNECT_START,
+    STATE_MQTT_CONNECTING,
+    STATE_MQTT_RECONNECT,
+    STATE_MQTT_YIELD,
+    STATE_RESTART,
+    STATE_RESET,
+    STATE_STOP,
+    STATE_EXIT,
+} tuya_run_state_t;
+/*==============================================================================
+ Local Function Declaration
+===============================================================================*/
+
+static void tuya_qrcode_print(const char *productkey, const char *uuid);
+static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event);
+static void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps);
+static void tuya_link_app_task(void *pvParameters);
+static void tuya_send_callback(int result, void *user_data);
+
+/*==============================================================================
+Public Variable
+===============================================================================*/
 TaskHandle_t tuyaTaskHandle = NULL;
 
-void example_qrcode_print(const char *productkey, const char *uuid)
+/*==============================================================================
+ Local Variable
+===============================================================================*/
+static tuya_iot_client_t client;
+static tuya_event_id_t lastEvent = TUYA_EVENT_RESET;
+static uint8_t newEvent = 0;
+
+/*==============================================================================
+Function Implementation
+===============================================================================*/
+
+static void tuya_qrcode_print(const char *productkey, const char *uuid)
 {
     ESP_LOGI(TAG, "https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", productkey, uuid);
 
@@ -25,7 +90,7 @@ void example_qrcode_print(const char *productkey, const char *uuid)
     ESP_LOGI(TAG, "(Use this URL to generate a static QR code for the Tuya APP scan code binding)");
 }
 
-void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps)
+static void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps)
 {
     ESP_LOGI(TAG, "Data point download value:%s", json_dps);
 
@@ -55,17 +120,13 @@ void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps)
     tuya_iot_dp_report_json(client, json_dps);
 }
 
-/* Tuya SDK event callback */
-
-tuya_event_id_t lastEvent = TUYA_EVENT_RESET;
-uint8_t newEvent = 0;
-static void user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
+static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
 {
     ESP_LOGI(TAG, "TUYA_EVENT: %s", EVENT_ID2STR(event->id));
     switch (event->id)
     {
     case TUYA_EVENT_BIND_START:
-        example_qrcode_print(client->config.productkey, client->config.uuid);
+        tuya_qrcode_print(client->config.productkey, client->config.uuid);
         break;
 
     case TUYA_EVENT_MQTT_CONNECTED:
@@ -112,7 +173,7 @@ static void tuya_link_app_task(void *pvParameters)
         .skill_param = NULL,
         .storage_namespace = "tuya_kv",
         .firmware_key = NULL,
-        .event_handler = user_event_handler_on,
+        .event_handler = tuya_user_event_handler_on,
     };
 
     /* Initialize Tuya device configuration */
@@ -130,19 +191,19 @@ static void tuya_link_app_task(void *pvParameters)
     }
 }
 
-void init_tuya()
+void tuya_init()
 {
     ESP_LOGI(TAG, "Tuya init");
     xTaskCreate(tuya_link_app_task, "tuya_link", 1024 * 6, NULL, 4, &tuyaTaskHandle);
 }
 
-void send_cb(int result, void *user_data)
+static void tuya_send_callback(int result, void *user_data)
 {
     uint8_t *sendComplete = (uint8_t *)user_data;
     *sendComplete = 1;
 }
 
-uint8_t send_tuya_data(LinkyData *linky)
+uint8_t tuya_send_data(LinkyData *linky)
 {
     // tuya_iot_reconnect(&client);
     ESP_LOGI(TAG, "Send data to tuya");
@@ -220,7 +281,7 @@ uint8_t send_tuya_data(LinkyData *linky)
     ESP_LOGI(TAG, "JSON: %s", json);
     uint8_t sendComplete = 0;
     time_t timout = MILLIS + 3000;
-    tuya_iot_dp_report_json_with_notify(&client, json, NULL, send_cb, &sendComplete, 1000);
+    tuya_iot_dp_report_json_with_notify(&client, json, NULL, tuya_send_callback, &sendComplete, 1000);
     while (sendComplete == 0 && MILLIS < timout)
     {
         vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -234,23 +295,23 @@ uint8_t send_tuya_data(LinkyData *linky)
     return 0;
 }
 
-void reset_tuya()
+void tuya_reset()
 {
     ESP_LOGI(TAG, "Reset Tuya");
     config.values.tuyaBinded = 0;
     tuya_iot_activated_data_remove(&client);
 }
 
-void tuyaPairingTask(void *pvParameters)
+void tuya_pairing_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "Tuya pairing");
-    if (!connectToWifi())
+    if (!wifi_connect())
     {
         ESP_LOGE(TAG, "Tuya pairing failed: no wifi");
         vTaskDelete(NULL);
     }
-    reset_tuya();
-    init_tuya();
+    tuya_reset();
+    tuya_init();
     while (config.values.tuyaBinded != 1)
     {
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -260,7 +321,7 @@ void tuyaPairingTask(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-uint8_t waitTuyaEvent(tuya_event_id_t event, uint32_t timeout)
+uint8_t tuya_wait_event(tuya_event_id_t event, uint32_t timeout)
 {
     uint32_t timout = MILLIS + timeout;
     while (MILLIS < timout)

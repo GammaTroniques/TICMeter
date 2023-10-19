@@ -1,6 +1,20 @@
+/**
+ * @file config.h
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
 
 #ifndef CONFIG_H
 #define CONFIG_H
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 
 #include <stdio.h>
 #include <inttypes.h>
@@ -13,14 +27,20 @@
 #include "linky.h"
 #include "common.h"
 
-#define EEPROM_SIZE sizeof(config_t)
-
+/*==============================================================================
+ Public Defines
+==============================================================================*/
 #define AP_SSID "Linky 5G Pfizer#9432"
 #define AP_PASS ""
 #define HOSTNAME "Linky"
 
-#define NVS_TAG "NVS"
-
+/*==============================================================================
+ Public Macro
+==============================================================================*/
+#define MILLIS xTaskGetTickCount() * portTICK_PERIOD_MS
+/*==============================================================================
+ Public Type
+==============================================================================*/
 enum connectivity_t : uint8_t
 {
     MODE_WEB,
@@ -30,14 +50,6 @@ enum connectivity_t : uint8_t
     MODE_MATTER,
     MODE_TUYA,
 };
-
-extern const char *MODES[];
-
-#define CONNECTION_TYPE_WIFI 0
-#define CONNECTION_TYPE_ZIGBEE 1
-#define CONNECTION_TYPE_MATTER 2
-
-#define MILLIS xTaskGetTickCount() * portTICK_PERIOD_MS
 
 struct webConfig_t
 {
@@ -82,6 +94,19 @@ struct config_t
     uint16_t checksum = 0;
 };
 
+/*==============================================================================
+ Public Variables Declaration
+==============================================================================*/
+extern const char *MODES[];
+extern const char *GIT_TAG;
+extern const char *GIT_REV;
+extern const char *GIT_BRANCH;
+extern const char *BUILD_TIME;
+
+/*==============================================================================
+ Public Functions Declaration
+==============================================================================*/
+
 class Config
 {
 public:
@@ -100,9 +125,4 @@ private:
 
 extern Config config;
 
-extern const char *GIT_TAG;
-extern const char *GIT_REV;
-extern const char *GIT_BRANCH;
-extern const char *BUILD_TIME;
-
-#endif
+#endif /* CONFIG_H */

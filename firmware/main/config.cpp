@@ -1,8 +1,31 @@
+/**
+ * @file config.cpp
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 #include "config.h"
 #include "linky.h"
+/*==============================================================================
+ Local Define
+===============================================================================*/
+#define NVS_TAG "NVS"
 
-const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER", "TUYA"};
+/*==============================================================================
+ Local Macro
+===============================================================================*/
 
+/*==============================================================================
+ Local Type
+===============================================================================*/
 struct config_item_t
 {
     const char *name;
@@ -12,9 +35,21 @@ struct config_item_t
     nvs_open_mode_t access = NVS_READWRITE;
     nvs_handle_t handle;
 };
+/*==============================================================================
+ Local Function Declaration
+===============================================================================*/
 
+/*==============================================================================
+Public Variable
+===============================================================================*/
+const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER", "TUYA"};
+
+/*==============================================================================
+ Local Variable
+===============================================================================*/
 // clang-format off
-struct config_item_t config_items[] = {
+
+static struct config_item_t config_items[] = {
     {"wifi-ssid",   STRING, &config.values.ssid,        sizeof(config.values.ssid),         NVS_READWRITE, 0},
     {"wifi-pw"  ,   STRING, &config.values.password,    sizeof(config.values.password),     NVS_READWRITE, 0},
 
@@ -32,10 +67,13 @@ struct config_item_t config_items[] = {
     {"checksum",    UINT16, &config.values.checksum,    sizeof(config.values.checksum),     NVS_READWRITE, 0},
 
 };
-
-const int32_t config_items_size = sizeof(config_items) / sizeof(config_items[0]);
-
+static const int32_t config_items_size = sizeof(config_items) / sizeof(config_items[0]);
 // clang-format on
+
+/*==============================================================================
+Function Implementation
+===============================================================================*/
+
 Config::Config()
 {
 }

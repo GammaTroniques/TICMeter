@@ -387,13 +387,13 @@ void gpio_pairing_button_task(void *pvParameters)
                         ESP_LOGI(TAG, "Web pairing");
                         pairingState = 1;
                         suspendTask(fetchLinkyDataTaskHandle);
-                        if (wifiConnected)
+                        if (wifi_connected)
                         {
-                            disconnectFromWifi();
+                            wifi_disconnect();
                             vTaskDelay(1000 / portTICK_PERIOD_MS);
                         }
                         ESP_LOGI(TAG, "Starting captive portal");
-                        start_captive_portal();
+                        wifi_start_captive_portal();
                         break;
                     case MODE_ZIGBEE:
                         pairingState = 1;
@@ -483,7 +483,7 @@ void gpio_led_task_no_config(void *pvParameters)
 void gpio_led_task_wifi_connecting(void *pvParameters)
 {
     uint32_t timout = MILLIS + WIFI_CONNECT_TIMEOUT;
-    while (!wifiConnected && MILLIS < timout)
+    while (!wifi_connected && MILLIS < timout)
     {
         gpio_set_led_color(WEB_FLASH);
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -507,7 +507,7 @@ void gpio_led_task_linky_reading(void *pvParameters)
 
 void gpio_led_task_sending(void *pvParameters)
 {
-    while (sendingValues)
+    while (wifi_sending)
     {
         gpio_set_led_color(0xc300ff);
         vTaskDelay(100 / portTICK_PERIOD_MS);
