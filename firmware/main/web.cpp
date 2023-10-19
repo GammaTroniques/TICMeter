@@ -57,7 +57,7 @@ void web_preapare_json_data(LinkyData *data, char dataIndex, char *json, unsigne
     for (int i = 0; i < dataIndex; i++)      // Add data to the array
     {
         cJSON *dataItem = cJSON_CreateObject();
-        switch (linky.mode)
+        switch (linky_mode)
         {
         case MODE_HISTORIQUE:
             cJSON_AddNumberToObject(dataItem, "DATE", data[i].timestamp);

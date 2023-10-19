@@ -495,7 +495,7 @@ void gpio_led_task_wifi_connecting(void *pvParameters)
 
 void gpio_led_task_linky_reading(void *pvParameters)
 {
-    while (linky.reading)
+    while (linky_reading)
     {
         gpio_set_led_color(0xFF8000);
         vTaskDelay(100 / portTICK_PERIOD_MS);
