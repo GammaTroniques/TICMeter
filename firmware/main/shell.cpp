@@ -75,6 +75,8 @@ static int get_tuya_command(int argc, char **argv);
 static int set_linky_mode_command(int argc, char **argv);
 static int get_linky_mode_command(int argc, char **argv);
 static int linky_print_command(int argc, char **argv);
+static int linky_simulate(int argc, char **argv);
+
 static int wifi_start_captive_portal_command(int argc, char **argv);
 static int mqtt_discovery_command(int argc, char **argv);
 static int test_led_command(int argc, char **argv);
@@ -109,11 +111,11 @@ static const struct shell_cmd_t shell_cmds[]
     {"wifi-status",                 "Get wifi status",                          &wifi_status_command,               0, {}, {}},
     {"wifi-start-captive-portal",   "Start captive portal",                     &wifi_start_captive_portal_command, 0, {}, {}},
     {"get-web",                     "Get web config",                           &get_web_command,                   0, {}, {}},
-    {"set-web",                     "Set web config",                           &set_web_command,                   4, {"<host>", "<postUrl>", "<configUrl>", "<token>"}, {"Host of web server e.g. 192.168.1.10", "Url for posting data e.g. /post", "Url for getting config e.g. /config", "Token for authorization"}},
+    {"set-web",                     "Set web config",                           &set_web_command,                   4, {"<host>", "<postUrl>", "<configUrl>", "<token>"}, {"Host of web server e.g. 192.168.1.10", "Url for posting linky_data e.g. /post", "Url for getting config e.g. /config", "Token for authorization"}},
 
     //mqtt
     {"get-mqtt",                    "Get mqtt config",                          &get_mqtt_command,                  0, {}, {}},
-    {"set-mqtt",                    "Set mqtt config",                          &set_mqtt_command,                  5, {"<host>", "<port>","<topic>", "<username>","<password>"}, {"Host of mqtt server e.g. 192.168.1.10", "Port of mqtt server e.g. 1883", "Topic for publishing data e.g. /topic", "Username for authorization", "Password for authorization"}},
+    {"set-mqtt",                    "Set mqtt config",                          &set_mqtt_command,                  5, {"<host>", "<port>","<topic>", "<username>","<password>"}, {"Host of mqtt server e.g. 192.168.1.10", "Port of mqtt server e.g. 1883", "Topic for publishing linky_data e.g. /topic", "Username for authorization", "Password for authorization"}},
     {"mqtt-connect",                "Connect to mqtt server",                   &mqtt_connect_command,              0, {}, {}},
     {"mqtt-send",                   "Send message to mqtt server",              &mqtt_send_command,                 0, {}, {}},
     {"mqtt-discovery",              "Send discovery message to mqtt server",    &mqtt_discovery_command,            0, {}, {}},
@@ -136,7 +138,8 @@ static const struct shell_cmd_t shell_cmds[]
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
-    {"linky-print",                 "Print linky data",                         &linky_print_command,               0, {}, {}},
+    {"linky-print",                 "Print linky linky_data",                         &linky_print_command,               0, {}, {}},
+    {"linky-simulate",              "Simulate linky linky_data",                      &linky_simulate,                    0, {}, {}},
     {"get-voltage",                 "Get Voltages",                             &get_voltages,                      0, {}, {}},
     {"set-sleep",                   "Enable/Disable sleep",                     &set_sleep_command,                 1, {"<enable>"}, {"Enable/Disable deep sleep"}},
     {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
@@ -345,11 +348,11 @@ static int mqtt_send_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("MQTT send\n");
-  LinkyData data;
-  // data.hist->timestamp = wifi_get_timestamp();
-  // data.hist->BASE = 5050;
-  // data.hist->IINST = 10;
-  mqtt_send(&data);
+  LinkyData linky_data;
+  // linky_data.hist->timestamp = wifi_get_timestamp();
+  // linky_data.hist->BASE = 5050;
+  // linky_data.hist->IINST = 10;
+  mqtt_send(&linky_data);
   return 0;
 }
 static int mqtt_discovery_command(int argc, char **argv)
@@ -476,7 +479,7 @@ static int get_linky_mode_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   const char *modes[] = {"MODE_HISTORIQUE", "MODE_STANDARD", "MODE_AUTO"};
-  printf("Current Linky mode: %d: %s\n", linky.mode, modes[linky.mode]);
+  printf("Current Linky mode: %d: %s\n", linky_mode, modes[linky_mode]);
   printf("Configured Linky mode: %d: %s\n", config.values.linkyMode,
          modes[config.values.linkyMode]);
   return 0;
@@ -500,7 +503,17 @@ static int linky_print_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  linky.print();
+  linky_print();
+  return 0;
+}
+
+static int linky_simulate(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  linky_want_debug_frame = true;
   return 0;
 }
 
