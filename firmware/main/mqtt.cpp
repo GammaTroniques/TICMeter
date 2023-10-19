@@ -164,7 +164,7 @@ static void mqtt_send_ha(LinkyData *linkydata)
 
     mqtt_send_timeout = MILLIS + 10000;
     mqtt_send_count = 0;
-    linkydata->timestamp = getTimestamp();
+    linkydata->timestamp = wifi_get_timestamp();
     uint16_t sensorsCount = 0;
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
@@ -250,7 +250,7 @@ static void mqtt_send_ha(LinkyData *linkydata)
 
 void mqtt_setup_ha_discovery()
 {
-    if (wifiConnected == 0)
+    if (wifi_connected == 0)
     {
         ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
         return;
@@ -370,7 +370,7 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 void mqtt_app_start(void)
 {
     esp_log_level_set("mqtt_client", ESP_LOG_WARN);
-    if (wifiConnected == 0)
+    if (wifi_connected == 0)
     {
         ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
         return;
@@ -410,12 +410,12 @@ void mqtt_app_start(void)
 
 void mqtt_send(LinkyData *linky)
 {
-    if (wifiConnected == 0)
+    if (wifi_connected == 0)
     {
         ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
         return;
     }
-    sendingValues = 1;
+    wifi_sending = 1;
     xTaskCreate(gpio_led_task_sending, "sendingLedTask", 2048, NULL, 1, NULL);
     if (!mqtt_connected)
     {
@@ -437,7 +437,7 @@ void mqtt_send(LinkyData *linky)
     }
     mqtt_stop();
     mqtt_connected = false;
-    sendingValues = 0;
+    wifi_sending = 0;
 }
 
 void mqtt_stop()

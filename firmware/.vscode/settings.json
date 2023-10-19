@@ -38,5 +38,6 @@
     "freertos.h": "c"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
-  "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH"
+  "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",
+  "C_Cpp.intelliSenseEngine": "default"
 }

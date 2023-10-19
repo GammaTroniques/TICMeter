@@ -1,3 +1,17 @@
+/**
+ * @file wifi.cpp
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 #include "wifi.h"
 #include "http.h"
 #include "gpio.h"
@@ -8,29 +22,56 @@
 #include <time.h>
 #include "esp_netif_sntp.h"
 
+/*==============================================================================
+ Local Define
+===============================================================================*/
 #define TAG "WIFI"
+#define NTP_SERVER "pool.ntp.org"
 
-static int s_retry_num = 0;
-uint8_t wifiConnected = 0;
-uint8_t sendingValues = 0;
-
+#define ESP_MAXIMUM_RETRY 3
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAIL_BIT BIT1
+/*==============================================================================
+ Local Macro
+===============================================================================*/
 #ifndef MAC2STR
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
 #endif
+/*==============================================================================
+ Local Type
+===============================================================================*/
 
-#define NTP_SERVER "pool.ntp.org"
+/*==============================================================================
+ Local Function Declaration
+===============================================================================*/
+static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
+static void wifi_time_sync_notification_cb(struct timeval *tv);
+static void stop_captive_portal_task(void *pvParameter);
 
-/* FreeRTOS event group to signal when we are connected*/
+/*==============================================================================
+Public Variable
+===============================================================================*/
+uint8_t wifi_connected = 0;
+uint8_t wifi_sending = 0;
+
+/*==============================================================================
+ Local Variable
+===============================================================================*/
+static int s_retry_num = 0;
 static EventGroupHandle_t s_wifi_event_group;
+static esp_netif_t *sta_netif = NULL;
+static esp_event_handler_instance_t instance_any_id;
+static esp_event_handler_instance_t instance_got_ip;
 
-esp_netif_t *sta_netif = NULL;
-esp_event_handler_instance_t instance_any_id;
-esp_event_handler_instance_t instance_got_ip;
-uint8_t connectToWifi()
+/*==============================================================================
+Function Implementation
+===============================================================================*/
+
+uint8_t wifi_connect()
 {
     esp_err_t err = ESP_OK;
-    if (wifiConnected)
+    if (wifi_connected)
         return 1;
 
     if (strlen(config.values.ssid) == 0 || strlen(config.values.password) == 0)
@@ -47,8 +88,8 @@ uint8_t connectToWifi()
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_netif_init failed with 0x%X", err);
-        wifiConnected = 2; // error
-        disconnectFromWifi();
+        wifi_connected = 2; // error
+        wifi_disconnect();
         return 0;
     }
 
@@ -59,14 +100,14 @@ uint8_t connectToWifi()
         break;
     case ESP_ERR_INVALID_STATE:
         ESP_LOGW(TAG, "esp_event_loop_create_default failed with 0x%X: possibly already exist", err);
-        wifiConnected = 2; // error
-        disconnectFromWifi();
+        wifi_connected = 2; // error
+        wifi_disconnect();
         return 0;
         break;
     default:
         ESP_LOGE(TAG, "esp_event_loop_create_default failed with 0x%X", err);
-        wifiConnected = 2; // error
-        disconnectFromWifi();
+        wifi_connected = 2; // error
+        wifi_disconnect();
         return 0;
         break;
     }
@@ -78,34 +119,34 @@ uint8_t connectToWifi()
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_wifi_init failed with 0x%X", err);
-        wifiConnected = 2; // error
-        disconnectFromWifi();
+        wifi_connected = 2; // error
+        wifi_disconnect();
         return 0;
     }
 
     err = esp_event_handler_instance_register(WIFI_EVENT,
                                               ESP_EVENT_ANY_ID,
-                                              &event_handler,
+                                              &wifi_event_handler,
                                               NULL,
                                               &instance_any_id);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_event_handler_instance_register failed with 0x%X", err);
-        wifiConnected = 2; // error
-        disconnectFromWifi();
+        wifi_connected = 2; // error
+        wifi_disconnect();
         return 0;
     }
 
     err = esp_event_handler_instance_register(IP_EVENT,
                                               IP_EVENT_STA_GOT_IP,
-                                              &event_handler,
+                                              &wifi_event_handler,
                                               NULL,
                                               &instance_got_ip);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_event_handler_instance_register failed with 0x%X", err);
-        wifiConnected = 2; // error
-        disconnectFromWifi();
+        wifi_connected = 2; // error
+        wifi_disconnect();
         return 0;
     }
 
@@ -122,24 +163,24 @@ uint8_t connectToWifi()
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
-        wifiConnected = 2; // error
-        disconnectFromWifi();
+        wifi_connected = 2; // error
+        wifi_disconnect();
         return 0;
     }
     err = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_wifi_set_config failed with 0x%X", err);
-        wifiConnected = 2; // error
-        disconnectFromWifi();
+        wifi_connected = 2; // error
+        wifi_disconnect();
         return 0;
     }
     err = esp_wifi_start();
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_wifi_start failed with 0x%X", err);
-        wifiConnected = 2; // error
-        disconnectFromWifi();
+        wifi_connected = 2; // error
+        wifi_disconnect();
         return 0;
     }
 
@@ -161,7 +202,7 @@ retry:
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
-        disconnectFromWifi();
+        wifi_disconnect();
         return 0;
     }
     else
@@ -173,15 +214,15 @@ retry:
     }
 }
 
-void disconnectFromWifi()
+void wifi_disconnect()
 {
     esp_err_t err = ESP_OK;
-    if (wifiConnected == 0) // already disconnected
+    if (wifi_connected == 0) // already disconnected
     {
         ESP_LOGD(TAG, "wifi already not connected");
         return;
     }
-    wifiConnected = 0;
+    wifi_connected = 0;
     ESP_LOGI(TAG, "Disconnected");
 
     err = esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip);
@@ -228,18 +269,18 @@ void disconnectFromWifi()
     esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
 }
 
-void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
 
     // ESP_LOGI(TAG, "GOT EVENT: event_base: %s, event_id: %ld", event_base, event_id);
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
     {
-        wifiConnected = 0;
+        wifi_connected = 0;
         esp_wifi_connect();
     }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) // && wifiConnected == 1)
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) // && wifi_connected == 1)
     {
-        wifiConnected = 0;
+        wifi_connected = 0;
         if (s_retry_num < ESP_MAXIMUM_RETRY)
         {
             esp_wifi_connect();
@@ -252,19 +293,19 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
             ESP_LOGE(TAG, "Connect to the AP fail");
             gpio_start_led_pattern(PATTERN_WIFI_FAILED);
         }
-        wifiConnected = 0;
+        wifi_connected = 0;
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED)
     {
         ESP_LOGI(TAG, "Connected");
-        wifiConnected = 1;
+        wifi_connected = 1;
     }
     else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
     {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "IP:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
-        wifiConnected = 1;
+        wifi_connected = 1;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
     else if (event_id == WIFI_EVENT_AP_STACONNECTED)
@@ -284,81 +325,16 @@ void event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, voi
     }
 }
 
-//------------------
-
-void createHttpUrl(char *url, const char *host, const char *path)
-{
-    url = strcat(url, "http://");
-    url = strcat(url, host);
-    url = strcat(url, path);
-}
-
-esp_err_t get_config_handler(esp_http_client_event_handle_t evt)
-{
-    switch (evt->event_id)
-    {
-    case HTTP_EVENT_ON_DATA:
-        printf("Config: %.*s\n", evt->data_len, (char *)evt->data);
-        break;
-
-    default:
-        break;
-    }
-    return ESP_OK;
-}
-
-void getConfigFromServer(Config *config)
-{
-    ESP_LOGI(TAG, "get config from server");
-    char url[100] = {0};
-    createHttpUrl(url, config->values.web.host, config->values.web.configUrl);
-    strcat(url, "?token=");
-    strcat(url, config->values.web.token);
-    ESP_LOGI(TAG, "url: %s", url);
-
-    esp_http_client_config_t config_get;
-    memset(&config_get, 0, sizeof(config_get));
-    config_get.url = url;
-    config_get.cert_pem = NULL;
-    config_get.method = HTTP_METHOD_GET;
-    config_get.event_handler = get_config_handler;
-
-    esp_http_client_handle_t client = esp_http_client_init(&config_get);
-    esp_http_client_perform(client);
-    esp_http_client_cleanup(client);
-}
-
-void time_sync_notification_cb(struct timeval *tv)
+static void wifi_time_sync_notification_cb(struct timeval *tv)
 {
     // ESP_LOGI(TAG, "Notification of a time synchronization event");
 }
 
-uint8_t sntpInit()
-{
-
-    // esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    // esp_sntp_setservername(0, "pool.ntp.org");
-    // sntp_set_time_sync_notification_cb(time_sync_notification_cb);
-    // esp_sntp_init();
-    // time_t timeout = MILLIS + 3000;
-    // while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && (MILLIS < timeout))
-    // {
-    //     vTaskDelay(100 / portTICK_PERIOD_MS);
-    // }
-    // if (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET)
-    // {
-    //     ESP_LOGE(TAG, "Failed to get time from NTP server");
-    //     return 0;
-    // }
-
-    return 1;
-}
-
-time_t getTimestamp()
+time_t wifi_get_timestamp()
 {
     static time_t now = 0;
     struct tm timeinfo;
-    if (wifiConnected)
+    if (wifi_connected)
     {
         static bool sntp_started = false;
         static esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(NTP_SERVER);
@@ -366,8 +342,8 @@ time_t getTimestamp()
         if (!sntp_started)
         {
             sntp_started = true;
-            config.sync_cb = time_sync_notification_cb; // Note: This is only needed if we want
-            sntp_set_sync_interval(0);                  // sync now
+            config.sync_cb = wifi_time_sync_notification_cb; // Note: This is only needed if we want
+            sntp_set_sync_interval(0);                       // sync now
             esp_netif_sntp_init(&config);
         }
         else
@@ -397,52 +373,6 @@ time_t getTimestamp()
     return now;
 }
 
-esp_err_t send_data_handler(esp_http_client_event_handle_t evt)
-{
-    switch (evt->event_id)
-    {
-    case HTTP_EVENT_ON_DATA:
-        printf("Config: %.*s\n", evt->data_len, (char *)evt->data);
-        break;
-
-    default:
-        break;
-    }
-    return ESP_OK;
-}
-
-uint8_t sendToServer(const char *json)
-{
-    if (strlen(config.values.web.host) == 0 || strlen(config.values.web.postUrl) == 0)
-    {
-        ESP_LOGE(TAG, "host or postUrl not set");
-        return 0;
-    }
-    sendingValues = 1;
-    xTaskCreate(gpio_led_task_sending, "gpio_led_task_sending", 2048, NULL, 1, NULL);
-
-    char url[100] = {0};
-    createHttpUrl(url, config.values.web.host, config.values.web.postUrl);
-    // setup post request
-    esp_http_client_config_t config_post;
-    memset(&config_post, 0, sizeof(config_post));
-    config_post.url = url;
-    config_post.cert_pem = NULL;
-    config_post.method = HTTP_METHOD_POST;
-    config_post.event_handler = send_data_handler;
-
-    // setup client
-    esp_http_client_handle_t client = esp_http_client_init(&config_post);
-    esp_http_client_set_post_field(client, json, strlen(json));
-    esp_http_client_set_header(client, "Content-Type", "application/json");
-
-    // send post request
-    esp_http_client_perform(client);
-    esp_http_client_cleanup(client);
-    sendingValues = 0;
-    return 1;
-}
-
 static void wifi_init_softap(void)
 {
     // Initialize Wi-Fi including netif with default config
@@ -458,7 +388,7 @@ static void wifi_init_softap(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
 
     wifi_config_t wifi_config = {};
     strncpy((char *)wifi_config.ap.ssid, AP_SSID, sizeof(wifi_config.ap.ssid));
@@ -484,7 +414,7 @@ static void wifi_init_softap(void)
              AP_SSID, AP_PASS);
 }
 
-void stop_captive_portal_task(void *pvParameter)
+static void stop_captive_portal_task(void *pvParameter)
 {
     uint8_t readCount = 0;
 
@@ -510,7 +440,7 @@ void stop_captive_portal_task(void *pvParameter)
     }
 }
 
-void start_captive_portal()
+void wifi_start_captive_portal()
 {
     ESP_LOGI(TAG, "Start captive portal");
     // xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, 1, NULL);
