@@ -62,7 +62,6 @@
 /*==============================================================================
 Public Variable
 ===============================================================================*/
-Config config;
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
 TaskHandle_t noConfigLedTaskHandle = NULL;
 
@@ -74,30 +73,30 @@ TaskHandle_t noConfigLedTaskHandle = NULL;
 Function Implementation
 ===============================================================================*/
 
-extern "C" void app_main(void)
+void app_main(void)
 {
   ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
   gpio_init_pins();
-  config.begin();
+  config_begin();
   gpio_boot_led_pattern();
   xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, 1, NULL); // start push button task
   shell_init();                                                                           // init shell
 
-  if (/*gpio_get_vusb() > 3 && */ config.values.tuyaBinded == 2) //
+  if (/*gpio_get_vusb() > 3 && */ config_values.tuyaBinded == 2) //
   {
     ESP_LOGI(MAIN_TAG, "Tuya pairing");
     xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8192, NULL, 1, NULL); // start tuya pairing task
-    while (config.values.tuyaBinded == 2)
+    while (config_values.tuyaBinded == 2)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
   }
 
-  if (config.verify())
+  if (config_verify())
   {
     xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 1024, NULL, 1, &noConfigLedTaskHandle); // start no config led task
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
-    while (config.verify())
+    while (config_verify())
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
@@ -115,14 +114,14 @@ extern "C" void app_main(void)
   //   esp_deep_sleep_start();
   // }
 
-  switch (config.values.mode)
+  switch (config_values.mode)
   {
   case MODE_WEB:
     // connect to wifi
     if (wifi_connect())
     {
-      wifi_get_timestamp();                      // get timestamp from ntp server
-      wifi_http_get_config_from_server(&config); // get config from server
+      wifi_get_timestamp();               // get timestamp from ntp server
+      wifi_http_get_config_from_server(); // get config from server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       wifi_disconnect();
     }
@@ -171,11 +170,11 @@ void fetchLinkyDataTask(void *pvParameters)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed:");
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
-      vTaskDelay((config.values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
+      vTaskDelay((config_values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
       continue;
     }
     linky_print();
-    switch (config.values.mode)
+    switch (config_values.mode)
     {
     case MODE_WEB: // send data to web server
       if (dataIndex >= MAX_DATA_INDEX)
@@ -244,8 +243,8 @@ void fetchLinkyDataTask(void *pvParameters)
       break;
     }
 
-    uint32_t sleepTime = abs(config.values.refreshRate - 5);
-    if (config.values.sleep && gpio_get_vusb() < 3) // if deepsleep is enable and we are not connected to USB
+    uint32_t sleepTime = abs(config_values.refreshRate - 5);
+    if (config_values.sleep && gpio_get_vusb() < 3) // if deepsleep is enable and we are not connected to USB
     {
       ESP_LOGI(MAIN_TAG, "Going to sleep for %ld seconds", sleepTime);
       esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop

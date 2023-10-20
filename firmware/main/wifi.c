@@ -74,7 +74,7 @@ uint8_t wifi_connect()
     if (wifi_connected)
         return 1;
 
-    if (strlen(config.values.ssid) == 0 || strlen(config.values.password) == 0)
+    if (strlen(config_values.ssid) == 0 || strlen(config_values.password) == 0)
     {
         ESP_LOGI(TAG, "No Wifi SSID or password");
         return 0;
@@ -156,8 +156,8 @@ uint8_t wifi_connect()
     wifi_config.sta.sae_pwe_h2e = WPA3_SAE_PWE_HUNT_AND_PECK;
     wifi_config.sta.sae_h2e_identifier[0] = '\0';
 
-    strncpy((char *)wifi_config.sta.ssid, config.values.ssid, sizeof(wifi_config.sta.ssid));
-    strncpy((char *)wifi_config.sta.password, config.values.password, sizeof(wifi_config.sta.password));
+    strncpy((char *)wifi_config.sta.ssid, config_values.ssid, sizeof(wifi_config.sta.ssid));
+    strncpy((char *)wifi_config.sta.password, config_values.password, sizeof(wifi_config.sta.password));
 
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err != ESP_OK)

@@ -332,34 +332,34 @@ esp_err_t save_config_handler(httpd_req_t *req)
     // ESP_LOGI(TAG, "mqtt_topic: %s", mqtt_topic);
 
     // save the parameters
-    strncpy(config.values.ssid, ssid, sizeof(config.values.ssid));
-    strncpy(config.values.password, password, sizeof(config.values.password));
+    strncpy(config_values.ssid, ssid, sizeof(config_values.ssid));
+    strncpy(config_values.password, password, sizeof(config_values.password));
 
     if (server_mode == MODE_MQTT && mqtt_HA_discovery == 1)
     {
-        config.values.mode = MODE_MQTT_HA;
+        config_values.mode = MODE_MQTT_HA;
     }
     else
     {
-        config.values.mode = (connectivity_t)server_mode;
+        config_values.mode = (connectivity_t)server_mode;
     }
 
-    strncpy(config.values.web.host, web_url, sizeof(config.values.web.host));
-    strncpy(config.values.web.token, web_token, sizeof(config.values.web.token));
-    strncpy(config.values.web.configUrl, web_config_url, sizeof(config.values.web.configUrl));
-    strncpy(config.values.web.postUrl, web_post_url, sizeof(config.values.web.postUrl));
+    strncpy(config_values.web.host, web_url, sizeof(config_values.web.host));
+    strncpy(config_values.web.token, web_token, sizeof(config_values.web.token));
+    strncpy(config_values.web.configUrl, web_config_url, sizeof(config_values.web.configUrl));
+    strncpy(config_values.web.postUrl, web_post_url, sizeof(config_values.web.postUrl));
     if (linky_mode > AUTO)
         linky_mode = AUTO;
-    config.values.linkyMode = (LinkyMode)linky_mode;
-    strncpy(config.values.mqtt.host, mqtt_host, sizeof(config.values.mqtt.host));
-    config.values.mqtt.port = mqtt_port;
-    strncpy(config.values.mqtt.username, mqtt_user, sizeof(config.values.mqtt.username));
-    strncpy(config.values.mqtt.password, mqtt_password, sizeof(config.values.mqtt.password));
-    strncpy(config.values.mqtt.topic, mqtt_topic, sizeof(config.values.mqtt.topic));
+    config_values.linkyMode = (linky_mode_t)linky_mode;
+    strncpy(config_values.mqtt.host, mqtt_host, sizeof(config_values.mqtt.host));
+    config_values.mqtt.port = mqtt_port;
+    strncpy(config_values.mqtt.username, mqtt_user, sizeof(config_values.mqtt.username));
+    strncpy(config_values.mqtt.password, mqtt_password, sizeof(config_values.mqtt.password));
+    strncpy(config_values.mqtt.topic, mqtt_topic, sizeof(config_values.mqtt.topic));
 
-    if (config.values.mode == MODE_TUYA)
+    if (config_values.mode == MODE_TUYA)
     {
-        config.values.tuyaBinded = 2; // reboot to bind
+        config_values.tuyaBinded = 2; // reboot to bind
         //  redirect to the reboot page
         httpd_resp_set_status(req, "302 Temporary Redirect");
         httpd_resp_set_hdr(req, "Location", "/tuya.html");
@@ -373,7 +373,7 @@ esp_err_t save_config_handler(httpd_req_t *req)
         httpd_resp_set_hdr(req, "Location", "/reboot.html");
         httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
     }
-    config.write();
+    config_write();
 
     // reboot the device
     xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 5, NULL);
@@ -383,21 +383,21 @@ esp_err_t save_config_handler(httpd_req_t *req)
 esp_err_t get_config_handler(httpd_req_t *req)
 {
     cJSON *jsonObject = cJSON_CreateObject();
-    cJSON_AddStringToObject(jsonObject, "wifi-ssid", config.values.ssid);
-    cJSON_AddStringToObject(jsonObject, "wifi-password", config.values.password);
-    cJSON_AddNumberToObject(jsonObject, "linky-mode", config.values.mode);
-    cJSON_AddNumberToObject(jsonObject, "server-mode", config.values.mode);
-    cJSON_AddStringToObject(jsonObject, "web-url", config.values.web.host);
-    cJSON_AddStringToObject(jsonObject, "web-token", config.values.web.token);
-    cJSON_AddStringToObject(jsonObject, "web-post", config.values.web.postUrl);
-    cJSON_AddStringToObject(jsonObject, "web-config", config.values.web.configUrl);
-    cJSON_AddStringToObject(jsonObject, "mqtt-host", config.values.mqtt.host);
-    cJSON_AddNumberToObject(jsonObject, "mqtt-port", config.values.mqtt.port);
-    cJSON_AddStringToObject(jsonObject, "mqtt-user", config.values.mqtt.username);
-    cJSON_AddStringToObject(jsonObject, "mqtt-password", config.values.mqtt.password);
-    cJSON_AddStringToObject(jsonObject, "mqtt-topic", config.values.mqtt.topic);
-    cJSON_AddStringToObject(jsonObject, "tuya-productID", config.values.tuyaKeys.productID);
-    cJSON_AddStringToObject(jsonObject, "tuya-deviceUUID", config.values.tuyaKeys.deviceUUID);
+    cJSON_AddStringToObject(jsonObject, "wifi-ssid", config_values.ssid);
+    cJSON_AddStringToObject(jsonObject, "wifi-password", config_values.password);
+    cJSON_AddNumberToObject(jsonObject, "linky-mode", config_values.mode);
+    cJSON_AddNumberToObject(jsonObject, "server-mode", config_values.mode);
+    cJSON_AddStringToObject(jsonObject, "web-url", config_values.web.host);
+    cJSON_AddStringToObject(jsonObject, "web-token", config_values.web.token);
+    cJSON_AddStringToObject(jsonObject, "web-post", config_values.web.postUrl);
+    cJSON_AddStringToObject(jsonObject, "web-config", config_values.web.configUrl);
+    cJSON_AddStringToObject(jsonObject, "mqtt-host", config_values.mqtt.host);
+    cJSON_AddNumberToObject(jsonObject, "mqtt-port", config_values.mqtt.port);
+    cJSON_AddStringToObject(jsonObject, "mqtt-user", config_values.mqtt.username);
+    cJSON_AddStringToObject(jsonObject, "mqtt-password", config_values.mqtt.password);
+    cJSON_AddStringToObject(jsonObject, "mqtt-topic", config_values.mqtt.topic);
+    cJSON_AddStringToObject(jsonObject, "tuya-productID", config_values.tuyaKeys.productID);
+    cJSON_AddStringToObject(jsonObject, "tuya-deviceUUID", config_values.tuyaKeys.deviceUUID);
 
     char *jsonString = cJSON_PrintUnformatted(jsonObject);
     httpd_resp_set_type(req, "application/json");

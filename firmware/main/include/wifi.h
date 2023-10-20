@@ -93,6 +93,6 @@ extern void wifi_start_captive_portal();
  *
  * @param config
  */
-extern void wifi_http_get_config_from_server(Config *config);
+extern void wifi_http_get_config_from_server();
 
 #endif /* WIFI_H */

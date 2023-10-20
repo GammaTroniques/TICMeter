@@ -51,7 +51,7 @@ Function Implementation
 void web_preapare_json_data(LinkyData *data, char dataIndex, char *json, unsigned int jsonSize)
 {
     cJSON *jsonObject = cJSON_CreateObject(); // Create the root object
-    cJSON_AddStringToObject(jsonObject, "TOKEN", config.values.web.token);
+    cJSON_AddStringToObject(jsonObject, "TOKEN", config_values.web.token);
     cJSON_AddNumberToObject(jsonObject, "VCONDO", gpio_get_vcondo());
     cJSON *dataObject = cJSON_CreateArray(); // Create the data array
     for (int i = 0; i < dataIndex; i++)      // Add data to the array
@@ -120,7 +120,7 @@ static esp_err_t web_http_send_data_handler(esp_http_client_event_handle_t evt)
 
 uint8_t wifi_send_to_server(const char *json)
 {
-    if (strlen(config.values.web.host) == 0 || strlen(config.values.web.postUrl) == 0)
+    if (strlen(config_values.web.host) == 0 || strlen(config_values.web.postUrl) == 0)
     {
         ESP_LOGE(TAG, "host or postUrl not set");
         return 0;
@@ -129,7 +129,7 @@ uint8_t wifi_send_to_server(const char *json)
     xTaskCreate(gpio_led_task_sending, "gpio_led_task_sending", 2048, NULL, 1, NULL);
 
     char url[100] = {0};
-    web_create_http_url(url, config.values.web.host, config.values.web.postUrl);
+    web_create_http_url(url, config_values.web.host, config_values.web.postUrl);
     // setup post request
     esp_http_client_config_t config_post;
     memset(&config_post, 0, sizeof(config_post));
@@ -168,13 +168,13 @@ esp_err_t wifi_http_get_config_handler(esp_http_client_event_handle_t evt)
  * @brief Get config from server and save it in EEPROM
  *
  */
-void wifi_http_get_config_from_server(Config *config)
+void wifi_http_get_config_from_server()
 {
     ESP_LOGI(TAG, "get config from server");
     char url[100] = {0};
-    web_create_http_url(url, config->values.web.host, config->values.web.configUrl);
+    web_create_http_url(url, config_values.web.host, config_values.web.configUrl);
     strcat(url, "?token=");
-    strcat(url, config->values.web.token);
+    strcat(url, config_values.web.token);
     ESP_LOGI(TAG, "url: %s", url);
 
     esp_http_client_config_t config_get;

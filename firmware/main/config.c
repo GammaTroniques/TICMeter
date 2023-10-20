@@ -17,7 +17,7 @@
 /*==============================================================================
  Local Define
 ===============================================================================*/
-#define NVS_TAG "NVS"
+#define TAG "Config"
 
 /*==============================================================================
  Local Macro
@@ -29,10 +29,10 @@
 struct config_item_t
 {
     const char *name;
-    const LinkyLabelType type = UINT8;
-    void *value = NULL;
-    size_t size = 0;
-    nvs_open_mode_t access = NVS_READWRITE;
+    const LinkyLabelType type;
+    void *value;
+    size_t size;
+    nvs_open_mode_t access;
     nvs_handle_t handle;
 };
 /*==============================================================================
@@ -43,6 +43,7 @@ struct config_item_t
 Public Variable
 ===============================================================================*/
 const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER", "TUYA"};
+config_t config_values = {};
 
 /*==============================================================================
  Local Variable
@@ -50,22 +51,20 @@ const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER", "TUYA"};
 // clang-format off
 
 static struct config_item_t config_items[] = {
-    {"wifi-ssid",   STRING, &config.values.ssid,        sizeof(config.values.ssid),         NVS_READWRITE, 0},
-    {"wifi-pw"  ,   STRING, &config.values.password,    sizeof(config.values.password),     NVS_READWRITE, 0},
+    {"wifi-ssid",   STRING, &config_values.ssid,        sizeof(config_values.ssid),         NVS_READWRITE, 0},
+    {"wifi-pw"  ,   STRING, &config_values.password,    sizeof(config_values.password),     NVS_READWRITE, 0},
 
-    {"linky-mode",   UINT8, &config.values.linkyMode,   sizeof(config.values.linkyMode),    NVS_READWRITE, 0},
-    {"connect-mode", UINT8, &config.values.mode,        sizeof(config.values.mode),         NVS_READWRITE, 0},
+    {"linky-mode",   UINT8, &config_values.linkyMode,   sizeof(config_values.linkyMode),    NVS_READWRITE, 0},
+    {"connect-mode", UINT8, &config_values.mode,        sizeof(config_values.mode),         NVS_READWRITE, 0},
 
-    {"web-conf",      BLOB, &config.values.web,         sizeof(config.values.web),          NVS_READWRITE, 0},
-    {"mqtt-conf",     BLOB, &config.values.mqtt,        sizeof(config.values.mqtt),         NVS_READWRITE, 0},
-    {"tuya-keys",     BLOB, &config.values.tuyaKeys,    sizeof(config.values.tuyaKeys),     NVS_READWRITE, 0},
-    {"tuya-bind",    UINT8, &config.values.tuyaBinded,  sizeof(config.values.tuyaBinded),   NVS_READWRITE, 0},
+    {"web-conf",      BLOB, &config_values.web,         sizeof(config_values.web),          NVS_READWRITE, 0},
+    {"mqtt-conf",     BLOB, &config_values.mqtt,        sizeof(config_values.mqtt),         NVS_READWRITE, 0},
+    {"tuya-keys",     BLOB, &config_values.tuyaKeys,    sizeof(config_values.tuyaKeys),     NVS_READWRITE, 0},
+    {"tuya-bind",    UINT8, &config_values.tuyaBinded,  sizeof(config_values.tuyaBinded),   NVS_READWRITE, 0},
 
-    {"version",     STRING, &config.values.version,     sizeof(config.values.version),      NVS_READWRITE, 0},
-    {"refresh",     UINT16, &config.values.refreshRate, sizeof(config.values.refreshRate),  NVS_READWRITE, 0},
-    {"sleep",        UINT8, &config.values.sleep,       sizeof(config.values.sleep),        NVS_READWRITE, 0},
-    {"checksum",    UINT16, &config.values.checksum,    sizeof(config.values.checksum),     NVS_READWRITE, 0},
-
+    {"version",     STRING, &config_values.version,     sizeof(config_values.version),      NVS_READWRITE, 0},
+    {"refresh",     UINT16, &config_values.refreshRate, sizeof(config_values.refreshRate),  NVS_READWRITE, 0},
+    {"sleep",        UINT8, &config_values.sleep,       sizeof(config_values.sleep),        NVS_READWRITE, 0},
 };
 static const int32_t config_items_size = sizeof(config_items) / sizeof(config_items[0]);
 // clang-format on
@@ -74,30 +73,27 @@ static const int32_t config_items_size = sizeof(config_items) / sizeof(config_it
 Function Implementation
 ===============================================================================*/
 
-Config::Config()
+int16_t config_calculate_checksum()
 {
-}
-
-int16_t Config::calculateChecksum()
-{
-    int16_t checksum = 0;
-    int i;
-    for (i = 0; i < sizeof(config_t) - sizeof(this->values.checksum); i++)
-    {
-        checksum += ((uint8_t *)&this->values)[i];
-    }
-    ESP_LOGI(NVS_TAG, "Config calculated checksum: %x, i: %d", checksum, i);
-    return checksum;
-}
-
-int8_t Config::erase()
-{
-    Config blank_config = {};
-    this->values = blank_config.values;
+    // int16_t checksum = 0;
+    // int i;
+    // for (i = 0; i < sizeof(config_t) - sizeof(config_values.checksum); i++)
+    // {
+    //     checksum += ((uint8_t *)&config_values)[i];
+    // }
+    // ESP_LOGI(TAG, "Config calculated checksum: %x, i: %d", checksum, i);
+    // return checksum;
     return 0;
 }
 
-int8_t Config::begin()
+int8_t config_erase()
+{
+    config_t blank_config = {};
+    config_values = blank_config;
+    return 0;
+}
+
+int8_t config_begin()
 {
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -114,7 +110,7 @@ int8_t Config::begin()
         err = nvs_open(config_items[i].name, config_items[i].access, &config_items[i].handle);
         if (err != ESP_OK)
         {
-            ESP_LOGE(NVS_TAG, "Error (%s) opening %s\n", esp_err_to_name(err), config_items[i].name);
+            ESP_LOGE(TAG, "Error (%s) opening %s\n", esp_err_to_name(err), config_items[i].name);
             continue;
         }
     }
@@ -129,25 +125,25 @@ int8_t Config::begin()
     //     printf("Done\n");
     // }
 
-    this->read();
+    config_read();
     // ESP_LOG_BUFFER_HEXDUMP(NVS_TAG, &this->values, sizeof(config_t), ESP_LOG_INFO);
     // ESP_LOGI(NVS_TAG, "Config read checksum: %x", this->values.checksum);
-    // ESP_LOGI(NVS_TAG, "Config calculated checksum: %x", this->calculateChecksum());
-    // if (this->values.checksum != this->calculateChecksum())
+    // ESP_LOGI(NVS_TAG, "Config calculated checksum: %x", this->confif_calculate_checksum());
+    // if (this->values.checksum != this->confif_calculate_checksum())
     // {
-    //     ESP_LOGI(NVS_TAG, "Config checksum error: %x != %x", this->values.checksum, this->calculateChecksum());
-    //     this->erase();
+    //     ESP_LOGI(NVS_TAG, "Config checksum error: %x != %x", this->values.checksum, this->confif_calculate_checksum());
+    //     this->config_erase();
     //     ESP_LOGI(NVS_TAG, "Config erased");
     //     this->write();
     //     ESP_LOG_BUFFER_HEXDUMP(NVS_TAG, &this->values, sizeof(config_t), ESP_LOG_INFO);
     //     return 1;
     // }
 
-    ESP_LOGI(NVS_TAG, "Config OK");
+    ESP_LOGI(TAG, "Config OK");
     return 0;
 }
 
-int8_t Config::read()
+int8_t config_read()
 {
     // size_t bytesRead = sizeof(config_t);
     // esp_err_t err = nvs_get_blob(nvsHandle, "config", &this->values, &bytesRead);
@@ -190,19 +186,19 @@ int8_t Config::read()
         }
         if (err != ESP_OK)
         {
-            ESP_LOGE(NVS_TAG, "Error (%s) reading %s\n", esp_err_to_name(err), config_items[i].name);
+            ESP_LOGE(TAG, "Error (%s) reading %s\n", esp_err_to_name(err), config_items[i].name);
             continue;
         }
         totalBytesRead += bytesRead;
     }
 
-    ESP_LOGI(NVS_TAG, "Config read %d bytes", totalBytesRead);
+    ESP_LOGI(TAG, "Config read %d bytes", totalBytesRead);
     return 0;
 }
 
-int8_t Config::write()
+int8_t config_write()
 {
-    // this->values.checksum = this->calculateChecksum();
+    // this->values.checksum = this->confif_calculate_checksum();
     // esp_err_t err = nvs_set_blob(nvsHandle, "config", &this->values, sizeof(config_t));
     // if (err != ESP_OK)
     // {
@@ -252,32 +248,32 @@ int8_t Config::write()
         }
         if (err != ESP_OK)
         {
-            ESP_LOGE(NVS_TAG, "Error (%s) writing %s\n", esp_err_to_name(err), config_items[i].name);
+            ESP_LOGE(TAG, "Error (%s) writing %s\n", esp_err_to_name(err), config_items[i].name);
             continue;
         }
 
         err = nvs_commit(config_items[i].handle);
         if (err != ESP_OK)
         {
-            ESP_LOGE(NVS_TAG, "Error (%s) committing %s\n", esp_err_to_name(err), config_items[i].name);
+            ESP_LOGE(TAG, "Error (%s) committing %s\n", esp_err_to_name(err), config_items[i].name);
             continue;
         }
         totalBytesWritten += bytesWritten;
     }
-    ESP_LOGI(NVS_TAG, "Config written %d bytes", totalBytesWritten);
+    ESP_LOGI(TAG, "Config written %d bytes", totalBytesWritten);
 
     return 0;
 }
 
-uint8_t Config::verify()
+uint8_t config_verify()
 {
-    switch (config.values.mode)
+    switch (config_values.mode)
     {
     case MODE_WEB:
     case MODE_MQTT:
     case MODE_MQTT_HA:
     case MODE_TUYA:
-        if (strlen(config.values.ssid) == 0 || strlen(config.values.password) == 0)
+        if (strlen(config_values.ssid) == 0 || strlen(config_values.password) == 0)
         {
             // No SSID or password
             return 1;
@@ -287,10 +283,10 @@ uint8_t Config::verify()
         break;
     }
 
-    switch (config.values.mode)
+    switch (config_values.mode)
     {
     case MODE_WEB:
-        if (strlen(config.values.web.host) == 0 || strlen(config.values.web.token) == 0 || strlen(config.values.web.postUrl) == 0 || strlen(config.values.web.configUrl) == 0)
+        if (strlen(config_values.web.host) == 0 || strlen(config_values.web.token) == 0 || strlen(config_values.web.postUrl) == 0 || strlen(config_values.web.configUrl) == 0)
         {
             // No web host, token, postUrl or configUrl
             return 1;
@@ -298,7 +294,7 @@ uint8_t Config::verify()
         break;
     case MODE_MQTT:
     case MODE_MQTT_HA:
-        if (strlen(config.values.mqtt.host) == 0 || strlen(config.values.mqtt.username) == 0 || strlen(config.values.mqtt.password) == 0 || strlen(config.values.mqtt.topic) == 0)
+        if (strlen(config_values.mqtt.host) == 0 || strlen(config_values.mqtt.username) == 0 || strlen(config_values.mqtt.password) == 0 || strlen(config_values.mqtt.topic) == 0)
         {
             // No MQTT host, username, password or topic
             return 1;
@@ -306,12 +302,12 @@ uint8_t Config::verify()
         break;
 
     case MODE_TUYA:
-        if (strlen(config.values.tuyaKeys.productID) == 0 || strlen(config.values.tuyaKeys.deviceUUID) == 0 || strlen(config.values.tuyaKeys.deviceAuth) == 0)
+        if (strlen(config_values.tuyaKeys.productID) == 0 || strlen(config_values.tuyaKeys.deviceUUID) == 0 || strlen(config_values.tuyaKeys.deviceAuth) == 0)
         {
             // No Tuya key, id, version or region
             return 1;
         }
-        if (config.values.tuyaBinded == 0)
+        if (config_values.tuyaBinded == 0)
         {
             // Tuya not binded
             return 0;
