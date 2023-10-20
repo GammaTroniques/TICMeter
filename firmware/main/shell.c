@@ -25,6 +25,8 @@
 ===============================================================================*/
 #define TAG "SHELL"
 
+#define MAX_ARGS_COUNT 5
+
 /*==============================================================================
  Local Macro
 ===============================================================================*/
@@ -32,15 +34,15 @@
 /*==============================================================================
  Local Type
 ===============================================================================*/
-struct shell_cmd_t
+typedef struct
 {
   const char *command;
   const char *help;
   int (*func)(int argc, char **argv);
-  const uint8_t args_num = 0;
-  const char *args[5] = {0};
-  const char *hint[5] = {0};
-};
+  const uint8_t args_num;
+  const char *args[5];
+  const char *hint[5];
+} shell_cmd_t;
 
 /*==============================================================================
  Local Function Declaration
@@ -99,8 +101,7 @@ Public Variable
  Local Variable
 ===============================================================================*/
 // clang-format off
-static const struct shell_cmd_t shell_cmds[]
-{
+static const shell_cmd_t shell_cmds[] = {
     // commands                       Help                                        Function                            Args num, Args, Hint
     {"reset",                       "Reset the device",                         &esp_reset_command,                 0, {}, {}},
     {"get-wifi",                    "Get wifi config",                          &get_wifi_command,                  0, {}, {}},
@@ -145,9 +146,9 @@ static const struct shell_cmd_t shell_cmds[]
     {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
     {"read-nvs",                    "Read all nvs",                             &read_nvs,                          0, {}, {}},
     {"info",                        "Get system info",                          &info_command,                      0, {}, {}},
-
-
 };
+
+const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
 // clang-format on
 /*==============================================================================
 Function Implementation
@@ -173,7 +174,7 @@ void shell_init()
   repl_config.prompt = "$";
   repl_config.max_cmdline_length = 100;
 
-  for (int i = 0; i < sizeof(shell_cmds) / sizeof(shell_cmd_t); i++)
+  for (int i = 0; i < shell_cmds_num; i++)
   {
     // ESP_LOGI(TAG, "Registering command %s", shell_cmds[i].command);
     // ESP_LOGI(TAG, "Help: %s", shell_cmds[i].help);
@@ -183,7 +184,7 @@ void shell_init()
                              .help = shell_cmds[i].help,
                              .func = shell_cmds[i].func};
 
-    struct arg_str *args[shell_cmds[i].args_num + 1] = {0};
+    struct arg_str *args[MAX_ARGS_COUNT] = {0};
 
     if (shell_cmds[i].args_num > 0)
     {
@@ -193,7 +194,7 @@ void shell_init()
             arg_str1(NULL, NULL, shell_cmds[i].args[j], shell_cmds[i].hint[j]);
       }
       struct arg_end *end = arg_end(shell_cmds[i].args_num);
-      args[shell_cmds[i].args_num] = (arg_str *)end;
+      args[shell_cmds[i].args_num] = (struct arg_str *)end;
       cmd.argtable = &args;
     }
     esp_console_cmd_register(&cmd);
@@ -225,8 +226,8 @@ static int get_wifi_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  printf("SSID: %s\n", config.values.ssid);
-  printf("Password: %s\n", config.values.password);
+  printf("SSID: %s\n", config_values.ssid);
+  printf("Password: %s\n", config_values.password);
 
   return 0;
 }
@@ -236,9 +237,9 @@ static int set_wifi_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  strncpy(config.values.ssid, argv[1], sizeof(config.values.ssid));
-  strncpy(config.values.password, argv[2], sizeof(config.values.password));
-  config.write();
+  strncpy(config_values.ssid, argv[1], sizeof(config_values.ssid));
+  strncpy(config_values.password, argv[2], sizeof(config_values.password));
+  config_write();
   printf("Wifi credentials saved\n");
 
   return 0;
@@ -278,13 +279,13 @@ static int set_web_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  strncpy(config.values.web.host, argv[1], sizeof(config.values.web.host));
-  strncpy(config.values.web.postUrl, argv[2],
-          sizeof(config.values.web.postUrl));
-  strncpy(config.values.web.configUrl, argv[3],
-          sizeof(config.values.web.configUrl));
-  strncpy(config.values.web.token, argv[4], sizeof(config.values.web.token));
-  config.write();
+  strncpy(config_values.web.host, argv[1], sizeof(config_values.web.host));
+  strncpy(config_values.web.postUrl, argv[2],
+          sizeof(config_values.web.postUrl));
+  strncpy(config_values.web.configUrl, argv[3],
+          sizeof(config_values.web.configUrl));
+  strncpy(config_values.web.token, argv[4], sizeof(config_values.web.token));
+  config_write();
   printf("Web credentials saved\n");
   return 0;
 }
@@ -294,10 +295,10 @@ static int get_web_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  printf("Host: %s\n", config.values.web.host);
-  printf("PostUrl: %s\n", config.values.web.postUrl);
-  printf("ConfigUrl: %s\n", config.values.web.configUrl);
-  printf("Token: %s\n", config.values.web.token);
+  printf("Host: %s\n", config_values.web.host);
+  printf("PostUrl: %s\n", config_values.web.postUrl);
+  printf("ConfigUrl: %s\n", config_values.web.configUrl);
+  printf("Token: %s\n", config_values.web.token);
   return 0;
 }
 
@@ -307,11 +308,11 @@ static int get_mqtt_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  printf("Host: %s\n", config.values.mqtt.host);
-  printf("Port: %d\n", config.values.mqtt.port);
-  printf("Topic: %s\n", config.values.mqtt.topic);
-  printf("Username: %s\n", config.values.mqtt.username);
-  printf("Password: %s\n", config.values.mqtt.password);
+  printf("Host: %s\n", config_values.mqtt.host);
+  printf("Port: %d\n", config_values.mqtt.port);
+  printf("Topic: %s\n", config_values.mqtt.topic);
+  printf("Username: %s\n", config_values.mqtt.username);
+  printf("Password: %s\n", config_values.mqtt.password);
   return 0;
 }
 static int set_mqtt_command(int argc, char **argv)
@@ -320,14 +321,14 @@ static int set_mqtt_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  strncpy(config.values.mqtt.host, argv[1], sizeof(config.values.mqtt.host));
-  config.values.mqtt.port = atoi(argv[2]);
-  strncpy(config.values.mqtt.topic, argv[3], sizeof(config.values.mqtt.topic));
-  strncpy(config.values.mqtt.username, argv[4],
-          sizeof(config.values.mqtt.username));
-  strncpy(config.values.mqtt.password, argv[5],
-          sizeof(config.values.mqtt.password));
-  config.write();
+  strncpy(config_values.mqtt.host, argv[1], sizeof(config_values.mqtt.host));
+  config_values.mqtt.port = atoi(argv[2]);
+  strncpy(config_values.mqtt.topic, argv[3], sizeof(config_values.mqtt.topic));
+  strncpy(config_values.mqtt.username, argv[4],
+          sizeof(config_values.mqtt.username));
+  strncpy(config_values.mqtt.password, argv[5],
+          sizeof(config_values.mqtt.password));
+  config_write();
   printf("MQTT credentials saved\n");
   return 0;
 }
@@ -372,7 +373,7 @@ static int get_mode_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  printf("Mode: %d - %s\n", config.values.mode, MODES[config.values.mode]);
+  printf("Mode: %d - %s\n", config_values.mode, MODES[config_values.mode]);
   return 0;
 }
 static int set_mode_command(int argc, char **argv)
@@ -381,8 +382,8 @@ static int set_mode_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  config.values.mode = (connectivity_t)atoi(argv[1]);
-  config.write();
+  config_values.mode = (connectivity_t)atoi(argv[1]);
+  config_write();
   printf("Mode saved\n");
   get_mode_command(1, NULL);
   return 0;
@@ -395,7 +396,7 @@ static int get_config_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("config read\n");
-  config.read();
+  config_read();
   return 0;
 }
 static int set_config_command(int argc, char **argv)
@@ -404,7 +405,7 @@ static int set_config_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  config.write();
+  config_write();
   printf("Config saved\n");
   return 0;
 }
@@ -446,13 +447,13 @@ static int set_tuya_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  memcpy(config.values.tuyaKeys.productID, argv[1],
-         sizeof(config.values.tuyaKeys.productID));
-  memcpy(config.values.tuyaKeys.deviceUUID, argv[2],
-         sizeof(config.values.tuyaKeys.deviceUUID));
-  memcpy(config.values.tuyaKeys.deviceAuth, argv[3],
-         sizeof(config.values.tuyaKeys.deviceAuth));
-  config.write();
+  memcpy(config_values.tuyaKeys.productID, argv[1],
+         sizeof(config_values.tuyaKeys.productID));
+  memcpy(config_values.tuyaKeys.deviceUUID, argv[2],
+         sizeof(config_values.tuyaKeys.deviceUUID));
+  memcpy(config_values.tuyaKeys.deviceAuth, argv[3],
+         sizeof(config_values.tuyaKeys.deviceAuth));
+  config_write();
   printf("Tuya config saved\n");
   get_tuya_command(1, NULL);
   return 0;
@@ -465,10 +466,10 @@ static int get_tuya_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("%cTuya config:\n", 0x02);
-  printf("Product ID: %s\n", config.values.tuyaKeys.productID);
-  printf("Device UUID: %s\n", config.values.tuyaKeys.deviceUUID);
-  printf("Device Auth: %s\n", config.values.tuyaKeys.deviceAuth);
-  printf("Tuya Bind Status: %d%c\n", config.values.tuyaBinded, 0x03);
+  printf("Product ID: %s\n", config_values.tuyaKeys.productID);
+  printf("Device UUID: %s\n", config_values.tuyaKeys.deviceUUID);
+  printf("Device Auth: %s\n", config_values.tuyaKeys.deviceAuth);
+  printf("Tuya Bind Status: %d%c\n", config_values.tuyaBinded, 0x03);
   return 0;
 }
 
@@ -480,8 +481,8 @@ static int get_linky_mode_command(int argc, char **argv)
   }
   const char *modes[] = {"MODE_HISTORIQUE", "MODE_STANDARD", "MODE_AUTO"};
   printf("Current Linky mode: %d: %s\n", linky_mode, modes[linky_mode]);
-  printf("Configured Linky mode: %d: %s\n", config.values.linkyMode,
-         modes[config.values.linkyMode]);
+  printf("Configured Linky mode: %d: %s\n", config_values.linkyMode,
+         modes[config_values.linkyMode]);
   return 0;
 }
 static int set_linky_mode_command(int argc, char **argv)
@@ -490,8 +491,8 @@ static int set_linky_mode_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  config.values.linkyMode = (LinkyMode)atoi(argv[1]);
-  config.write();
+  config_values.linkyMode = (linky_mode_t)atoi(argv[1]);
+  config_write();
   printf("Mode saved\n");
   get_linky_mode_command(1, NULL);
   return 0;
@@ -534,8 +535,8 @@ static int set_sleep_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  config.values.sleep = atoi(argv[1]);
-  config.write();
+  config_values.sleep = atoi(argv[1]);
+  config_write();
   printf("Sleep saved\n");
   get_sleep_command(1, NULL);
   return 0;
@@ -547,7 +548,7 @@ static int get_sleep_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  printf("Sleep: %d\n", config.values.sleep);
+  printf("Sleep: %d\n", config_values.sleep);
   return 0;
 }
 
