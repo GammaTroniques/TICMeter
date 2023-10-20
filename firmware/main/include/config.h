@@ -41,7 +41,7 @@
 /*==============================================================================
  Public Type
 ==============================================================================*/
-enum connectivity_t : uint8_t
+typedef enum
 {
     MODE_WEB,
     MODE_MQTT,
@@ -49,50 +49,48 @@ enum connectivity_t : uint8_t
     MODE_ZIGBEE,
     MODE_MATTER,
     MODE_TUYA,
-};
+} connectivity_t;
 
-struct webConfig_t
+typedef struct
 {
-    char host[100] = "";
-    char postUrl[50] = "";
-    char configUrl[50] = "";
-    char token[100] = "";
-};
+    char host[100];
+    char postUrl[50];
+    char configUrl[50];
+    char token[100];
+} webConfig_t;
 
-struct mqttConfig_t
+typedef struct
 {
-    char host[100] = "";
-    uint16_t port = 0;
-    char username[100] = "";
-    char password[100] = "";
-    char topic[100] = "";
-};
+    char host[100];
+    uint16_t port;
+    char username[100];
+    char password[100];
+    char topic[100];
+} mqttConfig_t;
 
-struct tuyaConfig_t
+typedef struct
 {
-    char productID[30] = "";
-    char deviceUUID[30] = "";
-    char deviceAuth[40] = "";
-};
+    char productID[30];
+    char deviceUUID[30];
+    char deviceAuth[40];
+} tuyaConfig_t;
 
-struct config_t
+typedef struct
 {
-    uint16_t magic = 0x1234; // magic number to check if a config is stored in EEPROM
-    char ssid[50] = "";
-    char password[50] = "";
+    char ssid[50];
+    char password[50];
 
-    LinkyMode linkyMode = MODE_HISTORIQUE;
-    connectivity_t mode = MODE_WEB;
+    linky_mode_t linkyMode;
+    connectivity_t mode;
     webConfig_t web;
     mqttConfig_t mqtt;
     tuyaConfig_t tuyaKeys;
-    uint8_t tuyaBinded = 0;
+    uint8_t tuyaBinded;
 
-    char version[10] = "";
-    uint16_t refreshRate = 60;
-    uint8_t sleep = 1;
-    uint16_t checksum = 0;
-};
+    char version[10];
+    uint16_t refreshRate;
+    uint8_t sleep;
+} config_t;
 
 /*==============================================================================
  Public Variables Declaration
@@ -103,26 +101,16 @@ extern const char *GIT_REV;
 extern const char *GIT_BRANCH;
 extern const char *BUILD_TIME;
 
+extern config_t config_values;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
 
-class Config
-{
-public:
-    Config();
-    int8_t erase();
-    int8_t begin();
-    int8_t read();
-    int8_t write();
-    uint8_t verify();
-    int16_t calculateChecksum();
-    config_t values;
-
-private:
-    nvs_handle_t nvsHandle;
-};
-
-extern Config config;
+int8_t config_erase();
+int8_t config_begin();
+int8_t config_read();
+int8_t config_write();
+uint8_t config_verify();
+int16_t config_calculate_checksum();
 
 #endif /* CONFIG_H */

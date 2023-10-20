@@ -16,7 +16,8 @@
 #include "mqtt.h"
 #include "wifi.h"
 #include "gpio.h"
-#include <ArduinoJson.h>
+// #include <ArduinoJson.h>
+#include "cJSON.h"
 #include "esp_ota_ops.h"
 #include "mbedtls/md.h"
 
@@ -68,20 +69,20 @@ static void log_error_if_nonzero(const char *message, int error_code)
 
 static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor)
 {
-    DynamicJsonDocument device(1024);
     const esp_app_desc_t *app_desc = esp_app_get_description();
 
-    device["identifiers"] = MQTT_ID;
-    device["name"] = MQTT_NAME;
-    device["model"] = app_desc->project_name;
-    device["manufacturer"] = "GammaTroniques";
-    device["sw_version"] = app_desc->version;
+    cJSON *jsonDevice = cJSON_CreateObject(); // Create the root object
+    cJSON_AddStringToObject(jsonDevice, "identifiers", MQTT_ID);
+    cJSON_AddStringToObject(jsonDevice, "name", MQTT_NAME);
+    cJSON_AddStringToObject(jsonDevice, "model", app_desc->project_name);
+    cJSON_AddStringToObject(jsonDevice, "manufacturer", "GammaTroniques");
+    cJSON_AddStringToObject(jsonDevice, "sw_version", app_desc->version);
 
-    DynamicJsonDocument sensorConfig(1024);
-    sensorConfig["~"] = config.values.mqtt.topic;
-    sensorConfig["name"] = sensor.name;
-    sensorConfig["unique_id"] = sensor.label;
-    sensorConfig["object_id"] = sensor.label;
+    cJSON *sensorConfig = cJSON_CreateObject(); // Create the root object
+    cJSON_AddStringToObject(sensorConfig, "~", config_values.mqtt.topic);
+    cJSON_AddStringToObject(sensorConfig, "name", sensor.name);
+    cJSON_AddStringToObject(sensorConfig, "unique_id", sensor.label);
+    cJSON_AddStringToObject(sensorConfig, "object_id", sensor.label);
 
     char state_topic[100];
     snprintf(state_topic, sizeof(100), "~/%s", sensor.label);
@@ -94,66 +95,49 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
 
     if (sensor.type == HA_NUMBER)
     {
-        sensorConfig["command_topic"] = state_topic;
-        sensorConfig["mode"] = "box";
-        sensorConfig["min"] = 30;
-        sensorConfig["max"] = 3600;
-        sensorConfig["retain"] = "true";
-        sensorConfig["qos"] = 2;
+        cJSON_AddStringToObject(sensorConfig, "command_topic", state_topic);
+        cJSON_AddStringToObject(sensorConfig, "mode", "box");
+        cJSON_AddNumberToObject(sensorConfig, "min", 30);
+        cJSON_AddNumberToObject(sensorConfig, "max", 3600);
+        cJSON_AddStringToObject(sensorConfig, "retain", "true");
+        cJSON_AddNumberToObject(sensorConfig, "qos", 2);
     }
     else
     {
-        sensorConfig["state_topic"] = state_topic;
+        cJSON_AddStringToObject(sensorConfig, "state_topic", state_topic);
     }
     if (sensor.device_class == TIMESTAMP)
-        sensorConfig["value_template"] = "{{ as_datetime(value) }}";
-    if (sensor.device_class != NONE_CLASS)
-        sensorConfig["device_class"] = HADeviceClassStr[sensor.device_class];
-    if (strlen(sensor.icon) > 0)
-        sensorConfig["icon"] = sensor.icon;
-    switch (sensor.device_class)
     {
-    case CURRENT:
-        sensorConfig["unit_of_measurement"] = "A";
-        break;
-    case POWER_VA:
-        sensorConfig["unit_of_measurement"] = "VA";
-        break;
-    case POWER_kVA:
-        sensorConfig["unit_of_measurement"] = "kVA";
-        break;
-    case POWER_W:
-        sensorConfig["unit_of_measurement"] = "W";
-        break;
-    case POWER_Q:
-        sensorConfig["unit_of_measurement"] = "VAr";
-        break;
-    case ENERGY:
-        sensorConfig["unit_of_measurement"] = "Wh";
-        break;
-    case ENERGY_Q:
-        sensorConfig["unit_of_measurement"] = "VArh";
-        break;
-    case TIMESTAMP:
-        break;
-    case TENSION:
-        sensorConfig["unit_of_measurement"] = "V";
-        break;
-    default:
-        break;
+        cJSON_AddStringToObject(sensorConfig, "value_template", "{{ as_datetime(value) }}");
+    }
+    if (sensor.device_class != NONE_CLASS)
+    {
+        cJSON_AddStringToObject(sensorConfig, "device_class", HADeviceClassStr[sensor.device_class]);
+    }
+    if (strlen(sensor.icon) > 0)
+    {
+        cJSON_AddStringToObject(sensorConfig, "icon", sensor.icon);
     }
 
+    cJSON_AddStringToObject(sensorConfig, "unit_of_measurement", HAUnitsStr[sensor.device_class]);
+
     if (sensor.realTime == REAL_TIME)
-        sensorConfig["expire_after"] = config.values.refreshRate * 4;
-    sensorConfig["device"] = device;
-    serializeJson(sensorConfig, json, 1024);
+    {
+        cJSON_AddNumberToObject(sensorConfig, "expire_after", config_values.refreshRate * 4);
+    }
+
+    cJSON_AddItemToObject(sensorConfig, "device", jsonDevice);
+    char *jsonString = cJSON_PrintUnformatted(sensorConfig);
+    strncpy(json, jsonString, 1024);
+    free(jsonString);
+    cJSON_Delete(sensorConfig);
 }
 
 static void mqtt_send_ha(LinkyData *linkydata)
 {
     static uint8_t HAConfigured = 0;
     vTaskDelay(500 / portTICK_PERIOD_MS);
-    if (config.values.mode == MODE_MQTT_HA && HAConfigured == 0)
+    if (config_values.mode == MODE_MQTT_HA && HAConfigured == 0)
     {
         mqtt_setup_ha_discovery();
         HAConfigured = 1;
@@ -170,7 +154,7 @@ static void mqtt_send_ha(LinkyData *linkydata)
     {
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
             continue;
-        snprintf(topic, sizeof(topic), "%s/%s", config.values.mqtt.topic, (char *)LinkyLabelList[i].label);
+        snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, (char *)LinkyLabelList[i].label);
         switch (LinkyLabelList[i].type)
         {
         case UINT8:
@@ -219,7 +203,7 @@ static void mqtt_send_ha(LinkyData *linkydata)
             TimeLabel *timeLabel = (TimeLabel *)LinkyLabelList[i].data;
             if (timeLabel->value == UINT32_MAX)
                 continue;
-            snprintf(topic, sizeof(topic), "%s/%s", config.values.mqtt.topic, (char *)LinkyLabelList[i].label);
+            snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, (char *)LinkyLabelList[i].label);
             snprintf(strValue, sizeof(strValue), "%lu", timeLabel->value);
             break;
         }
@@ -337,10 +321,10 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         if (strcmp(topic, MQTT_ID "/Refresh") == 0)
         {
             uint16_t refreshRate = atoi(event->data);
-            if (config.values.refreshRate != refreshRate)
+            if (config_values.refreshRate != refreshRate)
             {
-                config.values.refreshRate = refreshRate;
-                ESP_LOGI(TAG, "New RefreshRate = %d", config.values.refreshRate);
+                config_values.refreshRate = refreshRate;
+                ESP_LOGI(TAG, "New RefreshRate = %d", config_values.refreshRate);
             }
         }
         else
@@ -386,9 +370,9 @@ void mqtt_app_start(void)
     esp_mqtt_client_config_t mqtt_cfg = {};
 
     // HOME ASSISTANT / MQTT
-    snprintf(uri, sizeof(uri), "mqtt://%s:%d", config.values.mqtt.host, config.values.mqtt.port);
-    mqtt_cfg.credentials.username = config.values.mqtt.username;
-    mqtt_cfg.credentials.authentication.password = config.values.mqtt.password;
+    snprintf(uri, sizeof(uri), "mqtt://%s:%d", config_values.mqtt.host, config_values.mqtt.port);
+    mqtt_cfg.credentials.username = config_values.mqtt.username;
+    mqtt_cfg.credentials.authentication.password = config_values.mqtt.password;
     mqtt_cfg.broker.address.uri = uri;
 
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
@@ -421,11 +405,11 @@ void mqtt_send(LinkyData *linky)
     {
         mqtt_app_start();
     }
-    switch (config.values.mode)
+    switch (config_values.mode)
     {
     case MODE_MQTT:
     case MODE_MQTT_HA:
-        if (strlen(config.values.mqtt.host) == 0 || config.values.mqtt.port == 0)
+        if (strlen(config_values.mqtt.host) == 0 || config_values.mqtt.port == 0)
         {
             ESP_LOGI(TAG, "MQTT host not set: MQTT ERROR");
             return;

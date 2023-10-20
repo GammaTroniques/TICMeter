@@ -45,14 +45,14 @@
 /*==============================================================================
  Local Type
 ===============================================================================*/
-enum led_state_t
+typedef enum
 {
     NO_FLASH,
     PAIRING_FLASH,
     WEB_FLASH = 0x0008FF,
     ZIGBEE_FLASH = 0xFF0000,
     TUYA_FLASH = 0xFA650F,
-};
+} led_state_t;
 
 typedef struct ledPattern_t
 {
@@ -354,18 +354,18 @@ void gpio_pairing_button_task(void *pvParameters)
                     switch (ledState)
                     {
                     case WEB_FLASH:
-                        config.values.mode = MODE_WEB;
+                        config_values.mode = MODE_WEB;
                         break;
                     case ZIGBEE_FLASH:
-                        config.values.mode = MODE_ZIGBEE;
+                        config_values.mode = MODE_ZIGBEE;
                         break;
                     case TUYA_FLASH:
-                        config.values.mode = MODE_TUYA;
+                        config_values.mode = MODE_TUYA;
                         break;
                     default:
                         break;
                     }
-                    config.write();
+                    config_write();
                     vTaskDelay(2000 / portTICK_PERIOD_MS);
                     esp_restart();
                 }
@@ -378,7 +378,7 @@ void gpio_pairing_button_task(void *pvParameters)
                         // already in pairing mode
                         esp_restart();
                     }
-                    switch (config.values.mode)
+                    switch (config_values.mode)
                     {
                     case MODE_WEB:
                     case MODE_MQTT:
@@ -443,7 +443,7 @@ void gpio_start_led_pattern(uint8_t pattern)
 
 void gpio_boot_led_pattern()
 {
-    switch (config.values.mode)
+    switch (config_values.mode)
     {
     case MODE_WEB:
     case MODE_MQTT:
@@ -466,7 +466,7 @@ void gpio_boot_led_pattern()
 
 void gpio_led_task_no_config(void *pvParameters)
 {
-    while (config.verify())
+    while (config_verify())
     {
         vTaskDelay(5000 / portTICK_PERIOD_MS);
         for (int i = 0; i < 3; i++)

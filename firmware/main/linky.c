@@ -57,7 +57,7 @@ static time_t linky_decode_time(char *time); // Decode the time
 Public Variable
 ===============================================================================*/
 // clang-format off
-const struct LinkyGroup LinkyLabelList[] =
+const LinkyGroup LinkyLabelList[] =
 {   
     //     Name                          Label           DataPtr                             Type          MODE             UpdateType    Class          Icon                           ZB_CLUSTER_ID, ZB_ATTRIBUTE_ID
     //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -191,7 +191,7 @@ const struct LinkyGroup LinkyLabelList[] =
     {26,  "Profil du prochain jour",         "PJOURF+1",    &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                     0x0000, 0x0000,  },
     {27,  "Profil du prochain jour pointe",  "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      98, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                     0x0000, 0x0000,  },
     //---------------------------Home Assistant Specific ------------------------------------------------
-    {131, "Temps d'actualisation",          "currRfsh",    &config.values.refreshRate,    UINT16,        0,           ANY,   STATIC_VALUE,  NONE_CLASS,  "mdi:refresh",                       0x0000, 0x0000,  },
+    {131, "Temps d'actualisation",          "currRfsh",     &config_values.refreshRate,    UINT16,        0,           ANY,   STATIC_VALUE,  NONE_CLASS,  "mdi:refresh",                       0x0000, 0x0000,  },
     // {132, "Mode TIC",                       "mode-tic",    &mode,                   UINT16,       ANY,             STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     // {133, "Mode Elec",                      "mode-tri",    &linky_tree_phase,              UINT16,       ANY,             STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,         UINT64,        0,           ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
@@ -203,20 +203,50 @@ const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelLis
 // clang-format on
 
 LinkyData linky_data; // The data
-LinkyMode linky_mode = MODE_HISTORIQUE;
+linky_mode_t linky_mode = MODE_HISTORIQUE;
 uint8_t linky_tree_phase = 0;
 uint8_t linky_reading = 0;
 uint8_t linky_want_debug_frame = 0;
 char linky_buffer[LINKY_BUFFER_SIZE] = {0}; // The UART buffer
 
+const char *const HADeviceClassStr[] = {
+    [NONE_CLASS] = "",
+    [CURRENT] = "current",
+    [POWER_VA] = "power",
+    [POWER_kVA] = "power",
+    [POWER_W] = "power",
+    [POWER_Q] = "power",
+    [ENERGY] = "energy",
+    [ENERGY_Q] = "energy",
+    [TIMESTAMP] = "timestamp",
+    [TENSION] = "voltage",
+    [TEXT] = "text",
+    [BOOL] = "binary_sensor",
+};
+
+const char *const HAUnitsStr[] = {
+    [NONE_CLASS] = "",
+    [CURRENT] = "A",
+    [POWER_VA] = "VA",
+    [POWER_kVA] = "kVA",
+    [POWER_W] = "W",
+    [POWER_Q] = "VAr",
+    [ENERGY] = "kWh",
+    [ENERGY_Q] = "kVArh",
+    [TIMESTAMP] = "",
+    [TENSION] = "V",
+    [TEXT] = "",
+    [BOOL] = "",
+};
+
 /*==============================================================================
  Local Variable
 ===============================================================================*/
-char linky_uart_rx = 0;               // The RX pin of the linky
-uint8_t linky_group_separator = 0x20; // The group separator character (changes depending on the mode) (0x20 in historique mode, 0x09 in standard mode)
-char *linky_frame = NULL;             // The received frame from the linky
-uint16_t linky_frame_size = 0;        // The size of the frame
-static uint32_t linky_rx_bytes = 0;   // store the number of bytes read
+static char linky_uart_rx = 0;               // The RX pin of the linky
+static char *linky_frame = NULL;             // The received frame from the linky
+static uint8_t linky_group_separator = 0x20; // The group separator character (changes depending on the mode) (0x20 in historique mode, 0x09 in standard mode)
+static uint16_t linky_frame_size = 0;        // The size of the frame
+static uint32_t linky_rx_bytes = 0;          // store the number of bytes read
 
 /*==============================================================================
 Function Implementation
@@ -228,7 +258,7 @@ Function Implementation
  * @param mode MODE_STANDARD or MODE_HISTORIQUE
  * @param RX RX pin number for the UART
  */
-void linky_init(LinkyMode mode, int RX)
+void linky_init(linky_mode_t mode, int RX)
 {
     linky_mode = mode;
     linky_uart_rx = RX;
@@ -237,11 +267,11 @@ void linky_init(LinkyMode mode, int RX)
     linky_group_separator = (mode == MODE_HISTORIQUE) ? 0x20 : 0x09;
     esp_log_level_set(TAG, ESP_LOG_INFO);
 
-    switch (config.values.linkyMode)
+    switch (config_values.linkyMode)
     {
     case AUTO:
         ESP_LOGI(TAG, "Trying to autodetect Linky mode, testing last known mode: %s", (linky_mode == MODE_HISTORIQUE) ? "MODE_HISTORIQUE" : "MODE_STANDARD");
-        linky_set_mode(config.values.linkyMode);
+        linky_set_mode(config_values.linkyMode);
         break;
     case MODE_HISTORIQUE:
         linky_set_mode(MODE_HISTORIQUE);
@@ -256,16 +286,19 @@ void linky_init(LinkyMode mode, int RX)
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
 }
 
-void linky_set_mode(LinkyMode newMode)
+void linky_set_mode(linky_mode_t newMode)
 {
+    LinkyData empty;
+    memset(&empty, 0, sizeof empty);
+
     linky_mode = newMode;
     switch (newMode)
     {
     case MODE_HISTORIQUE:
-        linky_data.hist = {}; // reset all values
+        linky_data.hist = empty.hist;
         break;
     case MODE_STANDARD:
-        linky_data.std = {};
+        linky_data.std = empty.std;
         break;
     default:
         break;
@@ -405,20 +438,22 @@ static char linky_decode()
     //----------------------------------------------------------
     // Clear the previous data
     //----------------------------------------------------------
+    LinkyData empty;
+    memset(&empty, 0, sizeof empty);
     switch (linky_mode)
     {
     case MODE_HISTORIQUE:
-        linky_data.hist = {0};
+        linky_data.hist = empty.hist;
         break;
     case MODE_STANDARD:
-        linky_data.std = {0};
+        linky_data.std = empty.std;
         break;
     default:
         break;
     }
     if (!linky_frame)
     {
-        if (config.values.linkyMode == AUTO)
+        if (config_values.linkyMode == AUTO)
         {
             switch (linky_mode)
             {
@@ -426,8 +461,8 @@ static char linky_decode()
                 if (strlen(linky_data.hist.ADCO) > 0)
                 {
                     ESP_LOGI(TAG, "Auto mode: Mode Historique Found!");
-                    config.values.linkyMode = MODE_HISTORIQUE;
-                    config.write();
+                    config_values.linkyMode = MODE_HISTORIQUE;
+                    config_write();
                 }
                 else
                 {
@@ -439,8 +474,8 @@ static char linky_decode()
                 if (strlen(linky_data.std.ADSC) > 0)
                 {
                     ESP_LOGI(TAG, "Auto mode: Mode Standard Found!");
-                    config.values.linkyMode = MODE_STANDARD;
-                    config.write();
+                    config_values.linkyMode = MODE_STANDARD;
+                    config_write();
                 }
                 else
                 {
@@ -503,7 +538,7 @@ static char linky_decode()
     //------------------------------------------
     for (int i = 0; i < startOfGroupIndex; i++) // for each group
     {
-        unsigned int separators[startOfGroupIndex + 1] = {0}; // store index of separators
+        unsigned int separators[GROUP_COUNT] = {0};           // store index of separators
         uint8_t separatorIndex = 0;                           // store the current index of separators array
         for (int j = startOfGroup[i]; j < endOfGroup[i]; j++) // for each character in group
         {
@@ -613,6 +648,7 @@ void linky_print()
     ESP_LOGI(TAG, "-------------------");
     for (uint32_t i = 0; i < LinkyLabelListSize; i++)
     {
+
         if (linky_mode != LinkyLabelList[i].mode)
             continue;
         switch (LinkyLabelList[i].type)
@@ -761,7 +797,7 @@ static void linky_create_debug_frame()
         char value[20];
         char checksum;
     };
-    debugGroup debugGroups[16] = {
+    struct debugGroup debugGroups[16] = {
         {"ADCO", "031976306475", 'J'},
         {"OPTARIF", "BASE", '0'},
         {"ISOUSC", "30", '9'},

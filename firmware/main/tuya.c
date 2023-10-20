@@ -20,7 +20,6 @@
 #include "cJSON.h"
 #include "qrcode.h"
 #include "wifi.h"
-#include "ArduinoJson.h"
 #include "esp_ota_ops.h"
 /*==============================================================================
  Local Define
@@ -140,8 +139,8 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
     }
     case TUYA_EVENT_RESET:
         ESP_LOGI(TAG, "Tuya unbined");
-        config.values.tuyaBinded = 2; // want to be binded on next boot
-        config.write();
+        config_values.tuyaBinded = 2; // want to be binded on next boot
+        config_write();
         break;
     case TUYA_EVENT_BIND_TOKEN_ON:
         // start of binding
@@ -149,8 +148,8 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
         break;
     case TUYA_EVENT_ACTIVATE_SUCCESSED:
         ESP_LOGI(TAG, "Tuya binded");
-        config.values.tuyaBinded = 1; // binded
-        config.write();
+        config_values.tuyaBinded = 1; // binded
+        config_write();
         break;
     default:
         break;
@@ -165,9 +164,9 @@ static void tuya_link_app_task(void *pvParameters)
     const esp_app_desc_t *app_desc = esp_app_get_description();
 
     const tuya_iot_config_t tuya_config = {
-        .productkey = config.values.tuyaKeys.productID,
-        .uuid = config.values.tuyaKeys.deviceUUID,
-        .authkey = config.values.tuyaKeys.deviceAuth,
+        .productkey = config_values.tuyaKeys.productID,
+        .uuid = config_values.tuyaKeys.deviceUUID,
+        .authkey = config_values.tuyaKeys.deviceAuth,
         .software_ver = app_desc->version,
         .modules = NULL,
         .skill_param = NULL,
@@ -207,7 +206,8 @@ uint8_t tuya_send_data(LinkyData *linky)
 {
     // tuya_iot_reconnect(&client);
     ESP_LOGI(TAG, "Send data to tuya");
-    DynamicJsonDocument device(1024);
+    // DynamicJsonDocument device(1024);
+    cJSON *jsonObject = cJSON_CreateObject(); // Create the root object
 
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
@@ -227,7 +227,8 @@ uint8_t tuya_send_data(LinkyData *linky)
             uint8_t *value = (uint8_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT8_MAX)
                 continue;
-            device[strId] = *value;
+            // device[strId] = *value;
+            cJSON_AddNumberToObject(jsonObject, strId, *value);
             break;
         }
         case UINT16:
@@ -235,7 +236,8 @@ uint8_t tuya_send_data(LinkyData *linky)
             uint16_t *value = (uint16_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT16_MAX)
                 continue;
-            device[strId] = *value;
+            // device[strId] = *value;
+            cJSON_AddNumberToObject(jsonObject, strId, *value);
             break;
         }
         case UINT32:
@@ -243,7 +245,8 @@ uint8_t tuya_send_data(LinkyData *linky)
             uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
-            device[strId] = *value;
+            // device[strId] = *value;
+            cJSON_AddNumberToObject(jsonObject, strId, *value);
             break;
         }
         case UINT32_TIME:
@@ -251,7 +254,8 @@ uint8_t tuya_send_data(LinkyData *linky)
             uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
-            device[strId] = *value;
+            // device[strId] = *value;
+            cJSON_AddNumberToObject(jsonObject, strId, *value);
             break;
         }
         case UINT64:
@@ -259,7 +263,8 @@ uint8_t tuya_send_data(LinkyData *linky)
             uint64_t *value = (uint64_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT64_MAX)
                 continue;
-            device[strId] = *value;
+            // device[strId] = *value;
+            cJSON_AddNumberToObject(jsonObject, strId, *value);
             break;
         }
         case STRING:
@@ -267,17 +272,19 @@ uint8_t tuya_send_data(LinkyData *linky)
             char *value = (char *)LinkyLabelList[i].data;
             if (value == NULL || strlen(value) == 0)
                 continue;
-            device[strId] = value;
+            // device[strId] = value;
+            cJSON_AddStringToObject(jsonObject, strId, value);
             break;
         }
         default:
             break;
         }
     }
-    device["134"] = MILLIS / 1000 / 60; // uptime in minutes
+    cJSON_AddNumberToObject(jsonObject, "134", MILLIS / 1000 / 60);
 
-    char json[1024];
-    serializeJson(device, json);
+    char *json = cJSON_PrintUnformatted(jsonObject); // Convert the json object to string
+    cJSON_Delete(jsonObject);                        // Delete the json object
+
     ESP_LOGI(TAG, "JSON: %s", json);
     uint8_t sendComplete = 0;
     time_t timout = MILLIS + 3000;
@@ -286,6 +293,8 @@ uint8_t tuya_send_data(LinkyData *linky)
     {
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
+    free(json); // Free the memory
+
     if (sendComplete == 0)
     {
         ESP_LOGI(TAG, "Send data to tuya timeout");
@@ -298,7 +307,7 @@ uint8_t tuya_send_data(LinkyData *linky)
 void tuya_reset()
 {
     ESP_LOGI(TAG, "Reset Tuya");
-    config.values.tuyaBinded = 0;
+    config_values.tuyaBinded = 0;
     tuya_iot_activated_data_remove(&client);
 }
 
@@ -312,12 +321,12 @@ void tuya_pairing_task(void *pvParameters)
     }
     tuya_reset();
     tuya_init();
-    while (config.values.tuyaBinded != 1)
+    while (config_values.tuyaBinded != 1)
     {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     ESP_LOGI(TAG, "Tuya pairing done");
-    config.write();
+    config_write();
     vTaskDelete(NULL);
 }
 
