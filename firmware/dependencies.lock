@@ -1,10 +1,4 @@
 dependencies:
-  bblanchon/arduinojson:
-    component_hash: c111ebf785c5e3cb5a3f8902584b03e25d929a3651976b5a57054bfa941ffc74
-    source:
-      service_url: https://api.components.espressif.com/
-      type: service
-    version: 6.21.3
   espressif/esp-zboss-lib:
     component_hash: 381124d25357bb81a509334b8af142105543819ceb2722a304e6fa9b4a8da04d
     source:
@@ -28,6 +22,6 @@ dependencies:
     source:
       type: idf
     version: 5.1.1
-manifest_hash: 44b3e9ec9c9c4f731af03ba9dd08c5b47b87fa05d5a44761c4404e536100ecfe
+manifest_hash: 4e3c437ee83681e498c00c883995736756c729aebf1ebc81976995e3f42c1cb4
 target: esp32c6
 version: 1.0.0

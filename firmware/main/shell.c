@@ -103,7 +103,7 @@ Public Variable
 // clang-format off
 static const shell_cmd_t shell_cmds[] = {
     // commands                       Help                                        Function                            Args num, Args, Hint
-    {"reset",                       "Reset the device",                         &esp_reset_command,                 0, {}, {}},
+     {"reset",                       "Reset the device",                         &esp_reset_command,                 0, {}, {}},
     {"get-wifi",                    "Get wifi config",                          &get_wifi_command,                  0, {}, {}},
     {"set-wifi",                    "Set wifi config",                          &set_wifi_command,                  2, {"<ssid>", "<password>"}, {"SSID of AP", "Password of AP"}},
     {"wifi-connect",                "Connect to wifi",                          &connect_wifi_command,              0, {}, {}},
@@ -139,8 +139,8 @@ static const shell_cmd_t shell_cmds[] = {
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
-    {"linky-print",                 "Print linky linky_data",                         &linky_print_command,               0, {}, {}},
-    {"linky-simulate",              "Simulate linky linky_data",                      &linky_simulate,                    0, {}, {}},
+    {"linky-print",                 "Print linky linky_data",                   &linky_print_command,               0, {}, {}},
+    {"linky-simulate",              "Simulate linky linky_data",                &linky_simulate,                    0, {}, {}},
     {"get-voltage",                 "Get Voltages",                             &get_voltages,                      0, {}, {}},
     {"set-sleep",                   "Enable/Disable sleep",                     &set_sleep_command,                 1, {"<enable>"}, {"Enable/Disable deep sleep"}},
     {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
@@ -184,7 +184,7 @@ void shell_init()
                              .help = shell_cmds[i].help,
                              .func = shell_cmds[i].func};
 
-    struct arg_str *args[MAX_ARGS_COUNT] = {0};
+    struct arg_str *args[MAX_ARGS_COUNT + 1] = {NULL};
 
     if (shell_cmds[i].args_num > 0)
     {
@@ -192,13 +192,16 @@ void shell_init()
       {
         args[j] =
             arg_str1(NULL, NULL, shell_cmds[i].args[j], shell_cmds[i].hint[j]);
+        ESP_LOGI(TAG, "arg[%d]: %p", j, args[j]);
       }
-      struct arg_end *end = arg_end(shell_cmds[i].args_num);
+      struct arg_end *end = arg_end(20);
       args[shell_cmds[i].args_num] = (struct arg_str *)end;
-      cmd.argtable = &args;
+      ESP_LOGI(TAG, "arg[%d]: %p", shell_cmds[i].args_num, args[shell_cmds[i].args_num]);
+      cmd.argtable = args;
     }
     esp_console_cmd_register(&cmd);
   }
+
 #if defined(CONFIG_ESP_CONSOLE_UART_DEFAULT) || \
     defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
   esp_console_dev_uart_config_t hw_config =

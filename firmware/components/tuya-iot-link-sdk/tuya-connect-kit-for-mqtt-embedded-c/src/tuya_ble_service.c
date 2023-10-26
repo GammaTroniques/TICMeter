@@ -971,8 +971,6 @@ static void ble_gap_evt_cb(TKL_BLE_GAP_PARAMS_EVT_T *p_event)
 
 static void ble_gatt_evt_cb(TKL_BLE_GATT_PARAMS_EVT_T *p_event)
 {
-    OPERATE_RET rt = OPRT_OK;
-
     if (NULL == p_event)
         return;
 
