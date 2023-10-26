@@ -91,6 +91,7 @@ typedef struct
 
 } LinkyDataHist;
 
+
 typedef struct
 {
     //  Variables                           Taille      Unité       Description

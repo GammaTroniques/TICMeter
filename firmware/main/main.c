@@ -29,6 +29,7 @@
 #include "cJSON.h"
 #include "string.h"
 #include "sdkconfig.h"
+#include "esp_ota_ops.h"
 
 #include "common.h"
 #include "linky.h"
@@ -91,10 +92,6 @@ void app_main(void)
       vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
   }
-
-  // print heap info
-  ESP_LOGI(MAIN_TAG, "Free heap: %ld", esp_get_free_heap_size());
-  ESP_LOGI(MAIN_TAG, "Min free heap: %ld", esp_get_minimum_free_heap_size());
 
   if (config_verify())
   {
@@ -261,7 +258,7 @@ void fetchLinkyDataTask(void *pvParameters)
       {
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         sleepTime--;
-        if (gpio_get_vusb() < 3)
+        if (gpio_get_vusb() < 3 && config_values.sleep)
         {
           ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", sleepTime);
           esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
