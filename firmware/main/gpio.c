@@ -128,6 +128,8 @@ void gpio_init_pins()
     led_strip_clear(led);
     led_strip_refresh(led);
     // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
+    ESP_LOGI(TAG, "VCondo: %fV", gpio_get_vcondo());
+    ESP_LOGI(TAG, "VUSB: %fV", gpio_get_vusb());
 }
 
 static void gpio_set_led_color(uint32_t color)
@@ -136,6 +138,7 @@ static void gpio_set_led_color(uint32_t color)
     {
         led_strip_clear(led);
         led_strip_refresh(led);
+        vTaskDelay(1);
         gpio_set_level(LED_EN, 0);
         // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
         return;

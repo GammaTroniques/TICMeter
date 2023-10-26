@@ -53,6 +53,7 @@ static char linky_decode();                                      // Decode the f
 static char linky_checksum(char *label, char *data, char *time); // Check the checksum
 static void linky_create_debug_frame();
 static time_t linky_decode_time(char *time); // Decode the time
+static void linky_clear_data();
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -438,19 +439,7 @@ static char linky_decode()
     //----------------------------------------------------------
     // Clear the previous data
     //----------------------------------------------------------
-    LinkyData empty;
-    memset(&empty, 0, sizeof empty);
-    switch (linky_mode)
-    {
-    case MODE_HISTORIQUE:
-        linky_data.hist = empty.hist;
-        break;
-    case MODE_STANDARD:
-        linky_data.std = empty.std;
-        break;
-    default:
-        break;
-    }
+    linky_clear_data();
     if (!linky_frame)
     {
         if (config_values.linkyMode == AUTO)
@@ -838,4 +827,42 @@ static void linky_create_debug_frame()
     }
     linky_buffer[linky_rx_bytes++] = END_OF_FRAME;
     // ESP_LOG_BUFFER_HEXDUMP(TAG, buffer, linky_rx_bytes + 1, ESP_LOG_INFO);
+}
+
+static void linky_clear_data()
+{
+    for (uint32_t i = 0; i < LinkyLabelListSize; i++)
+    {
+        if (LinkyLabelList[i].data == NULL)
+            continue;
+        if (linky_mode != LinkyLabelList[i].mode)
+            continue;
+
+        switch (LinkyLabelList[i].type)
+        {
+        case STRING:
+            memset((char *)LinkyLabelList[i].data, 0, LinkyLabelList[i].size);
+            break;
+        case UINT8:
+            *(uint8_t *)LinkyLabelList[i].data = UINT8_MAX;
+            break;
+        case UINT16:
+            *(uint16_t *)LinkyLabelList[i].data = UINT16_MAX;
+            break;
+        case UINT32:
+            *(uint32_t *)LinkyLabelList[i].data = UINT32_MAX;
+            break;
+        case UINT64:
+            *(uint64_t *)LinkyLabelList[i].data = UINT64_MAX;
+            break;
+        case UINT32_TIME:
+        {
+            TimeLabel timeLabel = {0};
+            *(TimeLabel *)LinkyLabelList[i].data = timeLabel;
+            break;
+        }
+        default:
+            break;
+        }
+    }
 }
