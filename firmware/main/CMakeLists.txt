@@ -32,14 +32,14 @@ const char* GIT_BRANCH=\"${GIT_BRANCH}\";
 const char* BUILD_TIME=\"${BUILD_TIME}\";")
 
 
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp)
-    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp VERSION_)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/version.c)
+    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/version.c VERSION_)
 else()
     set(VERSION_ "")
 endif()
 
 if (NOT "${VERSION}" STREQUAL "${VERSION_}")
-    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/version.cpp "${VERSION}")
+    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/version.c "${VERSION}")
 endif()
 
 

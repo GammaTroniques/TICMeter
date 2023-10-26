@@ -223,7 +223,7 @@ static void mqtt_send_ha(LinkyData *linkydata)
             break;
         }
         sensorsCount++;
-        ESP_LOGI(TAG, "MQTT: %s = %s", topic, strValue);
+        ESP_LOGD(TAG, "Publishing to  %s = %s", topic, strValue);
         esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
     }
 

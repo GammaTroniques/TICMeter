@@ -92,6 +92,7 @@ static int read_nvs(int argc, char **argv);
 static int info_command(int argc, char **argv);
 
 static int esp_reset_command(int argc, char **argv);
+static int ota_set(int argc, char **argv);
 // static esp_err_t esp_console_register_reset_command(void);
 /*==============================================================================
 Public Variable
@@ -103,7 +104,7 @@ Public Variable
 // clang-format off
 static const shell_cmd_t shell_cmds[] = {
     // commands                       Help                                        Function                            Args num, Args, Hint
-     {"reset",                       "Reset the device",                         &esp_reset_command,                 0, {}, {}},
+    {"reset",                       "Reset the device",                         &esp_reset_command,                 0, {}, {}},
     {"get-wifi",                    "Get wifi config",                          &get_wifi_command,                  0, {}, {}},
     {"set-wifi",                    "Set wifi config",                          &set_wifi_command,                  2, {"<ssid>", "<password>"}, {"SSID of AP", "Password of AP"}},
     {"wifi-connect",                "Connect to wifi",                          &connect_wifi_command,              0, {}, {}},
@@ -146,6 +147,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
     {"read-nvs",                    "Read all nvs",                             &read_nvs,                          0, {}, {}},
     {"info",                        "Get system info",                          &info_command,                      0, {}, {}},
+    {"ota-set",                     "Set OTA partition",                        &ota_set,                           0, {}, {}},
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -171,7 +173,7 @@ void shell_init()
   esp_console_repl_t *repl = NULL;
   esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
 
-  repl_config.prompt = "$";
+  repl_config.prompt = ">";
   repl_config.max_cmdline_length = 100;
 
   for (int i = 0; i < shell_cmds_num; i++)
@@ -192,11 +194,11 @@ void shell_init()
       {
         args[j] =
             arg_str1(NULL, NULL, shell_cmds[i].args[j], shell_cmds[i].hint[j]);
-        ESP_LOGI(TAG, "arg[%d]: %p", j, args[j]);
+        ESP_LOGD(TAG, "arg[%d]: %p", j, args[j]);
       }
-      struct arg_end *end = arg_end(20);
+      struct arg_end *end = arg_end(MAX_ARGS_COUNT);
       args[shell_cmds[i].args_num] = (struct arg_str *)end;
-      ESP_LOGI(TAG, "arg[%d]: %p", shell_cmds[i].args_num, args[shell_cmds[i].args_num]);
+      ESP_LOGD(TAG, "arg[%d]: %p", shell_cmds[i].args_num, args[shell_cmds[i].args_num]);
       cmd.argtable = args;
     }
     esp_console_cmd_register(&cmd);
@@ -586,5 +588,33 @@ static int info_command(int argc, char **argv)
   printf("Git branch: %s\n", GIT_BRANCH);
   printf("Build time: %s\n", BUILD_TIME);
   printf("%c", 3);
+  return 0;
+}
+
+static int ota_set(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  esp_partition_t *configured = esp_ota_get_boot_partition();
+  esp_partition_t *running = esp_ota_get_running_partition();
+  esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
+
+  if (configured)
+  {
+    ESP_LOGI(TAG, "Configured partition : %s, size: %ld", configured->label, configured->size);
+  }
+  if (running)
+  {
+    ESP_LOGI(TAG, "Running partition : %s, size: %ld", running->label, running->size);
+  }
+  if (update_partition)
+  {
+    ESP_LOGI(TAG, "Update partition : %s, size: %ld", update_partition->label, update_partition->size);
+  }
+
+  esp_ota_set_boot_partition(update_partition);
+  // esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, NULL)
   return 0;
 }
