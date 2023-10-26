@@ -85,7 +85,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     cJSON_AddStringToObject(sensorConfig, "object_id", sensor.label);
 
     char state_topic[100];
-    snprintf(state_topic, sizeof(100), "~/%s", sensor.label);
+    snprintf(state_topic, sizeof(state_topic), "~/%s", sensor.label);
     char type[50] = "sensor";
     if (sensor.type == HA_NUMBER)
     {
@@ -153,7 +153,15 @@ static void mqtt_send_ha(LinkyData *linkydata)
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
+        {
             continue;
+        }
+
+        if (LinkyLabelList[i].data == NULL)
+        {
+            continue;
+        }
+
         snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, (char *)LinkyLabelList[i].label);
         switch (LinkyLabelList[i].type)
         {
@@ -215,6 +223,7 @@ static void mqtt_send_ha(LinkyData *linkydata)
             break;
         }
         sensorsCount++;
+        ESP_LOGI(TAG, "MQTT: %s = %s", topic, strValue);
         esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
     }
 
@@ -251,7 +260,15 @@ void mqtt_setup_ha_discovery()
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
+        {
             continue;
+        }
+
+        if (LinkyLabelList[i].data == NULL)
+        {
+            continue;
+        }
+
         switch (LinkyLabelList[i].type)
         {
         case UINT8:
