@@ -100,7 +100,7 @@ static int pv22_packet_encode(const uint8_t *key, const pv22_packet_object_t *in
 	int rt = OPRT_OK;
 
 	// data
-	size_t encrypt_len = 0;
+	uint32_t encrypt_len = 0;
 	uint8_t *encrypt_data;
 	rt = aes128_ecb_encode((const uint8_t *)input->data, input->datalen, &encrypt_data, (uint32_t *)&encrypt_len, key);
 	if (OPRT_OK != rt)

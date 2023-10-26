@@ -1,6 +1,6 @@
 {
   "idf.adapterTargetName": "esp32c6",
-  "idf.flashType": "UART",
+  "idf.flashType": "JTAG",
   "idf.portWin": "COM19",
   "files.associations": {
     "*.vhd": "vhdl",
@@ -39,5 +39,6 @@
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",
-  "C_Cpp.intelliSenseEngine": "default"
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.port": "/dev/ttyACM0"
 }

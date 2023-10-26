@@ -92,6 +92,10 @@ void app_main(void)
     }
   }
 
+  // print heap info
+  ESP_LOGI(MAIN_TAG, "Free heap: %ld", esp_get_free_heap_size());
+  ESP_LOGI(MAIN_TAG, "Min free heap: %ld", esp_get_minimum_free_heap_size());
+
   if (config_verify())
   {
     xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 1024, NULL, 1, &noConfigLedTaskHandle); // start no config led task
