@@ -1,0 +1,107 @@
+Guru Meditation Error: Core  0 panic'ed (Load access fault). Exception was unhandled.
+
+Core  0 register dump:
+MEPC    : 0x420172e8  RA      : 0x420172e4  SP      : 0x40842d90  GP      : 0x408160d4
+0x420172e8: tuya_mqtt_loop at D:/08-LocalRepos/LinkyTeleinfoESP32/firmware/components/tuya-iot-link-sdk/tuya-connect-kit-for-mqtt-embedded-c/src/mqtt_service.c:852 (discriminator 1)
+
+0x420172e4: tuya_mqtt_loop at D:/08-LocalRepos/LinkyTeleinfoESP32/firmware/components/tuya-iot-link-sdk/tuya-connect-kit-for-mqtt-embedded-c/src/mqtt_service.c:852
+
+TP      : 0x407f2b10  T0      : 0x40022494  T1      : 0xffffffe0  T2      : 0x80000000
+0x40022494: multi_heap_internal_unlock in ROM
+
+S0/FP   : 0x4082288c  S1      : 0x40853b00  A0      : 0x00000001  A1      : 0x40853b00
+A2      : 0x40853b00  A3      : 0x00000001  A4      : 0x4082d000  A5      : 0x20001000
+A6      : 0x00000000  A7      : 0xf4240000  S2      : 0x00000000  S3      : 0x0002a84e
+S4      : 0x00000000  S5      : 0x00000000  S6      : 0x00000000  S7      : 0x00000000
+S8      : 0x00000000  S9      : 0x00000000  S10     : 0x00000000  S11     : 0x00000000
+T3      : 0x00000902  T4      : 0x00000001  T5      : 0xbfffffff  T6      : 0xdfffffff
+MSTATUS : 0x00001881  MTVEC   : 0x40800001  MCAUSE  : 0x00000005  MTVAL   : 0x00000000
+0x40800001: _vector_table at ??:?
+
+MHARTID : 0x00000000
+
+Stack memory:
+40842d90: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+40842db0: 0x00000006 0x00000009 0x4082280c 0x420132fa 0x4211c000 0x4082284a 0x4082285b 0x4211c000
+0x420132fa: tuya_iot_yield at D:/08-LocalRepos/LinkyTeleinfoESP32/firmware/components/tuya-iot-link-sdk/tuya-connect-kit-for-mqtt-embedded-c/src/tuya_iot.c:647
+
+40842dd0: 0x4211c000 0x00000000 0x4211c5a0 0x4211c528 0x00000000 0x00000000 0x00000073 0x00000000
+40842df0: 0x4211c000 0x4082284a 0x4082285b 0x4211c000 0x4200a55a 0x4200a55a 0x40842e80 0x408160d4
+0x4200a55a: tuya_link_app_task(void*) at D:/08-LocalRepos/LinkyTeleinfoESP32/firmware/main/tuya.cpp:125 (discriminator 1)
+
+0x4200a55a: tuya_link_app_task(void*) at D:/08-LocalRepos/LinkyTeleinfoESP32/firmware/main/tuya.cpp:125 (discriminator 1)
+
+40842e10: 0x407f2b10 0x40028192 0x4080b706 0x00000009 0x40823000 0x00000000 0x00000000 0x00000001
+0x40028192: __retarget_lock_release_recursive in ROM
+
+0x4080b706: vTaskPlaceOnUnorderedEventList at C:/Espressif/ESP-IDF/esp-idf/components/freertos/FreeRTOS-Kernel/tasks.c:3814 (discriminator 1)
+
+40842e30: 0xffffffff 0x00000004 0x600c5000 0x05267dfc 0xa0000000 0x0000000a 0x00000000 0x00000000
+40842e50: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+40842e70: 0x00000000 0x00000000 0x40823000 0x4200a55a 0x00000000 0x00000000 0x00000000 0x40822790
+0x4200a55a: tuya_link_app_task(void*) at D:/08-LocalRepos/LinkyTeleinfoESP32/firmware/main/tuya.cpp:125 (discriminator 1)
+
+40842e90: 0x408227ae 0x408227cc 0x42110030 0x00000000 0x00000000 0x42116dc8 0x00000000 0x4200a5fe
+0x4200a5fe: user_event_handler_on(tuya_iot_client_handle*, tuya_event_msg_t*) at D:/08-LocalRepos/LinkyTeleinfoESP32/firmware/main/tuya.cpp:63
+
+40842eb0: 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000
+40842ed0: 0x00000000 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0xa5a5a5a5 0x0000000c 0x4208af4a 0x40842ef8
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40842ef0: 0x40842ee0 0x00000020 0x00000000 0x00000001 0x00000003 0x0000f8ea 0x00000000 0x00000003
+40842f10: 0x42143048 0x42142fa4 0x0000000c 0x4208af4a 0x40842f2c 0x40842f14 0x00000020 0x00000000
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40842f30: 0x00000001 0x00000003 0x0000f8ea 0x00000000 0x00000003 0x42143048 0x42142fa4 0x0000000c
+40842f50: 0x4208af4a 0x40842f60 0x40842f48 0x00000020 0x00000000 0x00000001 0x00000003 0x0000f8ea
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40842f70: 0x00000000 0x00000003 0x42143048 0x42142fa4 0x0000000c 0x4208af4a 0x40842f94 0x40842f7c
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40842f90: 0x00000020 0x00000000 0x00000001 0x00000003 0x0000f8ea 0x00000000 0x00000003 0x42143048
+40842fb0: 0x42142fa4 0x0000000c 0x4208af4a 0x40842fc8 0x40842fb0 0x00000020 0x00000000 0x00000001
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40842fd0: 0x00000003 0x0000f8ea 0x00000000 0x00000003 0x42143048 0x42142fa4 0x0000000c 0x4208af4a
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40842ff0: 0x40842ffc 0x40842fe4 0x00000020 0x00000000 0x00000001 0x00000003 0x0000f8ea 0x00000000
+40843010: 0x00000003 0x42143048 0x42142fa4 0x0000000c 0x4208af4a 0x40843030 0x40843018 0x00000020
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40843030: 0x00000000 0x00000001 0x00000003 0x0000f8ea 0x00000000 0x00000003 0x42143048 0x42142fa4
+40843050: 0x0000000c 0x4208af4a 0x40843064 0x4084304c 0x00000020 0x00000000 0x00000001 0x00000003
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40843070: 0x0000f8ea 0x00000000 0x00000003 0x42143048 0x42142fa4 0x0000000c 0x4208af4a 0x40843098
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40843090: 0x40843080 0x00000020 0x00000000 0x00000001 0x00000003 0x0000f8ea 0x00000000 0x00000003
+408430b0: 0x42143048 0x42142fa4 0x0000000c 0x4208af4a 0x408430cc 0x408430b4 0x00000020 0x00000000
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+408430d0: 0x00000001 0x00000003 0x0000f8ea 0x00000000 0x00000003 0x42143048 0x42142fa4 0x0000000c
+408430f0: 0x4208af4a 0x40843100 0x408430e8 0x00000020 0x00000000 0x00000001 0x00000003 0x0000f8ea
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40843110: 0x00000000 0x00000003 0x42143048 0x42142fa4 0x0000000c 0x4208af4a 0x40843134 0x4084311c
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40843130: 0x00000020 0x00000000 0x00000001 0x00000003 0x0000f8ea 0x00000000 0x00000003 0x42143048
+40843150: 0x42142fa4 0x0000000c 0x4208af4a 0x40843168 0x40843150 0x00000020 0x00000000 0x00000001
+0x4208af4a: cali_raw_to_voltage at C:/Espressif/ESP-IDF/esp-idf/components/esp_adc/adc_cali_curve_fitting.c:128
+
+40843170: 0x00000003 0x0000f8ea 0x00000000 0x00000003 0x4214304
+
+
+
+
+
+
+
+
+
+
+
+
