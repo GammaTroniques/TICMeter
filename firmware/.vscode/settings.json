@@ -1,7 +1,7 @@
 {
   "idf.adapterTargetName": "esp32c6",
   "idf.flashType": "UART",
-  "idf.portWin": "COM22",
+  "idf.portWin": "COM25",
   "files.associations": {
     "*.vhd": "vhdl",
     "*.yaml": "home-assistant",
@@ -35,7 +35,10 @@
     "initializer_list": "cpp",
     "time.h": "c",
     "mqtt_bind.h": "c",
-    "freertos.h": "c"
+    "freertos.h": "c",
+    "esp_ota_ops.h": "c",
+    "wifi.h": "c",
+    "event_groups.h": "c"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",
