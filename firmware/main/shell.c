@@ -93,6 +93,9 @@ static int info_command(int argc, char **argv);
 
 static int esp_reset_command(int argc, char **argv);
 static int ota_set(int argc, char **argv);
+
+static int set_refresh_command(int argc, char **argv);
+static int get_refresh_command(int argc, char **argv);
 // static esp_err_t esp_console_register_reset_command(void);
 /*==============================================================================
 Public Variable
@@ -131,6 +134,8 @@ static const shell_cmd_t shell_cmds[] = {
                                     "3 - Zigbee\n"
                                     "4 - Matter\n",                             &set_mode_command,                  1, {"<mode>"}, {"Mode of operation"}},
 
+    {"set-refresh",                 "Set refresh rate",                         &set_refresh_command,               1, {"<refresh>"}, {"Refresh rate in seconds"}},
+    {"get-refresh",                 "Get refresh rate",                         &get_refresh_command,               0, {}, {}},
     {"get-config",                  "Get config",                               &get_config_command,                0, {}, {}},
     {"set-config",                  "Set config",                               &set_config_command,                2, {"<key>", "<value>"}, {"Key", "Value"}},
     {"get-VCondo",                  "Get VCondo",                               &get_VCondo_command,                0, {}, {}},
@@ -442,7 +447,8 @@ static int ota_check_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  check_ota_update();
+  ota_version_t version = {0};
+  ota_get_latest(&version);
   return 0;
 }
 
@@ -597,6 +603,15 @@ static int ota_set(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
+
+  suspendTask(fetchLinkyDataTaskHandle);
+  if (!wifi_connect())
+  {
+    ESP_LOGE(TAG, "Wifi connection failed");
+    return 0;
+  }
+  xTaskCreate(&ota_perform_task, "ota_perform_task", 8192, NULL, 5, NULL);
+
   esp_partition_t *configured = esp_ota_get_boot_partition();
   esp_partition_t *running = esp_ota_get_running_partition();
   esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
@@ -614,7 +629,30 @@ static int ota_set(int argc, char **argv)
     ESP_LOGI(TAG, "Update partition : %s, size: %ld", update_partition->label, update_partition->size);
   }
 
-  esp_ota_set_boot_partition(update_partition);
+  // esp_ota_set_boot_partition(update_partition);
   // esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, NULL)
+  return 0;
+}
+
+static int set_refresh_command(int argc, char **argv)
+{
+  if (argc != 2)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  config_values.refreshRate = atoi(argv[1]);
+  config_write();
+  printf("Refresh saved\n");
+  get_refresh_command(1, NULL);
+  return 0;
+}
+
+static int get_refresh_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  printf("Refresh: %d\n", config_values.refreshRate);
   return 0;
 }

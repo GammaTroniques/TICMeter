@@ -155,7 +155,8 @@ void app_main(void)
   }
   // start linky fetch task
 
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  wifi_connect();
 }
 
 void fetchLinkyDataTask(void *pvParameters)
