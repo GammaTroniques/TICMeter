@@ -30,6 +30,7 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "cJSON.h"
+#include "wifi.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -50,36 +51,27 @@
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
-static void https_get_request(esp_tls_cfg_t cfg, const char *WEB_SERVER_URL, const char *REQUEST);
 static void ota_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 static esp_err_t ota_validate_image_header(esp_app_desc_t *new_app_info);
 static esp_err_t ota_http_client_init_cb(esp_http_client_handle_t http_client);
 static esp_err_t ota_https_event_handler(esp_http_client_event_t *evt);
+static uint8_t ota_version_compare(const char *current_version, const char *to_check_version);
 
 /*==============================================================================
 Public Variable
 ===============================================================================*/
-char *ota_version_buffer = NULL;
-uint32_t ota_version_buffer_size = 0;
+extern const uint8_t root_ca_cert_pem_start[] asm("_binary_ca_cert_pem_start");
+extern const uint8_t root_ca_cert_pem_end[] asm("_binary_ca_cert_pem_end");
+ota_state_t ota_state = OTA_IDLE;
+
 /*==============================================================================
  Local Variable
 ===============================================================================*/
-extern const uint8_t root_ca_cert_pem_start[] asm("_binary_ca_cert_pem_start");
-extern const uint8_t root_ca_cert_pem_end[] asm("_binary_ca_cert_pem_end");
+char *ota_version_buffer = NULL;
+uint32_t ota_version_buffer_size = 0;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
-// {
-//   "latest": "2.0.1",
-//   "firmware": [
-//     {
-//       "target": "esp32c6",
-//       "hwVersion": "3.2",
-//       "url": "https://linky.gammatroniques.fr/ota.bin",
-//       "md5": ""
-//     }
-//   ]
-// }
 
 static int ota_json_parse_string(cJSON *json, const char *key, char *value, size_t value_size)
 {
@@ -113,6 +105,7 @@ static int ota_json_parse_string(cJSON *json, const char *key, char *value, size
 int ota_get_latest(ota_version_t *version)
 {
     assert(version != NULL);
+    memset(version, 0, sizeof(ota_version_t));
     const esp_app_desc_t *app_desc = esp_app_get_description();
 
     char user_agent[64];
@@ -147,7 +140,7 @@ int ota_get_latest(ota_version_t *version)
         return -1;
     }
 
-    ESP_LOGI(TAG, "Version: %s", ota_version_buffer);
+    ESP_LOGW(TAG, "Version: %s", ota_version_buffer);
     cJSON *json = cJSON_Parse(ota_version_buffer);
     if (json == NULL)
     {
@@ -178,34 +171,49 @@ int ota_get_latest(ota_version_t *version)
 
     //------------------------Parse Firmware Item------------------------
     cJSON *json_firmware_item = NULL;
+    ESP_LOGI(TAG, "URL: %s", ota_version_buffer);
+
     cJSON_ArrayForEach(json_firmware_item, json_firmware)
     {
         ota_json_parse_string(json_firmware_item, "target", version->target, sizeof(version->target));
-        ota_json_parse_string(json_firmware_item, "hwVersion", version->version, sizeof(version->version));
+        if (strcmp(version->target, CONFIG_IDF_TARGET) != 0) // if target is not the same as the current target, continue
+        {
+            continue;
+        }
+        ota_json_parse_string(json_firmware_item, "hwVersion", version->hwVersion, sizeof(version->version));
+        cJSON *json_value = cJSON_GetObjectItemCaseSensitive(json_firmware_item, "url");
+
         ota_json_parse_string(json_firmware_item, "url", version->url, sizeof(version->url));
         ota_json_parse_string(json_firmware_item, "md5", version->md5, sizeof(version->md5));
         break;
     }
 
+    strncpy(version->currentVersion, app_desc->version, sizeof(version->currentVersion));
     free(ota_version_buffer);
     cJSON_Delete(json);
     ota_version_buffer = NULL;
 
+    ESP_LOGI(TAG, "Current Version: %s", version->currentVersion);
     ESP_LOGI(TAG, "Latest version: %s", version->version);
     ESP_LOGI(TAG, "Target: %s", version->target);
+    ESP_LOGI(TAG, "HW Version: %s", version->hwVersion);
     ESP_LOGI(TAG, "URL: %s", version->url);
     ESP_LOGI(TAG, "MD5: %s", version->md5);
-    ESP_LOGI(TAG, "Current version: %s", app_desc->version);
-    if (strcmp(version->version, app_desc->version) == 0)
+
+    uint8_t result = ota_version_compare(version->currentVersion, version->version);
+    if (result == 0)
     {
-        ESP_LOGI(TAG, "No update available");
+        ESP_LOGW(TAG, "No update available");
         return 0;
     }
-    else
+    else if (result == 1)
     {
-        ESP_LOGI(TAG, "Update available");
-        return 1;
+        ESP_LOGW(TAG, "Current version > latest version");
+        return 0;
     }
+    ESP_LOGI(TAG, "Update available");
+    ota_state = OTA_AVAILABLE;
+    return 1;
 }
 
 static void ota_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -275,18 +283,102 @@ static esp_err_t ota_http_client_init_cb(esp_http_client_handle_t http_client)
     return err;
 }
 
+/**
+ * @brief Get the version of the firmware
+ *
+ * @param current_version
+ * @param to_check_version
+ * @return uint8_t 0: same version, 1: current version is greater, 2: to_check_version is greater
+ */
+static uint8_t ota_version_compare(const char *current_version, const char *to_check_version)
+{
+    if (current_version == NULL || to_check_version == NULL)
+    {
+        return 0;
+    }
+    char *v1 = strdup(current_version);
+    char *v2 = strdup(to_check_version);
+    char *token1 = NULL;
+    char *token2 = NULL;
+    char *saveptr1 = NULL;
+    char *saveptr2 = NULL;
+    uint8_t result = 0;
+
+    token1 = strtok_r(v1, ".", &saveptr1);
+    token2 = strtok_r(v2, ".", &saveptr2);
+    while (token1 != NULL && token2 != NULL)
+    {
+        if (atoi(token1) > atoi(token2))
+        {
+            result = 1;
+            break;
+        }
+        else if (atoi(token1) < atoi(token2))
+        {
+            result = 2;
+            break;
+        }
+        token1 = strtok_r(NULL, ".", &saveptr1);
+        token2 = strtok_r(NULL, ".", &saveptr2);
+    }
+    if (token1 == NULL && token2 != NULL)
+    {
+        result = 2;
+    }
+    else if (token1 != NULL && token2 == NULL)
+    {
+        result = 1;
+    }
+    free(v1);
+    free(v2);
+    return result;
+}
+
 void ota_perform_task(void *pvParameter)
 {
+    if (!wifi_connect())
+    {
+        ESP_LOGE(TAG, "Wifi connect failed");
+        ota_state = OTA_ERROR;
+        vTaskDelete(NULL);
+    }
+
+    ota_version_t version = {0};
+    int ret = ota_get_latest(&version);
+    ota_state = OTA_DOWNLOADING;
+    if (ret == -1)
+    {
+        ESP_LOGE(TAG, "Get latest version failed");
+        ota_state = OTA_ERROR;
+        vTaskDelete(NULL);
+    }
+    else if (ret == 0)
+    {
+        ESP_LOGI(TAG, "No update available");
+        ota_state = OTA_ERROR;
+        vTaskDelete(NULL);
+    }
+
+    if (strcmp(version.target, CONFIG_IDF_TARGET) != 0)
+    {
+        ESP_LOGE(TAG, "Target not valid: %s != %s", version.target, CONFIG_IDF_TARGET);
+        ota_state = OTA_ERROR;
+        vTaskDelete(NULL);
+    }
+
     esp_err_t ota_finish_err = ESP_OK;
     ESP_LOGI(TAG, "Starting OTA...");
     esp_err_t err = esp_event_handler_register(ESP_HTTPS_OTA_EVENT, ESP_EVENT_ANY_ID, &ota_event_handler, NULL);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_event_handler_register() failed with %s", esp_err_to_name(err));
+        ota_state = OTA_ERROR;
         vTaskDelete(NULL);
     }
+
+    ESP_LOGI(TAG, "Starting download from %s", version.url);
     esp_http_client_config_t config = {
-        .url = OTA_FIRMWARE_URL,
+        .url = version.url,
         .cert_pem = (char *)root_ca_cert_pem_start,
         .timeout_ms = OTA_TIMEOUT_MS,
         .keep_alive_enable = true,
@@ -302,6 +394,7 @@ void ota_perform_task(void *pvParameter)
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "ESP HTTPS OTA Begin failed");
+        ota_state = OTA_ERROR;
         vTaskDelete(NULL);
     }
 
@@ -356,8 +449,8 @@ void ota_perform_task(void *pvParameter)
             vTaskDelete(NULL);
         }
     }
-
 ota_end:
+    ota_state = OTA_ERROR;
     esp_https_ota_abort(https_ota_handle);
     ESP_LOGE(TAG, "ESP_HTTPS_OTA upgrade failed");
     vTaskDelete(NULL);
@@ -367,23 +460,24 @@ static esp_err_t ota_https_event_handler(esp_http_client_event_t *evt)
 {
     switch (evt->event_id)
     {
+    case HTTP_EVENT_ON_CONNECTED:
+        ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
+        ota_version_buffer_size = 0;
+        break;
     case HTTP_EVENT_ERROR:
         ESP_LOGE(TAG, "HTTP_EVENT_ERROR");
         break;
     case HTTP_EVENT_ON_DATA:
     {
-        ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d, str=%s", evt->data_len, (char *)evt->data);
+        ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
         if (!esp_http_client_is_chunked_response(evt->client))
         {
-            ESP_LOGI(TAG, "Reallocating buffer: OLD: %lu NEW: %lu", ota_version_buffer_size, ota_version_buffer_size + evt->data_len + 1);
             ota_version_buffer = realloc(ota_version_buffer, ota_version_buffer_size + evt->data_len + 1);
             if (ota_version_buffer)
             {
                 memcpy(ota_version_buffer + ota_version_buffer_size, evt->data, evt->data_len);
-                ota_version_buffer[evt->data_len] = '\0';
                 ota_version_buffer_size += evt->data_len;
-                printf("%s\n", ota_version_buffer);
-                ESP_LOGI(TAG, "size: %lu", ota_version_buffer_size);
+                ota_version_buffer[ota_version_buffer_size] = '\0';
             }
             else
             {
