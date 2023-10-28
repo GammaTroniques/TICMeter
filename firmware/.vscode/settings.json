@@ -38,7 +38,8 @@
     "freertos.h": "c",
     "esp_ota_ops.h": "c",
     "wifi.h": "c",
-    "event_groups.h": "c"
+    "event_groups.h": "c",
+    "tuya.h": "c"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",

@@ -31,6 +31,7 @@
 #include "main.h"
 #include "zigbee.h"
 #include "tuya.h"
+#include "ota.h"
 
 /*==============================================================================
  Local Define
@@ -67,6 +68,7 @@ typedef struct ledPattern_t
 static void gpio_set_led_color(uint32_t color);
 static bool gpio_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle);
 static void gpio_led_pattern_task(void *pvParameters);
+static void gpio_set_led_rgb(uint32_t color, uint32_t brightness);
 
 /*==============================================================================
 Public Variable
@@ -80,16 +82,16 @@ static led_strip_handle_t led;
 
 // clang-format off
 static const ledPattern_t ledPattern[][PATTERN_SIZE] = {
-    {{0x0008FF,      100, 400}                                                          }, // WIFI_CONNECTING // TODO: remove 
-    {{0xFF8000,      200, 100}                                                          }, // WIFI_RETRY, new try // TODO: remove 
-    {{0xFF0000,      200, 100},                                                         }, // WIFI_FAILED
-    {{0x5EFF00,      500, 100}                                                          }, // LINKY_OK // TODO: remove 
-    {{0xFF00F2,     1000, 100}                                                          }, // LINKY_ERR
+    {{0x0008FF,      100, 400}                                                            }, // WIFI_CONNECTING // TODO: remove 
+    {{0xFF8000,      200, 100}                                                            }, // WIFI_RETRY, new try // TODO: remove 
+    {{0xFF0000,      200, 100},                                                           }, // WIFI_FAILED
+    {{0x5EFF00,      500, 100}                                                            }, // LINKY_OK // TODO: remove 
+    {{0xFF00F2,     1000, 100}                                                            }, // LINKY_ERR
     {{0x00FF00,      200, 500},  {0x00FF00,      200, 500}                              }, // SEND_OK
     {{0xFF0000,      200, 1000}, {0xFF0000,      200, 1000}                             }, // SEND_ERR
-    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100   }}, // NO_CONFIG // TODO: remove 
-    {{0xE5FF00,       50,   0}                                                          }, // START
-    {{0x8803FC,       100,  400}                                                        }, // PAIRING
+    {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100 }}, // NO_CONFIG // TODO: remove 
+    {{0xE5FF00,       50,   0}                                                            }, // START
+    {{0x8803FC,       100,  400}                                                          }, // PAIRING
 };
 // clang-format on
 
@@ -132,6 +134,28 @@ void gpio_init_pins()
     ESP_LOGI(TAG, "VUSB: %fV", gpio_get_vusb());
 }
 
+/**
+ * @brief
+ *
+ * @param color
+ * @param brightness in per thousand
+ */
+static void gpio_set_led_rgb(uint32_t color, uint32_t brightness)
+{
+    uint32_t r = (color >> 16) & 0xFF;
+    uint32_t g = (color >> 8) & 0xFF;
+    uint32_t b = (color >> 0) & 0xFF;
+
+    // set brightness
+    r = (r * brightness) / 1000;
+    g = (g * brightness) / 1000;
+    b = (b * brightness) / 1000;
+
+    ESP_LOGD(TAG, "r: %ld, g: %ld, b: %ld, brightness: %ld", r, g, b, brightness);
+    led_strip_set_pixel(led, 0, r, g, b);
+    led_strip_refresh(led);
+}
+
 static void gpio_set_led_color(uint32_t color)
 {
     if (color == 0)
@@ -144,18 +168,8 @@ static void gpio_set_led_color(uint32_t color)
         return;
     }
     gpio_set_level(LED_EN, 1);
+    gpio_set_led_rgb(color, 50); // 5% brightness
     // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
-    uint8_t r = (color >> 16) & 0xFF;
-    uint8_t g = (color >> 8) & 0xFF;
-    uint8_t b = (color >> 0) & 0xFF;
-    // set brightness
-    uint8_t brightness = 5; // %
-    r = (r * brightness) / 100;
-    g = (g * brightness) / 100;
-    b = (b * brightness) / 100;
-
-    led_strip_set_pixel(led, 0, r, g, b);
-    led_strip_refresh(led);
 }
 
 static bool gpio_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
@@ -411,9 +425,20 @@ void gpio_pairing_button_task(void *pvParameters)
                 }
                 else
                 {
-                    resumeTask(noConfigLedTaskHandle);
-                    resumeTask(tuyaTaskHandle);
-                    ESP_LOGI(TAG, "No action");
+                    if (ota_state == OTA_AVAILABLE)
+                    {
+                        ESP_LOGI(TAG, "OTA available, starting update");
+                        suspendTask(fetchLinkyDataTaskHandle);
+                        resumeTask(noConfigLedTaskHandle);
+                        resumeTask(tuyaTaskHandle);
+                        xTaskCreate(ota_perform_task, "ota_perform_task", 16 * 1024, NULL, 5, NULL);
+                    }
+                    else
+                    {
+                        resumeTask(noConfigLedTaskHandle);
+                        resumeTask(tuyaTaskHandle);
+                        ESP_LOGI(TAG, "No action");
+                    }
                 }
                 lastState = 1;
                 ledState = NO_FLASH;
@@ -528,6 +553,86 @@ void gpio_led_task_pairing(void *pvParameters)
         vTaskDelay(100 / portTICK_PERIOD_MS);
         gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL); // Delete this task
+}
+
+void gpio_led_task_ota(void *pvParameters)
+{
+    ESP_LOGI(TAG, "Starting OTA led task");
+    int32_t brightness = 0;
+    uint32_t color = 0;
+    typedef enum
+    {
+        OFF,
+        RISING,
+        ON,
+        FALLING,
+    } led_state_t;
+
+    led_state_t state = OFF;
+
+    while (1)
+    {
+        gpio_set_level(LED_EN, 1);
+        ESP_LOGD(TAG, "OTA state: %d, state: %d, shift: %ld, brightness: %ld", ota_state, state, color, brightness);
+
+        switch (ota_state)
+        {
+        case OTA_AVAILABLE:
+            color = 0x0000FF;
+            break;
+        case OTA_DOWNLOADING:
+            color = 0xFFFF00;
+            break;
+        case OTA_INSTALLING:
+            color = 0x00FF00;
+            break;
+        default:
+            break;
+        }
+
+        switch (state)
+        {
+        case OFF:
+            brightness = 0;
+            state = RISING;
+            gpio_set_led_rgb(color, brightness);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+            break;
+        case RISING:
+            if (brightness >= 250)
+            {
+                state = ON;
+            }
+            else
+            {
+                brightness += 4;
+            }
+            gpio_set_led_rgb(color, brightness);
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+            break;
+        case ON:
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            state = FALLING;
+            break;
+        case FALLING:
+            if (brightness <= 0)
+            {
+                state = OFF;
+            }
+            else
+            {
+                brightness -= 4;
+            }
+            gpio_set_led_rgb(color, brightness);
+            vTaskDelay(50 / portTICK_PERIOD_MS);
+
+            break;
+        default:
+            break;
+        }
     }
     vTaskDelete(NULL); // Delete this task
 }

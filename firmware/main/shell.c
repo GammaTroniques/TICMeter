@@ -92,7 +92,7 @@ static int read_nvs(int argc, char **argv);
 static int info_command(int argc, char **argv);
 
 static int esp_reset_command(int argc, char **argv);
-static int ota_set(int argc, char **argv);
+static int ota_start(int argc, char **argv);
 
 static int set_refresh_command(int argc, char **argv);
 static int get_refresh_command(int argc, char **argv);
@@ -152,7 +152,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
     {"read-nvs",                    "Read all nvs",                             &read_nvs,                          0, {}, {}},
     {"info",                        "Get system info",                          &info_command,                      0, {}, {}},
-    {"ota-set",                     "Set OTA partition",                        &ota_set,                           0, {}, {}},
+    {"ota-start",                   "Start OTA",                                &ota_start,                           0, {}, {}},
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -597,7 +597,7 @@ static int info_command(int argc, char **argv)
   return 0;
 }
 
-static int ota_set(int argc, char **argv)
+static int ota_start(int argc, char **argv)
 {
   if (argc != 1)
   {
@@ -605,16 +605,9 @@ static int ota_set(int argc, char **argv)
   }
 
   suspendTask(fetchLinkyDataTaskHandle);
-  if (!wifi_connect())
-  {
-    ESP_LOGE(TAG, "Wifi connection failed");
-    return 0;
-  }
-  xTaskCreate(&ota_perform_task, "ota_perform_task", 8192, NULL, 5, NULL);
-
-  esp_partition_t *configured = esp_ota_get_boot_partition();
-  esp_partition_t *running = esp_ota_get_running_partition();
-  esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
+  const esp_partition_t *configured = esp_ota_get_boot_partition();
+  const esp_partition_t *running = esp_ota_get_running_partition();
+  const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
 
   if (configured)
   {
@@ -628,9 +621,7 @@ static int ota_set(int argc, char **argv)
   {
     ESP_LOGI(TAG, "Update partition : %s, size: %ld", update_partition->label, update_partition->size);
   }
-
-  // esp_ota_set_boot_partition(update_partition);
-  // esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_APP_OTA_0, NULL)
+  xTaskCreate(&ota_perform_task, "ota_perform_task", 8192, NULL, 1, NULL);
   return 0;
 }
 
