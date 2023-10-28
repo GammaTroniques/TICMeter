@@ -42,6 +42,7 @@
 #include "web.h"
 #include "zigbee.h"
 #include "tuya.h"
+#include "ota.h"
 
 /*==============================================================================
  Local Define
@@ -83,7 +84,7 @@ void app_main(void)
   xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, 1, NULL); // start push button task
   shell_init();                                                                           // init shell
 
-  if (/*gpio_get_vusb() > 3 && */ config_values.tuyaBinded == 2) //
+  if (gpio_get_vusb() > 3 && config_values.tuyaBinded == 2) //
   {
     ESP_LOGI(MAIN_TAG, "Tuya pairing");
     xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8192, NULL, 1, NULL); // start tuya pairing task
@@ -108,12 +109,12 @@ void app_main(void)
 
   // check if VCondo is too low and go to deep sleep
   // the BOOT_PIN is used to prevent deep sleep when the device is plugged to a computer for debug
-  // if (gpio_get_vusb() < 3 && gpio_get_vcondo() < 3.5 && config.values.sleep && gpio_get_level(BOOT_PIN))
-  // {
-  //   ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
-  //   esp_sleep_enable_timer_wakeup(10 * 1000000); // 10 second
-  //   esp_deep_sleep_start();
-  // }
+  if (gpio_get_vusb() < 3 && gpio_get_vcondo() < 3.5 && config_values.sleep && gpio_get_level(BOOT_PIN))
+  {
+    ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
+    esp_sleep_enable_timer_wakeup(10 * 1000000); // 10 second
+    esp_deep_sleep_start();
+  }
 
   switch (config_values.mode)
   {
@@ -124,6 +125,13 @@ void app_main(void)
       wifi_get_timestamp();               // get timestamp from ntp server
       wifi_http_get_config_from_server(); // get config from server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
+      ota_version_t version;
+      int ota = ota_get_latest(&version);
+      if (ota == 1)
+      {
+        ESP_LOGI(MAIN_TAG, "OTA available from %s to %s", version.currentVersion, version.version);
+        xTaskCreate(gpio_led_task_ota, "gpio_led_task_update_available", 4 * 1024, NULL, 1, NULL); // start update led task
+      }
       wifi_disconnect();
     }
     break;
@@ -133,6 +141,13 @@ void app_main(void)
     if (wifi_connect())
     {
       wifi_get_timestamp(); // get timestamp from ntp server
+      ota_version_t version;
+      int ota = ota_get_latest(&version);
+      if (ota == 1)
+      {
+        ESP_LOGI(MAIN_TAG, "OTA available from %s to %s", version.currentVersion, version.version);
+        xTaskCreate(gpio_led_task_ota, "gpio_led_task_update_available", 4 * 1024, NULL, 1, NULL); // start update led task
+      }
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       wifi_disconnect();
     }
@@ -156,7 +171,6 @@ void app_main(void)
   // start linky fetch task
 
   // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
-  wifi_connect();
 }
 
 void fetchLinkyDataTask(void *pvParameters)

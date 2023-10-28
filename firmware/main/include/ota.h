@@ -31,14 +31,26 @@ typedef struct
 {
     char target[16];
     char version[16];
+    char currentVersion[16];
     char hwVersion[16];
     char url[128];
     char md5[33];
 } ota_version_t;
+
+typedef enum
+{
+    OTA_IDLE,
+    OTA_AVAILABLE,
+    OTA_DOWNLOADING,
+    OTA_INSTALLING,
+    OTA_REBOOT,
+    OTA_ERROR
+} ota_state_t;
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
 
+extern ota_state_t ota_state;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
