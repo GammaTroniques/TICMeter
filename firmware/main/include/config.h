@@ -111,6 +111,6 @@ int8_t config_begin();
 int8_t config_read();
 int8_t config_write();
 uint8_t config_verify();
-int16_t config_calculate_checksum();
 
+int16_t config_calculate_checksum();
 #endif /* CONFIG_H */

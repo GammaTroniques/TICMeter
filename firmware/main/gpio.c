@@ -73,7 +73,7 @@ static void gpio_set_led_rgb(uint32_t color, uint32_t brightness);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
-
+TaskHandle_t gpip_led_ota_task_handle = NULL;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
@@ -93,6 +93,8 @@ static const ledPattern_t ledPattern[][PATTERN_SIZE] = {
     {{0xE5FF00,       50,   0}                                                            }, // START
     {{0x8803FC,       100,  400}                                                          }, // PAIRING
 };
+
+static uint8_t pattern_in_progress = 0;
 // clang-format on
 
 /*==============================================================================
@@ -425,7 +427,7 @@ void gpio_pairing_button_task(void *pvParameters)
                 }
                 else
                 {
-                    if (ota_state == OTA_AVAILABLE)
+                    if (ota_state == OTA_AVAILABLE && gpio_get_vusb() > 3)
                     {
                         ESP_LOGI(TAG, "OTA available, starting update");
                         suspendTask(fetchLinkyDataTaskHandle);
@@ -451,6 +453,7 @@ void gpio_pairing_button_task(void *pvParameters)
 static void gpio_led_pattern_task(void *pvParameters)
 {
     uint8_t id = *(uint8_t *)pvParameters;
+    pattern_in_progress = 1;
     for (int i = 0; i < PATTERN_SIZE; i++)
     {
         gpio_set_led_color(ledPattern[id][i].color);
@@ -458,6 +461,7 @@ static void gpio_led_pattern_task(void *pvParameters)
         gpio_set_led_color(0);
         vTaskDelay(ledPattern[id][i].tOff / portTICK_PERIOD_MS);
     }
+    pattern_in_progress = 0;
     vTaskDelete(NULL); // Delete this task
 }
 
@@ -494,6 +498,7 @@ void gpio_boot_led_pattern()
 
 void gpio_led_task_no_config(void *pvParameters)
 {
+    pattern_in_progress = 1;
     while (config_verify())
     {
         vTaskDelay(5000 / portTICK_PERIOD_MS);
@@ -505,12 +510,16 @@ void gpio_led_task_no_config(void *pvParameters)
             vTaskDelay(100 / portTICK_PERIOD_MS);
         }
     }
+    pattern_in_progress = 0;
     vTaskDelete(NULL); // Delete this task
 }
 
 void gpio_led_task_wifi_connecting(void *pvParameters)
 {
+    ESP_LOGI(TAG, "Starting wifi led task");
     uint32_t timout = MILLIS + WIFI_CONNECT_TIMEOUT;
+    pattern_in_progress = 1;
+
     while (!wifi_connected && MILLIS < timout)
     {
         gpio_set_led_color(WEB_FLASH);
@@ -518,11 +527,13 @@ void gpio_led_task_wifi_connecting(void *pvParameters)
         gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);
     }
+    pattern_in_progress = 0;
     vTaskDelete(NULL); // Delete this task
 }
 
 void gpio_led_task_linky_reading(void *pvParameters)
 {
+    pattern_in_progress = 1;
     while (linky_reading)
     {
         gpio_set_led_color(0xFF8000);
@@ -530,11 +541,13 @@ void gpio_led_task_linky_reading(void *pvParameters)
         gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);
     }
+    pattern_in_progress = 0;
     vTaskDelete(NULL); // Delete this task
 }
 
 void gpio_led_task_sending(void *pvParameters)
 {
+    pattern_in_progress = 1;
     while (wifi_sending)
     {
         gpio_set_led_color(0xc300ff);
@@ -542,6 +555,7 @@ void gpio_led_task_sending(void *pvParameters)
         gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);
     }
+    pattern_in_progress = 0;
     vTaskDelete(NULL); // Delete this task
 }
 
@@ -564,6 +578,8 @@ void gpio_led_task_ota(void *pvParameters)
     uint32_t color = 0;
     typedef enum
     {
+        VUSB_TOO_LOW,
+        WAIT_USB,
         OFF,
         RISING,
         ON,
@@ -571,7 +587,7 @@ void gpio_led_task_ota(void *pvParameters)
     } led_state_t;
 
     led_state_t state = OFF;
-
+    uint8_t last_pattern_in_progress = 0;
     while (1)
     {
         gpio_set_level(LED_EN, 1);
@@ -592,17 +608,44 @@ void gpio_led_task_ota(void *pvParameters)
             break;
         }
 
+        if (pattern_in_progress) // if another pattern is in progress, wait: not important at the moment
+        {
+            last_pattern_in_progress = 1;
+            vTaskDelay(10000 / portTICK_PERIOD_MS);
+            continue;
+        }
+
+        if (last_pattern_in_progress)
+        {
+            last_pattern_in_progress = 0;
+            state = OFF;
+        }
+
         switch (state)
         {
+        case VUSB_TOO_LOW:
+            brightness = 0;
+            state = WAIT_USB;
+            gpio_set_led_rgb(color, brightness);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            break;
+        case WAIT_USB:
+            if (gpio_get_vusb() > 3)
+            {
+                state = OFF;
+            }
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            break;
+
         case OFF:
             brightness = 0;
             state = RISING;
             gpio_set_led_rgb(color, brightness);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
 
             break;
         case RISING:
-            if (brightness >= 250)
+            if (brightness >= 100)
             {
                 state = ON;
             }
@@ -632,6 +675,11 @@ void gpio_led_task_ota(void *pvParameters)
             break;
         default:
             break;
+        }
+        if (gpio_get_vusb() < 3.0 && state != WAIT_USB)
+        {
+            ESP_LOGE(TAG, "VUSB too low: dont animate");
+            state = VUSB_TOO_LOW;
         }
     }
     vTaskDelete(NULL); // Delete this task
