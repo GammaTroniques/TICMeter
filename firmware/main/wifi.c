@@ -80,8 +80,13 @@ uint8_t wifi_connect()
         return 0;
     }
     xTaskCreate(gpio_led_task_wifi_connecting, "gpio_led_task_wifi_connecting", 4096, NULL, 1, NULL); // start wifi connect led task
+
+    // free heap memory
+    ESP_LOGW(TAG, "Free heap memory: %ld", esp_get_free_heap_size());
+    ESP_LOGW(TAG, "Free internal heap memory: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL));
+
     s_retry_num = 0;
-    esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+    esp_wifi_set_ps(WIFI_PS_NONE);
     s_wifi_event_group = xEventGroupCreate();
 
     err = esp_netif_init();
@@ -443,7 +448,7 @@ static void stop_captive_portal_task(void *pvParameter)
 void wifi_start_captive_portal()
 {
     ESP_LOGI(TAG, "Start captive portal");
-    // xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, 1, NULL);
+    xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, 1, NULL);
     // Initialize networking stack
     ESP_ERROR_CHECK(esp_netif_init());
 

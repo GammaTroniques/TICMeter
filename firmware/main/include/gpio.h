@@ -22,7 +22,7 @@
 ==============================================================================*/
 #define RX_LINKY (gpio_num_t)23
 #define V_CONDO_PIN ADC_CHANNEL_4
-#define V_USB_PIN ADC_CHANNEL_1
+#define V_USB_PIN 1 // ADC_CHANNEL_1
 #define PAIRING_PIN (gpio_num_t)3
 // #define PAIRING_PIN (gpio_num_t)9
 #define BOOT_PIN (gpio_num_t)9
@@ -56,6 +56,7 @@
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
+extern TaskHandle_t gpip_led_ota_task_handle;
 
 /*==============================================================================
  Public Functions Declaration

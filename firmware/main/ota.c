@@ -31,14 +31,14 @@
 #include "freertos/event_groups.h"
 #include "cJSON.h"
 #include "wifi.h"
+#include "gpio.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
 
 #define TAG "OTA"
 #define OTA_DOMAIN "linky.gammatroniques.fr"
-#define OTA_VERSION_URL "https://linky.gammatroniques.fr/versions.json"
-#define OTA_FIRMWARE_URL "https://linky.gammatroniques.fr/ota.bin"
+#define OTA_VERSION_URL "https://ticmeter.gammatroniques.fr/versions.json"
 #define OTA_TIMEOUT_MS 10000
 /*==============================================================================
  Local Macro
@@ -140,7 +140,7 @@ int ota_get_latest(ota_version_t *version)
         return -1;
     }
 
-    ESP_LOGW(TAG, "Version: %s", ota_version_buffer);
+    ESP_LOGD(TAG, "Version: %s", ota_version_buffer);
     cJSON *json = cJSON_Parse(ota_version_buffer);
     if (json == NULL)
     {
@@ -171,7 +171,6 @@ int ota_get_latest(ota_version_t *version)
 
     //------------------------Parse Firmware Item------------------------
     cJSON *json_firmware_item = NULL;
-    ESP_LOGI(TAG, "URL: %s", ota_version_buffer);
 
     cJSON_ArrayForEach(json_firmware_item, json_firmware)
     {
@@ -181,8 +180,6 @@ int ota_get_latest(ota_version_t *version)
             continue;
         }
         ota_json_parse_string(json_firmware_item, "hwVersion", version->hwVersion, sizeof(version->version));
-        cJSON *json_value = cJSON_GetObjectItemCaseSensitive(json_firmware_item, "url");
-
         ota_json_parse_string(json_firmware_item, "url", version->url, sizeof(version->url));
         ota_json_parse_string(json_firmware_item, "md5", version->md5, sizeof(version->md5));
         break;
@@ -213,6 +210,11 @@ int ota_get_latest(ota_version_t *version)
     }
     ESP_LOGI(TAG, "Update available");
     ota_state = OTA_AVAILABLE;
+    if (!gpip_led_ota_task_handle)
+    {
+        xTaskCreate(gpio_led_task_ota, "gpio_led_task_update_available", 4 * 1024, NULL, 1, &gpip_led_ota_task_handle); // start update led task
+    }
+
     return 1;
 }
 
