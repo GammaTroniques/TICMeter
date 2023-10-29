@@ -126,12 +126,7 @@ void app_main(void)
       wifi_http_get_config_from_server(); // get config from server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       ota_version_t version;
-      int ota = ota_get_latest(&version);
-      if (ota == 1)
-      {
-        ESP_LOGI(MAIN_TAG, "OTA available from %s to %s", version.currentVersion, version.version);
-        xTaskCreate(gpio_led_task_ota, "gpio_led_task_update_available", 4 * 1024, NULL, 1, NULL); // start update led task
-      }
+      ota_get_latest(&version);
       wifi_disconnect();
     }
     break;
@@ -142,12 +137,7 @@ void app_main(void)
     {
       wifi_get_timestamp(); // get timestamp from ntp server
       ota_version_t version;
-      int ota = ota_get_latest(&version);
-      if (ota == 1)
-      {
-        ESP_LOGI(MAIN_TAG, "OTA available from %s to %s", version.currentVersion, version.version);
-        xTaskCreate(gpio_led_task_ota, "gpio_led_task_update_available", 4 * 1024, NULL, 1, NULL); // start update led task
-      }
+      ota_get_latest(&version);
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       wifi_disconnect();
     }
@@ -170,7 +160,7 @@ void app_main(void)
   }
   // start linky fetch task
 
-  // xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 }
 
 void fetchLinkyDataTask(void *pvParameters)
@@ -186,8 +176,7 @@ void fetchLinkyDataTask(void *pvParameters)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed:");
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
-      vTaskDelay((config_values.refreshRate * 1000) / portTICK_PERIOD_MS); // wait for refreshRate seconds before next loop
-      continue;
+      goto sleep;
     }
     linky_print();
     switch (config_values.mode)
@@ -216,18 +205,30 @@ void fetchLinkyDataTask(void *pvParameters)
       break;
     case MODE_MQTT:
     case MODE_MQTT_HA: // send data to mqtt server
-      if (wifi_connect())
+    {
+      int ret = wifi_connect();
+      if (ret == 0)
       {
-        ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
-        mqtt_send(&linky_data);
-        wifi_disconnect();
-        gpio_start_led_pattern(PATTERN_SEND_OK);
+        ESP_LOGE(MAIN_TAG, "Wifi connection failed");
+        goto send_error;
       }
-      else
+
+      ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
+      ret = mqtt_send(&linky_data);
+      if (ret == 0)
       {
-        gpio_start_led_pattern(PATTERN_SEND_ERR);
+        ESP_LOGE(MAIN_TAG, "MQTT send failed");
+        goto send_error;
       }
+      wifi_disconnect();
+      gpio_start_led_pattern(PATTERN_SEND_OK);
       break;
+
+    send_error:
+      wifi_disconnect();
+      gpio_start_led_pattern(PATTERN_SEND_ERR);
+      break;
+    }
     case MODE_TUYA:
       if (wifi_connect())
       {
@@ -258,28 +259,21 @@ void fetchLinkyDataTask(void *pvParameters)
     default:
       break;
     }
-
+  sleep:
     uint32_t sleepTime = abs(config_values.refreshRate - 5);
-    if (config_values.sleep && gpio_get_vusb() < 3) // if deepsleep is enable and we are not connected to USB
+    ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
+    while (sleepTime > 0)
     {
-      ESP_LOGI(MAIN_TAG, "Going to sleep for %ld seconds", sleepTime);
-      esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
-      esp_light_sleep_start();
-    }
-    else
-    {
-      ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
-      while (sleepTime > 0)
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      sleepTime--;
+      if (gpio_get_vusb() < 3 && config_values.sleep)
       {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        sleepTime--;
-        if (gpio_get_vusb() < 3 && config_values.sleep)
-        {
-          ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", sleepTime);
-          esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
-          sleepTime = 0;
-          esp_light_sleep_start();
-        }
+        ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", sleepTime);
+        esp_sleep_enable_uart_wakeup(UART_NUM_0);
+        esp_sleep_enable_ext1_wakeup(1ULL << V_USB_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
+        esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
+        sleepTime = 0;
+        esp_light_sleep_start();
       }
     }
   }

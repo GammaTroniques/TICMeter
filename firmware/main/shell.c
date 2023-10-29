@@ -97,6 +97,7 @@ static int ota_start(int argc, char **argv);
 static int set_refresh_command(int argc, char **argv);
 static int get_refresh_command(int argc, char **argv);
 // static esp_err_t esp_console_register_reset_command(void);
+static int led_off(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -152,7 +153,8 @@ static const shell_cmd_t shell_cmds[] = {
     {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
     {"read-nvs",                    "Read all nvs",                             &read_nvs,                          0, {}, {}},
     {"info",                        "Get system info",                          &info_command,                      0, {}, {}},
-    {"ota-start",                   "Start OTA",                                &ota_start,                           0, {}, {}},
+    {"ota-start",                   "Start OTA",                                &ota_start,                         0, {}, {}},
+    {"led-off",                     "LED OFF",                                  &led_off,                           0, {}, {}},
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -645,5 +647,12 @@ static int get_refresh_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("Refresh: %d\n", config_values.refreshRate);
+  return 0;
+}
+
+static int led_off(int argc, char **argv)
+{
+  gpio_set_level(LED_EN, 0);
+  gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
   return 0;
 }
