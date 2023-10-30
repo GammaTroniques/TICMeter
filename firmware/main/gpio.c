@@ -69,6 +69,8 @@ static void gpio_set_led_color(uint32_t color);
 static bool gpio_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle);
 static void gpio_led_pattern_task(void *pvParameters);
 static void gpio_set_led_rgb(uint32_t color, uint32_t brightness);
+static void gpio_init_adc(adc_unit_t adc_unit, adc_oneshot_unit_handle_t *out_handle);
+static void gpio_init_adc_cali(adc_oneshot_unit_handle_t adc_handle, adc_channel_t adc_channel, adc_cali_handle_t *out_adc_cali_handle, char *name);
 
 /*==============================================================================
 Public Variable
@@ -77,7 +79,10 @@ TaskHandle_t gpip_led_ota_task_handle = NULL;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
-static adc_oneshot_unit_handle_t adc1_handle;
+static adc_oneshot_unit_handle_t adc1_handle = NULL;
+static adc_cali_handle_t adc_usb_cali_handle = NULL;
+static adc_cali_handle_t adc_capa_cali_handle = NULL;
+
 static led_strip_handle_t led;
 
 // clang-format off
@@ -103,6 +108,7 @@ Function Implementation
 
 void gpio_init_pins()
 {
+    esp_err_t ret = ESP_OK;
     gpio_set_direction(LED_EN, GPIO_MODE_OUTPUT);
     // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
     gpio_set_level(LED_EN, 1);
@@ -131,11 +137,51 @@ void gpio_init_pins()
 
     led_strip_clear(led);
     led_strip_refresh(led);
+
+    gpio_init_adc(ADC_UNIT_1, &adc1_handle);
+    gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
+    gpio_init_adc_cali(adc1_handle, V_CONDO_PIN, &adc_capa_cali_handle, "VCondo");
+
     // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
     ESP_LOGI(TAG, "VCondo: %fV", gpio_get_vcondo());
     ESP_LOGI(TAG, "VUSB: %fV", gpio_get_vusb());
 }
 
+static void gpio_init_adc(adc_unit_t adc_unit, adc_oneshot_unit_handle_t *out_handle)
+{
+    esp_err_t ret = ESP_OK;
+
+    adc_oneshot_unit_init_cfg_t vusb_init_config = {
+        .unit_id = adc_unit,
+    };
+    ret = adc_oneshot_new_unit(&vusb_init_config, out_handle);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to init ADC: %s", esp_err_to_name(ret));
+    }
+}
+
+static void gpio_init_adc_cali(adc_oneshot_unit_handle_t adc_handle, adc_channel_t adc_channel, adc_cali_handle_t *out_adc_cali_handle, char *name)
+{
+    esp_err_t ret = ESP_OK;
+    adc_oneshot_chan_cfg_t config = {
+        .atten = ADC_ATTEN_DB_11,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+
+    ret = adc_oneshot_config_channel(adc_handle, adc_channel, &config);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to init %s ADC: %s", name, esp_err_to_name(ret));
+    }
+
+    bool cal = gpio_adc_calibration_init(ADC_UNIT_1, adc_channel, ADC_ATTEN_DB_11, out_adc_cali_handle);
+    if (!cal)
+    {
+        ESP_LOGW(TAG, "Failed to init USB ADC calibration");
+        out_adc_cali_handle = NULL;
+    }
+}
 /**
  * @brief
  *
@@ -233,63 +279,58 @@ static bool gpio_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, ad
 
 float gpio_get_vcondo()
 {
-    esp_log_level_set("ADC", ESP_LOG_DEBUG);
-    adc_oneshot_unit_init_cfg_t init_config1 = {};
-    init_config1.unit_id = ADC_UNIT_1;
-
-    adc_oneshot_chan_cfg_t config = {
-        .atten = ADC_ATTEN_DB_11,
-        .bitwidth = ADC_BITWIDTH_DEFAULT,
-    };
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_CONDO_PIN, &config));
-
-    adc_cali_handle_t adc_cali_handle = NULL;
-    bool do_calibration = gpio_adc_calibration_init(ADC_UNIT_1, V_CONDO_PIN, ADC_ATTEN_DB_11, &adc_cali_handle);
-
+    esp_err_t ret = ESP_OK;
     int raw = 0;
-    ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, V_CONDO_PIN, &raw));
-    adc_oneshot_del_unit(adc1_handle);
-    int vADC = 0;
-    if (do_calibration)
+    ret = adc_oneshot_read(adc1_handle, V_CONDO_PIN, &raw);
+    if (ret != ESP_OK)
     {
-        ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc_cali_handle, raw, &vADC));
-        uint32_t vCondo = (vADC * 280) / 180;
-        ESP_LOGD("ADC", "VUSB: %ld", vCondo);
-        return (float)vCondo / 1000;
+        ESP_LOGE(TAG, "Failed to read VCondo: %s", esp_err_to_name(ret));
+        return 0.0;
     }
-    // float vCondo = (float)(raw * 5) / 3988; // get VCondo from ADC after voltage divider
-    return 0.0;
+
+    int vADC = 0;
+    ret = adc_cali_raw_to_voltage(adc_capa_cali_handle, raw, &vADC);
+    if (ret == ESP_ERR_INVALID_STATE)
+    {
+        ESP_LOGE(TAG, "Failed to read VCondo: %s", esp_err_to_name(ret));
+        return (float)(raw * 3.3 / 4095);
+    }
+    else if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to calibrate VCondo: %s", esp_err_to_name(ret));
+        return 0.0;
+    }
+
+    uint32_t vCondo = (vADC * 280) / 180;
+    return (float)vCondo / 1000;
 }
 
 float gpio_get_vusb()
 {
-    adc_oneshot_unit_init_cfg_t init_config1 = {};
-    init_config1.unit_id = ADC_UNIT_1;
-
-    adc_oneshot_chan_cfg_t config = {
-        .atten = ADC_ATTEN_DB_11,
-        .bitwidth = ADC_BITWIDTH_DEFAULT,
-    };
-    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
-    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, V_USB_PIN, &config));
-
-    adc_cali_handle_t adc_cali_handle = NULL;
-    bool do_calibration = gpio_adc_calibration_init(ADC_UNIT_1, V_USB_PIN, ADC_ATTEN_DB_11, &adc_cali_handle);
-
+    esp_err_t ret = ESP_OK;
     int raw = 0;
-    ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, V_USB_PIN, &raw));
-    adc_oneshot_del_unit(adc1_handle);
-    int vADC = 0;
-    if (do_calibration)
+    ret = adc_oneshot_read(adc1_handle, V_USB_PIN, &raw);
+    if (ret != ESP_OK)
     {
-        ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc_cali_handle, raw, &vADC));
-        uint32_t vUSB = (vADC * 280) / 180;
-        ESP_LOGD("ADC", "VUSB: %ld", vUSB);
-        return (float)vUSB / 1000;
+        ESP_LOGE(TAG, "Failed to read VUSB: %s", esp_err_to_name(ret));
+        return 0.0;
     }
-    // float vUSB = (float)(raw * 5) / 3988; // get VUSB from ADC after voltage divider
-    return 0.0;
+    int vADC = 0;
+    ESP_LOGW(TAG, "raw: %d, handle: %p, cali: %p", raw, adc1_handle, adc_capa_cali_handle);
+    ret = adc_cali_raw_to_voltage(adc_usb_cali_handle, raw, &vADC);
+    if (ret == ESP_ERR_INVALID_STATE)
+    {
+        ESP_LOGW(TAG, "VUSB not calibrated: %s", esp_err_to_name(ret));
+        return (float)(raw * 3.3 / 4095);
+    }
+    else if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to calibrate VUSB: %s", esp_err_to_name(ret));
+        return 0.0;
+    }
+
+    uint32_t vUSB = (vADC * 280) / 180;
+    return (float)vUSB / 1000;
 }
 
 void gpio_pairing_button_task(void *pvParameters)
@@ -681,6 +722,7 @@ void gpio_led_task_ota(void *pvParameters)
             ESP_LOGE(TAG, "VUSB too low: dont animate");
             state = VUSB_TOO_LOW;
         }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL); // Delete this task
 }
