@@ -108,7 +108,6 @@ Function Implementation
 
 void gpio_init_pins()
 {
-    esp_err_t ret = ESP_OK;
     gpio_set_direction(LED_EN, GPIO_MODE_OUTPUT);
     // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
     gpio_set_level(LED_EN, 1);

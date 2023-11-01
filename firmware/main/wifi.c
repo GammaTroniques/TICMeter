@@ -28,7 +28,7 @@
 #define TAG "WIFI"
 #define NTP_SERVER "pool.ntp.org"
 
-#define ESP_MAXIMUM_RETRY 3
+#define ESP_MAXIMUM_RETRY 4
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 /*==============================================================================
@@ -80,7 +80,13 @@ uint8_t wifi_init()
         ESP_LOGE(TAG, "esp_event_loop_create_default failed with 0x%X", err);
         return 0;
     }
-    esp_netif_create_default_wifi_sta();
+    esp_netif_t *netif = esp_netif_create_default_wifi_sta();
+
+    err = esp_netif_set_hostname(netif, HOSTNAME);
+    if (err != ESP_OK)
+    {
+        ESP_LOGW(TAG, "Failed to set hostname: 0x%X", err);
+    }
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     err = esp_wifi_init(&cfg);
@@ -159,6 +165,7 @@ uint8_t wifi_connect()
         wifi_disconnect();
         return 0;
     }
+
     err = esp_wifi_start();
     if (err != ESP_OK)
     {
@@ -284,7 +291,6 @@ time_t wifi_get_timestamp()
 {
     static time_t now = 0;
     struct tm timeinfo;
-    ESP_LOGI(TAG, "wifi_state: %d", wifi_state);
     if (wifi_state == WIFI_CONNECTED)
     {
         ESP_LOGI(TAG, "Getting time over NTP");
@@ -292,7 +298,7 @@ time_t wifi_get_timestamp()
         static esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG(NTP_SERVER);
         if (!sntp_started)
         {
-            sntp_setoperatingmode(SNTP_OPMODE_POLL);
+            esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
             sntp_started = true;
             config.sync_cb = wifi_time_sync_notification_cb; // Note: This is only needed if we want
             sntp_set_sync_interval(0);                       // sync now
