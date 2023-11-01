@@ -55,7 +55,6 @@ esp_mqtt_client_handle_t mqtt_client = NULL;
 ===============================================================================*/
 static uint32_t mqtt_connected = 0;
 static uint16_t mqtt_send_count = 0;
-static uint32_t mqtt_send_timeout = 0;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -145,7 +144,6 @@ static void mqtt_send_ha(LinkyData *linkydata)
     char topic[150];
     char strValue[20];
 
-    mqtt_send_timeout = MILLIS + 10000;
     mqtt_send_count = 0;
     linkydata->timestamp = wifi_get_timestamp();
     uint16_t sensorsCount = 0;
@@ -225,10 +223,10 @@ static void mqtt_send_ha(LinkyData *linkydata)
         ESP_LOGD(TAG, "Publishing to  %s = %s", topic, strValue);
         esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
     }
+    time_t mqtt_send_timeout = MILLIS + 10000;
 
     while ((mqtt_send_timeout > MILLIS) && mqtt_send_count < sensorsCount)
     {
-        ESP_LOGI(TAG, "mqtt_connected = %ld", mqtt_connected);
         if (mqtt_connected == -1)
         {
             break;
@@ -237,7 +235,7 @@ static void mqtt_send_ha(LinkyData *linkydata)
     }
     if (mqtt_send_count < sensorsCount)
     {
-        ESP_LOGE(TAG, "Send Timeout");
+        ESP_LOGE(TAG, "Send Timeout: %d/%d", mqtt_send_count, sensorsCount);
         mqtt_connected = -1;
     }
     else
@@ -248,7 +246,7 @@ static void mqtt_send_ha(LinkyData *linkydata)
 
 void mqtt_setup_ha_discovery()
 {
-    if (wifi_connected == 0)
+    if (wifi_state == WIFI_DISCONNECTED)
     {
         ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
         return;
@@ -380,28 +378,19 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
     }
 }
 
-int mqtt_app_start(void)
+int mqtt_init(void)
 {
     esp_log_level_set("mqtt_client", ESP_LOG_WARN);
-    if (wifi_connected == 0)
+    if (wifi_state == WIFI_DISCONNECTED)
     {
         ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
         return -1;
-    }
-
-    if (mqtt_client != NULL)
-    {
-        ESP_LOGI(TAG, "MQTT already started");
-        esp_mqtt_client_reconnect(mqtt_client);
-        mqtt_connected = 1;
-        return 1;
     }
 
     mqtt_connected = 0;
     char uri[200];
     esp_mqtt_client_config_t mqtt_cfg = {};
 
-    // HOME ASSISTANT / MQTT
     snprintf(uri, sizeof(uri), "mqtt://%s:%d", config_values.mqtt.host, config_values.mqtt.port);
     mqtt_cfg.credentials.username = config_values.mqtt.username;
     mqtt_cfg.credentials.authentication.password = config_values.mqtt.password;
@@ -412,7 +401,6 @@ int mqtt_app_start(void)
     esp_mqtt_client_register_event(mqtt_client, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     esp_mqtt_client_start(mqtt_client);
 
-    // HOME ASSISTANT / MQTT
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].type == HA_NUMBER)
@@ -422,22 +410,30 @@ int mqtt_app_start(void)
             esp_mqtt_client_subscribe(mqtt_client, topic, 1);
         }
     }
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    esp_mqtt_client_stop(mqtt_client);
+    ESP_LOGI(TAG, "init done");
     return 1;
 }
 
 int mqtt_send(LinkyData *linky)
 {
-    if (wifi_connected == 0)
+    esp_err_t err = ESP_OK;
+    if (wifi_state == WIFI_DISCONNECTED)
     {
-        ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
+        ESP_LOGE(TAG, "WIFI not connected: MQTT ERROR");
         goto error;
     }
     wifi_sending = 1;
     xTaskCreate(gpio_led_task_sending, "sendingLedTask", 2048, NULL, 1, NULL);
-    if (mqtt_connected != 1)
+
+    err = esp_mqtt_client_start(mqtt_client);
+    if (err != ESP_OK)
     {
-        mqtt_app_start();
+        ESP_LOGE(TAG, "Start failed with 0x%x", err);
+        goto error;
     }
+
     switch (config_values.mode)
     {
     case MODE_MQTT:
@@ -461,33 +457,15 @@ int mqtt_send(LinkyData *linky)
         goto error;
     }
 
-    xTaskCreate(mqtt_stop_task, "mqttStopTask", 2048, NULL, 1, NULL);
+    esp_mqtt_client_disconnect(mqtt_client);
+    esp_mqtt_client_stop(mqtt_client);
 
     mqtt_connected = 0;
     wifi_sending = 0;
     return 1;
 error:
-    ESP_LOGI(TAG, "MQTT ERROR goto");
     wifi_sending = 0;
-    xTaskCreate(mqtt_stop_task, "mqttStopTask", 2048, NULL, 1, NULL);
-    ESP_LOGI(TAG, "MQTT ERROR return");
-
+    esp_mqtt_client_disconnect(mqtt_client);
+    esp_mqtt_client_stop(mqtt_client);
     return 0;
-}
-
-void mqtt_stop_task(void *pvParameters)
-{
-    if (mqtt_client != NULL)
-    {
-        ESP_LOGI(TAG, "disconnecting MQTT");
-        esp_mqtt_client_disconnect(mqtt_client);
-        ESP_LOGI(TAG, "unre MQTT");
-        esp_mqtt_client_unregister_event(mqtt_client, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler);
-        // esp_mqtt_client_stop(mqtt_client);
-        ESP_LOGI(TAG, "destroy MQTT");
-        esp_mqtt_client_destroy(mqtt_client);
-        mqtt_client = NULL;
-    }
-    ESP_LOGI(TAG, "MQTT stopped");
-    vTaskDelete(NULL);
 }

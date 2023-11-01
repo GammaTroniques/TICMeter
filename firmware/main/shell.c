@@ -351,7 +351,7 @@ static int mqtt_connect_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("MQTT connect\n");
-  mqtt_app_start();
+  mqtt_init();
   return 0;
 }
 static int mqtt_send_command(int argc, char **argv)
