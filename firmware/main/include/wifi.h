@@ -44,15 +44,24 @@
 /*==============================================================================
  Public Type
 ==============================================================================*/
+typedef enum
+{
+    WIFI_DISCONNECTED,
+    WIFI_CONNECTING,
+    WIFI_CONNECTED,
+    WIFI_FAILED
+} wifi_state_t;
 
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
-extern uint8_t wifi_connected;
+extern wifi_state_t wifi_state;
 extern uint8_t wifi_sending;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
+
+extern uint8_t wifi_init();
 
 /**
  * @brief connect to wifi

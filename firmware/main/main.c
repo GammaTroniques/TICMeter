@@ -116,6 +116,8 @@ void app_main(void)
     esp_deep_sleep_start();
   }
 
+  wifi_init(); // init wifi
+
   switch (config_values.mode)
   {
   case MODE_WEB:
@@ -135,6 +137,7 @@ void app_main(void)
     // connect to wifi
     if (wifi_connect())
     {
+      mqtt_init();          // init mqtt
       wifi_get_timestamp(); // get timestamp from ntp server
       ota_version_t version;
       ota_get_latest(&version);

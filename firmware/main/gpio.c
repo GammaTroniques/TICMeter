@@ -316,7 +316,6 @@ float gpio_get_vusb()
         return 0.0;
     }
     int vADC = 0;
-    ESP_LOGW(TAG, "raw: %d, handle: %p, cali: %p", raw, adc1_handle, adc_capa_cali_handle);
     ret = adc_cali_raw_to_voltage(adc_usb_cali_handle, raw, &vADC);
     if (ret == ESP_ERR_INVALID_STATE)
     {
@@ -447,7 +446,7 @@ void gpio_pairing_button_task(void *pvParameters)
                         ESP_LOGI(TAG, "Web pairing");
                         pairingState = 1;
                         suspendTask(fetchLinkyDataTaskHandle);
-                        if (wifi_connected)
+                        if (wifi_state == WIFI_CONNECTED)
                         {
                             wifi_disconnect();
                             vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -561,7 +560,7 @@ void gpio_led_task_wifi_connecting(void *pvParameters)
     uint32_t timout = MILLIS + WIFI_CONNECT_TIMEOUT;
     pattern_in_progress = 1;
 
-    while (!wifi_connected && MILLIS < timout)
+    while (wifi_state == WIFI_CONNECTING && MILLIS < timout)
     {
         gpio_set_led_color(WEB_FLASH);
         vTaskDelay(100 / portTICK_PERIOD_MS);
