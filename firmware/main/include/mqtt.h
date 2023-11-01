@@ -64,13 +64,7 @@ extern void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
  * @brief Start the MQTT client
  *
  */
-extern int mqtt_app_start();
-
-/**
- * @brief Start this task to stop the MQTT client (take some times (1-3s))
- *
- */
-extern void mqtt_stop_task(void *pvParameter);
+extern int mqtt_init();
 
 /**
  * @brief Send all entities to Home Assistant
