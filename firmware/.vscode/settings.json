@@ -40,7 +40,17 @@
     "wifi.h": "c",
     "event_groups.h": "c",
     "tuya.h": "c",
-    "adc_oneshot.h": "c"
+    "adc_oneshot.h": "c",
+    "charconv": "c",
+    "format": "c",
+    "future": "c",
+    "memory": "c",
+    "numbers": "c",
+    "ranges": "c",
+    "xmemory": "c",
+    "xstring": "c",
+    "xtr1common": "c",
+    "xutility": "c"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",

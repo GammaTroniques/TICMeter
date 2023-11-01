@@ -172,8 +172,26 @@ void fetchLinkyDataTask(void *pvParameters)
   LinkyData dataArray[MAX_DATA_INDEX];
   unsigned int dataIndex = 0;
   linky_init(MODE_HISTORIQUE, RX_LINKY);
+
   while (1)
   {
+  sleep:
+    uint32_t sleepTime = abs(config_values.refreshRate - 10);
+    ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
+    while (sleepTime > 0)
+    {
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      sleepTime--;
+      if (gpio_get_vusb() < 3 && config_values.sleep)
+      {
+        ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", sleepTime);
+        esp_sleep_enable_uart_wakeup(UART_NUM_0);
+        esp_sleep_enable_ext1_wakeup(1ULL << V_USB_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
+        esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
+        sleepTime = 0;
+        esp_light_sleep_start();
+      }
+    }
     if (!linky_update() ||
         !linky_presence())
     {
@@ -261,23 +279,6 @@ void fetchLinkyDataTask(void *pvParameters)
       zigbee_send(&linky_data);
     default:
       break;
-    }
-  sleep:
-    uint32_t sleepTime = abs(config_values.refreshRate - 5);
-    ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
-    while (sleepTime > 0)
-    {
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
-      sleepTime--;
-      if (gpio_get_vusb() < 3 && config_values.sleep)
-      {
-        ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", sleepTime);
-        esp_sleep_enable_uart_wakeup(UART_NUM_0);
-        esp_sleep_enable_ext1_wakeup(1ULL << V_USB_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
-        esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
-        sleepTime = 0;
-        esp_light_sleep_start();
-      }
     }
   }
 }
