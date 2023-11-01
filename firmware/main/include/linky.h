@@ -228,6 +228,7 @@ typedef enum
     TIMESTAMP,
     TENSION,
     TEXT,
+    TIME,
     BOOL,
 } HADeviceClass;
 
@@ -259,6 +260,7 @@ typedef struct
 ==============================================================================*/
 extern const char *const HADeviceClassStr[];
 extern const char *const HAUnitsStr[];
+extern const char *const ha_sensors_str[];
 
 extern const LinkyGroup LinkyLabelList[];
 extern const int32_t LinkyLabelListSize;

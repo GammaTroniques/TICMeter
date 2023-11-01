@@ -182,8 +182,8 @@ const LinkyGroup LinkyLabelList[] =
     {20,  "Début Pointe Mobile 3",           "DPM3",        &linky_data.std.DPM3,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     {21,  "Fin Pointe Mobile 3",             "FPM3",        &linky_data.std.FPM3,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
 
-    {22,  "Message court",                   "MSG1",        &linky_data.std.MSG1,          STRING,      32, MODE_STANDARD,   STATIC_VALUE,  TEXT,        "mdi:message-text-outline",          0x0000, 0x0000,  },
-    {123, "Message Ultra court",             "MSG2",        &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  TEXT,        "mdi:message-outline",               0x0000, 0x0000,  },
+    {22,  "Message court",                   "MSG1",        &linky_data.std.MSG1,          STRING,      32, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:message-text-outline",          0x0000, 0x0000,  },
+    {123, "Message Ultra court",             "MSG2",        &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:message-outline",               0x0000, 0x0000,  },
     {23,  "PRM",                             "PRM",         &linky_data.std.PRM,           STRING,      14, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     {143, "Relais",                          "RELAIS",      &linky_data.std.RELAIS,        STRING,       3, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:toggle-switch-outline",         0x0000, 0x0000,  },
     {144, "Index tarifaire en cours",        "NTARF",       &linky_data.std.NTARF,         STRING,       2, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
@@ -192,12 +192,13 @@ const LinkyGroup LinkyLabelList[] =
     {26,  "Profil du prochain jour",         "PJOURF+1",    &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                     0x0000, 0x0000,  },
     {27,  "Profil du prochain jour pointe",  "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      98, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                     0x0000, 0x0000,  },
     //---------------------------Home Assistant Specific ------------------------------------------------
-    {131, "Temps d'actualisation",          "currRfsh",     &config_values.refreshRate,    UINT16,        0,           ANY,   STATIC_VALUE,  NONE_CLASS,  "mdi:refresh",                       0x0000, 0x0000,  },
-    // {132, "Mode TIC",                       "mode-tic",    &mode,                   UINT16,       ANY,             STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    // {133, "Mode Elec",                      "mode-tri",    &linky_tree_phase,              UINT16,       ANY,             STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,         UINT64,        0,           ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
-    {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,         UINT64,        0,           ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
-    {134, "Temps de fonctionnement",        "uptime",      NULL,                          UINT64,        0,           ANY,      REAL_TIME,  NONE_CLASS,   "",                                    0x0000, 0x0000,  },
+    {131, "Temps d'actualisation",          "currRfsh",     &config_values.refreshRate,    UINT16,        0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
+    {0,   "Temps d'actualisation",          "setRfsh",      &config_values.refreshRate,    HA_NUMBER,     0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
+ // {132, "Mode TIC",                       "mode-tic",    &mode,                          UINT16,        0,          ANY,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
+ // {133, "Mode Elec",                      "mode-tri",    &linky_tree_phase,              UINT16,        0,          ANY,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
+    {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,        0,          ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
+    {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,        0,          ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
+    {134, "Temps de fonctionnement",        "uptime",      NULL,                           UINT64,        0,          ANY,      REAL_TIME,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
@@ -221,7 +222,8 @@ const char *const HADeviceClassStr[] = {
     [ENERGY_Q] = "energy",
     [TIMESTAMP] = "timestamp",
     [TENSION] = "voltage",
-    [TEXT] = "text",
+    [TEXT] = "",
+    [TIME] = "duration",
     [BOOL] = "binary_sensor",
 };
 
@@ -232,12 +234,23 @@ const char *const HAUnitsStr[] = {
     [POWER_kVA] = "kVA",
     [POWER_W] = "W",
     [POWER_Q] = "VAr",
-    [ENERGY] = "kWh",
-    [ENERGY_Q] = "kVArh",
+    [ENERGY] = "Wh",
+    [ENERGY_Q] = "VArh",
     [TIMESTAMP] = "",
     [TENSION] = "V",
     [TEXT] = "",
+    [TIME] = "sec",
     [BOOL] = "",
+};
+
+const char *const ha_sensors_str[] = {
+    [UINT8] = "sensor",
+    [UINT16] = "sensor",
+    [UINT32] = "sensor",
+    [UINT64] = "sensor",
+    [STRING] = "sensor",
+    [UINT32_TIME] = "sensor",
+    [HA_NUMBER] = "number",
 };
 
 /*==============================================================================
