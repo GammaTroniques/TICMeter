@@ -4,9 +4,9 @@
        nvs,    data,       nvs,   0x9000,      24K,
   phy_init,    data,       phy,   0xf000,       4K,
    otadata,    data,       ota,           ,       8K,
-     ota_0,     app,     ota_0,           ,    1620K,
-     ota_1,     app,     ota_1,           ,    1620K,
 zb_storage,    data,       fat,           ,      16K,
     zb_fct,    data,       fat,           ,       1K,
    storage,    data,    spiffs,           ,      64K,
    nvs_key,    data,  nvs_keys,           ,       4k, encrypted
+     ota_0,     app,     ota_0,           ,    1900K,
+     ota_1,     app,     ota_1,           ,    1900K,
