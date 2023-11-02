@@ -341,31 +341,27 @@ void ota_perform_task(void *pvParameter)
     if (!wifi_connect())
     {
         ESP_LOGE(TAG, "Wifi connect failed");
-        ota_state = OTA_ERROR;
-        vTaskDelete(NULL);
+        goto ota_end;
     }
 
     ota_version_t version = {0};
     int ret = ota_get_latest(&version);
-    ota_state = OTA_DOWNLOADING;
+    ota_state = OTA_INSTALLING;
     if (ret == -1)
     {
         ESP_LOGE(TAG, "Get latest version failed");
-        ota_state = OTA_ERROR;
-        vTaskDelete(NULL);
+        goto ota_end;
     }
     else if (ret == 0)
     {
         ESP_LOGI(TAG, "No update available");
-        ota_state = OTA_ERROR;
-        vTaskDelete(NULL);
+        goto ota_end;
     }
 
     if (strcmp(version.target, CONFIG_IDF_TARGET) != 0)
     {
         ESP_LOGE(TAG, "Target not valid: %s != %s", version.target, CONFIG_IDF_TARGET);
-        ota_state = OTA_ERROR;
-        vTaskDelete(NULL);
+        goto ota_end;
     }
 
     esp_err_t ota_finish_err = ESP_OK;
@@ -374,8 +370,7 @@ void ota_perform_task(void *pvParameter)
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_event_handler_register() failed with %s", esp_err_to_name(err));
-        ota_state = OTA_ERROR;
-        vTaskDelete(NULL);
+        goto ota_end;
     }
 
     ESP_LOGI(TAG, "Starting download from %s", version.url);
@@ -396,8 +391,7 @@ void ota_perform_task(void *pvParameter)
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "ESP HTTPS OTA Begin failed");
-        ota_state = OTA_ERROR;
-        vTaskDelete(NULL);
+        goto ota_end;
     }
 
     esp_app_desc_t app_desc;
@@ -438,7 +432,8 @@ void ota_perform_task(void *pvParameter)
         if ((err == ESP_OK) && (ota_finish_err == ESP_OK))
         {
             ESP_LOGI(TAG, "ESP_HTTPS_OTA upgrade successful. Rebooting ...");
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            ota_state = OTA_OK;
+            vTaskDelay(3000 / portTICK_PERIOD_MS);
             esp_restart();
         }
         else
@@ -448,14 +443,14 @@ void ota_perform_task(void *pvParameter)
                 ESP_LOGE(TAG, "Image validation failed, image is corrupted");
             }
             ESP_LOGE(TAG, "ESP_HTTPS_OTA upgrade failed 0x%x", ota_finish_err);
-            vTaskDelete(NULL);
         }
     }
 ota_end:
     ota_state = OTA_ERROR;
     esp_https_ota_abort(https_ota_handle);
     ESP_LOGE(TAG, "ESP_HTTPS_OTA upgrade failed");
-    vTaskDelete(NULL);
+    vTaskDelay(3000 / portTICK_PERIOD_MS);
+    esp_restart();
 }
 
 static esp_err_t ota_https_event_handler(esp_http_client_event_t *evt)

@@ -50,7 +50,8 @@
     "xmemory": "c",
     "xstring": "c",
     "xtr1common": "c",
-    "xutility": "c"
+    "xutility": "c",
+    "mqtt_service.h": "c"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",
