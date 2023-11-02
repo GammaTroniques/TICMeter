@@ -41,8 +41,8 @@ typedef enum
 {
     OTA_IDLE,
     OTA_AVAILABLE,
-    OTA_DOWNLOADING,
     OTA_INSTALLING,
+    OTA_OK,
     OTA_REBOOT,
     OTA_ERROR
 } ota_state_t;

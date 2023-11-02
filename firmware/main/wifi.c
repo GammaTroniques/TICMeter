@@ -125,6 +125,7 @@ uint8_t wifi_connect()
         ESP_LOGI(TAG, "No Wifi SSID or password");
         return 0;
     }
+    wifi_state = WIFI_CONNECTING;
     xTaskCreate(gpio_led_task_wifi_connecting, "gpio_led_task_wifi_connecting", 4096, NULL, 1, NULL); // start wifi connect led task
 
     // free heap memory
@@ -133,7 +134,6 @@ uint8_t wifi_connect()
 
     s_retry_num = 0;
     esp_wifi_set_ps(WIFI_PS_NONE);
-    wifi_state = WIFI_CONNECTING;
     s_wifi_event_group = xEventGroupCreate();
 
     wifi_config_t wifi_config = {
@@ -198,7 +198,9 @@ uint8_t wifi_connect()
     }
     else
     {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT: Timeout");
+        ESP_LOGE(TAG, "Failed to connect to SSID:%s Timeout", (char *)wifi_config.sta.ssid);
+        wifi_state = WIFI_FAILED;
+        gpio_start_led_pattern(PATTERN_WIFI_FAILED);
         wifi_disconnect();
         return 0;
     }
