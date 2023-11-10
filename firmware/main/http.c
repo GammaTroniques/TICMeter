@@ -359,7 +359,7 @@ esp_err_t save_config_handler(httpd_req_t *req)
 
     if (config_values.mode == MODE_TUYA)
     {
-        config_values.tuyaBinded = 2; // reboot to bind
+        config_values.tuya.pairing_state = TUYA_WIFI_CONNECTING;
         //  redirect to the reboot page
         httpd_resp_set_status(req, "302 Temporary Redirect");
         httpd_resp_set_hdr(req, "Location", "/tuya.html");
@@ -396,8 +396,8 @@ esp_err_t get_config_handler(httpd_req_t *req)
     cJSON_AddStringToObject(jsonObject, "mqtt-user", config_values.mqtt.username);
     cJSON_AddStringToObject(jsonObject, "mqtt-password", config_values.mqtt.password);
     cJSON_AddStringToObject(jsonObject, "mqtt-topic", config_values.mqtt.topic);
-    cJSON_AddStringToObject(jsonObject, "tuya-productID", config_values.tuyaKeys.productID);
-    cJSON_AddStringToObject(jsonObject, "tuya-deviceUUID", config_values.tuyaKeys.deviceUUID);
+    cJSON_AddStringToObject(jsonObject, "tuya-product_id", config_values.tuya.product_id);
+    cJSON_AddStringToObject(jsonObject, "tuya-device_uuid", config_values.tuya.device_uuid);
 
     char *jsonString = cJSON_PrintUnformatted(jsonObject);
     httpd_resp_set_type(req, "application/json");
