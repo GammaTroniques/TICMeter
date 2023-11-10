@@ -68,11 +68,20 @@ typedef struct
     char topic[100];
 } mqttConfig_t;
 
+typedef enum
+{
+    TUYA_NOT_CONFIGURED,
+    TUYA_BLE_PAIRING,
+    TUYA_WIFI_CONNECTING,
+    TUYA_PAIRED,
+} tuya_pairing_state_t;
+
 typedef struct
 {
-    char productID[30];
-    char deviceUUID[30];
-    char deviceAuth[40];
+    char product_id[30];
+    char device_uuid[30];
+    char device_auth[40];
+    tuya_pairing_state_t pairing_state;
 } tuyaConfig_t;
 
 typedef struct
@@ -84,8 +93,7 @@ typedef struct
     connectivity_t mode;
     webConfig_t web;
     mqttConfig_t mqtt;
-    tuyaConfig_t tuyaKeys;
-    uint8_t tuyaBinded;
+    tuyaConfig_t tuya;
 
     char version[10];
     uint16_t refreshRate;

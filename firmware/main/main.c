@@ -83,16 +83,17 @@ void app_main(void)
   gpio_boot_led_pattern();
   xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, 1, NULL); // start push button task
   shell_init();                                                                           // init shell
+  wifi_init();                                                                            // init wifi
 
-  if (gpio_get_vusb() > 3 && config_values.tuyaBinded == 2) //
-  {
-    ESP_LOGI(MAIN_TAG, "Tuya pairing");
-    xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8192, NULL, 1, NULL); // start tuya pairing task
-    while (config_values.tuyaBinded == 2)
-    {
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-  }
+  // if (gpio_get_vusb() > 3 && config_values.mode == MODE_TUYA && config_values.tuyaBinded == 2) //
+  // {
+  //   ESP_LOGI(MAIN_TAG, "Tuya pairing");
+  //   xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8192, NULL, 1, NULL); // start tuya pairing task
+  //   while (config_values.tuyaBinded == 2)
+  //   {
+  //     vTaskDelay(1000 / portTICK_PERIOD_MS);
+  //   }
+  // }
 
   if (config_verify())
   {
@@ -115,8 +116,6 @@ void app_main(void)
     esp_sleep_enable_timer_wakeup(10 * 1000000); // 10 second
     esp_deep_sleep_start();
   }
-
-  wifi_init(); // init wifi
 
   switch (config_values.mode)
   {
@@ -150,6 +149,11 @@ void app_main(void)
     // zigbee_task(0);
     break;
   case MODE_TUYA:
+    if (config_values.tuya.pairing_state != TUYA_PAIRED)
+    {
+      ESP_LOGW(MAIN_TAG, "Tuya not paired.");
+      break;
+    }
     if (wifi_connect())
     {
       tuya_init();
@@ -269,8 +273,9 @@ void fetchLinkyDataTask(void *pvParameters)
           goto tuya_disconect;
         }
       tuya_disconect:
-        wifi_disconnect();
+        tuya_stop();
         tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
+        wifi_disconnect();
         suspendTask(tuyaTaskHandle);
         gpio_start_led_pattern(PATTERN_SEND_OK);
       }

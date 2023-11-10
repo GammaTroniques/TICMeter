@@ -59,8 +59,7 @@ static struct config_item_t config_items[] = {
 
     {"web-conf",      BLOB, &config_values.web,         sizeof(config_values.web),          NVS_READWRITE, 0},
     {"mqtt-conf",     BLOB, &config_values.mqtt,        sizeof(config_values.mqtt),         NVS_READWRITE, 0},
-    {"tuya-keys",     BLOB, &config_values.tuyaKeys,    sizeof(config_values.tuyaKeys),     NVS_READWRITE, 0},
-    {"tuya-bind",    UINT8, &config_values.tuyaBinded,  sizeof(config_values.tuyaBinded),   NVS_READWRITE, 0},
+    {"tuya-keys",     BLOB, &config_values.tuya,    sizeof(config_values.tuya),     NVS_READWRITE, 0},
 
     {"version",     STRING, &config_values.version,     sizeof(config_values.version),      NVS_READWRITE, 0},
     {"refresh",     UINT16, &config_values.refreshRate, sizeof(config_values.refreshRate),  NVS_READWRITE, 0},
@@ -302,12 +301,12 @@ uint8_t config_verify()
         break;
 
     case MODE_TUYA:
-        if (strlen(config_values.tuyaKeys.productID) == 0 || strlen(config_values.tuyaKeys.deviceUUID) == 0 || strlen(config_values.tuyaKeys.deviceAuth) == 0)
+        if (strlen(config_values.tuya.product_id) == 0 || strlen(config_values.tuya.device_uuid) == 0 || strlen(config_values.tuya.device_auth) == 0)
         {
             // No Tuya key, id, version or region
             return 1;
         }
-        if (config_values.tuyaBinded == 0)
+        if (config_values.tuya.pairing_state == TUYA_NOT_CONFIGURED)
         {
             // Tuya not binded
             return 0;

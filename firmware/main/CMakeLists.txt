@@ -46,8 +46,10 @@ endif()
 
 idf_component_register(SRCS
                        SRC_DIRS "."
+                                "tuya_ble_netcfg/src"
                        INCLUDE_DIRS "include"
                        INCLUDE_DIRS "."
+                       INCLUDE_DIRS "./tuya_ble_netcfg/include"
                        EMBED_TXTFILES ${project_dir}/main/certs/ca_cert.pem
                        )
  
