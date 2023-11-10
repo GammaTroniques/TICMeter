@@ -441,7 +441,6 @@ void gpio_pairing_button_task(void *pvParameters)
                     case MODE_WEB:
                     case MODE_MQTT:
                     case MODE_MQTT_HA:
-                    case MODE_TUYA:
                         ESP_LOGI(TAG, "Web pairing");
                         pairingState = 1;
                         suspendTask(fetchLinkyDataTaskHandle);
@@ -452,6 +451,11 @@ void gpio_pairing_button_task(void *pvParameters)
                         }
                         ESP_LOGI(TAG, "Starting captive portal");
                         wifi_start_captive_portal();
+                        break;
+                    case MODE_TUYA:
+                        pairingState = 1;
+                        ESP_LOGI(TAG, "Tuya pairing");
+                        xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8 * 1024, NULL, 5, NULL);
                         break;
                     case MODE_ZIGBEE:
                         pairingState = 1;
@@ -637,7 +641,7 @@ void gpio_led_task_ota(void *pvParameters)
     while (1)
     {
         gpio_set_level(LED_EN, 1);
-        ESP_LOGW(TAG, "OTA state: %d, state: %d, shift: %ld, brightness: %ld", ota_state, state, color, brightness);
+        // ESP_LOGW(TAG, "OTA state: %d, state: %d, shift: %ld, brightness: %ld", ota_state, state, color, brightness);
 
         switch (ota_state)
         {

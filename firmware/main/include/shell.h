@@ -46,5 +46,6 @@
 ==============================================================================*/
 
 extern void shell_init();
-
+uint8_t tuya_stop();
+uint8_t tuya_restart();
 #endif /* SHELL_H */
