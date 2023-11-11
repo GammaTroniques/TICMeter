@@ -17,7 +17,7 @@ add_compile_options( -g )
 # Set Compiler
 # set(CMAKE_C_COMPILER arm-linux-androideabi-gcc)
 # set(CMAKE_CXX_COMPILER arm-linux-androideabi-g++)
-add_definitions(-DLITTLE_ENDIAN=1)
+add_definitions(-DLITTLE_ENDIAN=0)
 
 # Do not allow in-source build.
 if( ${PROJECT_SOURCE_DIR} STREQUAL ${PROJECT_BINARY_DIR} )

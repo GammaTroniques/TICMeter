@@ -87,7 +87,12 @@ int16_t config_calculate_checksum()
 
 int8_t config_erase()
 {
-    config_t blank_config = {};
+    config_t blank_config = {
+        .refreshRate = 60,
+        .sleep = 1,
+        .linkyMode = AUTO,
+        .mode = MODE_MQTT_HA,
+    };
     config_values = blank_config;
     return 0;
 }
@@ -315,5 +320,23 @@ uint8_t config_verify()
     default:
         break;
     }
+    return 0;
+}
+
+uint8_t factory_reset()
+{
+
+    // clear nvs
+    esp_err_t err = nvs_flash_erase();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (%s) erasing NVS!\n", esp_err_to_name(err));
+        return 1;
+    }
+    ESP_LOGI(TAG, "NVS erased");
+
+    config_erase();
+    config_write();
+    ESP_LOGI(TAG, "Config erased");
     return 0;
 }

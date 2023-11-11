@@ -51,7 +51,11 @@
     "xstring": "c",
     "xtr1common": "c",
     "xutility": "c",
-    "mqtt_service.h": "c"
+    "mqtt_service.h": "c",
+    "ble_svc_gap.h": "c",
+    "ble_svc_ans.h": "c",
+    "esp_log.h": "c",
+    "qrcode.h": "c"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",
