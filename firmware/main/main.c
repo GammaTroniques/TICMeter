@@ -103,9 +103,12 @@ void app_main(void)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
-    vTaskDelay(5000 / portTICK_PERIOD_MS); // wait 5s to be sure that the web page is sent
-    ESP_LOGI(MAIN_TAG, "Config found, restarting... in 5s");
-    esp_restart();
+    if (config_values.mode == MODE_WEB)
+    {
+      ESP_LOGI(MAIN_TAG, "Config found, restarting... in 5s");
+      vTaskDelay(5000 / portTICK_PERIOD_MS); // wait 5s to be sure that the web page is sent
+      esp_restart();
+    }
   }
 
   // check if VCondo is too low and go to deep sleep

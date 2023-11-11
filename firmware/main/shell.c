@@ -177,6 +177,7 @@ void shell_init()
   esp_log_level_set("esp_netif_handlers", ESP_LOG_ERROR);
   esp_log_level_set("phy_version", ESP_LOG_ERROR);
   esp_log_level_set("phy_init", ESP_LOG_ERROR);
+  esp_log_level_set("phy", ESP_LOG_ERROR);
   esp_log_level_set("gpio", ESP_LOG_ERROR);
   esp_log_level_set("uart", ESP_LOG_ERROR);
   esp_log_level_set("NimBLE", ESP_LOG_ERROR);
