@@ -1,9 +1,13 @@
 #include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
 #include "tuya_cloud_types.h"
+
+#include "esp_log.h"
 
 #include "tuya_log.h"
 #include "MultiTimer.h"
-#include "tuya_iot.h"
+// #include "tuya_iot.h"
 #include "ble_interface.h"
 #include "system_interface.h"
 #include "aes_inf.h"
@@ -196,8 +200,13 @@ static void get_random(uint8_t *random, uint16_t random_size)
 
 static void ble_msg_queue_insert(tuya_ble_service_status_e cmd, uint32_t len, uint8_t *data)
 {
-    struct ble_msg_node *node = system_malloc(sizeof(struct ble_msg_node) + len);
+    struct ble_msg_node *node = NULL;
+
+    TUYA_CHECK_NULL_GOTO(sg_ble_service_params, __EXIT);
+
+    node = system_malloc(sizeof(struct ble_msg_node) + len);
     TUYA_CHECK_NULL_GOTO(node, __EXIT);
+
     memset(node, 0, sizeof(struct ble_msg_node) + len);
 
     node->cmd = cmd;
@@ -252,7 +261,7 @@ static int ble_adv_data_set(tuya_ble_service_params_s *dev_info, TKL_BLE_DATA_T 
     segment_length++;
     p_adv->p_data[p_adv->length + segment_length] = strlen((const char *)dev_info->pid);
     segment_length++;
-    strcpy((const char *)&p_adv->p_data[p_adv->length + segment_length], (const char *)dev_info->pid);
+    strcpy((char *)&p_adv->p_data[p_adv->length + segment_length], (char *)dev_info->pid);
     segment_length += strlen((const char *)dev_info->pid);
     p_adv->p_data[p_adv->length] = segment_length - 1;
     p_adv->length += segment_length;
@@ -278,12 +287,12 @@ static int ble_adv_data_set(tuya_ble_service_params_s *dev_info, TKL_BLE_DATA_T 
     // flag
     if (20 == strlen((const char *)dev_info->uuid))
     {
-        p_scan_rsp->p_data[p_scan_rsp->length + segment_length] = 0x11;
+        p_scan_rsp->p_data[p_scan_rsp->length + segment_length] = 0x09;
         segment_length++;
     }
     else
     {
-        p_scan_rsp->p_data[p_scan_rsp->length + segment_length] = 0x10;
+        p_scan_rsp->p_data[p_scan_rsp->length + segment_length] = 0x00;
         segment_length++;
     }
 
@@ -307,7 +316,7 @@ static int ble_adv_data_set(tuya_ble_service_params_s *dev_info, TKL_BLE_DATA_T 
     segment_length = 1;
     p_scan_rsp->p_data[p_scan_rsp->length + segment_length] = 0x09;
     segment_length++;
-    p_scan_rsp->p_data[p_scan_rsp->length + segment_length] = 'T';
+    p_scan_rsp->p_data[p_scan_rsp->length + segment_length] = 'M';
     segment_length++;
     p_scan_rsp->p_data[p_scan_rsp->length + segment_length] = 'Y';
     segment_length++;
@@ -342,7 +351,7 @@ static int ble_service_adv_start(void)
         },
     };
     TUYA_CALL_ERR_RETURN(tkl_ble_gap_adv_start(&adv_params));
-    PR_DEBUG("ble adv start");
+    TY_LOGD("ble adv start");
 
     return rt;
 }
@@ -506,7 +515,7 @@ static int ble_recv_data_decrypt(tuya_ble_pack_s *recv_pack, tuya_ble_frame_plai
     crc16_value = ((uint8_t *)recv_frame)[crc16_len] << 8 | ((uint8_t *)recv_frame)[crc16_len + 1];
     if (crc16_value != get_crc_16((uint8_t *)recv_frame, crc16_len))
     {
-        PR_ERR("receive data crc16 check fail");
+        TY_LOGE("receive data crc16 check fail");
         return OPRT_COM_ERROR;
     }
 
@@ -636,33 +645,22 @@ static int ble_recv_cmd_process(tuya_ble_frame_plain_s *recv_frame, tuya_ble_fra
     uint8_t iv[FRAME_IV_SIZE] = {0};
     tuya_ble_frame_s *rsp_frame = NULL;
     uint8_t encrypt_mode = 0;
+    tuya_ble_frame_plain_s *plaintext = NULL;
 
     uint8_t rsp_data[255] = {0};
     uint16_t rsp_data_len = 0;
 
-    uint32_t plaintext_size = sizeof(tuya_ble_frame_plain_s) + rsp_data_len + FRAME_CRC16_SIZE;
-    /* 16-byte alignment */
-    uint8_t align = 16;
-    uint8_t aligned_num = plaintext_size % align;
-    if (aligned_num)
-    {
-        plaintext_size += align - aligned_num;
-    }
-    /* malloc plaintext */
-    tuya_ble_frame_plain_s *plaintext = system_malloc(plaintext_size);
-    TUYA_CHECK_NULL_GOTO(plaintext, __ERR);
-    memset(plaintext, 0, plaintext_size);
     switch (recv_frame->cmd)
     {
     case APP_CMD_DEV_INFO:
         /* set app mtu */
         sg_ble_service_params->app_mtu = recv_frame->data[0] << 8 | recv_frame->data[1];
-        PR_DEBUG("app mtu: 0x%04x", sg_ble_service_params->app_mtu);
+        TY_LOGD("app mtu: 0x%04x", sg_ble_service_params->app_mtu);
         /* get response frame */
         rsp_data_len = ble_service_get_device_info(sg_ble_service_params->srand, sg_ble_service_params->register_key, rsp_data, 255);
         if (rsp_data_len < 0)
         {
-            PR_ERR("get device infomation fail, %d", rsp_data_len);
+            TY_LOGE("get device infomation fail, %d", rsp_data_len);
             rt = rsp_data_len;
             goto __ERR;
         }
@@ -693,6 +691,19 @@ static int ble_recv_cmd_process(tuya_ble_frame_plain_s *recv_frame, tuya_ble_fra
         rt = OPRT_COM_ERROR;
         goto __ERR;
     }
+
+    uint32_t plaintext_size = sizeof(tuya_ble_frame_plain_s) + rsp_data_len + FRAME_CRC16_SIZE;
+    /* 16-byte alignment */
+    uint8_t align = 16;
+    uint8_t aligned_num = plaintext_size % align;
+    if (aligned_num)
+    {
+        plaintext_size += align - aligned_num;
+    }
+    /* malloc plaintext */
+    plaintext = system_malloc(plaintext_size);
+    TUYA_CHECK_NULL_GOTO(plaintext, __ERR);
+    memset(plaintext, 0, plaintext_size);
 
     sg_ble_service_params->sn++;
     plaintext->sn = UNI_HTONL(sg_ble_service_params->sn);
@@ -753,7 +764,7 @@ static int ble_rsp_data_pack_and_send(uint8_t *frame, uint32_t frame_size)
     total_len = frame_size + 4 + 4 + 1;
     if (total_len > sg_ble_service_params->app_mtu)
     {
-        PR_DEBUG("Need Sub-pack");
+        TY_LOGD("Need Sub-pack");
         pack_len = sg_ble_service_params->app_mtu;
     }
     else
@@ -828,7 +839,7 @@ static int ble_rsp_data_pack_and_send(uint8_t *frame, uint32_t frame_size)
         remain_len -= copy_len;
 
         TUYA_CALL_ERR_GOTO(tkl_ble_gatts_value_notify(sg_ble_service_params->conn_hdl, sg_ble_service_params->notify_char_hdl, send_data, data_offset), __EXIT);
-        PR_DEBUG("ble notify send ok");
+        TY_LOGD("ble notify send ok");
 
         pack_seq++;
     } while (remain_len > 0);
@@ -856,13 +867,13 @@ static void ble_recv_data_process(uint8_t *data, uint32_t len)
     if (TKL_BLE_GATT_INVALID_HANDLE == sg_ble_service_params->conn_hdl ||
         TKL_BLE_GATT_INVALID_HANDLE == sg_ble_service_params->notify_char_hdl)
     {
-        PR_ERR("BLE handle invalid");
+        TY_LOGE("BLE handle invalid");
         return;
     }
 
     if (NULL == data || len <= 0)
     {
-        PR_ERR("Input invalid");
+        TY_LOGE("Input invalid");
         return;
     }
 
@@ -870,14 +881,15 @@ static void ble_recv_data_process(uint8_t *data, uint32_t len)
     rt = ble_recv_data_unpack(data, len, &recv_pack);
     if (rt < 0)
     {
-        PR_ERR("ble recv data unpack fail, %d", rt);
+        TY_LOGE("ble recv data unpack fail, %d", rt);
         goto __EXIT;
     }
     else if (rt < recv_pack.frame_len)
     { // One frame of data not received
-        PR_ERR("wait next pack");
+        TY_LOGE("wait next pack");
         return;
     }
+    TY_LOGD("recv LEN: %d", recv_pack.frame_len);
     // decrypt
     recv_frame_len = recv_pack.frame_len - FRAME_ENCRYPT_MODE_SIZE - FRAME_IV_SIZE;
     recv_frame = system_malloc(recv_frame_len);
@@ -914,7 +926,7 @@ __EXIT:
 
 static void ble_disconnect(MultiTimer *timer, void *userData)
 {
-    PR_DEBUG("ble disconnect");
+    TY_LOGE("ble disconnect");
     ble_msg_queue_insert(BLE_SVC_STATUS_DISCONNECT, 0, NULL);
     return;
 }
@@ -927,10 +939,10 @@ static int ble_service_token_parse(uint8_t *data, ble_msg_token_t *token)
     cJSON *token_root = cJSON_Parse((const char *)data);
 
     p = cJSON_GetObjectItem(token_root, "ssid")->valuestring;
-    strncpy((const char *)token->wifi_info.ssid, (const char *)p, MAX_LENGTH_WIFI_SSID);
+    strncpy((char *)token->wifi_info.ssid, p, MAX_LENGTH_WIFI_SSID);
 
     p = cJSON_GetObjectItem(token_root, "pwd")->valuestring;
-    strncpy((const char *)token->wifi_info.pwd, (const char *)p, MAX_LENGTH_WIFI_PWD);
+    strncpy((char *)token->wifi_info.pwd, p, MAX_LENGTH_WIFI_PWD);
 
     p = cJSON_GetObjectItem(token_root, "token")->valuestring;
     memcpy(token->binding_info.region, p, MAX_LENGTH_REGION);
@@ -953,7 +965,7 @@ static void ble_gap_evt_cb(TKL_BLE_GAP_PARAMS_EVT_T *p_event)
     {
     case TKL_BLE_GAP_EVT_CONNECT:
     {
-        PR_DEBUG("connect hdl 0x%04x", p_event->conn_handle);
+        TY_LOGD("connect hdl 0x%04x", p_event->conn_handle);
         ble_msg_queue_insert(BLE_SVC_STATUS_CONNECT, sizeof(p_event->conn_handle), (uint8_t *)&p_event->conn_handle);
     }
     break;
@@ -971,6 +983,8 @@ static void ble_gap_evt_cb(TKL_BLE_GAP_PARAMS_EVT_T *p_event)
 
 static void ble_gatt_evt_cb(TKL_BLE_GATT_PARAMS_EVT_T *p_event)
 {
+    OPERATE_RET rt = OPRT_OK;
+
     if (NULL == p_event)
         return;
 
@@ -978,11 +992,11 @@ static void ble_gatt_evt_cb(TKL_BLE_GATT_PARAMS_EVT_T *p_event)
     {
     case TKL_BLE_GATT_EVT_WRITE_REQ:
     {
-        PR_DEBUG("recv data");
+        TY_LOGD("recv data");
         if (sg_ble_service_params->write_char_hdl != p_event->gatt_event.write_report.char_handle)
         {
             // nothing to do
-            PR_DEBUG("nothing todo");
+            TY_LOGD("nothing todo");
             break;
         }
         ble_msg_queue_insert(BLE_SVC_STATUS_RECV_DATA, p_event->gatt_event.write_report.report.length,
@@ -1005,6 +1019,8 @@ int tuya_ble_service_start(tuya_ble_service_init_params_t *init_params, ble_toke
     {
         return OPRT_OK;
     }
+
+    TUYA_CALL_ERR_RETURN(tkl_ble_stack_init(TKL_BLE_ROLE_SERVER));
 
     sg_ble_service_params = (tuya_ble_service_params_s *)system_malloc(sizeof(tuya_ble_service_params_s));
     TUYA_CHECK_NULL_RETURN(sg_ble_service_params, OPRT_MALLOC_FAILED);
@@ -1061,12 +1077,11 @@ int tuya_ble_service_start(tuya_ble_service_init_params_t *init_params, ble_toke
         .p_service = &ble_netcfg_service};
     TUYA_CALL_ERR_RETURN(tkl_ble_gatts_service_add(&gatt_params));
 
-    TUYA_CALL_ERR_RETURN(tkl_ble_stack_init(TKL_BLE_ROLE_SERVER));
     sg_ble_service_params->write_char_hdl = ble_netcfg_char[BLE_NETCFG_WRITE_INDEX].handle;
     sg_ble_service_params->notify_char_hdl = ble_netcfg_char[BLE_NETCFG_NOTIFY_INDEX].handle;
 
-    PR_DEBUG("write_char_hdl: 0x%04x", sg_ble_service_params->write_char_hdl);
-    PR_DEBUG("notify_char_hdl: 0x%04x", sg_ble_service_params->notify_char_hdl);
+    TY_LOGD("write_char_hdl: 0x%04x", sg_ble_service_params->write_char_hdl);
+    TY_LOGD("notify_char_hdl: 0x%04x", sg_ble_service_params->notify_char_hdl);
 
     TAILQ_INIT(&sg_ble_service_params->msg_queue);
     ble_msg_queue_insert(BLE_SVC_STATUS_START, 0, NULL);
@@ -1093,7 +1108,7 @@ int ble_service_loop(void)
 
     if (NULL == sg_ble_service_params)
     {
-        PR_ERR("BLE service start fail");
+        // TY_LOGE("BLE service start fail");
         return OPRT_COM_ERROR;
     }
 
@@ -1110,11 +1125,10 @@ int ble_service_loop(void)
     case (BLE_SVC_STATUS_START):
         /* start adv */
         TUYA_CALL_ERR_RETURN(ble_service_adv_start());
-        sg_ble_service_params->key_mask = 0;
         break;
     case (BLE_SVC_STATUS_CONNECT):
         sg_ble_service_params->conn_hdl = first_node->data[0] | first_node->data[1] << 8;
-        PR_DEBUG("conn_hdl 0x%04x", sg_ble_service_params->conn_hdl);
+        TY_LOGD("conn_hdl 0x%04x", sg_ble_service_params->conn_hdl);
         /* start timer */
         MultiTimerInit(&sg_ble_service_params->timer_hdl, BLE_DISCONNECT_TIME_MS, ble_disconnect, NULL);
         MultiTimerStart(&sg_ble_service_params->timer_hdl, BLE_DISCONNECT_TIME_MS);
@@ -1135,7 +1149,7 @@ int ble_service_loop(void)
         ble_recv_data_process(first_node->data, first_node->len);
         break;
     case (BLE_SVC_STATUS_GET_TOKEN):
-        PR_DEBUG("wifi provision info: %s", first_node->data);
+        TY_LOGD("wifi provision info: %s", first_node->data);
         memset(&token_info, 0, sizeof(ble_msg_token_t));
         ble_service_token_parse(first_node->data, &token_info);
         if (sg_ble_service_params->cb)
@@ -1155,6 +1169,12 @@ int ble_service_loop(void)
                                                      TKL_BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION));
             sg_ble_service_params->conn_hdl = TKL_BLE_GATT_INVALID_HANDLE;
         }
+
+        /* close timer */
+        if (MultiTimerActivated(&sg_ble_service_params->timer_hdl))
+        {
+            MultiTimerStop(&sg_ble_service_params->timer_hdl);
+        }
         break;
     default:
         break;
@@ -1167,7 +1187,7 @@ int ble_service_loop(void)
     if (sg_ble_service_params->is_stop && NULL == TAILQ_FIRST(&sg_ble_service_params->msg_queue))
     {
         TUYA_CALL_ERR_LOG(tkl_ble_stack_deinit(TKL_BLE_ROLE_SERVER));
-        PR_DEBUG("ble service finish");
+        TY_LOGD("ble service finish");
 
         if (NULL != sg_ble_service_params)
         {
