@@ -21,6 +21,8 @@
 #include "qrcode.h"
 #include "gpio.h"
 #include "wifi.h"
+#include "main.h"
+#include "common.h"
 #include "esp_ota_ops.h"
 
 /* BLE */
@@ -82,7 +84,6 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
 static void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps);
 static void tuya_link_app_task(void *pvParameters);
 static void tuya_send_callback(int result, void *user_data);
-static int bleprph_gap_event(struct ble_gap_event *event, void *arg);
 void ble_store_config_init(void);
 void ble_netcfg_task(void *arg);
 void ble_token_get_cb(wifi_info_t wifi_info, tuya_binding_info_t binding_info);
@@ -98,7 +99,6 @@ TaskHandle_t tuya_ble_pairing_task_handle = NULL;
 static tuya_iot_client_t client;
 static tuya_event_id_t lastEvent = TUYA_EVENT_RESET;
 static uint8_t newEvent = 0;
-static uint8_t own_addr_type;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -146,11 +146,10 @@ static void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps
 
 static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
 {
-    ESP_LOGI(TAG, "TUYA_EVENT: %s", EVENT_ID2STR(event->id));
+    // ESP_LOGI(TAG, "TUYA_EVENT: %s", EVENT_ID2STR(event->id));
     switch (event->id)
     {
     case TUYA_EVENT_BIND_START:
-        ESP_LOGI(TAG, "pa state: %d", config_values.tuya.pairing_state);
         if (config_values.tuya.pairing_state != TUYA_BLE_PAIRING)
         {
             tuya_qrcode_print(client->config.productkey, client->config.uuid);
@@ -214,7 +213,7 @@ static void tuya_link_app_task(void *pvParameters)
     tuya_iot_start(&client);
     if (config_values.tuya.pairing_state == TUYA_BLE_PAIRING)
     {
-        ESP_LOGE(TAG, "Tuya BLE pairing");
+        ESP_LOGI(TAG, "Tuya BLE pairing");
         tuya_reset();
         tuya_wifi_provisioning(&client, WIFI_PROVISIONING_MODE_BLE, &ble_token_get_cb);
     }
@@ -350,7 +349,6 @@ void tuya_reset()
 
 void tuya_pairing_task(void *pvParameters)
 {
-    ESP_LOGI(TAG, "Tuya pairing");
     config_values.tuya.pairing_state = TUYA_BLE_PAIRING;
     tuya_init();
 
@@ -372,7 +370,10 @@ void tuya_pairing_task(void *pvParameters)
     config_write();
     gpio_start_led_pattern(PATTERN_SEND_OK);
     vTaskDelay(5000 / portTICK_PERIOD_MS);
-    esp_restart();
+
+    resumeTask(fetchLinkyDataTaskHandle);
+
+    // esp_restart();
     vTaskDelete(NULL);
 }
 uint8_t tuya_wait_event(tuya_event_id_t event, uint32_t timeout)
@@ -413,6 +414,12 @@ void ble_token_get_cb(wifi_info_t wifi_info, tuya_binding_info_t binding_info)
     strncpy(config_values.password, (char *)wifi_info.pwd, sizeof(config_values.password));
 
     config_values.tuya.pairing_state = TUYA_WIFI_CONNECTING;
+
+    if (gpio_led_pairing_task_handle != NULL)
+    {
+        vTaskDelete(gpio_led_pairing_task_handle);
+        gpio_led_pairing_task_handle = NULL;
+    }
 
     if (!wifi_connect())
     {

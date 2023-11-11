@@ -411,14 +411,14 @@ void wifi_start_captive_portal()
 {
     ESP_LOGI(TAG, "Start captive portal");
     xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, 1, NULL);
-    // Initialize networking stack
-    ESP_ERROR_CHECK(esp_netif_init());
+    // // Initialize networking stack
+    // ESP_ERROR_CHECK(esp_netif_init());
 
-    // Create default event loop needed by the  main app
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    // // Create default event loop needed by the  main app
+    // ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    // Initialize NVS needed by Wi-Fi
-    ESP_ERROR_CHECK(nvs_flash_init());
+    // // Initialize NVS needed by Wi-Fi
+    // ESP_ERROR_CHECK(nvs_flash_init());
 
     // Initialise ESP32 in SoftAP mode
     wifi_init_softap();

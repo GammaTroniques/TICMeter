@@ -58,6 +58,7 @@
  Public Variables Declaration
 ==============================================================================*/
 extern TaskHandle_t gpip_led_ota_task_handle;
+extern TaskHandle_t gpio_led_pairing_task_handle;
 
 /*==============================================================================
  Public Functions Declaration
