@@ -152,22 +152,22 @@ extern "C"
 #define HIBYTE(w) ((BYTE_T)(((WORD_T)(w) >> 8) & 0xFF))
 
 #define WORD_SWAP(X) (((X << 8) | (X >> 8)) & 0xFFFF)
-#define DWORD_SWAP(X) ((((X)&0xff) << 24) +    \
-                       (((X)&0xff00) << 8) +   \
-                       (((X)&0xff0000) >> 8) + \
-                       (((X)&0xff000000) >> 24))
-#define DDWORD_SWAP(X)                                          \
-    {                                                           \
-        unsigned long temp_low, temp_high;                      \
-        temp_low = DWORD_SWAP((unsigned long)((X)&0xffffffff)); \
-        temp_high = DWORD_SWAP((unsigned long)((X) >> 32));     \
-        X = 0;                                                  \
-        X |= temp_low;                                          \
-        X <<= 32;                                               \
-        X |= temp_high;                                         \
+#define DWORD_SWAP(X) ((((X) & 0xff) << 24) +    \
+                       (((X) & 0xff00) << 8) +   \
+                       (((X) & 0xff0000) >> 8) + \
+                       (((X) & 0xff000000) >> 24))
+#define DDWORD_SWAP(X)                                            \
+    {                                                             \
+        unsigned long temp_low, temp_high;                        \
+        temp_low = DWORD_SWAP((unsigned long)((X) & 0xffffffff)); \
+        temp_high = DWORD_SWAP((unsigned long)((X) >> 32));       \
+        X = 0;                                                    \
+        X |= temp_low;                                            \
+        X <<= 32;                                                 \
+        X |= temp_high;                                           \
     }
 
-#if defined(LITTLE_ENDIAN) && (LITTLE_ENDIAN == 1)
+// #if defined(LITTLE_ENDIAN) && (LITTLE_ENDIAN == 1)
 #define UNI_NTOHS(X) WORD_SWAP(X)
 #define UNI_HTONS(X) WORD_SWAP(X)
 #define UNI_NTOHL(X) DWORD_SWAP(X)
@@ -175,16 +175,16 @@ extern "C"
 #define UNI_NTOHLL(X) DDWORD_SWAP(X)
 #define UNI_HTONLL(X) DDWORD_SWAP(X)
 
-#else
+    // #else
 
-#define UNI_NTOHS(X) X
-#define UNI_HTONS(X) X
-#define UNI_NTOHL(X) X
-#define UNI_HTONL(X) X
-#define UNI_NTOHLL(X) X
-#define UNI_HTONLL(X) X
+    // #define UNI_NTOHS(X) X
+    // #define UNI_HTONS(X) X
+    // #define UNI_NTOHL(X) X
+    // #define UNI_HTONL(X) X
+    // #define UNI_NTOHLL(X) X
+    // #define UNI_HTONLL(X) X
 
-#endif
+    // #endif
 
 #define OFFSOF(s, m) ((SIZE_T)(&(((s *)0)->m)))
 #define CNTSOF(a) (sizeof(a) / sizeof(a[0]))

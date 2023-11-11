@@ -20,6 +20,7 @@ set(srcs
     "port/system_wrapper.c"
     "port/storage_wrapper.c"
     "port/network_wrapper.c"
+    "port/ble_wrapper.c"
     ${TUYALINK_DIR}/middleware/http_client_wrapper.c
     ${TUYALINK_DIR}/middleware/mqtt_client_wrapper.c
     ${UTILS_SOURCES}
@@ -31,7 +32,7 @@ set(srcs
 
 idf_component_register(SRCS "${srcs}"
                     INCLUDE_DIRS "${include_dirs}"
-                    REQUIRES lwip mbedtls nvs_flash esp_event esp_netif)
+                    REQUIRES lwip mbedtls nvs_flash esp_event esp_netif bt)
 
 # Silence format truncation warning, until it is fixed upstream
 # set_source_files_properties(port/coap_debug.c PROPERTIES COMPILE_FLAGS -Wno-format-truncation)

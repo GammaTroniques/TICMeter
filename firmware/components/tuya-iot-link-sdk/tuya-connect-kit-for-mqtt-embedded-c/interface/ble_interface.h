@@ -6,9 +6,16 @@
 #include "tuya_cloud_types.h"
 #include "tkl_bluetooth_def.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+typedef struct
+{
+    UCHAR_T role; /*< Refer to @ TKL_BLE_ROLE_SERVER and TKL_BLE_ROLE_CLIENT */
+    struct
+    {
+        UCHAR_T buffer[256];
+        USHORT_T size;
+        USHORT_T handle;
+    } read_char[1];
+} TKL_BLUETOOTH_SERVER_PARAMS_T;
 
 OPERATE_RET tkl_ble_stack_init(uint8_t role);
 
@@ -29,9 +36,5 @@ OPERATE_RET tkl_ble_gatt_callback_register(const TKL_BLE_GATT_EVT_FUNC_CB gatt_e
 OPERATE_RET tkl_ble_gatts_service_add(TKL_BLE_GATTS_PARAMS_T *p_service);
 
 OPERATE_RET tkl_ble_gatts_value_notify(uint16_t conn_handle, uint16_t char_handle, uint8_t *p_data, uint16_t length);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __BLE_INTERFACE_H__ */
