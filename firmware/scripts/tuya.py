@@ -90,6 +90,7 @@ def sendTuya():
     # read response
     response = ser.read_until(b"\02")
     response = ser.read_until(b"\03")
+    print(response)
     dict = responseToDict(response)
     pprint.pprint(dict)
 

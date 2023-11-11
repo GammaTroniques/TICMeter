@@ -306,16 +306,16 @@ uint8_t config_verify()
         break;
 
     case MODE_TUYA:
-        if (strlen(config_values.tuya.product_id) == 0 || strlen(config_values.tuya.device_uuid) == 0 || strlen(config_values.tuya.device_auth) == 0)
+        if (strlen(config_values.tuya.product_id) == 0 || strlen(config_values.tuya.device_uuid) == 0 || strlen(config_values.tuya.device_auth) == 0 || config_values.tuya.pairing_state != TUYA_PAIRED)
         {
             // No Tuya key, id, version or region
             return 1;
         }
-        if (config_values.tuya.pairing_state == TUYA_NOT_CONFIGURED)
-        {
-            // Tuya not binded
-            return 0;
-        }
+        // if (config_values.tuya.pairing_state == TUYA_NOT_CONFIGURED)
+        // {
+        //     // Tuya not binded
+        //     return 0;
+        // }
         break;
     default:
         break;

@@ -76,6 +76,7 @@ static void gpio_init_adc_cali(adc_oneshot_unit_handle_t adc_handle, adc_channel
 Public Variable
 ===============================================================================*/
 TaskHandle_t gpip_led_ota_task_handle = NULL;
+TaskHandle_t gpio_led_pairing_task_handle = NULL;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
@@ -430,7 +431,7 @@ void gpio_pairing_button_task(void *pvParameters)
                 else if (pushTime > 2000 && pushTime <= 4000)
                 {
                     ESP_LOGI(TAG, "Pairing mode");
-                    xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 2048, NULL, 5, NULL);
+                    xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 2048, NULL, 5, &gpio_led_pairing_task_handle);
                     if (pairingState)
                     {
                         // already in pairing mode
