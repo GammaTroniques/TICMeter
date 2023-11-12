@@ -97,7 +97,7 @@ void app_main(void)
 
   if (config_verify())
   {
-    xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 1024, NULL, 1, &noConfigLedTaskHandle); // start no config led task
+    xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 4 * 1024, NULL, 1, &noConfigLedTaskHandle); // start no config led task
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config_verify())
     {
@@ -160,9 +160,9 @@ void app_main(void)
     if (wifi_connect())
     {
       tuya_init();
-      // vTaskDelay(1000 / portTICK_PERIOD_MS);
-      // vTaskSuspend(tuyaTaskHandle);
-      // wifi_disconnect();
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      wifi_disconnect();
+      vTaskSuspend(tuyaTaskHandle);
     }
     break;
   default:
@@ -170,7 +170,7 @@ void app_main(void)
   }
   // start linky fetch task
 
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16384, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16 * 1024, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 }
 
 void fetchLinkyDataTask(void *pvParameters)
@@ -262,7 +262,7 @@ void fetchLinkyDataTask(void *pvParameters)
       {
         ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
         resumeTask(tuyaTaskHandle); // resume tuya task
-        if (tuya_wait_event(TUYA_EVENT_MQTT_CONNECTED, 5000))
+        if (tuya_wait_event(TUYA_EVENT_MQTT_CONNECTED, 10000))
         {
           ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
           gpio_start_led_pattern(PATTERN_SEND_ERR);
@@ -276,8 +276,8 @@ void fetchLinkyDataTask(void *pvParameters)
           goto tuya_disconect;
         }
       tuya_disconect:
-        tuya_stop();
-        tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
+        // tuya_stop();
+        // tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
         wifi_disconnect();
         suspendTask(tuyaTaskHandle);
         gpio_start_led_pattern(PATTERN_SEND_OK);

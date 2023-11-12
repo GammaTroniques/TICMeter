@@ -84,8 +84,6 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
 static void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps);
 static void tuya_link_app_task(void *pvParameters);
 static void tuya_send_callback(int result, void *user_data);
-void ble_store_config_init(void);
-void ble_netcfg_task(void *arg);
 void ble_token_get_cb(wifi_info_t wifi_info, tuya_binding_info_t binding_info);
 /*==============================================================================
 Public Variable
@@ -180,6 +178,8 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
 
         config_write();
         break;
+    case TUYA_EVENT_DPCACHE_NOTIFY:
+        TY_LOGI("Recv TUYA_EVENT_DPCACHE_NOTIFY");
     default:
         break;
     }
@@ -229,6 +229,11 @@ static void tuya_link_app_task(void *pvParameters)
 void tuya_init()
 {
     ESP_LOGI(TAG, "Tuya init");
+    if (tuyaTaskHandle != NULL)
+    {
+        ESP_LOGI(TAG, "Tuya already init");
+        return;
+    }
     xTaskCreate(tuya_link_app_task, "tuya_link", 1024 * 6, NULL, 4, &tuyaTaskHandle);
 }
 
@@ -250,6 +255,10 @@ uint8_t tuya_send_data(LinkyData *linky)
         if (LinkyLabelList[i].id < 101)
         {
             continue; // dont send data for label < 101 : they are not used by tuya
+        }
+        if (LinkyLabelList[i].mode != linky_mode)
+        {
+            continue; // dont send data for label not used by current mode
         }
 
         // json
@@ -364,16 +373,12 @@ void tuya_pairing_task(void *pvParameters)
         gpio_start_led_pattern(PATTERN_SEND_ERR);
         vTaskDelete(NULL);
     }
-    ESP_LOGI(TAG, "Tuya pairing OK");
 
     config_values.tuya.pairing_state = TUYA_PAIRED;
     config_write();
+    ESP_LOGI(TAG, "Tuya pairing: %d", config_values.tuya.pairing_state);
     gpio_start_led_pattern(PATTERN_SEND_OK);
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-
-    resumeTask(fetchLinkyDataTaskHandle);
-
-    // esp_restart();
+    // will restart via main task
     vTaskDelete(NULL);
 }
 uint8_t tuya_wait_event(tuya_event_id_t event, uint32_t timeout)
@@ -389,7 +394,7 @@ uint8_t tuya_wait_event(tuya_event_id_t event, uint32_t timeout)
                 return 0;
             }
         }
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     return 1;
 }
@@ -410,6 +415,7 @@ uint8_t tuya_restart()
 
 void ble_token_get_cb(wifi_info_t wifi_info, tuya_binding_info_t binding_info)
 {
+    ESP_LOGI(TAG, "BLE token get callback");
     strncpy(config_values.ssid, (char *)wifi_info.ssid, sizeof(config_values.ssid));
     strncpy(config_values.password, (char *)wifi_info.pwd, sizeof(config_values.password));
 
@@ -426,25 +432,6 @@ void ble_token_get_cb(wifi_info_t wifi_info, tuya_binding_info_t binding_info)
         ESP_LOGE(TAG, "Tuya pairing failed: no wifi");
         return;
     }
+    ESP_LOGI(TAG, "Tuya pairing OK");
     return;
-}
-
-void ble_netcfg_task(void *arg)
-{
-    OPERATE_RET rt = OPRT_OK;
-    tuya_ble_service_init_params_t init_params = {
-        .uuid = (uint8_t *)config_values.tuya.device_uuid,
-        .auth_key = (uint8_t *)config_values.tuya.device_auth,
-        .pid = (uint8_t *)config_values.tuya.product_id,
-    };
-
-    TUYA_CALL_ERR_LOG(tuya_ble_service_start(&init_params, ble_token_get_cb));
-    MultiTimerInstall(xTaskGetTickCount);
-
-    for (;;)
-    {
-        ble_service_loop();
-        MultiTimerYield();
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
 }

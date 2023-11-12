@@ -73,6 +73,7 @@ static int get_VCondo_command(int argc, char **argv);
 static int ota_check_command(int argc, char **argv);
 
 static int set_tuya_command(int argc, char **argv);
+static int set_tuya_pairing(int argc, char **argv);
 static int get_tuya_command(int argc, char **argv);
 
 static int set_linky_mode_command(int argc, char **argv);
@@ -146,6 +147,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"test-led",                    "Test led",                                 &test_led_command,                  0, {}, {}},
     {"ota-check",                   "Check for OTA update",                     &ota_check_command,                 0, {}, {}},
     {"set-tuya",                    "Set tuya config",                          &set_tuya_command,                  3, {"<product_id>", "<device_uuid>", "<device_auth>"}, {"Product ID", "Device UUID", "Device Auth Key"}},
+    {"set-tuya-pairing",            "Set tuya pairing state",                   &set_tuya_pairing,                  1, {"<pairing_state>"}, {"Pairing state"}},
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
@@ -474,6 +476,19 @@ static int set_tuya_command(int argc, char **argv)
          sizeof(config_values.tuya.device_auth));
   config_write();
   printf("Tuya config saved\n");
+  get_tuya_command(1, NULL);
+  return 0;
+}
+
+static int set_tuya_pairing(int argc, char **argv)
+{
+  if (argc != 2)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  config_values.tuya.pairing_state = (tuya_pairing_state_t)atoi(argv[1]);
+  config_write();
+  printf("Tuya pairing state saved\n");
   get_tuya_command(1, NULL);
   return 0;
 }
