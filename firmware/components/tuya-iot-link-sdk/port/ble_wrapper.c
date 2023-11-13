@@ -19,14 +19,14 @@
 static TKL_BLUETOOTH_SERVER_PARAMS_T tuya_ble_server;
 static TKL_BLE_GAP_EVT_FUNC_CB tkl_bluetooth_gap_callback;
 static TKL_BLE_GATT_EVT_FUNC_CB tkl_bluetooth_gatt_callback;
-static int gatts_service_flag = FALSE;
+// static int gatts_service_flag = FALSE;
 static int stack_sync_flag = 0;
 
-static struct ble_gatt_svc_def tuya_gatt_svcs[TKL_BLE_GATT_SERVICE_MAX_NUM];
-static struct ble_gatt_chr_def tuya_gatt_chars[TKL_BLE_GATT_CHAR_MAX_NUM];
+// static struct ble_gatt_svc_def tuya_gatt_svcs[TKL_BLE_GATT_SERVICE_MAX_NUM];
+// static struct ble_gatt_chr_def tuya_gatt_chars[TKL_BLE_GATT_CHAR_MAX_NUM];
 
-static TKL_BLE_GATTS_PARAMS_T *cache_service = NULL;
-static USHORT_T handle_cache[TKL_BLE_GATT_SERVICE_MAX_NUM][TKL_BLE_GATT_CHAR_MAX_NUM];
+// static TKL_BLE_GATTS_PARAMS_T *cache_service = NULL;
+// static USHORT_T handle_cache[TKL_BLE_GATT_SERVICE_MAX_NUM][TKL_BLE_GATT_CHAR_MAX_NUM];
 
 static int tuya_ble_host_write_callback(uint16_t conn_handle, uint16_t attr_handle, struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
@@ -81,30 +81,30 @@ static void tuya_ble_host_stack_reset_callback(int reason)
     BLE_HS_LOG_INFO("Stack Reset,  reson = %d", reason);
 }
 
-static void cache_handle(void)
-{
-    int i, j;
-    static int cache_flag = 0;
+// static void cache_handle(void)
+// {
+//     int i, j;
+//     static int cache_flag = 0;
 
-    if (cache_service == NULL)
-    {
-        cache_flag = 0;
-        return;
-    }
-    if (cache_flag)
-    {
-        return;
-    }
-    cache_flag = 1;
-    for (i = 0; i < cache_service->svc_num; i++)
-    {
-        for (j = 0; j < cache_service->p_service->char_num; j++)
-        {
-            memcpy(&handle_cache[i][j], tuya_gatt_svcs[i].characteristics[j].val_handle, sizeof(USHORT_T));
-            PR_DEBUG("set handle:%d,%d ", j, handle_cache[i][j]);
-        }
-    }
-}
+//     if (cache_service == NULL)
+//     {
+//         cache_flag = 0;
+//         return;
+//     }
+//     if (cache_flag)
+//     {
+//         return;
+//     }
+//     cache_flag = 1;
+//     for (i = 0; i < cache_service->svc_num; i++)
+//     {
+//         for (j = 0; j < cache_service->p_service->char_num; j++)
+//         {
+//             memcpy(&handle_cache[i][j], tuya_gatt_svcs[i].characteristics[j].val_handle, sizeof(USHORT_T));
+//             PR_DEBUG("set handle:%d,%d ", j, handle_cache[i][j]);
+//         }
+//     }
+// }
 
 static int tuya_ble_host_gap_event(struct ble_gap_event *event, void *arg)
 {
@@ -262,7 +262,7 @@ OPERATE_RET tkl_ble_stack_init(uint8_t role)
     //     tkl_mutex_create_init(&tkl_ble_stack_mutex);
     // tkl_mutex_lock(tkl_ble_stack_mutex);
 
-    static int init_flag = 0;
+    // static int init_flag = 0;
     OPERATE_RET ret = OPRT_OK;
 
     if ((role & TKL_BLE_ROLE_SERVER) == TKL_BLE_ROLE_SERVER)

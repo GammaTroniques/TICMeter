@@ -359,7 +359,7 @@ esp_err_t save_config_handler(httpd_req_t *req)
 
     if (config_values.mode == MODE_TUYA)
     {
-        config_values.tuya.pairing_state = TUYA_WIFI_CONNECTING;
+        config_values.pairing_state = TUYA_WIFI_CONNECTING;
         //  redirect to the reboot page
         httpd_resp_set_status(req, "302 Temporary Redirect");
         httpd_resp_set_hdr(req, "Location", "/tuya.html");

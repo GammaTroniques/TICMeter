@@ -84,7 +84,7 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
 static void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps);
 static void tuya_link_app_task(void *pvParameters);
 static void tuya_send_callback(int result, void *user_data);
-void ble_token_get_cb(wifi_info_t wifi_info, tuya_binding_info_t binding_info);
+void ble_token_get_cb(wifi_info_t wifi_info);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -148,7 +148,7 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
     switch (event->id)
     {
     case TUYA_EVENT_BIND_START:
-        if (config_values.tuya.pairing_state != TUYA_BLE_PAIRING)
+        if (config_values.pairing_state != TUYA_BLE_PAIRING)
         {
             tuya_qrcode_print(client->config.productkey, client->config.uuid);
         }
@@ -161,11 +161,12 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
     case TUYA_EVENT_DP_RECEIVE:
     {
         ESP_LOGI(TAG, "TUYA_EVENT_DP_RECEIVE");
+        tuya_iot_dp_download(client, (const char *)event->value.asString);
         break;
     }
     case TUYA_EVENT_RESET:
         ESP_LOGI(TAG, "Tuya unbined");
-        config_values.tuya.pairing_state = TUYA_WIFI_CONNECTING;
+        config_values.pairing_state = TUYA_WIFI_CONNECTING;
         config_write();
         break;
     case TUYA_EVENT_BIND_TOKEN_ON:
@@ -174,7 +175,7 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
         break;
     case TUYA_EVENT_ACTIVATE_SUCCESSED:
         ESP_LOGI(TAG, "Tuya binded");
-        config_values.tuya.pairing_state = TUYA_PAIRED;
+        config_values.pairing_state = TUYA_PAIRED;
 
         config_write();
         break;
@@ -211,7 +212,7 @@ static void tuya_link_app_task(void *pvParameters)
 
     /* Start tuya iot task */
     tuya_iot_start(&client);
-    if (config_values.tuya.pairing_state == TUYA_BLE_PAIRING)
+    if (config_values.pairing_state == TUYA_BLE_PAIRING)
     {
         ESP_LOGI(TAG, "Tuya BLE pairing");
         tuya_reset();
@@ -352,16 +353,16 @@ uint8_t tuya_send_data(LinkyData *linky)
 void tuya_reset()
 {
     ESP_LOGI(TAG, "Reset Tuya");
-    // config_values.tuya.pairing_state = TUYA_NOT_CONFIGURED;
+    // config_values.pairing_state = TUYA_NOT_CONFIGURED;
     tuya_iot_activated_data_remove(&client);
 }
 
 void tuya_pairing_task(void *pvParameters)
 {
-    config_values.tuya.pairing_state = TUYA_BLE_PAIRING;
+    config_values.pairing_state = TUYA_BLE_PAIRING;
     tuya_init();
 
-    while (config_values.tuya.pairing_state != TUYA_WIFI_CONNECTING)
+    while (config_values.pairing_state != TUYA_WIFI_CONNECTING)
     {
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
@@ -374,9 +375,9 @@ void tuya_pairing_task(void *pvParameters)
         vTaskDelete(NULL);
     }
 
-    config_values.tuya.pairing_state = TUYA_PAIRED;
+    config_values.pairing_state = TUYA_PAIRED;
     config_write();
-    ESP_LOGI(TAG, "Tuya pairing: %d", config_values.tuya.pairing_state);
+    ESP_LOGI(TAG, "Tuya pairing: %d", config_values.pairing_state);
     gpio_start_led_pattern(PATTERN_SEND_OK);
     // will restart via main task
     vTaskDelete(NULL);
@@ -413,13 +414,13 @@ uint8_t tuya_restart()
 
 // -------------------------------BLE -----------------------------------------
 
-void ble_token_get_cb(wifi_info_t wifi_info, tuya_binding_info_t binding_info)
+void ble_token_get_cb(wifi_info_t wifi_info)
 {
     ESP_LOGI(TAG, "BLE token get callback");
     strncpy(config_values.ssid, (char *)wifi_info.ssid, sizeof(config_values.ssid));
     strncpy(config_values.password, (char *)wifi_info.pwd, sizeof(config_values.password));
 
-    config_values.tuya.pairing_state = TUYA_WIFI_CONNECTING;
+    config_values.pairing_state = TUYA_WIFI_CONNECTING;
 
     if (gpio_led_pairing_task_handle != NULL)
     {
