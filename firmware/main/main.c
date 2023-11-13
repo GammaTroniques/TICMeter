@@ -152,7 +152,7 @@ void app_main(void)
     // zigbee_task(0);
     break;
   case MODE_TUYA:
-    if (config_values.tuya.pairing_state != TUYA_PAIRED)
+    if (config_values.pairing_state != TUYA_PAIRED)
     {
       ESP_LOGW(MAIN_TAG, "Tuya not paired.");
       break;

@@ -74,14 +74,13 @@ typedef enum
     TUYA_BLE_PAIRING,
     TUYA_WIFI_CONNECTING,
     TUYA_PAIRED,
-} tuya_pairing_state_t;
+} pairing_state_t;
 
 typedef struct
 {
     char product_id[30];
     char device_uuid[30];
     char device_auth[40];
-    tuya_pairing_state_t pairing_state;
 } tuyaConfig_t;
 
 typedef struct
@@ -93,6 +92,7 @@ typedef struct
     connectivity_t mode;
     webConfig_t web;
     mqttConfig_t mqtt;
+    pairing_state_t pairing_state;
     tuyaConfig_t tuya;
 
     char version[10];
@@ -119,6 +119,5 @@ int8_t config_begin();
 int8_t config_read();
 int8_t config_write();
 uint8_t config_verify();
-
-int16_t config_calculate_checksum();
+uint8_t config_rw();
 #endif /* CONFIG_H */

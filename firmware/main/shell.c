@@ -102,6 +102,8 @@ static int get_refresh_command(int argc, char **argv);
 static int led_off(int argc, char **argv);
 static int factory_reset(int argc, char **argv);
 
+static int rw_command(int argc, char **argv);
+
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -142,7 +144,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"set-refresh",                 "Set refresh rate",                         &set_refresh_command,               1, {"<refresh>"}, {"Refresh rate in seconds"}},
     {"get-refresh",                 "Get refresh rate",                         &get_refresh_command,               0, {}, {}},
     {"get-config",                  "Get config",                               &get_config_command,                0, {}, {}},
-    {"set-config",                  "Set config",                               &set_config_command,                2, {"<key>", "<value>"}, {"Key", "Value"}},
+    {"set-config",                  "Set config",                               &set_config_command,                0, {}, {}},
     {"get-VCondo",                  "Get VCondo",                               &get_VCondo_command,                0, {}, {}},
     {"test-led",                    "Test led",                                 &test_led_command,                  0, {}, {}},
     {"ota-check",                   "Check for OTA update",                     &ota_check_command,                 0, {}, {}},
@@ -161,6 +163,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"ota-start",                   "Start OTA",                                &ota_start,                         0, {}, {}},
     {"led-off",                     "LED OFF",                                  &led_off,                           0, {}, {}},
     {"factory-reset",               "Factory reset",                            &factory_reset,                     0, {}, {}},
+    {"rw",                          "Open RO partition in RW mode",             &rw_command,                        0, {}, {}},
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -486,7 +489,7 @@ static int set_tuya_pairing(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  config_values.tuya.pairing_state = (tuya_pairing_state_t)atoi(argv[1]);
+  config_values.pairing_state = (pairing_state_t)atoi(argv[1]);
   config_write();
   printf("Tuya pairing state saved\n");
   get_tuya_command(1, NULL);
@@ -503,7 +506,7 @@ static int get_tuya_command(int argc, char **argv)
   printf("Product ID: %s\n", config_values.tuya.product_id);
   printf("Device UUID: %s\n", config_values.tuya.device_uuid);
   printf("Device Auth: %s\n", config_values.tuya.device_auth);
-  printf("Tuya Bind Status: %d%c\n", config_values.tuya.pairing_state, 0x03);
+  printf("Tuya Bind Status: %d%c\n", config_values.pairing_state, 0x03);
   return 0;
 }
 
@@ -593,14 +596,6 @@ static int read_nvs(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
 
-  // nvs_iterator_t it = nvs_entry_find(part, NULL, NVS_TYPE_ANY);
-  // nvs_entry_info_t info;
-  // while (it)
-  // {
-  //     nvs_entry_info(it, &info);
-  //     printf("%s::%s type=%d\n", info.namespace_name, info.key, info.type);
-  //     it = nvs_entry_next(it);
-  // }
   return 0;
 }
 
@@ -687,5 +682,15 @@ static int factory_reset(int argc, char **argv)
   config_erase();
   printf("Factory reset done\n");
   config_write();
+  return 0;
+}
+
+static int rw_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  config_rw();
   return 0;
 }

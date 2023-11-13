@@ -42,6 +42,10 @@ if (NOT "${VERSION}" STREQUAL "${VERSION_}")
     file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/version.c "${VERSION}")
 endif()
 
+# version.txt
+# if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../version.txt)
+#     file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/../version.txt "${GIT_TAG}")
+# endif()
 
 
 idf_component_register(SRCS
