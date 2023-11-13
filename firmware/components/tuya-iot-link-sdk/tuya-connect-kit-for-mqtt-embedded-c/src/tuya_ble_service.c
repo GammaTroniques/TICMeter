@@ -658,12 +658,12 @@ static int ble_recv_cmd_process(tuya_ble_frame_plain_s *recv_frame, tuya_ble_fra
         TY_LOGD("app mtu: 0x%04x", sg_ble_service_params->app_mtu);
         /* get response frame */
         rsp_data_len = ble_service_get_device_info(sg_ble_service_params->srand, sg_ble_service_params->register_key, rsp_data, 255);
-        if (rsp_data_len < 0)
-        {
-            TY_LOGE("get device infomation fail, %d", rsp_data_len);
-            rt = rsp_data_len;
-            goto __ERR;
-        }
+        // if (rsp_data_len < 0)
+        // {
+        //     TY_LOGE("get device infomation fail, %d", rsp_data_len);
+        //     rt = rsp_data_len;
+        //     goto __ERR;
+        // }
         key = sg_ble_service_params->key_1;
         encrypt_mode = ENCRYPTION_MODE_KEY_1;
         break;
@@ -956,7 +956,7 @@ static int ble_service_token_parse(uint8_t *data, ble_msg_token_t *token)
 
 static void ble_gap_evt_cb(TKL_BLE_GAP_PARAMS_EVT_T *p_event)
 {
-    OPERATE_RET rt = OPRT_OK;
+    // OPERATE_RET rt = OPRT_OK;
 
     if (NULL == p_event)
         return;
@@ -983,7 +983,7 @@ static void ble_gap_evt_cb(TKL_BLE_GAP_PARAMS_EVT_T *p_event)
 
 static void ble_gatt_evt_cb(TKL_BLE_GATT_PARAMS_EVT_T *p_event)
 {
-    OPERATE_RET rt = OPRT_OK;
+    // OPERATE_RET rt = OPRT_OK;
 
     if (NULL == p_event)
         return;

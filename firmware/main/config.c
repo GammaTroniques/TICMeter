@@ -18,7 +18,9 @@
  Local Define
 ===============================================================================*/
 #define TAG "Config"
+
 #define CONFIG_NAMESPACE "config"
+#define RO_PARTITION "ro_nvs"
 #define RO_NAMESPACE "ro_config"
 /*==============================================================================
  Local Macro
@@ -33,8 +35,7 @@ struct config_item_t
     const LinkyLabelType type;
     void *value;
     size_t size;
-    nvs_open_mode_t access;
-    nvs_handle_t handle;
+    nvs_handle_t *handle;
 };
 /*==============================================================================
  Local Function Declaration
@@ -51,43 +52,31 @@ config_t config_values = {};
 ===============================================================================*/
 // clang-format off
 
+static nvs_handle_t config_handle = 0;
+static nvs_handle_t ro_config_handle = 0;
 static struct config_item_t config_items[] = {
-    {"wifi-ssid",   STRING, &config_values.ssid,        sizeof(config_values.ssid),         NVS_READWRITE, 0},
-    {"wifi-pw"  ,   STRING, &config_values.password,    sizeof(config_values.password),     NVS_READWRITE, 0},
-
-    {"linky-mode",   UINT8, &config_values.linkyMode,   sizeof(config_values.linkyMode),    NVS_READWRITE, 0},
-    {"connect-mode", UINT8, &config_values.mode,        sizeof(config_values.mode),         NVS_READWRITE, 0},
-
-    {"web-conf",      BLOB, &config_values.web,         sizeof(config_values.web),          NVS_READWRITE, 0},
-    {"mqtt-conf",     BLOB, &config_values.mqtt,        sizeof(config_values.mqtt),         NVS_READWRITE, 0},
-    {"tuya-keys",     BLOB, &config_values.tuya,        sizeof(config_values.tuya),         NVS_READWRITE, 0},
-
-    {"version",     STRING, &config_values.version,     sizeof(config_values.version),      NVS_READWRITE, 0},
-    {"refresh",     UINT16, &config_values.refreshRate, sizeof(config_values.refreshRate),  NVS_READWRITE, 0},
-    {"sleep",        UINT8, &config_values.sleep,       sizeof(config_values.sleep),        NVS_READWRITE, 0},
+    {"wifi-ssid",   STRING, &config_values.ssid,            sizeof(config_values.ssid),             &config_handle},
+    {"wifi-pw"  ,   STRING, &config_values.password,        sizeof(config_values.password),         &config_handle},
+    
+    {"linky-mode",   UINT8, &config_values.linkyMode,       sizeof(config_values.linkyMode),        &config_handle},
+    {"connect-mode", UINT8, &config_values.mode,            sizeof(config_values.mode),             &config_handle},
+    
+    {"web-conf",      BLOB, &config_values.web,             sizeof(config_values.web),              &config_handle},
+    {"mqtt-conf",     BLOB, &config_values.mqtt,            sizeof(config_values.mqtt),             &config_handle},
+    {"tuya-keys",     BLOB, &config_values.tuya,            sizeof(config_values.tuya),             &ro_config_handle},
+    {"pairing",      UINT8, &config_values.pairing_state,   sizeof(config_values.pairing_state),    &config_handle},
+ 
+    {"version",     STRING, &config_values.version,         sizeof(config_values.version),          &config_handle},
+    {"refresh",     UINT16, &config_values.refreshRate,     sizeof(config_values.refreshRate),      &config_handle},
+    {"sleep",        UINT8, &config_values.sleep,           sizeof(config_values.sleep),            &config_handle},
 };
 static const int32_t config_items_size = sizeof(config_items) / sizeof(config_items[0]);
 
-static nvs_handle_t config_handle = 0;
-static nvs_handle_t ro_config_handle = 0;
 // clang-format on
 
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
-
-int16_t config_calculate_checksum()
-{
-    // int16_t checksum = 0;
-    // int i;
-    // for (i = 0; i < sizeof(config_t) - sizeof(config_values.checksum); i++)
-    // {
-    //     checksum += ((uint8_t *)&config_values)[i];
-    // }
-    // ESP_LOGI(TAG, "Config calculated checksum: %x, i: %d", checksum, i);
-    // return checksum;
-    return 0;
-}
 
 int8_t config_erase()
 {
@@ -103,6 +92,7 @@ int8_t config_erase()
 
 int8_t config_begin()
 {
+    uint8_t want_init = 0;
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -110,24 +100,11 @@ int8_t config_begin()
         // Retry nvs_flash_init
         ESP_ERROR_CHECK(nvs_flash_erase());
         err = nvs_flash_init();
+        want_init = 1;
     }
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error (%s) initializing NVS!\n", esp_err_to_name(err));
-        return 1;
-    }
-
-    err = nvs_flash_init_partition("ro_nvs");
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        // NVS partition was truncated and needs to be erased
-        // Retry nvs_flash_init
-        ESP_ERROR_CHECK(nvs_flash_erase_partition("ro_nvs"));
-        err = nvs_flash_init_partition("ro_nvs");
-    }
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Error (%s) initializing ro NVS!\n", esp_err_to_name(err));
         return 1;
     }
 
@@ -137,7 +114,54 @@ int8_t config_begin()
         ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
     }
 
-    err = nvs_open(RO_NAMESPACE, NVS_READONLY, &ro_config_handle);
+    if (want_init)
+    {
+        ESP_LOGI(TAG, "Config not found, creating default config");
+        config_erase();
+        config_write();
+    }
+
+    // ------------------ Read-only partition ------------------
+    want_init = 0;
+    err = nvs_flash_init_partition(RO_PARTITION);
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        // NVS partition was truncated and needs to be erased
+        // Retry nvs_flash_init
+        ESP_ERROR_CHECK(nvs_flash_erase_partition(RO_PARTITION));
+        err = nvs_flash_init_partition(RO_PARTITION);
+        want_init = 1;
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error (%s) initializing ro NVS!\n", esp_err_to_name(err));
+            return 1;
+        }
+    }
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (%s) initializing ro NVS!\n", esp_err_to_name(err));
+        return 1;
+    }
+
+    if (want_init)
+    {
+        err = nvs_open_from_partition(RO_PARTITION, RO_NAMESPACE, NVS_READWRITE, &ro_config_handle);
+    }
+    else
+    {
+        err = nvs_open_from_partition(RO_PARTITION, RO_NAMESPACE, NVS_READONLY, &ro_config_handle);
+    }
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (0x%x %s) opening ro NVS handle!\n", err, esp_err_to_name(err));
+    }
+
+    if (want_init)
+    {
+        ESP_LOGI(TAG, "Config not found, creating default config tuya");
+        config_erase();
+        config_write();
+    }
 
     config_read();
     ESP_LOGI(TAG, "Config OK");
@@ -146,13 +170,6 @@ int8_t config_begin()
 
 int8_t config_read()
 {
-    // size_t bytesRead = sizeof(config_t);
-    // esp_err_t err = nvs_get_blob(nvsHandle, "config", &this->values, &bytesRead);
-    // if (err != ESP_OK)
-    // {
-    //     ESP_LOGI(NVS_TAG, "Error (%s) reading!\n", esp_err_to_name(err));
-    //     return 1;
-    // }
     esp_err_t err = 0;
     size_t totalBytesRead = 0;
     for (int i = 0; i < config_items_size; i++)
@@ -161,33 +178,33 @@ int8_t config_read()
         switch (config_items[i].type)
         {
         case UINT8:
-            err = nvs_get_u8(config_handle, config_items[i].name, (uint8_t *)config_items[i].value);
+            err = nvs_get_u8(*config_items[i].handle, config_items[i].name, (uint8_t *)config_items[i].value);
             bytesRead = sizeof(uint8_t);
             break;
         case UINT16:
-            err = nvs_get_u16(config_handle, config_items[i].name, (uint16_t *)config_items[i].value);
+            err = nvs_get_u16(*config_items[i].handle, config_items[i].name, (uint16_t *)config_items[i].value);
             bytesRead = sizeof(uint16_t);
             break;
         case UINT32:
-            err = nvs_get_u32(config_handle, config_items[i].name, (uint32_t *)config_items[i].value);
+            err = nvs_get_u32(*config_items[i].handle, config_items[i].name, (uint32_t *)config_items[i].value);
             bytesRead = sizeof(uint32_t);
             break;
         case UINT64:
-            err = nvs_get_u64(config_handle, config_items[i].name, (uint64_t *)config_items[i].value);
+            err = nvs_get_u64(*config_items[i].handle, config_items[i].name, (uint64_t *)config_items[i].value);
             bytesRead = sizeof(uint64_t);
             break;
         case STRING:
-            err = nvs_get_str(config_handle, config_items[i].name, (char *)config_items[i].value, &config_items[i].size);
+            err = nvs_get_str(*config_items[i].handle, config_items[i].name, (char *)config_items[i].value, &config_items[i].size);
             break;
         case BLOB:
-            err = nvs_get_blob(config_handle, config_items[i].name, config_items[i].value, &config_items[i].size);
+            err = nvs_get_blob(*config_items[i].handle, config_items[i].name, config_items[i].value, &config_items[i].size);
             break;
         default:
             break;
         }
         if (err != ESP_OK)
         {
-            ESP_LOGE(TAG, "Error (%s) reading %s", esp_err_to_name(err), config_items[i].name);
+            ESP_LOGE(TAG, "Error (0x%x %s) reading %s", err, esp_err_to_name(err), config_items[i].name);
             continue;
         }
         totalBytesRead += bytesRead;
@@ -207,39 +224,45 @@ int8_t config_write()
         switch (config_items[i].type)
         {
         case UINT8:
-            err = nvs_set_u8(config_handle, config_items[i].name, *(uint8_t *)config_items[i].value);
+            err = nvs_set_u8(*config_items[i].handle, config_items[i].name, *(uint8_t *)config_items[i].value);
             bytesWritten = sizeof(uint8_t);
             break;
         case UINT16:
-            err = nvs_set_u16(config_handle, config_items[i].name, *(uint16_t *)config_items[i].value);
+            err = nvs_set_u16(*config_items[i].handle, config_items[i].name, *(uint16_t *)config_items[i].value);
             bytesWritten = sizeof(uint16_t);
             break;
         case UINT32:
-            err = nvs_set_u32(config_handle, config_items[i].name, *(uint32_t *)config_items[i].value);
+            err = nvs_set_u32(*config_items[i].handle, config_items[i].name, *(uint32_t *)config_items[i].value);
             bytesWritten = sizeof(uint32_t);
             break;
         case UINT64:
-            err = nvs_set_u64(config_handle, config_items[i].name, *(uint64_t *)config_items[i].value);
+            err = nvs_set_u64(*config_items[i].handle, config_items[i].name, *(uint64_t *)config_items[i].value);
             bytesWritten = sizeof(uint64_t);
             break;
         case STRING:
-            err = nvs_set_str(config_handle, config_items[i].name, (char *)config_items[i].value);
+            err = nvs_set_str(*config_items[i].handle, config_items[i].name, (char *)config_items[i].value);
             bytesWritten = strlen((char *)config_items[i].value);
             break;
         case BLOB:
-            err = nvs_set_blob(config_handle, config_items[i].name, config_items[i].value, config_items[i].size);
+            err = nvs_set_blob(*config_items[i].handle, config_items[i].name, config_items[i].value, config_items[i].size);
+            ESP_LOGI(TAG, "Blob size: %d", config_items[i].size);
             bytesWritten = config_items[i].size;
             break;
         default:
             break;
         }
-        if (err != ESP_OK)
+        if (err == ESP_ERR_NVS_READ_ONLY)
         {
-            ESP_LOGE(TAG, "Error (%s) writing %s\n", esp_err_to_name(err), config_items[i].name);
+            ESP_LOGE(TAG, "Error writing %s: read-only partition (enable write with 'rw' command)\n", config_items[i].name);
+            continue;
+        }
+        else if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error (0x%x %s) writing %s\n", err, esp_err_to_name(err), config_items[i].name);
             continue;
         }
 
-        err = nvs_commit(config_handle);
+        err = nvs_commit(*config_items[i].handle);
         if (err != ESP_OK)
         {
             ESP_LOGE(TAG, "Error (%s) committing %s\n", esp_err_to_name(err), config_items[i].name);
@@ -289,12 +312,12 @@ uint8_t config_verify()
         break;
 
     case MODE_TUYA:
-        if (strlen(config_values.tuya.product_id) == 0 || strlen(config_values.tuya.device_uuid) == 0 || strlen(config_values.tuya.device_auth) == 0 || config_values.tuya.pairing_state != TUYA_PAIRED)
+        if (strlen(config_values.tuya.product_id) == 0 || strlen(config_values.tuya.device_uuid) == 0 || strlen(config_values.tuya.device_auth) == 0 || config_values.pairing_state != TUYA_PAIRED)
         {
             // No Tuya key, id, version or region
             return 1;
         }
-        // if (config_values.tuya.pairing_state == TUYA_NOT_CONFIGURED)
+        // if (config_values.pairing_state == TUYA_NOT_CONFIGURED)
         // {
         //     // Tuya not binded
         //     return 0;
@@ -321,5 +344,33 @@ uint8_t factory_reset()
     config_erase();
     config_write();
     ESP_LOGI(TAG, "Config erased");
+    return 0;
+}
+
+uint8_t config_rw()
+{
+    esp_err_t err = 0;
+
+    err = nvs_flash_deinit_partition(RO_PARTITION);
+    // open read-write partition
+    err = nvs_flash_init_partition(RO_PARTITION);
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        // NVS partition was truncated and needs to be erased
+        // Retry nvs_flash_init
+        ESP_ERROR_CHECK(nvs_flash_erase_partition(RO_PARTITION));
+        err = nvs_flash_init_partition(RO_PARTITION);
+    }
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (%s) initializing ro NVS!\n", esp_err_to_name(err));
+        return 1;
+    }
+    err = nvs_open_from_partition(RO_PARTITION, RO_NAMESPACE, NVS_READWRITE, &ro_config_handle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (%s) opening ro NVS handle!\n", esp_err_to_name(err));
+    }
+    printf("Successfully opened in RW\n");
     return 0;
 }
