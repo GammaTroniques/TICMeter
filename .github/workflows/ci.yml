@@ -29,3 +29,13 @@ jobs:
         with:
           files: |
             release/*
+      - name: Archive build output artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build
+          path: |
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/ota_data_initial.bin
+            build/storage.bin
+            build/TICMeter.bin
