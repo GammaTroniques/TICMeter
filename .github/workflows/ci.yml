@@ -11,11 +11,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
         with:
-          submodules: 'recursive'        
-#      - name: Copy IDF patch
-#        run: | 
-#          ls -l /app/
-      
+          submodules: 'recursive'
       - name: ESP-IDF build
         uses: espressif/esp-idf-ci-action@v1
         with:
@@ -31,11 +27,13 @@ jobs:
       #       release/*
       - name: Archive build output artifacts
         uses: actions/upload-artifact@v3
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           name: build
           path: |
-            bootloader/bootloader.bin
-            partition_table/partition-table.bin
-            ota_data_initial.bin
-            storage.bin
-            TICMeter.bin
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/ota_data_initial.bin
+            build/storage.bin
+            build/TICMeter.bin
+          if-no-files-found: error
