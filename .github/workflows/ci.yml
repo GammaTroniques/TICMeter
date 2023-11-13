@@ -23,8 +23,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           file: "firmware/build/bootloader/bootloader.bin;firmware/partition_table/partition-table.bin;firmware/build/TICMeter.bin;firmware/build/storage.bin;firmware/build/ota_data_initial.bin"
-          delete_file: "*linux*.txt"
-          branches: "main;dev"
           verbose: true
           prerelease: true
           default_release_name: "Test release name for main branch"
