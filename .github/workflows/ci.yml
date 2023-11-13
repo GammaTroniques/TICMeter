@@ -40,38 +40,39 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name: build
-          path: ./build/bootloader/bootloader.bin
-          if-no-files-found: error
+          path: firmware/build/bootloader/bootloader.bin
           
       - name: Archive build output artifacts
         uses: actions/upload-artifact@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name: build
-          path: ./build/partition_table/partition-table.bin
-          if-no-files-found: error
+          path: ./firmware/partition_table/partition-table.bin
 
       - name: Archive build output artifacts
         uses: actions/upload-artifact@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name: build
-          path: ./build/TICMeter.bin
+          path: |
+            firmware/build/TICMeter.bin
+            firmware/build/storage.bin
+            firmware/build/ota_data_initial.bin
           if-no-files-found: error
           
-      - name: Archive build output artifacts
-        uses: actions/upload-artifact@v3
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          name: build
-          path: ./build/storage.bin
-          if-no-files-found: error
+      # - name: Archive build output artifacts
+      #   uses: actions/upload-artifact@v3
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   with:
+      #     name: build
+      #     path: ./build/storage.bin
+      #     if-no-files-found: error
           
-      - name: Archive build output artifacts
-        uses: actions/upload-artifact@v3
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          name: build
-          path: ./build/ota_data_initial.bin
-          if-no-files-found: error
+      # - name: Archive build output artifacts
+      #   uses: actions/upload-artifact@v3
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   with:
+      #     name: build
+      #     path: ./build/ota_data_initial.bin
+      #     if-no-files-found: error
           
