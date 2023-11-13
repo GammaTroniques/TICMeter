@@ -23,19 +23,19 @@ jobs:
           target: esp32c6
           path: 'firmware'
           
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            release/*
+      # - name: Release
+      #   uses: softprops/action-gh-release@v1
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   with:
+      #     files: |
+      #       release/*
       - name: Archive build output artifacts
         uses: actions/upload-artifact@v3
         with:
           name: build
           path: |
-            build/bootloader/bootloader.bin
-            build/partition_table/partition-table.bin
-            build/ota_data_initial.bin
-            build/storage.bin
-            build/TICMeter.bin
+            bootloader/bootloader.bin
+            partition_table/partition-table.bin
+            ota_data_initial.bin
+            storage.bin
+            TICMeter.bin
