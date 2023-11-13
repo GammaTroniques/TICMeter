@@ -27,9 +27,12 @@ jobs:
       #       release/*
             # build/storage.bin
             #build/ota_data_initial.bin
-            
+      - name: test
+        run: cd firmware  
       - name: test
         run: ls -l 
+      - name: test
+        run: ls -l firmware
       - name: test
         run: pwd
       - name: Archive build output artifacts
