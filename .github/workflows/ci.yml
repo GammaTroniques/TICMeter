@@ -1,9 +1,8 @@
-name: Build
-
+name: Publish
 on:
   push:
-  pull_request:
-
+    tags:
+      - '*'
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,60 +18,16 @@ jobs:
           target: esp32c6
           path: 'firmware'
           
-      # - name: Release
-      #   uses: softprops/action-gh-release@v1
-      #   if: startsWith(github.ref, 'refs/tags/')
-      #   with:
-      #     files: |
-      #       release/*
-            # build/storage.bin
-            #build/ota_data_initial.bin
-      - name: test
-        run: cd firmware  
-      - name: test
-        run: ls -l 
-      - name: test
-        run: ls -l firmware
-      - name: test
-        run: pwd
-      - name: Archive build output artifacts
-        uses: actions/upload-artifact@v3
-        if: startsWith(github.ref, 'refs/tags/')
+      - uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: build
-          path: firmware/build/bootloader/bootloader.bin
+          file: "firmware/build/bootloader/bootloader.bin;firmware/partition_table/partition-table.bin;firmware/build/TICMeter.bin;firmware/build/storage.bin;firmware/build/ota_data_initial.bin"
+          delete_file: "*linux*.txt"
+          branches: "main;dev"
+          verbose: true
+          prerelease: true
+          default_release_name: "Test release name for main branch"
+          default_release_body: "Test release body for main branch"
           
-      - name: Archive build output artifacts
-        uses: actions/upload-artifact@v3
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          name: build
-          path: ./firmware/partition_table/partition-table.bin
-
-      - name: Archive build output artifacts
-        uses: actions/upload-artifact@v3
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          name: build
-          path: |
-            firmware/build/TICMeter.bin
-            firmware/build/storage.bin
-            firmware/build/ota_data_initial.bin
-          if-no-files-found: error
-          
-      # - name: Archive build output artifacts
-      #   uses: actions/upload-artifact@v3
-      #   if: startsWith(github.ref, 'refs/tags/')
-      #   with:
-      #     name: build
-      #     path: ./build/storage.bin
-      #     if-no-files-found: error
-          
-      # - name: Archive build output artifacts
-      #   uses: actions/upload-artifact@v3
-      #   if: startsWith(github.ref, 'refs/tags/')
-      #   with:
-      #     name: build
-      #     path: ./build/ota_data_initial.bin
-      #     if-no-files-found: error
           
