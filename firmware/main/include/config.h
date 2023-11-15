@@ -26,6 +26,7 @@
 #include "esp_log.h"
 #include "linky.h"
 #include "common.h"
+#include "efuse_table.h"
 
 /*==============================================================================
  Public Defines
@@ -100,6 +101,12 @@ typedef struct
     uint8_t sleep;
 } config_t;
 
+typedef struct
+{
+    char serialNumber[13];
+
+} efuse_t;
+
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
@@ -110,6 +117,7 @@ extern const char *GIT_BRANCH;
 extern const char *BUILD_TIME;
 
 extern config_t config_values;
+extern efuse_t efuse_values;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
@@ -120,4 +128,6 @@ int8_t config_read();
 int8_t config_write();
 uint8_t config_verify();
 uint8_t config_rw();
+uint8_t config_efuse_read();
+uint8_t config_efuse_write(const char *serialnumber, uint8_t len);
 #endif /* CONFIG_H */
