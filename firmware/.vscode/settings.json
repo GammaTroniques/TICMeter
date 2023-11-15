@@ -55,7 +55,11 @@
     "ble_svc_gap.h": "c",
     "ble_svc_ans.h": "c",
     "esp_log.h": "c",
-    "qrcode.h": "c"
+    "qrcode.h": "c",
+    "esp_efuse.h": "c",
+    "config.h": "c",
+    "common.h": "c",
+    "efuse_table.h": "c"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",

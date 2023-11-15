@@ -103,6 +103,8 @@ static int led_off(int argc, char **argv);
 static int factory_reset(int argc, char **argv);
 
 static int rw_command(int argc, char **argv);
+static int efuse_read(int argc, char **argv);
+static int efuse_write(int argc, char **argv);
 
 /*==============================================================================
 Public Variable
@@ -164,6 +166,8 @@ static const shell_cmd_t shell_cmds[] = {
     {"led-off",                     "LED OFF",                                  &led_off,                           0, {}, {}},
     {"factory-reset",               "Factory reset",                            &factory_reset,                     0, {}, {}},
     {"rw",                          "Open RO partition in RW mode",             &rw_command,                        0, {}, {}},
+    {"efuse-read",                  "Read efuse",                               &efuse_read,                        0, {}, {}},
+    {"efuse-write",                 "Write efuse",                              &efuse_write,                       1, {"<serialnumber>"}, {"The serial number to write"}},
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -692,5 +696,50 @@ static int rw_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   config_rw();
+  return 0;
+}
+
+static int efuse_read(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  config_efuse_read();
+  return 0;
+}
+
+static int efuse_write(int argc, char **argv)
+{
+  if (argc != 2)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  if (strlen(argv[1]) > sizeof(efuse_values.serialNumber) - 1)
+  {
+    ESP_LOGE(TAG, "Serial number too long");
+    return ESP_ERR_INVALID_ARG;
+  }
+  printf("Are you sure you want to write the serial number \"%s\" to the efuse?\n", efuse_values.serialNumber);
+  printf("This action is irreversible!\n");
+  printf("Type 'YES' to confirm\n");
+  char input[4];
+  if (fgets(input, sizeof(input), stdin) == NULL)
+  {
+    // Gestion d'une erreur de lecture
+    printf("Error reading input\n");
+    return ESP_ERR_INVALID_ARG;
+  }
+  input[3] = '\0';
+  if (strcmp(input, "YES") != 0)
+  {
+    printf("Aborting\n");
+    return 0;
+  }
+
+  config_efuse_write(argv[1], strlen(argv[1]));
+  printf("Serial number written to efuse\n");
+
   return 0;
 }
