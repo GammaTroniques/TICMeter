@@ -14,6 +14,8 @@
 ===============================================================================*/
 #include "config.h"
 #include "linky.h"
+#include "esp_efuse.h"
+#include "efuse_table.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -40,13 +42,15 @@ struct config_item_t
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
-
+static uint8_t config_efuse_init();
+static esp_efuse_coding_scheme_t config_efuse_get_coding_scheme(void);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
 const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER", "TUYA"};
-config_t config_values = {};
-
+config_t config_values = {0};
+efuse_t efuse_values = {0};
+static esp_efuse_coding_scheme_t config_efuse_coding_scheme = EFUSE_CODING_SCHEME_NONE;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
@@ -93,6 +97,8 @@ int8_t config_erase()
 int8_t config_begin()
 {
     uint8_t want_init = 0;
+    config_efuse_init();
+
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -372,5 +378,99 @@ uint8_t config_rw()
         ESP_LOGE(TAG, "Error (%s) opening ro NVS handle!\n", esp_err_to_name(err));
     }
     printf("Successfully opened in RW\n");
+    return 0;
+}
+
+static esp_efuse_coding_scheme_t config_efuse_get_coding_scheme(void)
+{
+    // The coding scheme is used for EFUSE_BLK1, EFUSE_BLK2 and EFUSE_BLK3.
+    // We use EFUSE_BLK3 (custom block) to verify it.
+    esp_efuse_coding_scheme_t coding_scheme = esp_efuse_get_coding_scheme(EFUSE_BLK3);
+    if (coding_scheme == EFUSE_CODING_SCHEME_NONE)
+    {
+        ESP_LOGD(TAG, "Coding Scheme NONE");
+#if CONFIG_IDF_TARGET_ESP32
+    }
+    else if (coding_scheme == EFUSE_CODING_SCHEME_3_4)
+    {
+        ESP_LOGI(TAG, "Coding Scheme 3/4");
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Coding Scheme REPEAT");
+    }
+#else
+    }
+    else if (coding_scheme == EFUSE_CODING_SCHEME_RS)
+    {
+        ESP_LOGD(TAG, "Coding Scheme RS (Reed-Solomon coding)");
+    }
+#endif
+    return coding_scheme;
+}
+
+static uint8_t config_efuse_init()
+{
+    config_efuse_coding_scheme = config_efuse_get_coding_scheme();
+    config_efuse_read();
+    return 0;
+}
+
+uint8_t config_efuse_read()
+{
+    esp_err_t err = esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA_SERIALNUMBER, efuse_values.serialNumber, (sizeof(efuse_values.serialNumber) - 1) * 8);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error 0x%x reading serial number!\n", err);
+        return 1;
+    }
+
+    if (strnlen(efuse_values.serialNumber, sizeof(efuse_values.serialNumber)) == 0)
+    {
+        ESP_LOGE(TAG, "Serial number is empty!\n");
+        return 2;
+    }
+    ESP_LOGI(TAG, "Serial number: %s", efuse_values.serialNumber);
+    return 0;
+}
+
+uint8_t config_efuse_write(const char *serialnumber, uint8_t len)
+{
+    esp_err_t err = ESP_OK;
+    if (len > sizeof(efuse_values.serialNumber) - 1)
+    {
+        ESP_LOGE(TAG, "Serial number too long!\n");
+        return 1;
+    }
+    err = config_efuse_read();
+    switch (err)
+    {
+    case 0:
+        ESP_LOGE(TAG, "Serial number already set: can't write");
+        return 1;
+        break;
+    case 1:
+        ESP_LOGE(TAG, "Can't read serial number: can't write");
+        return 1;
+        break;
+    default:
+        break;
+    }
+    ESP_LOGI(TAG, "Writing SN \"%s\" to efuse", serialnumber);
+    err = esp_efuse_write_field_blob(ESP_EFUSE_USER_DATA_SERIALNUMBER, serialnumber, len * 8);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error 0x%x writing serial number!\n", err);
+        return 1;
+    }
+    ESP_LOGI(TAG, "Serial number written");
+
+    err = config_efuse_read();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error 0x%x rereading serial number!\n", err);
+        return 1;
+    }
+
     return 0;
 }

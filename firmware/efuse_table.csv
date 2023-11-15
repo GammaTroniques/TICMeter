@@ -1,0 +1,14 @@
+# !!!!!!!!!!! #
+# After editing this file, run the command "idf.py efuse-common-table"
+# this will generate new source files, next rebuild all the sources.
+# and idf.py show-efuse-table to check the result.
+# !!!!!!!!!!! #
+
+# field_name,               |    efuse_block, | bit_start, | bit_count, |comment            #
+#                           |    (EFUSE_BLK0  | (0..255)   | (1..-)     |                   #
+#                           |     EFUSE_BLK1  |            |MAX_BLK_LEN*|                   #
+#                           |     EFUSE_BLK2  |            |            |                   #
+#                           |     EFUSE_BLK3) |            |            |                   #
+#############################################################################################
+USER_DATA.SERIALNUMBER,            EFUSE_BLK3,          0,            96, Serial number (12 bytes * 8) or 27 bits for SN
+
