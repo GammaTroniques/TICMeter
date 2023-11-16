@@ -17,6 +17,10 @@ jobs:
           esp_idf_version: v5.1
           target: esp32c6
           path: 'firmware'
+      - name: Create manifest
+        run: |
+          cd firmware/scripts
+          python3 ./create_manifest.py
           
       - name: Release
         uses: softprops/action-gh-release@v1
