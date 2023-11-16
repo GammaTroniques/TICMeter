@@ -357,22 +357,12 @@ esp_err_t save_config_handler(httpd_req_t *req)
     strncpy(config_values.mqtt.password, mqtt_password, sizeof(config_values.mqtt.password));
     strncpy(config_values.mqtt.topic, mqtt_topic, sizeof(config_values.mqtt.topic));
 
-    if (config_values.mode == MODE_TUYA)
-    {
-        config_values.pairing_state = TUYA_WIFI_CONNECTING;
-        //  redirect to the reboot page
-        httpd_resp_set_status(req, "302 Temporary Redirect");
-        httpd_resp_set_hdr(req, "Location", "/tuya.html");
-        httpd_resp_send(req, "Redirect to tuta", HTTPD_RESP_USE_STRLEN);
-        ESP_LOGI(TAG, "Reboot to bind tuya");
-    }
-    else
-    {
-        //  redirect to the reboot page
-        httpd_resp_set_status(req, "302 Temporary Redirect");
-        httpd_resp_set_hdr(req, "Location", "/reboot.html");
-        httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
-    }
+    //  redirect to the reboot page
+    httpd_resp_set_status(req, "302 Temporary Redirect");
+    httpd_resp_set_hdr(req, "Location", "/reboot.html");
+    httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
+
+    config_rw();
     config_write();
 
     // reboot the device
@@ -384,7 +374,7 @@ esp_err_t get_config_handler(httpd_req_t *req)
 {
     cJSON *jsonObject = cJSON_CreateObject();
     cJSON_AddStringToObject(jsonObject, "wifi-ssid", config_values.ssid);
-    cJSON_AddStringToObject(jsonObject, "wifi-password", config_values.password);
+    // cJSON_AddStringToObject(jsonObject, "wifi-password", config_values.password);
     cJSON_AddNumberToObject(jsonObject, "linky-mode", config_values.mode);
     cJSON_AddNumberToObject(jsonObject, "server-mode", config_values.mode);
     cJSON_AddStringToObject(jsonObject, "web-url", config_values.web.host);
@@ -396,8 +386,8 @@ esp_err_t get_config_handler(httpd_req_t *req)
     cJSON_AddStringToObject(jsonObject, "mqtt-user", config_values.mqtt.username);
     cJSON_AddStringToObject(jsonObject, "mqtt-password", config_values.mqtt.password);
     cJSON_AddStringToObject(jsonObject, "mqtt-topic", config_values.mqtt.topic);
-    cJSON_AddStringToObject(jsonObject, "tuya-product_id", config_values.tuya.product_id);
-    cJSON_AddStringToObject(jsonObject, "tuya-device_uuid", config_values.tuya.device_uuid);
+    cJSON_AddStringToObject(jsonObject, "tuya-device-uuid", config_values.tuya.device_uuid);
+    cJSON_AddStringToObject(jsonObject, "tuya-device-auth", config_values.tuya.device_auth);
 
     char *jsonString = cJSON_PrintUnformatted(jsonObject);
     httpd_resp_set_type(req, "application/json");

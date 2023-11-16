@@ -200,7 +200,7 @@ static void tuya_link_app_task(void *pvParameters)
         .software_ver = app_desc->version,
         .modules = NULL,
         .skill_param = NULL,
-        .storage_namespace = "tuya_kv",
+        .storage_namespace = "tuya",
         .firmware_key = NULL,
         .event_handler = tuya_user_event_handler_on,
     };
