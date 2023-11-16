@@ -105,7 +105,7 @@ static int factory_reset(int argc, char **argv);
 static int rw_command(int argc, char **argv);
 static int efuse_read(int argc, char **argv);
 static int efuse_write(int argc, char **argv);
-
+static int nvs_stats(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -164,10 +164,11 @@ static const shell_cmd_t shell_cmds[] = {
     {"info",                        "Get system info",                          &info_command,                      0, {}, {}},
     {"ota-start",                   "Start OTA",                                &ota_start,                         0, {}, {}},
     {"led-off",                     "LED OFF",                                  &led_off,                           0, {}, {}},
-    {"factory-reset",               "Factory reset",                            &factory_reset,                     0, {}, {}},
+    {"factory-reset",               "Factory reset",                            &factory_reset,                     1, {"<nvs_erase>"}, {"Full nvs clear (0/1)"}},
     {"rw",                          "Open RO partition in RW mode",             &rw_command,                        0, {}, {}},
     {"efuse-read",                  "Read efuse",                               &efuse_read,                        0, {}, {}},
     {"efuse-write",                 "Write efuse",                              &efuse_write,                       1, {"<serialnumber>"}, {"The serial number to write"}},
+    {"nvs-stats",                   "Print nvs stats",                          &nvs_stats,                         0, {}, {}},
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -679,13 +680,26 @@ static int led_off(int argc, char **argv)
 
 static int factory_reset(int argc, char **argv)
 {
-  if (argc != 1)
+  if (argc == 1)
+  {
+    config_erase();
+    printf("Factory reset done\n");
+    config_write();
+    return 0;
+  }
+  if (argc != 2)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  config_erase();
-  printf("Factory reset done\n");
-  config_write();
+  if (atoi(argv[1]) == 1)
+  {
+    nvs_flash_erase();
+    printf("Full nvs clear done\n");
+    config_begin();
+    config_erase();
+    config_write();
+    return 0;
+  }
   return 0;
 }
 
@@ -721,7 +735,7 @@ static int efuse_write(int argc, char **argv)
     ESP_LOGE(TAG, "Serial number too long");
     return ESP_ERR_INVALID_ARG;
   }
-  printf("Are you sure you want to write the serial number \"%s\" to the efuse?\n", efuse_values.serialNumber);
+  printf("Are you sure you want to write the serial number \"%s\" to the efuse?\n", argv[1]);
   printf("This action is irreversible!\n");
   printf("Type 'YES' to confirm\n");
   char input[4];
@@ -738,8 +752,25 @@ static int efuse_write(int argc, char **argv)
     return 0;
   }
 
-  config_efuse_write(argv[1], strlen(argv[1]));
-  printf("Serial number written to efuse\n");
+  if (config_efuse_write(argv[1], strlen(argv[1])) == 0)
+  {
+    printf("Serial number written to efuse\n");
+  }
+  return 0;
+}
 
+static int nvs_stats(int argc, char **argv)
+{
+  nvs_stats_t stats;
+  ESP_ERROR_CHECK(nvs_get_stats(NULL, &stats));
+  printf(
+      "Used entries: %3zu\t"
+      "Free entries: %3zu\t"
+      "Total entries: %3zu\t"
+      "Namespace count: %3zu\n",
+      stats.used_entries,
+      stats.free_entries,
+      stats.total_entries,
+      stats.namespace_count);
   return 0;
 }

@@ -208,7 +208,12 @@ int8_t config_read()
         default:
             break;
         }
-        if (err != ESP_OK)
+        if (err == ESP_ERR_NVS_NOT_FOUND)
+        {
+            ESP_LOGE(TAG, "Error reading %s: value not found.\n", config_items[i].name);
+            continue;
+        }
+        else if (err != ESP_OK)
         {
             ESP_LOGE(TAG, "Error (0x%x %s) reading %s", err, esp_err_to_name(err), config_items[i].name);
             continue;
@@ -251,7 +256,6 @@ int8_t config_write()
             break;
         case BLOB:
             err = nvs_set_blob(*config_items[i].handle, config_items[i].name, config_items[i].value, config_items[i].size);
-            ESP_LOGI(TAG, "Blob size: %d", config_items[i].size);
             bytesWritten = config_items[i].size;
             break;
         default:
@@ -261,6 +265,9 @@ int8_t config_write()
         {
             ESP_LOGE(TAG, "Error writing %s: read-only partition (enable write with 'rw' command)\n", config_items[i].name);
             continue;
+        }
+        if (err == ESP_ERR_NVS_NOT_ENOUGH_SPACE)
+        {
         }
         else if (err != ESP_OK)
         {
@@ -427,7 +434,7 @@ uint8_t config_efuse_read()
 
     if (strnlen(efuse_values.serialNumber, sizeof(efuse_values.serialNumber)) == 0)
     {
-        ESP_LOGE(TAG, "Serial number is empty!\n");
+        ESP_LOGE(TAG, "Serial number is empty!");
         return 2;
     }
     ESP_LOGI(TAG, "Serial number: %s", efuse_values.serialNumber);
