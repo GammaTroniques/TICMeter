@@ -12,7 +12,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: ESP-IDF build
-        uses: espressif/esp-idf-ci-action@v5
+        uses: espressif/esp-idf-ci-action@v2
         with:
           esp_idf_version: v5.1
           target: esp32c6
@@ -34,14 +34,3 @@ jobs:
             firmware/build/TICMeter.bin
             firmware/build/storage.bin
             firmware/build/ota_data_initial.bin
-          
-      # - uses: xresloader/upload-to-github-release@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     file: "firmware/build/bootloader/bootloader.bin;firmware/partition_table/partition-table.bin;firmware/build/TICMeter.bin;firmware/build/storage.bin;firmware/build/ota_data_initial.bin"
-      #     verbose: true
-      #     prerelease: true
-      #     default_release_name: "Test release name for main branch"
-      #     default_release_body: "Test release body for main branch"
-          
