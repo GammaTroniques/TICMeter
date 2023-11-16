@@ -347,6 +347,7 @@ void gpio_pairing_button_task(void *pvParameters)
             {
                 ESP_LOGI(TAG, "Start pushing");
                 suspendTask(tuyaTaskHandle);
+                suspendTask(noConfigLedTaskHandle);
                 lastState = 0;
                 ledState = NO_FLASH;
                 startPushTime = MILLIS;
@@ -483,6 +484,8 @@ void gpio_pairing_button_task(void *pvParameters)
                     }
                     else
                     {
+                        gpio_boot_led_pattern();
+                        vTaskDelay(500 / portTICK_PERIOD_MS);
                         resumeTask(noConfigLedTaskHandle);
                         resumeTask(tuyaTaskHandle);
                         ESP_LOGI(TAG, "No action");
