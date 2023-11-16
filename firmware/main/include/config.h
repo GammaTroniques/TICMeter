@@ -62,11 +62,11 @@ typedef struct
 
 typedef struct
 {
-    char host[100];
+    char host[101];
     uint16_t port;
-    char username[100];
-    char password[100];
-    char topic[100];
+    char username[51];
+    char password[51];
+    char topic[101];
 } mqttConfig_t;
 
 typedef enum

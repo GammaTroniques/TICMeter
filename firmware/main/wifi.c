@@ -21,6 +21,7 @@
 #include "esp_sntp.h"
 #include <time.h>
 #include "esp_netif_sntp.h"
+#include "esp_mac.h"
 
 /*==============================================================================
  Local Define
@@ -358,7 +359,13 @@ static void wifi_init_softap(void)
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
 
     wifi_config_t wifi_config = {};
-    strncpy((char *)wifi_config.ap.ssid, AP_SSID, sizeof(wifi_config.ap.ssid));
+    char ssid[32] = {0};
+    // read MAC address
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
+    sprintf(ssid, "%s_%02X%02X%02X", AP_SSID, mac[3], mac[4], mac[5]);
+
+    strncpy((char *)wifi_config.ap.ssid, ssid, sizeof(wifi_config.ap.ssid));
     strncpy((char *)wifi_config.ap.password, AP_PASS, sizeof(wifi_config.ap.password));
     wifi_config.ap.ssid_len = strlen(AP_SSID);
     wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
