@@ -1,55 +1,58 @@
+import csv
 import json
+import re
 
-url = "firmware/"
+csv_file = "../partitions.csv"
+json_file = "../build/manifest.json"
 
-def convert_csv_to_json(csv_file_path, json_file_path):
-    builds = [{
-        "chipFamily": "ESP32-C6",
-        "parts": [{
-            "path": url + "bootloader.bin",
-            "offset": 0
-        },        
-        {
-            "path": url + "partition-table.bin",
-            "offset": 32768
-        }
-      ]
-    }]
+fileURL="https://github.com/GammaTroniques/TICMeter/releases/latest/download/"
+
+toFill = {
+    "otadata": "ota_data_initial.bin",
+    "storage": "storage.bin",
+    "ota_0": "TICMeter.bin"
+}
 
 
-    with open(csv_file_path, 'r') as csv_file:
-        # Skip the header line
-        next(csv_file)
-        next(csv_file)
-        next(csv_file)
+offset = []
+# Lire le fichier CSV
+with open(csv_file, mode='r') as file:
+    csv_reader = csv.reader(file, delimiter=',')
+    # check if comment
+    next(csv_reader)
+    next(csv_reader)
+    next(csv_reader)
+    
+    for row in csv_reader:
+        # remove spaces
+        row = [x.strip(' ') for x in row]
+        if row[0] in toFill:
+            offset.append(int(row[3], 16))
+            print(f"{row[0]}: {row[3]}")
         
-        for line in csv_file:
-            parts = line.strip().split(',')
-            print(parts)
-            name, type, subtype, offset_hex, size, flag = parts
+# Construire la structure JSON avec les nouvelles valeurs d'offset
+output_data = {
+    "name": "ESP Linky TIC",
+    "version": "2.0",
+    "home_assistant_domain": "esphome",
+    "funding_url": "https://esphome.io/guides/supporters.html",
+    "new_install_prompt_erase": True,
+    "builds": [
+        {
+            "chipFamily": "ESP32-C6",
+            "parts": [
+                {"path": fileURL + "bootloader.bin", "offset": 0},
+                {"path": fileURL + "partition-table.bin", "offset": 32768},
+                {"path": fileURL + "otadata_initial.bin", "offset": offset[0]},
+                {"path": fileURL + "storage.bin", "offset": offset[1]},
+                {"path": fileURL + "TICMeter.bin", "offset": offset[2]}
+            ]
+        }
+    ]
+}
 
-            offset = int(offset_hex, 16)
+# Écrire le fichier JSON résultant
+with open(json_file, 'w') as json_output:
+    json.dump(output_data, json_output, indent=2)
 
-            build_part = {
-                "path": f"firmware/{name}.bin",
-                "offset": offset
-            }
-
-            builds[0]["parts"].append(build_part)
-
-    result = {
-        "name": "ESP Linky TIC",
-        "version": "2.0",
-        "home_assistant_domain": "esphome",
-        "funding_url": "https://esphome.io/guides/supporters.html",
-        "new_install_prompt_erase": True,
-        "builds": builds
-    }
-
-    with open(json_file_path, 'w') as json_file:
-        json.dump(result, json_file, indent=2)
-
-if __name__ == "__main__":
-    csv_file_path = "../partitions.csv"
-    json_file_path = "../build/manifest.json"
-    convert_csv_to_json(csv_file_path, json_file_path)
+print(f"Le fichier JSON a été généré avec succès : {json_file}")

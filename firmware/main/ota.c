@@ -38,7 +38,7 @@
 
 #define TAG "OTA"
 #define OTA_DOMAIN "linky.gammatroniques.fr"
-#define OTA_VERSION_URL "https://github.com/xmow49/LinkyTeleinfoESP32/releases/latest/manifest.json"
+#define OTA_VERSION_URL "https://github.com/GammaTroniques/TICMeter/releases/latest/download/manifest.json"
 // #define OTA_VERSION_URL "https://ticmeter.gammatroniques.fr/versions.json"
 #define OTA_TIMEOUT_MS 10000
 /*==============================================================================
