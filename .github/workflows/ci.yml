@@ -28,7 +28,11 @@ jobs:
           name:  ${{ steps.get_version.outputs.version-without-v }}
           body: ${{ steps.extract-release-notes.outputs.release_notes }}
           files: |
-            release/*
+            firmware/build/bootloader/bootloader.bin
+            firmware/partition_table/partition-table.bin
+            firmware/build/TICMeter.bin
+            firmware/build/storage.bin
+            firmware/build/ota_data_initial.bin
           
       # - uses: xresloader/upload-to-github-release@v1
       #   env:
