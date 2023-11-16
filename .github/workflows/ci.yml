@@ -38,3 +38,4 @@ jobs:
             firmware/build/TICMeter.bin
             firmware/build/storage.bin
             firmware/build/ota_data_initial.bin
+            firmware/build/manifest.json
