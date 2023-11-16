@@ -17,6 +17,7 @@ jobs:
           esp_idf_version: v5.1
           target: esp32c6
           path: 'firmware'
+          
       - name: Release
         uses: softprops/action-gh-release@v1
         # Note:
@@ -29,7 +30,7 @@ jobs:
           body: ${{ steps.extract-release-notes.outputs.release_notes }}
           files: |
             firmware/build/bootloader/bootloader.bin
-            firmware/partition_table/partition-table.bin
+            firmware/build/partition_table/partition-table.bin
             firmware/build/TICMeter.bin
             firmware/build/storage.bin
             firmware/build/ota_data_initial.bin
