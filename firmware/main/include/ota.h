@@ -33,7 +33,8 @@ typedef struct
     char version[16];
     char currentVersion[16];
     char hwVersion[16];
-    char url[128];
+    char app_url[256];
+    char storage_url[256];
     char md5[33];
 } ota_version_t;
 

@@ -430,7 +430,6 @@ void wifi_start_captive_portal()
     // Initialise ESP32 in SoftAP mode
     wifi_init_softap();
 
-    initi_web_page_buffer();
     // Start the server for the first time
     setup_server();
     // Start the DNS server that will redirect all queries to the softAP IP

@@ -28,7 +28,7 @@
 #include "esp_spiffs.h"
 #include "esp_http_server.h"
 
-void initi_web_page_buffer(void);
+void config_init_spiffs(void);
 httpd_handle_t setup_server(void);
 /* Scratch buffer size */
 #define SCRATCH_BUFSIZE 8192
@@ -43,4 +43,5 @@ struct file_server_data
     /* Scratch buffer for temporary storage during file transfer */
     char scratch[SCRATCH_BUFSIZE];
 };
+
 #endif // HTTP_H

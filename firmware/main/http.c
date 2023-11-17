@@ -51,17 +51,6 @@ void urldecode(char *dst, const char *src)
     *dst++ = '\0';
 }
 
-esp_vfs_spiffs_conf_t conf;
-void initi_web_page_buffer(void)
-{
-    conf.base_path = "/spiffs";
-    conf.partition_label = NULL;
-    conf.max_files = 5;
-    conf.format_if_mount_failed = true;
-
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
-}
-
 esp_err_t send_web_page(httpd_req_t *req)
 {
     ESP_LOGI(TAG, "send_web_page: %s", req->uri);
