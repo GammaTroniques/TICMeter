@@ -25,7 +25,7 @@
 #include "lwip/sys.h"
 #include "lwip/netdb.h"
 #include "lwip/dns.h"
-#include "esp_crt_bundle.h"
+// #include "esp_crt_bundle.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -116,14 +116,16 @@ int ota_https_request(const char *url, const char *cert)
     const esp_app_desc_t *app_desc = esp_app_get_description();
     char user_agent[64];
 
-    sprintf(user_agent, "TICMeter/%s %s", app_desc->version, "SERIAL");
+    sprintf(user_agent, "TICMeter/%s %s", app_desc->version, efuse_values.serialNumber);
+    ESP_LOGD(TAG, "cert_pem: %d %s", strlen((char *)cert), (char *)cert);
+
     esp_http_client_config_t config = {
-        .url = OTA_VERSION_URL,
-        .cert_pem = cert,
+        .url = url,
+        .cert_pem = (char *)cert,
         .method = HTTP_METHOD_GET,
         .event_handler = ota_https_event_handler,
         .user_agent = user_agent,
-        .buffer_size_tx = 8192,
+        .buffer_size_tx = 1024,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -222,8 +224,6 @@ int ota_get_latest(ota_version_t *version)
         fread(ota_cert, fsize, 1, file);
         fclose(file);
         ota_cert[fsize] = 0;
-
-        ESP_LOGE(TAG, "%d %s", strlen(ota_cert), ota_cert);
 
         int status_code = ota_https_request(ota_versions_url[i].url, ota_cert);
         if (status_code != 200)
