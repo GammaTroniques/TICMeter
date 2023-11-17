@@ -32,14 +32,13 @@
 #include "cJSON.h"
 #include "wifi.h"
 #include "gpio.h"
+#include "http.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
 
 #define TAG "OTA"
-#define OTA_DOMAIN "linky.gammatroniques.fr"
 #define OTA_VERSION_URL "https://github.com/GammaTroniques/TICMeter/releases/latest/download/manifest.json"
-// #define OTA_VERSION_URL "https://ticmeter.gammatroniques.fr/versions.json"
 #define OTA_TIMEOUT_MS 10000
 /*==============================================================================
  Local Macro
@@ -48,6 +47,12 @@
 /*==============================================================================
  Local Type
 ===============================================================================*/
+
+typedef struct
+{
+    char url[256];
+    char cert[256];
+} ota_versions_url_t;
 
 /*==============================================================================
  Local Function Declaration
@@ -61,8 +66,8 @@ static uint8_t ota_version_compare(const char *current_version, const char *to_c
 /*==============================================================================
 Public Variable
 ===============================================================================*/
-extern const uint8_t root_ca_cert_pem_start[] asm("_binary_ca_cert_pem_start");
-extern const uint8_t root_ca_cert_pem_end[] asm("_binary_ca_cert_pem_end");
+// extern const uint8_t root_ca_cert_pem_start[] asm("_binary_ca_cert_pem_start");
+// extern const uint8_t root_ca_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 ota_state_t ota_state = OTA_IDLE;
 
 /*==============================================================================
@@ -70,6 +75,9 @@ ota_state_t ota_state = OTA_IDLE;
 ===============================================================================*/
 char *ota_version_buffer = NULL;
 uint32_t ota_version_buffer_size = 0;
+ota_versions_url_t ota_versions_url[5] = {0};
+int8_t ota_to_use_version = -1;
+char *ota_cert;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -103,20 +111,19 @@ static int ota_json_parse_string(cJSON *json, const char *key, char *value, size
     return 0;
 }
 
-int ota_get_latest(ota_version_t *version)
+int ota_https_request(const char *url, const char *cert)
 {
-    assert(version != NULL);
-    memset(version, 0, sizeof(ota_version_t));
     const esp_app_desc_t *app_desc = esp_app_get_description();
-
     char user_agent[64];
+
     sprintf(user_agent, "TICMeter/%s %s", app_desc->version, "SERIAL");
     esp_http_client_config_t config = {
         .url = OTA_VERSION_URL,
-        .cert_pem = (char *)root_ca_cert_pem_start,
+        .cert_pem = cert,
         .method = HTTP_METHOD_GET,
         .event_handler = ota_https_event_handler,
         .user_agent = user_agent,
+        .buffer_size_tx = 8192,
     };
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
@@ -134,12 +141,146 @@ int ota_get_latest(ota_version_t *version)
              esp_http_client_get_content_length(client));
 
     esp_http_client_cleanup(client);
+    return status_code;
+}
 
-    if (status_code != 200)
+int ota_get_latest(ota_version_t *version)
+{
+    assert(version != NULL);
+    memset(version, 0, sizeof(ota_version_t));
+    const esp_app_desc_t *app_desc = esp_app_get_description();
+
+    FILE *file = fopen("/spiffs/ota_versions.csv", "r");
+    if (file == NULL)
     {
-        ESP_LOGE(TAG, "HTTP Get: %s Status code: %d", OTA_VERSION_URL, status_code);
-        return -1;
+        ESP_LOGE(TAG, "Failed to open ota_versions.csv");
+        strncpy(ota_versions_url[0].url, OTA_VERSION_URL, sizeof(ota_versions_url[0].url));
+        ota_to_use_version = 0;
     }
+    else
+    {
+        char line[256];
+        uint8_t i = 0;
+        while (fgets(line, sizeof(line), file) != NULL) // read line by line
+        {
+            // url, cert
+            char *token = NULL;
+            char *saveptr = NULL;
+            token = strtok_r(line, ",", &saveptr);
+            if (token == NULL)
+            {
+                ESP_LOGE(TAG, "Failed to parse ota_versions.txt");
+                break;
+            }
+            strncpy(ota_versions_url[i].url, token, sizeof(ota_versions_url[i].url));
+            token = strtok_r(NULL, ",", &saveptr);
+            if (token == NULL)
+            {
+                ESP_LOGE(TAG, "Failed to parse ota_versions.txt");
+                break;
+            }
+            snprintf(ota_versions_url[i].cert, sizeof(ota_versions_url[i].cert), "/spiffs/%s", token);
+            // remove \n and \r
+            char *pos;
+            if ((pos = strchr(ota_versions_url[i].cert, '\n')) != NULL)
+                *pos = '\0';
+            if ((pos = strchr(ota_versions_url[i].cert, '\r')) != NULL)
+                *pos = '\0';
+
+            i++;
+            if (i >= sizeof(ota_versions_url) / sizeof(ota_versions_url[0]))
+            {
+                break;
+            }
+        }
+        fclose(file);
+    }
+
+    for (uint8_t i = 0; i < sizeof(ota_versions_url) / sizeof(ota_versions_url[0]); i++)
+    {
+        ESP_LOGI(TAG, "Trying to get version from %s", ota_versions_url[i].url);
+        if (strlen(ota_versions_url[i].url) == 0)
+        {
+            break;
+        }
+        ESP_LOGI(TAG, "open %s", ota_versions_url[i].cert);
+        FILE *file = fopen(ota_versions_url[i].cert, "r");
+        if (file == NULL)
+        {
+            ESP_LOGE(TAG, "Failed to open %s", ota_versions_url[i].cert);
+            continue;
+        }
+        fseek(file, 0, SEEK_END);
+        long fsize = ftell(file);
+        fseek(file, 0, SEEK_SET);
+        if (ota_cert)
+        {
+            free(ota_cert);
+            ota_cert = NULL;
+        }
+        ota_cert = malloc(fsize + 1);
+        fread(ota_cert, fsize, 1, file);
+        fclose(file);
+        ota_cert[fsize] = 0;
+
+        ESP_LOGE(TAG, "%d %s", strlen(ota_cert), ota_cert);
+
+        int status_code = ota_https_request(ota_versions_url[i].url, ota_cert);
+        if (status_code != 200)
+        {
+            ESP_LOGE(TAG, "HTTP Get: %s Status code: %d", ota_versions_url[i].url, status_code);
+            free(ota_version_buffer);
+            ota_version_buffer = NULL;
+            continue;
+        }
+        if (ota_version_buffer == NULL)
+        {
+            ESP_LOGE(TAG, "HTTP Get: %s Buffer is NULL", ota_versions_url[i].url);
+            continue;
+        }
+
+        ESP_LOGD(TAG, "Version: %s", ota_version_buffer);
+        ota_to_use_version = i;
+        break;
+    }
+
+    // {
+    //   "name": "ESP Linky TIC",
+    //   "version": "2.0",
+    //   "home_assistant_domain": "esphome",
+    //   "funding_url": "https://esphome.io/guides/supporters.html",
+    //   "new_install_prompt_erase": true,
+    //   "builds": [
+    //     {
+    //       "target": "esp32c6",
+    //       "chipFamily": "ESP32-C6",
+    //       "parts": [
+    //         {
+    //           "path": "https://github.com/GammaTroniques/TICMeter/releases/latest/download/bootloader.bin",
+    //           "offset": 0
+    //         },
+    //         {
+    //           "path": "https://github.com/GammaTroniques/TICMeter/releases/latest/download/partition-table.bin",
+    //           "offset": 32768
+    //         },
+    //         {
+    //           "path": "https://github.com/GammaTroniques/TICMeter/releases/latest/download/otadata_initial.bin",
+    //           "offset": 65536
+    //         },
+    //         {
+    //           "type": "storage",
+    //           "path": "https://github.com/GammaTroniques/TICMeter/releases/latest/download/storage.bin",
+    //           "offset": 94208
+    //         },
+    //         {
+    //           "type": "app",
+    //           "path": "https://github.com/GammaTroniques/TICMeter/releases/latest/download/TICMeter.bin",
+    //           "offset": 196608
+    //         }
+    //       ]
+    //     }
+    //   ]
+    // }
 
     ESP_LOGD(TAG, "Version: %s", ota_version_buffer);
     cJSON *json = cJSON_Parse(ota_version_buffer);
@@ -156,9 +297,9 @@ int ota_get_latest(ota_version_t *version)
         }
         return -1;
     }
-    ota_json_parse_string(json, "latest", version->version, sizeof(version->version));
+    ota_json_parse_string(json, "version", version->version, sizeof(version->version));
     //------------------------Parse Firmware------------------------
-    cJSON *json_firmware = cJSON_GetObjectItemCaseSensitive(json, "firmware");
+    cJSON *json_firmware = cJSON_GetObjectItemCaseSensitive(json, "builds");
     if (json_firmware == NULL)
     {
         ESP_LOGE(TAG, "Parse Error: %s", "firmware not found");
@@ -172,18 +313,48 @@ int ota_get_latest(ota_version_t *version)
 
     //------------------------Parse Firmware Item------------------------
     cJSON *json_firmware_item = NULL;
-
+    uint8_t found = 0;
     cJSON_ArrayForEach(json_firmware_item, json_firmware)
     {
         ota_json_parse_string(json_firmware_item, "target", version->target, sizeof(version->target));
-        if (strcmp(version->target, CONFIG_IDF_TARGET) != 0) // if target is not the same as the current target, continue
+        if (strcmp(version->target, CONFIG_IDF_TARGET) == 0)
         {
-            continue;
+            found = 1;
+            break;
         }
-        ota_json_parse_string(json_firmware_item, "hwVersion", version->hwVersion, sizeof(version->version));
-        ota_json_parse_string(json_firmware_item, "url", version->url, sizeof(version->url));
-        ota_json_parse_string(json_firmware_item, "md5", version->md5, sizeof(version->md5));
-        break;
+    }
+    if (!found)
+    {
+        ESP_LOGE(TAG, "Parse Error: cant find target %s", CONFIG_IDF_TARGET);
+        return -1;
+    }
+
+    //------------------------Parse Firmware Parts------------------------
+    cJSON *json_parts = cJSON_GetObjectItemCaseSensitive(json_firmware_item, "parts");
+    if (json_parts == NULL)
+    {
+        ESP_LOGE(TAG, "Parse Error: %s", "parts not found");
+        return -1;
+    }
+    if (!cJSON_IsArray(json_parts))
+    {
+        ESP_LOGE(TAG, "Parse Error: %s", "parts not array");
+        return -1;
+    }
+
+    //------------------------Parse Firmware Parts Item------------------------
+    cJSON *json_parts_item = NULL;
+    cJSON_ArrayForEach(json_parts_item, json_parts)
+    {
+        cJSON *json_type = cJSON_GetObjectItemCaseSensitive(json_parts_item, "type");
+        if (json_type != NULL && cJSON_IsString(json_type) && (strcmp(json_type->valuestring, "app") == 0))
+        {
+            ota_json_parse_string(json_parts_item, "path", version->app_url, sizeof(version->app_url));
+        }
+        else if (json_type != NULL && cJSON_IsString(json_type) && (strcmp(json_type->valuestring, "storage") == 0))
+        {
+            ota_json_parse_string(json_parts_item, "path", version->storage_url, sizeof(version->storage_url));
+        }
     }
 
     strncpy(version->currentVersion, app_desc->version, sizeof(version->currentVersion));
@@ -195,7 +366,8 @@ int ota_get_latest(ota_version_t *version)
     ESP_LOGI(TAG, "Latest version: %s", version->version);
     ESP_LOGI(TAG, "Target: %s", version->target);
     ESP_LOGI(TAG, "HW Version: %s", version->hwVersion);
-    ESP_LOGI(TAG, "URL: %s", version->url);
+    ESP_LOGI(TAG, "APP URL: %s", version->app_url);
+    ESP_LOGI(TAG, "Storage URL: %s", version->storage_url);
     ESP_LOGI(TAG, "MD5: %s", version->md5);
 
     uint8_t result = ota_version_compare(version->currentVersion, version->version);
@@ -299,8 +471,21 @@ static uint8_t ota_version_compare(const char *current_version, const char *to_c
     {
         return 0;
     }
-    char *v1 = strdup(current_version);
-    char *v2 = strdup(to_check_version);
+
+    char *vv1 = strdup(current_version);
+    char *vv2 = strdup(to_check_version);
+    char *v1 = vv1;
+    char *v2 = vv2;
+    // remove evntual v
+
+    if (v1[0] == 'v' || v1[0] == 'V')
+    {
+        v1++;
+    }
+    if (v2[0] == 'v' || v2[0] == 'V')
+    {
+        v2++;
+    }
     char *token1 = NULL;
     char *token2 = NULL;
     char *saveptr1 = NULL;
@@ -332,8 +517,8 @@ static uint8_t ota_version_compare(const char *current_version, const char *to_c
     {
         result = 1;
     }
-    free(v1);
-    free(v2);
+    free(vv1);
+    free(vv2);
     return result;
 }
 
@@ -374,12 +559,19 @@ void ota_perform_task(void *pvParameter)
         goto ota_end;
     }
 
-    ESP_LOGI(TAG, "Starting download from %s", version.url);
+    if (ota_to_use_version == -1)
+    {
+        ESP_LOGE(TAG, "No version to use");
+        goto ota_end;
+    }
+
+    ESP_LOGI(TAG, "Starting download from %s", version.app_url);
     esp_http_client_config_t config = {
-        .url = version.url,
-        .cert_pem = (char *)root_ca_cert_pem_start,
+        .url = version.app_url,
+        .cert_pem = ota_cert,
         .timeout_ms = OTA_TIMEOUT_MS,
         .keep_alive_enable = true,
+        .buffer_size_tx = 8192,
     };
 
     esp_https_ota_config_t ota_config = {

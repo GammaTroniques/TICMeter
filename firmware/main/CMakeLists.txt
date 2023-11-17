@@ -52,7 +52,7 @@ idf_component_register(SRCS
                        SRC_DIRS "."
                        INCLUDE_DIRS "include"
                        INCLUDE_DIRS "."
-                       EMBED_TXTFILES ${project_dir}/main/certs/ca_cert.pem
+                    #    EMBED_TXTFILES ${project_dir}/main/certs/ca_cert.pem
                        )
  
 
