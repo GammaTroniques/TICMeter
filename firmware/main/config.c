@@ -16,6 +16,8 @@
 #include "linky.h"
 #include "esp_efuse.h"
 #include "efuse_table.h"
+#include "esp_vfs.h"
+#include "esp_spiffs.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -44,6 +46,7 @@ struct config_item_t
 ===============================================================================*/
 static uint8_t config_efuse_init();
 static esp_efuse_coding_scheme_t config_efuse_get_coding_scheme(void);
+static int config_init_spiffs(void);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -98,7 +101,7 @@ int8_t config_begin()
 {
     uint8_t want_init = 0;
     config_efuse_init();
-
+    config_init_spiffs();
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -171,6 +174,34 @@ int8_t config_begin()
 
     config_read();
     ESP_LOGI(TAG, "Config OK");
+    return 0;
+}
+
+static int config_init_spiffs(void)
+{
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = "/spiffs",
+        .partition_label = NULL,
+        .max_files = 5,
+        .format_if_mount_failed = true};
+
+    esp_err_t err = esp_vfs_spiffs_register(&conf);
+    if (err != ESP_OK)
+    {
+        if (err == ESP_FAIL)
+        {
+            ESP_LOGE(TAG, "Failed to mount or format filesystem");
+        }
+        else if (err == ESP_ERR_NOT_FOUND)
+        {
+            ESP_LOGE(TAG, "Failed to find SPIFFS partition");
+        }
+        else
+        {
+            ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(err));
+        }
+        return 1;
+    }
     return 0;
 }
 

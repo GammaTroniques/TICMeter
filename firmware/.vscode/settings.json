@@ -61,7 +61,9 @@
     "common.h": "c",
     "efuse_table.h": "c",
     "esp_netif_sntp.h": "c",
-    "nvs.h": "c"
+    "nvs.h": "c",
+    "gpio.h": "c",
+    "esp_http_server.h": "c"
   },
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",
