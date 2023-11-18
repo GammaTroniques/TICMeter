@@ -48,7 +48,7 @@ output_data = {
             "parts": [
                 {"path": fileURL + "bootloader.bin", "offset": 0},
                 {"path": fileURL + "partition-table.bin", "offset": 32768},
-                {"path": fileURL + "otadata_initial.bin", "offset": offset[0]},
+                {"path": fileURL + "ota_data_initial.bin", "offset": offset[0]},
                 {"path": fileURL + "storage.bin", "offset": offset[1], "type": "storage"},
                 {"path": fileURL + "TICMeter.bin", "offset": offset[2], "type": "app"},
             ]
