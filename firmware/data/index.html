@@ -5,7 +5,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Linky TIC ESP32</title>
+    <title>TICMeter</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -13,17 +13,19 @@
 <body>
     <form action="/save-config" method="POST" id="form">
         <div class="titre black-text">
-            <h1>Linky TIC ESP32</h1>
+            <h1>TICMeter</h1>
         </div>
         <div class="bloc">
             <h2>Configuration Wifi</h2>
-            <div class="input-field">
-                <h2>SSID</h2>
-                <input type="text" name="wifi-ssid" placeholder="Livebox ..." max="50" />
-            </div>
-            <div class="input-field">
-                <h2>PWD</h2>
-                <input type="password" name="wifi-password" max="50" />
+            <div class="wifi">
+                <div class="input-field">
+                    <h2>SSID</h2>
+                    <input type="text" name="wifi-ssid" placeholder="Livebox ..." maxlength="32" />
+                </div>
+                <div class="input-field">
+                    <h2>PWD</h2>
+                    <input type="password" name="wifi-password" maxlength="64" />
+                </div>
             </div>
         </div>
         <div class="bloc">
@@ -56,56 +58,69 @@
 
                 <label>
                     <input type="radio" name="server-mode" value="1">
-                    <img src="mqtt.jpg" alt="MQTT">
+                    <img src="mqtt.png" alt="MQTT">
+                </label>
+                <label>
+                    <input type="radio" name="server-mode" value="5">
+                    <img src="tuya.png" alt="Tuya">
                 </label>
             </div>
 
             <div class="web">
                 <div class="input-field">
                     <h3>SERVER</h3>
-                    <input type="text" name="web-url" placeholder="192.168.2.10:3001" />
+                    <input type="text" name="web-url" placeholder="192.168.2.10:3001" maxlength="100" />
                 </div>
                 <div class="input-field">
                     <h3>POST URL</h3>
-                    <input type="text" name="web-post" placeholder="/post" max="50" />
+                    <input type="text" name="web-post" placeholder="/post" maxlength="50" />
                 </div>
                 <div class="input-field">
                     <h3>CONFIG URL</h3>
-                    <input type="text" name="web-config" placeholder="/config" max="50" />
+                    <input type="text" name="web-config" placeholder="/config" maxlength="50" />
                 </div>
                 <div class="input-field">
                     <h3>TOKEN</h3>
-                    <input type="text" name="web-token" placeholder="pwGGHTFaOm" max="50" />
+                    <input type="text" name="web-token" placeholder="pwGGHTFaOm" maxlength="100" />
                 </div>
             </div>
 
             <div class="mqtt">
                 <div class="input-field">
                     <h3>IP</h3>
-                    <input type="text" name="mqtt-host" max="50" />
+                    <input type="text" name="mqtt-host" maxlength="100" />
                 </div>
                 <div class="input-field">
                     <h3>Port</h3>
-                    <input type="text" name="mqtt-port" max="50" />
+                    <input type="number" name="mqtt-port" max="65535" />
                 </div>
                 <div class="input-field">
                     <h3>User</h3>
-                    <input type="text" name="mqtt-user" max="50" />
+                    <input type="text" name="mqtt-user" maxlength="50" />
                 </div>
                 <div class="input-field">
                     <h3>PWD</h3>
-                    <input type="password" name="mqtt-password" max="50" />
+                    <input type="password" name="mqtt-password" maxlength="50" />
                 </div>
                 <div class="input-field">
                     <h3>Topic</h3>
-                    <input type="text" name="mqtt-topic" max="50" />
+                    <input type="text" name="mqtt-topic" maxlength="101" />
                 </div>
                 <div class="input-field">
                     <h3>Home Assistant Discovery</h3>
                     <input type="checkbox" name="mqtt-ha-discovery" value="1" />
                 </div>
             </div>
-
+            <div class="tuya">
+                <div class="input-field">
+                    <h3>Device UUID</h3>
+                    <input type="text" name="tuya-device-uuid" maxlength="29" />
+                </div>
+                <div class="input-field">
+                    <h3>Device Auth</h3>
+                    <input type="text" name="tuya-device-auth" maxlength="49" />
+                </div>
+            </div>
         </div>
         <input type="submit" value="Engregistrer">
     </form>
@@ -120,16 +135,23 @@
             console.log(event.target.value);
             const web = document.querySelector(".web");
             const mqtt = document.querySelector(".mqtt");
+            const tuya = document.querySelector(".tuya");
+            web.style.display = "none";
+            mqtt.style.display = "none";
+            tuya.style.display = "none";
             if (event.target.value == 0) {
-                web.style.display = "flex";
-                mqtt.style.display = "none";
-            } else {
-                web.style.display = "none";
-                mqtt.style.display = "flex";
+                web.style.display = "block";
+            } else if (event.target.value == 1) {
+                mqtt.style.display = "block";
+            } else if (event.target.value == 5) {
+                tuya.style.display = "block";
             }
         });
     });
-
+    var tuya = {
+        productId: "",
+        uuid: "",
+    }
     //fetch config
     fetch("/config")
         .then((response) => response.json())
@@ -149,17 +171,31 @@
             if ("server-mode" in data) {
                 const web = document.querySelector(".web");
                 const mqtt = document.querySelector(".mqtt");
+                const tuya = document.querySelector(".tuya");
                 const radio = document.getElementsByName("server-mode");
                 if (data["server-mode"] == 0) {
                     web.style.display = "flex";
                     mqtt.style.display = "none";
+                    tuya.style.display = "none";
                     radio[0].checked = true;
                     radio[1].checked = false;
-                } else {
+                    radio[2].checked = false;
+                }
+                else if (data["server-mode"] == 5) {
+                    web.style.display = "none";
+                    mqtt.style.display = "none";
+                    tuya.style.display = "block";
+                    radio[0].checked = false;
+                    radio[1].checked = false;
+                    radio[2].checked = true;
+                }
+                else {
                     web.style.display = "none";
                     mqtt.style.display = "flex";
+                    tuya.style.display = "none";
                     radio[0].checked = false;
                     radio[1].checked = true;
+                    radio[2].checked = false;
                     if (data["server-mode"] == 2) { //mqtt + ha
                         const mqttHaDiscovery = document.querySelector(`[name="mqtt-ha-discovery"]`);
                         mqttHaDiscovery.checked = 1;
@@ -170,6 +206,15 @@
             if ("linky-mode" in data) {
                 const linkyMode = document.querySelector(`[name="linky-mode"][value="${data["linky-mode"]}"]`);
                 linkyMode.checked = true;
+            }
+
+            if ("tuya-device-uuid" in data) {
+                const tuyaUUID = document.getElementsByName("tuya-device-uuid");
+                tuyaUUID.value = data["tuya-device-uuid"];
+            }
+            if ("tuya-device-auth" in data) {
+                const tuyaAuth = document.getElementsByName("tuya-device-auth");
+                tuyaAuth.value = data["tuya-device-auth"];
             }
         });
 
