@@ -17,7 +17,7 @@ jobs:
           esp_idf_version: v5.1.2
           target: esp32c6
           path: 'firmware'
-          command: "echo -e 'CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200' >> sdkconfig && idf.py build"
+          command: "echo -e 'CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200' >> /app/GammaTroniques/TICMeter/firmware/sdkconfig && ls /app/GammaTroniques/TICMeter/firmware/sdkconfig && cat /app/GammaTroniques/TICMeter/firmware/sdkconfig && idf.py build"
       # - name: Install ESP-IDF and Build project
       #   uses: xmow49/esp-idf-action@v5
       #   with: 
