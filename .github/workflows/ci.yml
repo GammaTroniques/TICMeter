@@ -11,19 +11,19 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: 'recursive'
-      # - name: ESP-IDF build
-      #   uses: espressif/esp-idf-ci-action@v1
-      #   with:
-      #     esp_idf_version: v5.1.1
-      #     target: esp32c6
-      #     path: 'firmware'
-      - name: Install ESP-IDF and Build project
-        uses: xmow49/esp-idf-action@v5
-        with: 
-            esp_idf_version: v5.1.1
-            esp_idf_target: esp32c6
-            path: 'firmware'
-            prebuild_cmd: "echo -e 'CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200' >> sdkconfig"
+      - name: ESP-IDF build
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.1.1
+          target: esp32c6
+          path: 'firmware'
+      # - name: Install ESP-IDF and Build project
+      #   uses: xmow49/esp-idf-action@v5
+      #   with: 
+      #       esp_idf_version: v5.1.1
+      #       esp_idf_target: esp32c6
+      #       path: 'firmware'
+      #       prebuild_cmd: "echo -e 'CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200' >> sdkconfig"
             
       - name: Create manifest
         run: |
