@@ -244,44 +244,6 @@ int ota_get_latest(ota_version_t *version)
         break;
     }
 
-    // {
-    //   "name": "ESP Linky TIC",
-    //   "version": "2.0",
-    //   "home_assistant_domain": "esphome",
-    //   "funding_url": "https://esphome.io/guides/supporters.html",
-    //   "new_install_prompt_erase": true,
-    //   "builds": [
-    //     {
-    //       "target": "esp32c6",
-    //       "chipFamily": "ESP32-C6",
-    //       "parts": [
-    //         {
-    //           "path": "https://github.com/GammaTroniques/TICMeter/releases/latest/download/bootloader.bin",
-    //           "offset": 0
-    //         },
-    //         {
-    //           "path": "https://github.com/GammaTroniques/TICMeter/releases/latest/download/partition-table.bin",
-    //           "offset": 32768
-    //         },
-    //         {
-    //           "path": "https://github.com/GammaTroniques/TICMeter/releases/latest/download/otadata_initial.bin",
-    //           "offset": 65536
-    //         },
-    //         {
-    //           "type": "storage",
-    //           "path": "https://github.com/GammaTroniques/TICMeter/releases/latest/download/storage.bin",
-    //           "offset": 94208
-    //         },
-    //         {
-    //           "type": "app",
-    //           "path": "https://github.com/GammaTroniques/TICMeter/releases/latest/download/TICMeter.bin",
-    //           "offset": 196608
-    //         }
-    //       ]
-    //     }
-    //   ]
-    // }
-
     ESP_LOGD(TAG, "Version: %s", ota_version_buffer);
     cJSON *json = cJSON_Parse(ota_version_buffer);
     if (json == NULL)
@@ -522,6 +484,53 @@ static uint8_t ota_version_compare(const char *current_version, const char *to_c
     return result;
 }
 
+static void ota_spiffs_update(const char *url)
+{
+    if (url == NULL)
+    {
+        return;
+    }
+    ESP_LOGI(TAG, "Starting spiffs update");
+    if (!wifi_connect())
+    {
+        ESP_LOGE(TAG, "Wifi connect failed");
+        return;
+    }
+    ota_https_request(url, ota_cert);
+    if (ota_version_buffer == NULL)
+    {
+        ESP_LOGE(TAG, "HTTP Get: %s Buffer is NULL", url);
+        return;
+    }
+    ESP_LOGD(TAG, "Version: %s", ota_version_buffer);
+
+    const esp_partition_t *storage_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, "storage");
+    if (storage_partition == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to find storage partition");
+        return;
+    }
+
+    if (ota_version_buffer_size != storage_partition->size)
+    {
+        ESP_LOGE(TAG, "Version size is not correct: %ld != %ld", ota_version_buffer_size, storage_partition->size);
+        return;
+    }
+
+    esp_err_t err = esp_partition_erase_range(storage_partition, 0, storage_partition->size);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to erase storage partition");
+        return;
+    }
+    ESP_LOGI(TAG, "Storage partition erased");
+
+    esp_partition_write(storage_partition, 0, ota_version_buffer, strlen(ota_version_buffer));
+    ESP_LOGI(TAG, "Storage partition updated");
+    free(ota_version_buffer);
+    ota_version_buffer = NULL;
+}
+
 void ota_perform_task(void *pvParameter)
 {
     if (!wifi_connect())
@@ -552,6 +561,7 @@ void ota_perform_task(void *pvParameter)
 
     esp_err_t ota_finish_err = ESP_OK;
     ESP_LOGI(TAG, "Starting OTA...");
+
     esp_err_t err = esp_event_handler_register(ESP_HTTPS_OTA_EVENT, ESP_EVENT_ANY_ID, &ota_event_handler, NULL);
     if (err != ESP_OK)
     {
@@ -563,6 +573,12 @@ void ota_perform_task(void *pvParameter)
     {
         ESP_LOGE(TAG, "No version to use");
         goto ota_end;
+    }
+
+    if (strlen(version.storage_url) > 0)
+    {
+        ESP_LOGI(TAG, "Starting download from %s", version.storage_url);
+        ota_spiffs_update(version.storage_url);
     }
 
     ESP_LOGI(TAG, "Starting download from %s", version.app_url);
