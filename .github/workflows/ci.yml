@@ -11,6 +11,9 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: 'recursive'
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
+        
       - name: ESP-IDF build
         uses: espressif/esp-idf-ci-action@v1
         with:
