@@ -11,12 +11,16 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: 'recursive'
+      # - name: Setup upterm session
+      #   uses: lhotari/action-upterm@v1
+        
       - name: ESP-IDF build
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: v5.1.1
+          esp_idf_version: v5.1.2
           target: esp32c6
           path: 'firmware'
+          command: "cp /app/GammaTroniques/TICMeter/firmware/patch/sleep_modes.c /opt/esp/idf/components/esp_hw_support/sleep_modes.c && cat /opt/esp/idf/components/esp_hw_support/sleep_modes.c && idf.py build"
       # - name: Install ESP-IDF and Build project
       #   uses: xmow49/esp-idf-action@v5
       #   with: 
