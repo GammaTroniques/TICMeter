@@ -47,6 +47,7 @@ struct config_item_t
 static uint8_t config_efuse_init();
 static esp_efuse_coding_scheme_t config_efuse_get_coding_scheme(void);
 static int config_init_spiffs(void);
+static uint8_t config_tuya_rw = 0;
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -160,9 +161,18 @@ int8_t config_begin()
     {
         err = nvs_open_from_partition(RO_PARTITION, RO_NAMESPACE, NVS_READONLY, &ro_config_handle);
     }
-    if (err != ESP_OK)
+    if (err == ESP_ERR_NVS_NOT_FOUND)
     {
-        ESP_LOGE(TAG, "Error (0x%x %s) opening ro NVS handle!\n", err, esp_err_to_name(err));
+        ESP_LOGE(TAG, "Ro config not found, creating default config tuya");
+        config_tuya_rw = 1;
+        config_rw();
+        config_write();
+        config_tuya_rw = 0;
+    }
+    else if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (0x%x %s) opening ro NVS handle!", err, esp_err_to_name(err));
+        return 1;
     }
 
     if (want_init)
@@ -174,6 +184,12 @@ int8_t config_begin()
 
     config_read();
     ESP_LOGI(TAG, "Config OK");
+
+    if (config_values.refreshRate <= 30)
+    {
+        config_values.refreshRate = 60;
+        config_write();
+    }
     return 0;
 }
 
@@ -262,6 +278,10 @@ int8_t config_write()
     size_t totalBytesWritten = 0;
     for (int i = 0; i < config_items_size; i++)
     {
+        if (config_items[i].handle == &ro_config_handle && config_tuya_rw == 0)
+        {
+            continue;
+        }
         size_t bytesWritten = 0;
         switch (config_items[i].type)
         {
@@ -416,6 +436,7 @@ uint8_t config_rw()
         ESP_LOGE(TAG, "Error (%s) opening ro NVS handle!\n", esp_err_to_name(err));
     }
     printf("Successfully opened in RW\n");
+    config_tuya_rw = 1;
     return 0;
 }
 
