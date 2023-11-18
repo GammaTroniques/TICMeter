@@ -525,7 +525,9 @@ static void ota_spiffs_update(const char *url)
     }
     ESP_LOGI(TAG, "Storage partition erased");
 
+    ESP_LOG_BUFFER_HEXDUMP(TAG, ota_version_buffer, ota_version_buffer_size, ESP_LOG_INFO);
     esp_partition_write(storage_partition, 0, ota_version_buffer, strlen(ota_version_buffer));
+
     ESP_LOGI(TAG, "Storage partition updated");
     free(ota_version_buffer);
     ota_version_buffer = NULL;
@@ -580,6 +582,7 @@ void ota_perform_task(void *pvParameter)
         ESP_LOGI(TAG, "Starting download from %s", version.storage_url);
         ota_spiffs_update(version.storage_url);
     }
+    vTaskDelete(NULL);
 
     ESP_LOGI(TAG, "Starting download from %s", version.app_url);
     esp_http_client_config_t config = {
