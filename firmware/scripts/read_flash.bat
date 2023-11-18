@@ -1,0 +1,1 @@
+esptool.py -p COM26 -b 921600 read_flash 0 0x400000 D:flash_contents.bin

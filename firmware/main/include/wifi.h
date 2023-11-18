@@ -1,6 +1,20 @@
+/**
+ * @file
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
+
 #ifndef WIFI_H
 #define WIFI_H
 
+/*==============================================================================
+ Local Include
+===============================================================================*/
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -19,49 +33,55 @@
 
 #include "config.h"
 
-#define ESP_MAXIMUM_RETRY 5
-// #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+/*==============================================================================
+ Public Defines
+==============================================================================*/
+#define WIFI_CONNECT_TIMEOUT 10000
+/*==============================================================================
+ Public Macro
+==============================================================================*/
+
+/*==============================================================================
+ Public Type
+==============================================================================*/
+typedef enum
+{
+    WIFI_DISCONNECTED,
+    WIFI_CONNECTING,
+    WIFI_CONNECTED,
+    WIFI_FAILED
+} wifi_state_t;
+
+/*==============================================================================
+ Public Variables Declaration
+==============================================================================*/
+extern wifi_state_t wifi_state;
+extern uint8_t wifi_sending;
+/*==============================================================================
+ Public Functions Declaration
+==============================================================================*/
+
+extern uint8_t wifi_init();
+
 /**
- * @brief set the CPU frequency to 240Mhz and connect to wifi
+ * @brief connect to wifi
  *
  * @return 1 if connected, 0 if not
  */
-uint8_t connectToWifi();
-
-void disconectFromWifi();
-
-void event_handler(void *arg, esp_event_base_t event_base,
-                   int32_t event_id, void *event_data);
-
-/* The event group allows multiple bits for each event, but we only care about two events:
- * - we are connected to the AP with an IP
- * - we failed to connect after the maximum amount of retries */
-#define WIFI_CONNECTED_BIT BIT0
-#define WIFI_FAIL_BIT BIT1
+extern uint8_t wifi_connect();
 
 /**
- * @brief Create a Http Url (http://host/path)
- *
- * @param url the destination url
- * @param host the host
- * @param path the path
- */
-void createHttpUrl(char *url, const char *host, const char *path);
-
-/**
- * @brief Get config from server and save it in EEPROM
+ * @brief disconnect from wifi
  *
  */
-void getConfigFromServer(Config *config);
+extern void wifi_disconnect();
 
 /**
  * @brief Get the Timestamp in seconds
  *
  * @return timestamp
  */
-time_t getTimestamp();
-
-esp_err_t send_data_handler(esp_http_client_event_handle_t evt);
+extern time_t wifi_get_timestamp();
 
 /**
  * @brief Send json data to server
@@ -69,14 +89,19 @@ esp_err_t send_data_handler(esp_http_client_event_handle_t evt);
  * @param json the json data to send
  * @return the http code
  */
-uint8_t sendToServer(const char *json);
+extern uint8_t wifi_send_to_server(const char *json);
 
-extern uint8_t wifiConnected;
-extern uint8_t sendingValues;
+/**
+ * @brief Start the captive portal
+ *
+ */
+extern void wifi_start_captive_portal();
 
-void start_captive_portal();
+/**
+ * @brief Get the config from server
+ *
+ * @param config
+ */
+extern void wifi_http_get_config_from_server();
 
-uint8_t reconnectToWifi();
-
-uint8_t sntpInit();
-#endif
+#endif /* WIFI_H */

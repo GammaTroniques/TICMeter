@@ -69,7 +69,7 @@ body {
 
 .input-field {
   display: flex;
-  justify-content: center;
+  justify-content: right;
   align-items: center;
   flex-direction: row;
 }
@@ -90,6 +90,12 @@ form {
   justify-content: center;
   align-items: center;
   flex-direction: column;
+}
+
+.wifi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .web,
