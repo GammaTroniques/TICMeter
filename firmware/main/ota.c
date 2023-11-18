@@ -525,7 +525,7 @@ static void ota_spiffs_update(const char *url)
     }
     ESP_LOGI(TAG, "Storage partition erased");
 
-    ESP_LOG_BUFFER_HEXDUMP(TAG, ota_version_buffer, ota_version_buffer_size, ESP_LOG_INFO);
+    ESP_LOG_BUFFER_HEXDUMP(TAG, ota_version_buffer, 500, ESP_LOG_INFO);
     esp_partition_write(storage_partition, 0, ota_version_buffer, strlen(ota_version_buffer));
 
     ESP_LOGI(TAG, "Storage partition updated");
