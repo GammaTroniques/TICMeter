@@ -20,7 +20,7 @@ jobs:
           esp_idf_version: v5.1.2
           target: esp32c6
           path: 'firmware'
-          command: "find / | grep sleep_modes.c && echo -e '#define CONFIG_ESP_CONSOLE_UART_BAUDRATE 115200\n$(cat /opt/esp/idf/components/esp_hw_support/sleep_modes.c)' > /opt/esp/idf/components/esp_hw_support/sleep_modes.c && cat /opt/esp/idf/components/esp_hw_support/sleep_modes.c && idf.py build"
+          command: "cp /app/GammaTroniques/TICMeter/firmware/patch/sleep_modes.c /opt/esp/idf/components/esp_hw_support/sleep_modes.c && cat /opt/esp/idf/components/esp_hw_support/sleep_modes.c && idf.py build"
       # - name: Install ESP-IDF and Build project
       #   uses: xmow49/esp-idf-action@v5
       #   with: 
