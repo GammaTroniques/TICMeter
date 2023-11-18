@@ -41,7 +41,8 @@ typedef struct __attribute__((__packed__))
 } dns_header_t;
 
 // DNS Question Packet
-typedef struct {
+typedef struct
+{
     uint16_t type;
     uint16_t class;
 } dns_question_t;
@@ -68,11 +69,13 @@ static char *parse_dns_name(char *raw_name, char *parsed_name, size_t parsed_nam
     char *name_itr = parsed_name;
     int name_len = 0;
 
-    do {
+    do
+    {
         int sub_name_len = *label;
         // (len + 1) since we are adding  a '.'
         name_len += (sub_name_len + 1);
-        if (name_len > parsed_name_max_len) {
+        if (name_len > parsed_name_max_len)
+        {
             return NULL;
         }
 
@@ -92,7 +95,8 @@ static char *parse_dns_name(char *raw_name, char *parsed_name, size_t parsed_nam
 // Parses the DNS request and prepares a DNS response with the IP of the softAP
 static int parse_dns_request(char *req, size_t req_len, char *dns_reply, size_t dns_reply_max_len)
 {
-    if (req_len > dns_reply_max_len) {
+    if (req_len > dns_reply_max_len)
+    {
         return -1;
     }
 
@@ -106,7 +110,8 @@ static int parse_dns_request(char *req, size_t req_len, char *dns_reply, size_t 
              ntohs(header->id), ntohs(header->flags), ntohs(header->qd_count));
 
     // Not a standard query
-    if ((header->flags & OPCODE_MASK) != 0) {
+    if ((header->flags & OPCODE_MASK) != 0)
+    {
         return 0;
     }
 
@@ -117,7 +122,8 @@ static int parse_dns_request(char *req, size_t req_len, char *dns_reply, size_t 
     header->an_count = htons(qd_count);
 
     int reply_len = qd_count * sizeof(dns_answer_t) + req_len;
-    if (reply_len > dns_reply_max_len) {
+    if (reply_len > dns_reply_max_len)
+    {
         return -1;
     }
 
@@ -127,9 +133,11 @@ static int parse_dns_request(char *req, size_t req_len, char *dns_reply, size_t 
     char name[128];
 
     // Respond to all questions with the ESP32's IP address
-    for (int i = 0; i < qd_count; i++) {
+    for (int i = 0; i < qd_count; i++)
+    {
         char *name_end_ptr = parse_dns_name(cur_qd_ptr, name, sizeof(name));
-        if (name_end_ptr == NULL) {
+        if (name_end_ptr == NULL)
+        {
             ESP_LOGE(TAG, "Failed to parse DNS question: %s", cur_qd_ptr);
             return -1;
         }
@@ -140,7 +148,8 @@ static int parse_dns_request(char *req, size_t req_len, char *dns_reply, size_t 
 
         ESP_LOGD(TAG, "Received type: %d | Class: %d | Question for: %s", qd_type, qd_class, name);
 
-        if (qd_type == QD_TYPE_A) {
+        if (qd_type == QD_TYPE_A)
+        {
             dns_answer_t *answer = (dns_answer_t *)cur_ans_ptr;
 
             answer->ptr_offset = htons(0xC000 | (cur_qd_ptr - dns_reply));
@@ -170,7 +179,8 @@ void dns_server_task(void *pvParameters)
     int addr_family;
     int ip_protocol;
 
-    while (1) {
+    while (1)
+    {
 
         struct sockaddr_in dest_addr;
         dest_addr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -181,36 +191,44 @@ void dns_server_task(void *pvParameters)
         inet_ntoa_r(dest_addr.sin_addr, addr_str, sizeof(addr_str) - 1);
 
         int sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
-        if (sock < 0) {
+        if (sock < 0)
+        {
             ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
             break;
         }
         ESP_LOGI(TAG, "Socket created");
 
         int err = bind(sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
-        if (err < 0) {
+        if (err < 0)
+        {
             ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
         }
         ESP_LOGI(TAG, "Socket bound, port %d", DNS_PORT);
 
-        while (1) {
+        while (1)
+        {
             ESP_LOGI(TAG, "Waiting for data");
             struct sockaddr_in6 source_addr; // Large enough for both IPv4 or IPv6
             socklen_t socklen = sizeof(source_addr);
             int len = recvfrom(sock, rx_buffer, sizeof(rx_buffer) - 1, 0, (struct sockaddr *)&source_addr, &socklen);
 
             // Error occurred during receiving
-            if (len < 0) {
+            if (len < 0)
+            {
                 ESP_LOGE(TAG, "recvfrom failed: errno %d", errno);
                 close(sock);
                 break;
             }
             // Data received
-            else {
+            else
+            {
                 // Get the sender's ip address as string
-                if (source_addr.sin6_family == PF_INET) {
+                if (source_addr.sin6_family == PF_INET)
+                {
                     inet_ntoa_r(((struct sockaddr_in *)&source_addr)->sin_addr.s_addr, addr_str, sizeof(addr_str) - 1);
-                } else if (source_addr.sin6_family == PF_INET6) {
+                }
+                else if (source_addr.sin6_family == PF_INET6)
+                {
                     inet6_ntoa_r(source_addr.sin6_addr, addr_str, sizeof(addr_str) - 1);
                 }
 
@@ -221,11 +239,15 @@ void dns_server_task(void *pvParameters)
                 int reply_len = parse_dns_request(rx_buffer, len, reply, DNS_MAX_LEN);
 
                 ESP_LOGI(TAG, "Received %d bytes from %s | DNS reply with len: %d", len, addr_str, reply_len);
-                if (reply_len <= 0) {
+                if (reply_len <= 0)
+                {
                     ESP_LOGE(TAG, "Failed to prepare a DNS reply");
-                } else {
+                }
+                else
+                {
                     int err = sendto(sock, reply, reply_len, 0, (struct sockaddr *)&source_addr, sizeof(source_addr));
-                    if (err < 0) {
+                    if (err < 0)
+                    {
                         ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
                         break;
                     }
@@ -233,7 +255,8 @@ void dns_server_task(void *pvParameters)
             }
         }
 
-        if (sock != -1) {
+        if (sock != -1)
+        {
             ESP_LOGE(TAG, "Shutting down socket");
             shutdown(sock, 0);
             close(sock);

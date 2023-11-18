@@ -1,6 +1,20 @@
+/**
+ * @file config.h
+ * @author Dorian Benech
+ * @brief
+ * @version 1.0
+ * @date 2023-10-11
+ *
+ * @copyright Copyright (c) 2023 GammaTroniques
+ *
+ */
 
 #ifndef CONFIG_H
 #define CONFIG_H
+
+/*==============================================================================
+ Local Include
+===============================================================================*/
 
 #include <stdio.h>
 #include <inttypes.h>
@@ -11,16 +25,24 @@
 #include "nvs.h"
 #include "esp_log.h"
 #include "linky.h"
+#include "common.h"
+#include "efuse_table.h"
 
-#define EEPROM_SIZE sizeof(config_t)
-
-#define AP_SSID "Linky 5G Pfizer#9432"
+/*==============================================================================
+ Public Defines
+==============================================================================*/
+#define AP_SSID "TICMeter"
 #define AP_PASS ""
-#define HOSTNAME "Linky"
+#define HOSTNAME "TICMeter"
 
-#define NVS_TAG "NVS"
-
-enum connectivity_t : uint8_t
+/*==============================================================================
+ Public Macro
+==============================================================================*/
+#define MILLIS xTaskGetTickCount() * portTICK_PERIOD_MS
+/*==============================================================================
+ Public Type
+==============================================================================*/
+typedef enum
 {
     MODE_WEB,
     MODE_MQTT,
@@ -28,87 +50,84 @@ enum connectivity_t : uint8_t
     MODE_ZIGBEE,
     MODE_MATTER,
     MODE_TUYA,
-};
+} connectivity_t;
 
-extern const char *MODES[];
-extern const char *TUYA_SERVERS[];
-
-#define CONNECTION_TYPE_WIFI 0
-#define CONNECTION_TYPE_ZIGBEE 1
-#define CONNECTION_TYPE_MATTER 2
-
-#define MILLIS xTaskGetTickCount() * portTICK_PERIOD_MS
-
-struct webConfig_t
+typedef struct
 {
-    char host[100] = "";
-    char postUrl[50] = "";
-    char configUrl[50] = "";
-    char token[100] = "";
-};
+    char host[100];
+    char postUrl[50];
+    char configUrl[50];
+    char token[100];
+} webConfig_t;
 
-struct mqttConfig_t
+typedef struct
 {
-    char host[100] = "";
-    uint16_t port = 0;
-    char username[100] = "";
-    char password[100] = "";
-    char topic[100] = "";
-};
+    char host[101];
+    uint16_t port;
+    char username[51];
+    char password[51];
+    char topic[101];
+} mqttConfig_t;
 
-enum tuya_server_t : uint8_t
+typedef enum
 {
-    TUYA_REGION_CN = 0,
-    TUYA_REGION_EU = 1,
-    TUYA_REGION_US_W = 2,
-    TUYA_REGION_US_E = 3,
-    TUYA_REGION_EU_W = 4,
-    TUYA_REGION_IN = 5
-};
+    TUYA_NOT_CONFIGURED,
+    TUYA_BLE_PAIRING,
+    TUYA_WIFI_CONNECTING,
+    TUYA_PAIRED,
+} pairing_state_t;
 
-struct tuyaConfig_t
+typedef struct
 {
-    char productId[50] = "";
-    char deviceId[50] = "";
-    char deviceSecret[50] = "";
-    enum tuya_server_t server = TUYA_REGION_CN;
-};
+    char product_id[30];
+    char device_uuid[30];
+    char device_auth[40];
+} tuyaConfig_t;
 
-struct config_t
+typedef struct
 {
-    uint16_t magic = 0x1234; // magic number to check if a config is stored in EEPROM
-    char ssid[50] = "";
-    char password[50] = "";
+    char ssid[50];
+    char password[50];
 
-    LinkyMode linkyMode = MODE_HISTORIQUE;
-    connectivity_t mode = MODE_WEB;
+    linky_mode_t linkyMode;
+    connectivity_t mode;
     webConfig_t web;
     mqttConfig_t mqtt;
+    pairing_state_t pairing_state;
     tuyaConfig_t tuya;
 
-    char version[10] = "";
-    uint16_t refreshRate = 60;
-    uint8_t enableDeepSleep = 1;
-    uint8_t dataCount = 3;
-    uint16_t checksum = 0;
-};
+    char version[10];
+    uint16_t refreshRate;
+    uint8_t sleep;
+} config_t;
 
-class Config
+typedef struct
 {
-public:
-    Config();
-    int8_t erase();
-    int8_t begin();
-    int8_t read();
-    int8_t write();
-    uint8_t verify();
-    int16_t calculateChecksum();
-    config_t values;
+    char serialNumber[13];
 
-private:
-    nvs_handle_t nvsHandle;
-};
+} efuse_t;
 
-extern Config config;
+/*==============================================================================
+ Public Variables Declaration
+==============================================================================*/
+extern const char *MODES[];
+extern const char *GIT_TAG;
+extern const char *GIT_REV;
+extern const char *GIT_BRANCH;
+extern const char *BUILD_TIME;
 
-#endif
+extern config_t config_values;
+extern efuse_t efuse_values;
+/*==============================================================================
+ Public Functions Declaration
+==============================================================================*/
+
+int8_t config_erase();
+int8_t config_begin();
+int8_t config_read();
+int8_t config_write();
+uint8_t config_verify();
+uint8_t config_rw();
+uint8_t config_efuse_read();
+uint8_t config_efuse_write(const char *serialnumber, uint8_t len);
+#endif /* CONFIG_H */

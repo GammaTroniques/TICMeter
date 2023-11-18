@@ -1,0 +1,5 @@
+# NVS csv file
+key,type,encoding,value
+device_id,data,string,a_unique_value
+cert,file,string,./path/to/certificate.pem.crt
+pvkey,file,string,./path/to/private.pem.key
