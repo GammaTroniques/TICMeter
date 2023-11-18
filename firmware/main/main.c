@@ -129,8 +129,11 @@ void app_main(void)
       wifi_get_timestamp();               // get timestamp from ntp server
       wifi_http_get_config_from_server(); // get config from server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
-      ota_version_t version;
-      ota_get_latest(&version);
+      if (gpio_get_vusb() > 3)
+      {
+        ota_version_t version;
+        ota_get_latest(&version);
+      }
       wifi_disconnect();
     }
     break;
@@ -141,8 +144,11 @@ void app_main(void)
     {
       mqtt_init();          // init mqtt
       wifi_get_timestamp(); // get timestamp from ntp server
-      ota_version_t version;
-      ota_get_latest(&version);
+      if (gpio_get_vusb() > 3)
+      {
+        ota_version_t version;
+        ota_get_latest(&version);
+      }
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       wifi_disconnect();
     }
@@ -227,6 +233,11 @@ void fetchLinkyDataTask(void *pvParameters)
           ESP_LOGI(MAIN_TAG, "POST: %s", json);
           wifi_send_to_server(json);
         }
+        if (gpio_get_vcondo() > 3.8)
+        {
+          ota_version_t version;
+          ota_get_latest(&version);
+        }
         wifi_disconnect();
         dataIndex = 0;
       }
@@ -248,6 +259,13 @@ void fetchLinkyDataTask(void *pvParameters)
         ESP_LOGE(MAIN_TAG, "MQTT send failed");
         goto send_error;
       }
+
+      if (gpio_get_vcondo() > 3.8)
+      {
+        ota_version_t version;
+        ota_get_latest(&version);
+      }
+
       wifi_disconnect();
       gpio_start_led_pattern(PATTERN_SEND_OK);
       break;
@@ -278,6 +296,11 @@ void fetchLinkyDataTask(void *pvParameters)
       tuya_disconect:
         // tuya_stop();
         // tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
+        if (gpio_get_vcondo() > 3.8)
+        {
+          ota_version_t version;
+          ota_get_latest(&version);
+        }
         wifi_disconnect();
         suspendTask(tuyaTaskHandle);
         gpio_start_led_pattern(PATTERN_SEND_OK);
