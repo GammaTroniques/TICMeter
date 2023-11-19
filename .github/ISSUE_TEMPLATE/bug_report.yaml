@@ -1,32 +1,45 @@
 name: Bug Report
-description: File a bug report
+description: Report a problem with the code or the system
 labels: ["Status : Opened 📬​", "Type : Bug 🪲​"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to fill out this bug report!
+        Thanks for reporting !
   - type: textarea
     id: what-happened
     attributes:
-      label: What happened?
-      description: Also tell us, what did you expect to happen?
-      placeholder: Tell us what you see!
-      value: "A bug happened!"
+      label: The problem encountered
+      description: Describe as much information as possible
+      placeholder: What I did, what I saw...
     validations:
       required: true
   - type: dropdown
     id: version
     attributes:
-      label: Version
+      label: Firmware version
       description: What version of our software are you running?
       options:
-        - 2.X
-        - 3.X
-        - Other / Idk
+        - None
+        - Other / Don't Know
+        - V2.x.x
+        - V3.0.x
+        - V3.1.x or more
       default: 0
     validations:
       required: true
+  - type: textarea
+    id: bug-reproduction
+    attributes:
+      label: Steps for reproducing the error
+      description: Describe the stages in detail
+      placeholder: What you need to do...
+  - type: textarea
+    id: test
+    attributes:
+      label: What I've already tested
+      description: Describe as much information as possible
+      placeholder: I tried to do...
   - type: textarea
     id: logs
     attributes:
