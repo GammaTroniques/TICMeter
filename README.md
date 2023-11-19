@@ -1,4 +1,4 @@
-# ESP32 Linky Teleinfo
+# TICMeter
 
 ![total commits](https://img.shields.io/github/commit-activity/t/GammaTroniques/TICMeter?style=flat-square)
 ![last commit](https://img.shields.io/github/last-commit/GammaTroniques/TICMeter?style=flat-square)
@@ -8,16 +8,11 @@
 
 ## License
 
-![](https://img.shields.io/badge/license--blue?style=flat-square)
+[![licence](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg?style=for-the-badge)](https://creativecommons.org/licenses/by-nc/4.0/)
 
 ## About the project
 
-**Linky Teleinfo** is a project to collect data from a **Linky meter** and send them to a **web server** or a **home automation server**. The system is powered by the pins A of the Linky meter and with the help of a supercapacitor.
-
-- Created with : 
-
-[![espidf](https://img.shields.io/badge/espressif%20idf-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://github.com/espressif/esp-idf)
-[![vscode](https://img.shields.io/badge/visual%20studio%20code-0078d7?style=for-the-badge&logo=visual-studio-code&logoColor=white)](https://www.espressif.com/)
+**TICMeter** is a project to collect data from a **Linky meter** and send them to a **web server** or a **home automation server**. The system is powered by the pins A of the Linky meter and with the help of a supercapacitor.
 
 - Work with :
 
@@ -32,21 +27,20 @@
 [![jeedom](https://img.shields.io/badge/jeedom-94CA02?style=for-the-badge&logo=jeedom&logoColor=white)](https://www.jeedom.com/)
 [![domoticz](https://img.shields.io/badge/domoticz-0078C1?style=for-the-badge&logo=domoticz&logoColor=white)](https://www.domoticz.com/)
 
-## Electronic
+- Created with : 
 
-[`esp32/src`](/esp32/src) : The code is made to be sent on an ESP32 on an electronic card
+[![espidf](https://img.shields.io/badge/espressif%20idf-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://github.com/espressif/esp-idf)
+[![vscode](https://img.shields.io/badge/visual%20studio%20code-0078d7?style=for-the-badge&logo=visual-studio-code&logoColor=white)](https://www.espressif.com/)
+
+## Electronic
+![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
 
 | Top Side | Bottom Side | PCB in the Linky meter |
 |-----|-----|-----|
 | ![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square) | ![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square) | ![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square) | 
 
-#### Schematic
-
-[`pcb/Schematic_LINKY_ESP32.pdf`](pcb/Schematic_LINKY_ESP32.pdf)
-
 #### PCB
-
-[`pcb/Gerber_PCB_LINKY_ESP32.zip`](pcb/Gerber_PCB_LINKY_ESP32.zip)
+![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
 
 | Top Side  | Bottom Side |
 | ------------- | ------------- |
@@ -55,47 +49,8 @@
 ## Installation
 
 #### ESP32 :satellite:
-Compile and send [`esp32/src`](/esp32/src) files to the ESP32
+Compile and send [`firmware`](/esp32/src) files to the ESP32-C6
 
-#### DataBase MySQL :globe_with_meridians:
-Create a `Linky` Database
-Copy the [.env_sample](/webserver/.env_sample) to `.env` and fill with your database logins
-
-#### WebPage :computer:
-Host the website available on [`webserver/`](/webserver)
-```bash
-cd webserver
-#Installation
-npm install
-npx prisma generate
-npx prisma db push
-#Start
-npm start
-```
-
-## Running Tests
-Start the system with USB cable and serial monitor opened and you should see
-
-```
-Starting...
-Connecting to [WIFI_SSID] ...
-WiFi connected
-IP address: 192.168.43.185
-Getting config from server...OK
-Getting time from NTP...OK
-Disconecting from wifi...OK
-Data stored: 0 - BASE:1647
-Data stored: 1 - BASE:1647
-Data stored: 2 - BASE:1647
-Preparing json data... OK
-Connecting to [WIFI_SSID] ...
-WiFi connected
-IP address: 192.168.43.185
-Getting config from server...OK
-Getting time from NTP...OK
-Sending data to server... OK: 200
-Disconecting from wifi...OK
-```
 ## Demo
 
 #### Web example
@@ -104,7 +59,7 @@ Disconecting from wifi...OK
 
 #### MQTT example - Home Assistant
 
-![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square)
+![mqttexample](img/MQTT_Example.png)
 
 #### Zigbee example - Home Assistant
 
