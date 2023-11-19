@@ -20,7 +20,6 @@ body:
       label: Firmware version
       description: What version of our software are you running?
       options:
-        - None
         - Other / Don't Know
         - V2.x.x
         - V3.0.x
