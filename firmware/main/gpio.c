@@ -332,7 +332,15 @@ float gpio_get_vusb()
     int vusb_level = gpio_get_level(V_USB_PIN);
     ESP_LOGW(TAG, "vUSB: %ld, ret: %d", vUSB, vusb_level);
 
-    return (float)vUSB / 1000;
+    // return (float)vUSB / 1000;
+    if (vusb_level)
+    {
+        return 5.0;
+    }
+    else
+    {
+        return 0.0;
+    }
 }
 
 void gpio_pairing_button_task(void *pvParameters)
