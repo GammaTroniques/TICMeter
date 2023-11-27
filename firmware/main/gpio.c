@@ -330,7 +330,7 @@ float gpio_get_vusb()
 
     uint32_t vUSB = (vADC * 280) / 180;
     int vusb_level = gpio_get_level(V_USB_PIN);
-    ESP_LOGW(TAG, "vUSB: %ld, ret: %d", vUSB, vusb_level);
+    // ESP_LOGW(TAG, "vUSB: %ld, ret: %d", vUSB, vusb_level);
 
     // return (float)vUSB / 1000;
     if (vusb_level)
