@@ -1,0 +1,47 @@
+name: Bug Report
+description: Report a problem with the code or the system
+labels: ["Status : Opened 📬​", "Type : Bug 🪲​"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting !
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: The problem encountered
+      description: Describe as much information as possible
+      placeholder: What I did, what I saw...
+    validations:
+      required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: Firmware version
+      description: What version of our software are you running?
+      options:
+        - Other / Don't Know
+        - V2.x.x
+        - V3.0.x
+        - V3.1.x or more
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: bug-reproduction
+    attributes:
+      label: Steps for reproducing the error
+      description: Describe the stages in detail
+      placeholder: What you need to do...
+  - type: textarea
+    id: test
+    attributes:
+      label: What I've already tested
+      description: Describe as much information as possible
+      placeholder: I tried to do...
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: shell
