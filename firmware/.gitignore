@@ -3,3 +3,4 @@ managed_components/*
 sendBin.bat
 venv/
 .cache/
+version.c
