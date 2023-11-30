@@ -205,6 +205,7 @@ void fetchLinkyDataTask(void *pvParameters)
         esp_light_sleep_start();
       }
     }
+    ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
     if (!linky_update() ||
         !linky_presence())
     {
@@ -233,7 +234,7 @@ void fetchLinkyDataTask(void *pvParameters)
           ESP_LOGI(MAIN_TAG, "POST: %s", json);
           wifi_send_to_server(json);
         }
-        if (gpio_get_vcondo() > 3.8)
+        if (gpio_get_vusb() > 3)
         {
           ota_version_t version;
           ota_get_latest(&version);
@@ -260,7 +261,7 @@ void fetchLinkyDataTask(void *pvParameters)
         goto send_error;
       }
 
-      if (gpio_get_vcondo() > 3.8)
+      if (gpio_get_vusb() > 3)
       {
         ota_version_t version;
         ota_get_latest(&version);
