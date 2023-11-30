@@ -205,7 +205,6 @@ int ota_get_latest(ota_version_t *version)
         {
             break;
         }
-        ESP_LOGI(TAG, "open %s", ota_versions_url[i].cert);
         FILE *file = fopen(ota_versions_url[i].cert, "r");
         if (file == NULL)
         {
@@ -667,7 +666,7 @@ static esp_err_t ota_https_event_handler(esp_http_client_event_t *evt)
     switch (evt->event_id)
     {
     case HTTP_EVENT_ON_CONNECTED:
-        ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
+        // ESP_LOGI(TAG, "HTTP_EVENT_ON_CONNECTED");
         ota_version_buffer_size = 0;
         break;
     case HTTP_EVENT_ERROR:
@@ -675,7 +674,7 @@ static esp_err_t ota_https_event_handler(esp_http_client_event_t *evt)
         break;
     case HTTP_EVENT_ON_DATA:
     {
-        ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+        // ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
         if (!esp_http_client_is_chunked_response(evt->client))
         {
             ota_version_buffer = realloc(ota_version_buffer, ota_version_buffer_size + evt->data_len + 1);
