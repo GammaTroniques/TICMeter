@@ -364,71 +364,62 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         break;
     case MQTT_EVENT_DATA:
     {
-        char topic[100] = {0};
-        memcpy(topic, event->topic, event->topic_len); // copy to not const string (add \0)
-        if (strcmp(topic, MQTT_ID "/Refresh") == 0)
+        ESP_LOGI(TAG, "MQTT_EVENT_DATA: %.*s=%.*s", event->topic_len, event->topic, event->data_len, event->data);
+        char fullname[50];
+        char strValue[20];
+        strncpy(fullname, event->topic, event->topic_len);
+        fullname[event->topic_len] = '\0';
+        strncpy(strValue, event->data, event->data_len);
+        strValue[event->data_len] = '\0';
+        if (strlen(fullname) == 0)
         {
-            uint16_t refreshRate = atoi(event->data);
-            if (config_values.refreshRate != refreshRate)
-            {
-                config_values.refreshRate = refreshRate;
-                ESP_LOGI(TAG, "New RefreshRate = %d", config_values.refreshRate);
-            }
+            break;
         }
-        else
+        char *name = fullname + strlen(config_values.mqtt.topic) + 1; // +1 for '/'
+        for (int i = 0; i < LinkyLabelListSize; i++)
         {
-            ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-            char *name = strnstr(event->topic, MQTT_ID "/", sizeof(topic));
-            if (name != NULL)
+            if (strcmp(LinkyLabelList[i].label, name) == 0)
             {
-                name += strlen(MQTT_ID "/");
-
-                for (int i = 0; i < LinkyLabelListSize; i++)
+                if (LinkyLabelList[i].data == NULL)
                 {
-                    if (strcmp(LinkyLabelList[i].label, name) == 0)
-                    {
-                        if (LinkyLabelList[i].data == NULL)
-                        {
-                            ESP_LOGE(TAG, "Null pointer for %s", name);
-                            break;
-                        }
-                        ESP_LOGI(TAG, "Value for %s", name);
-                        switch (LinkyLabelList[i].type)
-                        {
-                        case UINT8:
-                            *(uint8_t *)LinkyLabelList[i].data = atoi(event->data);
-                            break;
-                        case UINT16:
-                            *(uint16_t *)LinkyLabelList[i].data = atoi(event->data);
-                            break;
-                        case UINT32:
-                            *(uint32_t *)LinkyLabelList[i].data = atol(event->data);
-                            break;
-                        case UINT64:
-                            *(uint64_t *)LinkyLabelList[i].data = atoll(event->data);
-                            break;
-                        case STRING:
-                            strncpy((char *)LinkyLabelList[i].data, event->data, LinkyLabelList[i].size);
-                            break;
-                        case UINT32_TIME:
-                            ((TimeLabel *)LinkyLabelList[i].data)->value = atol(event->data);
-                            break;
-                        case HA_NUMBER:
-                            uint16_t value = atoi(event->data);
-                            uint16_t *config = (uint16_t *)LinkyLabelList[i].data;
-                            if (value != *config)
-                            {
-                                *config = value;
-                                ESP_LOGI(TAG, "New config for %s = %d", name, *config);
-                                config_write();
-                            }
-                            break;
-                        default:
-                            break;
-                        }
-                        break;
-                    }
+                    ESP_LOGE(TAG, "Null pointer for %s", name);
+                    break;
                 }
+
+                switch (LinkyLabelList[i].type)
+                {
+                case UINT8:
+                    *(uint8_t *)LinkyLabelList[i].data = atoi(strValue);
+                    break;
+                case UINT16:
+                    *(uint16_t *)LinkyLabelList[i].data = atoi(strValue);
+                    break;
+                case UINT32:
+                    *(uint32_t *)LinkyLabelList[i].data = atol(strValue);
+                    break;
+                case UINT64:
+                    *(uint64_t *)LinkyLabelList[i].data = atoll(strValue);
+                    break;
+                case STRING:
+                    strncpy((char *)LinkyLabelList[i].data, strValue, LinkyLabelList[i].size);
+                    break;
+                case UINT32_TIME:
+                    ((TimeLabel *)LinkyLabelList[i].data)->value = atol(strValue);
+                    break;
+                case HA_NUMBER:
+                    uint16_t value = atoi(strValue);
+                    uint16_t *config = (uint16_t *)LinkyLabelList[i].data;
+                    if (value != *config)
+                    {
+                        *config = value;
+                        ESP_LOGI(TAG, "Set %s = %d", name, *config);
+                        config_write();
+                    }
+                    break;
+                default:
+                    break;
+                }
+                break;
             }
         }
     }

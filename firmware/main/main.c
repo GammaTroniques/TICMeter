@@ -44,6 +44,9 @@
 #include "tuya.h"
 #include "ota.h"
 
+#include "esp_heap_trace.h"
+#include "esp_err.h"
+
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -60,7 +63,26 @@
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
-
+char logs[1024];
+static heap_trace_record_t trace_record[1000];
+void esp_heap_trace_alloc_hook(void *ptr, size_t size, uint32_t caps)
+{
+  int len = strlen(logs);
+  if (len + 100 > sizeof(logs))
+  {
+    return;
+  }
+  sprintf(logs + len, "Alloc: %p, size: %d, caps: %ld\n", ptr, size, caps);
+}
+void esp_heap_trace_free_hook(void *ptr)
+{
+  int len = strlen(logs);
+  if (len + 100 > sizeof(logs))
+  {
+    return;
+  }
+  sprintf(logs + len, "Free: %p\n", ptr);
+}
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -74,10 +96,22 @@ TaskHandle_t noConfigLedTaskHandle = NULL;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
+void logs_loop(void *pvParameters)
+{
+  while (1)
+  {
+    if (strlen(logs) > 0)
+    {
+      printf("%s", logs);
+      memset(logs, 0, sizeof(logs));
+    }
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+}
 
 void app_main(void)
 {
-  ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
+  ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
   gpio_init_pins();
   config_begin();
   gpio_boot_led_pattern();
@@ -177,6 +211,7 @@ void app_main(void)
   // start linky fetch task
 
   xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16 * 1024, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  // xTaskCreate(logs_loop, "logs_loop", 4 * 1024, NULL, 1, NULL);                                         // start logs loop task
 }
 
 void fetchLinkyDataTask(void *pvParameters)
@@ -185,7 +220,7 @@ void fetchLinkyDataTask(void *pvParameters)
   LinkyData dataArray[MAX_DATA_INDEX];
   unsigned int dataIndex = 0;
   linky_init(MODE_HISTORIQUE, RX_LINKY);
-
+  ESP_ERROR_CHECK(heap_trace_init_standalone(trace_record, 1000));
   while (1)
   {
   sleep:
@@ -206,6 +241,10 @@ void fetchLinkyDataTask(void *pvParameters)
       }
     }
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
+    ESP_LOGW(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
+    ESP_LOGW(MAIN_TAG, "Free internal heap memory: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL));
+    ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
+
     if (!linky_update() ||
         !linky_presence())
     {
@@ -312,5 +351,7 @@ void fetchLinkyDataTask(void *pvParameters)
     default:
       break;
     }
+    ESP_ERROR_CHECK(heap_trace_stop());
+    heap_trace_dump();
   }
 }
