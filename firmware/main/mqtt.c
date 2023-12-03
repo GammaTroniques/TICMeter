@@ -16,7 +16,6 @@
 #include "mqtt.h"
 #include "wifi.h"
 #include "gpio.h"
-// #include <ArduinoJson.h>
 #include "cJSON.h"
 #include "esp_ota_ops.h"
 #include "mbedtls/md.h"
@@ -30,6 +29,7 @@
 
 #define MQTT_NAME "TICMeter"
 #define MQTT_ID "TICMeter"
+#define MQTT_SEND_TIMEOUT 50000 // in ms
 #define MANUFACTURER "GammaTroniques"
 /*==============================================================================
  Local Macro
@@ -78,7 +78,6 @@ static void log_error_if_nonzero(const char *message, int error_code)
 static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor)
 {
     const esp_app_desc_t *app_desc = esp_app_get_description();
-
     cJSON *jsonDevice = cJSON_CreateObject(); // Create the root object
     cJSON_AddStringToObject(jsonDevice, "identifiers", MQTT_ID);
     cJSON_AddStringToObject(jsonDevice, "name", MQTT_NAME);
@@ -153,6 +152,8 @@ static void mqtt_send_ha(LinkyData *linkydata)
 
     char topic[150];
     char strValue[20];
+
+    ESP_LOGI(TAG, "Pre-send Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
 
     linkydata->timestamp = wifi_get_timestamp();
     for (int i = 0; i < LinkyLabelListSize; i++)
@@ -229,18 +230,21 @@ static void mqtt_send_ha(LinkyData *linkydata)
         }
         mqtt_sensors_count++;
         ESP_LOGD(TAG, "Publishing to  %s = %s", topic, strValue);
-        esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
+        // esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
+        esp_mqtt_client_enqueue(mqtt_client, topic, strValue, 0, 2, 0, true);
+        ESP_LOGI(TAG, "Outbox size filling: %d %s", esp_mqtt_client_get_outbox_size(mqtt_client), topic);
     }
-    time_t mqtt_send_timeout = MILLIS + 10000;
+    time_t mqtt_send_timeout = MILLIS + MQTT_SEND_TIMEOUT;
     ESP_LOGI(TAG, "Waiting for MQTT send done");
 
-    while ((mqtt_send_timeout > MILLIS) && mqtt_sent_count < mqtt_sensors_count)
+    while ((mqtt_send_timeout > MILLIS) && /*mqtt_sent_count < mqtt_sensors_count*/ esp_mqtt_client_get_outbox_size(mqtt_client) > 0)
     {
         if (mqtt_state != MQTT_CONNECTED)
         {
             break;
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
+        ESP_LOGW(TAG, "Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
     }
 
     if (mqtt_state == MQTT_FAILED)
@@ -249,7 +253,7 @@ static void mqtt_send_ha(LinkyData *linkydata)
         return;
     }
 
-    if (mqtt_sent_count < mqtt_sensors_count)
+    if (/*mqtt_sent_count < mqtt_sensors_count*/ esp_mqtt_client_get_outbox_size(mqtt_client) > 0)
     {
         ESP_LOGE(TAG, "Send Timeout: %d/%d", mqtt_sent_count, mqtt_sensors_count);
     }
@@ -327,7 +331,7 @@ void mqtt_setup_ha_discovery()
         }
 
         mqtt_create_sensor(mqttBuffer, config_topic, LinkyLabelList[i]);
-        esp_mqtt_client_publish(mqtt_client, config_topic, mqttBuffer, 0, 2, 1);
+        esp_mqtt_client_enqueue(mqtt_client, config_topic, mqttBuffer, 0, 2, 1, true);
         mqtt_sensors_count++;
     }
     ESP_LOGI(TAG, "Home Assistant Discovery done");
@@ -425,7 +429,7 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
     }
     break;
     case MQTT_EVENT_ERROR:
-        ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+        ESP_LOGI(TAG, "MQTT_EVENT_ERROR, msg_id=%d", event->msg_id);
         if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT)
         {
             log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
@@ -452,11 +456,13 @@ int mqtt_init(void)
 
     mqtt_state = MQTT_CONNECTING;
     char uri[200];
-    esp_mqtt_client_config_t mqtt_cfg = {};
-
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .session.message_retransmit_timeout = 500,
+        .outbox.limit = 2048,
+        .credentials.username = config_values.mqtt.username,
+        .credentials.authentication.password = config_values.mqtt.password,
+    };
     snprintf(uri, sizeof(uri), "mqtt://%s:%d", config_values.mqtt.host, config_values.mqtt.port);
-    mqtt_cfg.credentials.username = config_values.mqtt.username;
-    mqtt_cfg.credentials.authentication.password = config_values.mqtt.password;
     mqtt_cfg.broker.address.uri = uri;
 
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
@@ -475,7 +481,7 @@ int mqtt_send(LinkyData *linky)
         goto error;
     }
     wifi_sending = 1;
-    xTaskCreate(gpio_led_task_sending, "sendingLedTask", 2048, NULL, 1, NULL);
+    xTaskCreate(gpio_led_task_sending, "sendingLedTask", 4096, NULL, 1, NULL);
 
     err = esp_mqtt_client_start(mqtt_client);
     if (err != ESP_OK)
@@ -491,7 +497,7 @@ int mqtt_send(LinkyData *linky)
             char topic[150];
             snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, LinkyLabelList[i].label);
             esp_mqtt_client_subscribe(mqtt_client, topic, 1);
-            ESP_LOGW(TAG, "Subscribing to %s", topic);
+            ESP_LOGI(TAG, "Subscribing to %s", topic);
         }
     }
 
@@ -514,7 +520,6 @@ int mqtt_send(LinkyData *linky)
 
     esp_mqtt_client_disconnect(mqtt_client);
     esp_mqtt_client_stop(mqtt_client);
-
     wifi_sending = 0;
     return 1;
 error:
