@@ -58,6 +58,9 @@ static void linky_clear_data();
 Public Variable
 ===============================================================================*/
 // clang-format off
+
+uint32_t linky_free_heap_size = 0;
+
 const LinkyGroup LinkyLabelList[] =
 {   
     //     Name                          Label           DataPtr                             Type          MODE             UpdateType    Class          Icon                           ZB_CLUSTER_ID, ZB_ATTRIBUTE_ID
@@ -182,8 +185,8 @@ const LinkyGroup LinkyLabelList[] =
     {20,  "Début Pointe Mobile 3",           "DPM3",        &linky_data.std.DPM3,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     {21,  "Fin Pointe Mobile 3",             "FPM3",        &linky_data.std.FPM3,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
 
-    {22,  "Message court",                   "MSG1",        &linky_data.std.MSG1,          STRING,      32, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:message-text-outline",          0x0000, 0x0000,  },
-    {123, "Message Ultra court",             "MSG2",        &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:message-outline",               0x0000, 0x0000,  },
+    {22,  "Message court",                   "MSG1",        &linky_data.std.MSG1,          STRING,      32, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:message-text-outline",          0x0000, 0x0000,  },
+    {123, "Message Ultra court",             "MSG2",        &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:message-outline",               0x0000, 0x0000,  },
     {23,  "PRM",                             "PRM",         &linky_data.std.PRM,           STRING,      14, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     {143, "Relais",                          "RELAIS",      &linky_data.std.RELAIS,        STRING,       3, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:toggle-switch-outline",         0x0000, 0x0000,  },
     {144, "Index tarifaire en cours",        "NTARF",       &linky_data.std.NTARF,         STRING,       2, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
@@ -199,6 +202,7 @@ const LinkyGroup LinkyLabelList[] =
     {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,        0,          ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
     {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,        0,          ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
     {134, "Temps de fonctionnement",        "uptime",      NULL,                           UINT64,        0,          ANY,      REAL_TIME,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
+    {0,   "Free RAM",                       "free-ram",    &linky_free_heap_size,          UINT32,        0,          ANY,      REAL_TIME,  BYTES,       "",                                    0x0000, 0x0000,  },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
@@ -225,6 +229,7 @@ const char *const HADeviceClassStr[] = {
     [TEXT] = "",
     [TIME] = "duration",
     [BOOL] = "binary_sensor",
+    [BYTES] = "bytes",
 };
 
 const char *const HAUnitsStr[] = {
@@ -357,14 +362,14 @@ void linky_set_mode(linky_mode_t newMode)
         ESP_LOGE(TAG, "uart_param_config failed: %s", esp_err_to_name(ret));
         return;
     }
-    ESP_LOGI(TAG, "UART configured: pins RX:%d", linky_uart_rx);
+    ESP_LOGD(TAG, "UART configured: pins RX:%d", linky_uart_rx);
     ret = uart_set_pin(UART_NUM_1, UART_PIN_NO_CHANGE, linky_uart_rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "uart_set_pin failed: %s", esp_err_to_name(ret));
         return;
     }
-    ESP_LOGI(TAG, "UART set up");
+    ESP_LOGD(TAG, "UART set up");
 }
 
 /**
@@ -572,7 +577,7 @@ static char linky_decode()
         if (linky_checksum(label, value, time) != checksum[0]) // check the checksum with the label, data and time
         {
             // error: checksum is not correct, skip the field
-            ESP_LOGI(TAG, "ERROR: %s checksum is not correct (%c != %c)", label, linky_checksum(label, value, time), checksum[0]);
+            ESP_LOGE(TAG, "%s checksum is not correct (%c != %c)", label, linky_checksum(label, value, time), checksum[0]);
             continue;
         }
         else
