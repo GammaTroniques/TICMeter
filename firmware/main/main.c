@@ -65,23 +65,28 @@
 ===============================================================================*/
 char logs[1024];
 static heap_trace_record_t trace_record[1000];
+
 void esp_heap_trace_alloc_hook(void *ptr, size_t size, uint32_t caps)
 {
-  int len = strlen(logs);
-  if (len + 100 > sizeof(logs))
-  {
-    return;
-  }
-  sprintf(logs + len, "Alloc: %p, size: %d, caps: %ld\n", ptr, size, caps);
+  // if (heap_index >= sizeof(heap) / sizeof(heap_t))
+  // {
+  //   return;
+  // }
+  // heap[heap_index].addr = ptr;
+  // heap[heap_index].size = size;
+  // heap_index++;
 }
 void esp_heap_trace_free_hook(void *ptr)
 {
-  int len = strlen(logs);
-  if (len + 100 > sizeof(logs))
-  {
-    return;
-  }
-  sprintf(logs + len, "Free: %p\n", ptr);
+  // for (int i = 0; i < heap_index; i++)
+  // {
+  //   if (heap[i].addr == ptr)
+  //   {
+  //     heap[i].addr = NULL;
+  //     heap[i].size = 0;
+  //     break;
+  //   }
+  // }
 }
 /*==============================================================================
 Public Variable
@@ -96,22 +101,50 @@ TaskHandle_t noConfigLedTaskHandle = NULL;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
-void logs_loop(void *pvParameters)
-{
-  while (1)
-  {
-    if (strlen(logs) > 0)
-    {
-      printf("%s", logs);
-      memset(logs, 0, sizeof(logs));
-    }
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-  }
-}
-
 void app_main(void)
 {
   ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
+
+  switch (esp_reset_reason())
+  {
+  case ESP_RST_UNKNOWN:
+    ESP_LOGI(MAIN_TAG, "Reset reason: unknown");
+    break;
+  case ESP_RST_POWERON:
+    ESP_LOGI(MAIN_TAG, "Reset reason: power on");
+    break;
+  case ESP_RST_EXT:
+    ESP_LOGI(MAIN_TAG, "Reset reason: external");
+    break;
+  case ESP_RST_SW:
+    ESP_LOGI(MAIN_TAG, "Reset reason: software");
+    break;
+  case ESP_RST_PANIC:
+    ESP_LOGE(MAIN_TAG, "Reset reason: panic");
+    break;
+  case ESP_RST_INT_WDT:
+    ESP_LOGE(MAIN_TAG, "Reset reason: interrupt watchdog");
+    break;
+  case ESP_RST_TASK_WDT:
+    ESP_LOGE(MAIN_TAG, "Reset reason: task watchdog");
+    break;
+  case ESP_RST_WDT:
+    ESP_LOGE(MAIN_TAG, "Reset reason: watchdog");
+    break;
+  case ESP_RST_DEEPSLEEP:
+    ESP_LOGI(MAIN_TAG, "Reset reason: deep sleep");
+    break;
+  case ESP_RST_BROWNOUT:
+    ESP_LOGE(MAIN_TAG, "Reset reason: brownout: reset all peripherals...");
+    // esp_restart();
+    break;
+  case ESP_RST_SDIO:
+    ESP_LOGI(MAIN_TAG, "Reset reason: SDIO");
+    break;
+  default:
+    break;
+  }
+
   gpio_init_pins();
   config_begin();
   gpio_boot_led_pattern();
@@ -150,7 +183,7 @@ void app_main(void)
   if (gpio_get_vusb() < 3 && gpio_get_vcondo() < 3.5 && config_values.sleep && gpio_get_level(BOOT_PIN))
   {
     ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
-    esp_sleep_enable_timer_wakeup(10 * 1000000); // 10 second
+    esp_sleep_enable_timer_wakeup(20 * 1000000); // 10 second
     esp_deep_sleep_start();
   }
 
@@ -211,7 +244,6 @@ void app_main(void)
   // start linky fetch task
 
   xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16 * 1024, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
-  // xTaskCreate(logs_loop, "logs_loop", 4 * 1024, NULL, 1, NULL);                                         // start logs loop task
 }
 
 void fetchLinkyDataTask(void *pvParameters)
@@ -220,10 +252,11 @@ void fetchLinkyDataTask(void *pvParameters)
   LinkyData dataArray[MAX_DATA_INDEX];
   unsigned int dataIndex = 0;
   linky_init(MODE_HISTORIQUE, RX_LINKY);
-  ESP_ERROR_CHECK(heap_trace_init_standalone(trace_record, 1000));
+  uint32_t last_heap = esp_get_free_heap_size();
   while (1)
   {
   sleep:
+    linky_want_debug_frame = 1;
     uint32_t sleepTime = abs(config_values.refreshRate - 10);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
     while (sleepTime > 0)
@@ -240,11 +273,8 @@ void fetchLinkyDataTask(void *pvParameters)
         esp_light_sleep_start();
       }
     }
+    ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
-    ESP_LOGW(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
-    ESP_LOGW(MAIN_TAG, "Free internal heap memory: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL));
-    ESP_ERROR_CHECK(heap_trace_start(HEAP_TRACE_LEAKS));
-
     if (!linky_update() ||
         !linky_presence())
     {
@@ -252,7 +282,7 @@ void fetchLinkyDataTask(void *pvParameters)
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
       goto sleep;
     }
-    linky_print();
+    // linky_print();
     switch (config_values.mode)
     {
     case MODE_WEB: // send data to web server
@@ -293,6 +323,7 @@ void fetchLinkyDataTask(void *pvParameters)
       }
 
       ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
+      linky_free_heap_size = esp_get_free_heap_size();
       ret = mqtt_send(&linky_data);
       if (ret == 0)
       {
@@ -351,7 +382,8 @@ void fetchLinkyDataTask(void *pvParameters)
     default:
       break;
     }
-    ESP_ERROR_CHECK(heap_trace_stop());
-    heap_trace_dump();
+    ESP_LOGW(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
+    ESP_LOGW(MAIN_TAG, "Heap diff: %ld", last_heap - esp_get_free_heap_size());
+    last_heap = esp_get_free_heap_size();
   }
 }
