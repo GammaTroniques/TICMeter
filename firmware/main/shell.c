@@ -244,7 +244,7 @@ void shell_init()
       esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
 #endif
 
-  vprintf_like_t orig_log_output = esp_log_set_vprintf(null_printf);
+  // vprintf_like_t orig_log_output = esp_log_set_vprintf(null_printf);
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
   // vTaskDelay(1000 / portTICK_PERIOD_MS);
   // esp_log_set_vprintf(orig_log_output);
