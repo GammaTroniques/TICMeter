@@ -71,6 +71,7 @@ Function Implementation
 
 uint8_t wifi_init()
 {
+    ESP_LOGW(TAG, "wifi_init");
     esp_err_t err = ESP_OK;
     err = esp_netif_init();
     if (err != ESP_OK)
@@ -121,6 +122,7 @@ uint8_t wifi_init()
 
 uint8_t wifi_connect()
 {
+    ESP_LOGW(TAG, "wifi_connect");
     esp_err_t err = ESP_OK;
     if (wifi_state == WIFI_CONNECTED) // already connected
         return 1;
@@ -163,6 +165,11 @@ uint8_t wifi_connect()
     strncpy((char *)wifi_config.sta.ssid, config_values.ssid, sizeof(wifi_config.sta.ssid));
     strncpy((char *)wifi_config.sta.password, config_values.password, sizeof(wifi_config.sta.password));
 
+    err = esp_wifi_set_ps(WIFI_PS_NONE);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_ps failed with 0x%X", err);
+    }
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err != ESP_OK)
     {
