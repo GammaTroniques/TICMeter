@@ -40,6 +40,7 @@
 ===============================================================================*/
 typedef enum
 {
+    MQTT_DEINIT,
     MQTT_DISCONNETED,
     MQTT_CONNECTING,
     MQTT_CONNECTED,
@@ -60,7 +61,7 @@ esp_mqtt_client_handle_t mqtt_client = NULL;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
-static mqtt_state_t mqtt_state = 0;
+static mqtt_state_t mqtt_state = MQTT_DEINIT;
 static uint16_t mqtt_sent_count = 0;
 static uint16_t mqtt_sensors_count = 0;
 
@@ -144,6 +145,11 @@ uint8_t mqtt_prepare_publish(LinkyData *linkydata)
 {
     mqtt_sensors_count = 0;
     mqtt_sent_count = 0;
+    if (mqtt_state == MQTT_DEINIT)
+    {
+        ESP_LOGE(TAG, "Cant prepare data: MQTT not initialized");
+        return 0;
+    }
 
     static uint8_t HAConfigured = 0;
     uint8_t has_error = 0;
