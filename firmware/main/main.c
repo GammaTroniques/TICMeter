@@ -315,16 +315,20 @@ void fetchLinkyDataTask(void *pvParameters)
     case MODE_MQTT:
     case MODE_MQTT_HA: // send data to mqtt server
     {
-      int ret = wifi_connect();
+      linky_free_heap_size = esp_get_free_heap_size();
+      uint8_t ret = mqtt_prepare_publish(&linky_data);
+      if (ret == 0)
+      {
+        ESP_LOGE(MAIN_TAG, "Some data will not be sent, but we continue");
+      }
+      ret = wifi_connect();
       if (ret == 0)
       {
         ESP_LOGE(MAIN_TAG, "Wifi connection failed");
         goto send_error;
       }
-
       ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
-      linky_free_heap_size = esp_get_free_heap_size();
-      ret = mqtt_send(&linky_data);
+      ret = mqtt_send();
       if (ret == 0)
       {
         ESP_LOGE(MAIN_TAG, "MQTT send failed");

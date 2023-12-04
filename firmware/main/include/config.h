@@ -104,7 +104,7 @@ typedef struct
 typedef struct
 {
     char serialNumber[13];
-
+    char macAddress[13];
 } efuse_t;
 
 /*==============================================================================

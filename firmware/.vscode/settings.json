@@ -1,7 +1,7 @@
 {
   "idf.adapterTargetName": "esp32c6",
   "idf.flashType": "UART",
-  "idf.portWin": "COM22",
+  "idf.portWin": "COM8",
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",
   "C_Cpp.intelliSenseEngine": "default",
@@ -16,6 +16,10 @@
     "periph_ctrl.h": "c",
     "periph_defs.h": "c",
     "linky.h": "c",
-    "esp_console.h": "c"
+    "esp_console.h": "c",
+    "mqtt.h": "c",
+    "esp_efuse.h": "c",
+    "efuse_table.h": "c",
+    "esp_efuse_table.h": "c"
   }
 }

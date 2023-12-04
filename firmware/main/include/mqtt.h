@@ -77,6 +77,8 @@ extern void mqtt_setup_ha_discovery();
  *
  * @param linky
  */
-extern int mqtt_send(LinkyData *linky);
+extern int mqtt_send();
+
+extern uint8_t mqtt_prepare_publish(LinkyData *linky);
 
 #endif /* MQTT_H */
