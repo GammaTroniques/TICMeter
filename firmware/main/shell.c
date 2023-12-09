@@ -20,7 +20,8 @@
 #include "ota.h"
 #include "wifi.h"
 #include "nvs_flash.h"
-
+#include "esp_private/periph_ctrl.h"
+#include "soc/periph_defs.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -253,8 +254,12 @@ void shell_init()
 static int esp_reset_command(int argc, char **argv)
 {
   ESP_LOGI(TAG, "Resetting the device");
+  // periph_module_reset(PERIPH_PHY_MODULE);
 
-  esp_restart();
+  gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
+  gpio_set_level(GPIO_NUM_15, 0);
+
+  // esp_restart();
   return 0;
 }
 
