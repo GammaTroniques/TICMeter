@@ -19,6 +19,7 @@
 #include "mqtt.h"
 #include "ota.h"
 #include "wifi.h"
+#include "tests.h"
 #include "nvs_flash.h"
 #include "esp_private/periph_ctrl.h"
 #include "soc/periph_defs.h"
@@ -108,7 +109,7 @@ static int efuse_read(int argc, char **argv);
 static int efuse_write(int argc, char **argv);
 static int nvs_stats(int argc, char **argv);
 static int print_task_list(int argc, char **argv);
-
+static int start_test_command(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -173,6 +174,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"efuse-write",                 "Write efuse",                              &efuse_write,                       1, {"<serialnumber>"}, {"The serial number to write"}},
     {"nvs-stats",                   "Print nvs stats",                          &nvs_stats,                         0, {}, {}},
     {"task-list",                   "Print task list",                          &print_task_list,                   0, {}, {}},
+    {"start-test",                  "Start a test",                             &start_test_command,                1, {"<test-name>"}, {"Available tests: adc"}},
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -254,11 +256,8 @@ void shell_init()
 static int esp_reset_command(int argc, char **argv)
 {
   ESP_LOGI(TAG, "Resetting the device");
-  // periph_module_reset(PERIPH_PHY_MODULE);
-
   gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
   gpio_set_level(GPIO_NUM_15, 0);
-
   // esp_restart();
   return 0;
 }
@@ -797,5 +796,24 @@ static int print_task_list(int argc, char **argv)
   // char stats_buffer[1024];
   // vTaskList(stats_buffer);
   // printf("%s\n", stats_buffer);
+  return 0;
+}
+
+static int start_test_command(int argc, char **argv)
+{
+  if (argc != 2)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  char *test_name = argv[1];
+  for (int i = 0; i < tests_count; i++)
+  {
+    if (strcmp(test_name, tests_available_tests[i]) == 0)
+    {
+      start_test((tests_t)i);
+      return 0;
+    }
+  }
+  printf("Test not found\n");
   return 0;
 }
