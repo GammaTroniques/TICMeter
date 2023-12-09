@@ -32,6 +32,7 @@
 #define NTP_SERVER "pool.ntp.org"
 
 #define ESP_MAXIMUM_RETRY 4
+#define WIFI_CONNECT_FAIL_COUNT_BEFORE_RESET 10
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 /*==============================================================================
@@ -130,15 +131,11 @@ uint8_t wifi_connect()
         ESP_LOGI(TAG, "No Wifi SSID or password");
         return 0;
     }
-    if (wifi_timeout_counter > 3)
+    if (wifi_timeout_counter > WIFI_CONNECT_FAIL_COUNT_BEFORE_RESET)
     {
-        ESP_LOGE(TAG, "Too many wifi timeout, reset all peripherals (using deepsleep), restart");
-        // wifi_module_disable();
-        // wifi_module_enable();
-        esp_sleep_enable_timer_wakeup(2 * 1000000);
-        esp_deep_sleep_start();
-        // esp_restart();
-        // periph_module_reset(PERIPH_WIFI_MODULE);
+        ESP_LOGE(TAG, "Too many wifi timeout (%ld): Hard reset", wifi_timeout_counter);
+        gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
+        gpio_set_level(GPIO_NUM_15, 0);
         return 0;
     }
 
