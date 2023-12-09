@@ -256,7 +256,6 @@ void fetchLinkyDataTask(void *pvParameters)
   while (1)
   {
   sleep:
-    linky_want_debug_frame = 1;
     uint32_t sleepTime = abs(config_values.refreshRate - 10);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
     while (sleepTime > 0)
