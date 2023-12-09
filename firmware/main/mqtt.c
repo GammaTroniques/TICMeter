@@ -80,19 +80,26 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
 {
     const esp_app_desc_t *app_desc = esp_app_get_description();
     cJSON *jsonDevice = cJSON_CreateObject(); // Create the root object
-    cJSON_AddStringToObject(jsonDevice, "identifiers", MQTT_ID);
+    // cJSON_AddStringToObject(jsonDevice, "ids", MQTT_ID);
     cJSON_AddStringToObject(jsonDevice, "name", MQTT_NAME);
-    cJSON_AddStringToObject(jsonDevice, "model", app_desc->project_name);
-    cJSON_AddStringToObject(jsonDevice, "manufacturer", MANUFACTURER);
-    cJSON_AddStringToObject(jsonDevice, "sw_version", app_desc->version);
+    cJSON_AddStringToObject(jsonDevice, "mdl", app_desc->project_name);
+    cJSON_AddStringToObject(jsonDevice, "mf", MANUFACTURER);
+    cJSON_AddStringToObject(jsonDevice, "sw", app_desc->version);
+    // serial
+    cJSON *sn = cJSON_CreateArray();
+    cJSON *cns = cJSON_CreateArray();
+    cJSON_AddItemToArray(sn, cJSON_CreateString("SN"));
+    cJSON_AddItemToArray(sn, cJSON_CreateString(efuse_values.serialNumber));
+    cJSON_AddItemToObject(cns, "", sn);
+    cJSON_AddItemToObject(jsonDevice, "cns", cns);
 
     cJSON *sensorConfig = cJSON_CreateObject(); // Create the root object
     cJSON_AddStringToObject(sensorConfig, "~", config_values.mqtt.topic);
     cJSON_AddStringToObject(sensorConfig, "name", sensor.name);
     char unique_id[100];
     snprintf(unique_id, sizeof(unique_id), "TICMeter_%s_%s", efuse_values.macAddress + 6, sensor.label);
-    cJSON_AddStringToObject(sensorConfig, "unique_id", unique_id);
-    cJSON_AddStringToObject(sensorConfig, "object_id", unique_id);
+    cJSON_AddStringToObject(sensorConfig, "uniq_id", unique_id);
+    cJSON_AddStringToObject(sensorConfig, "obj_id", unique_id);
 
     char state_topic[100];
     snprintf(state_topic, sizeof(state_topic), "~/%s", sensor.label);
@@ -100,24 +107,24 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
 
     if (sensor.type == HA_NUMBER)
     {
-        cJSON_AddStringToObject(sensorConfig, "command_topic", state_topic);
+        cJSON_AddStringToObject(sensorConfig, "cmd_t", state_topic);
         cJSON_AddStringToObject(sensorConfig, "mode", "box");
         cJSON_AddNumberToObject(sensorConfig, "min", 30);
         cJSON_AddNumberToObject(sensorConfig, "max", 3600);
-        cJSON_AddStringToObject(sensorConfig, "retain", "true");
+        cJSON_AddStringToObject(sensorConfig, "ret", "true");
         cJSON_AddNumberToObject(sensorConfig, "qos", 2);
     }
     else
     {
-        cJSON_AddStringToObject(sensorConfig, "state_topic", state_topic);
+        cJSON_AddStringToObject(sensorConfig, "stat_t", state_topic);
     }
     if (sensor.device_class == TIMESTAMP)
     {
-        cJSON_AddStringToObject(sensorConfig, "value_template", "{{ as_datetime(value) }}");
+        cJSON_AddStringToObject(sensorConfig, "val_tpl", "{{ as_datetime(value) }}");
     }
     if (strlen(HADeviceClassStr[sensor.device_class]) > 0)
     {
-        cJSON_AddStringToObject(sensorConfig, "device_class", HADeviceClassStr[sensor.device_class]);
+        cJSON_AddStringToObject(sensorConfig, "dev_cla", HADeviceClassStr[sensor.device_class]);
     }
     if (strlen(sensor.icon) > 0)
     {
@@ -126,15 +133,15 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
 
     if (sensor.device_class != NONE_CLASS && sensor.device_class != TIMESTAMP)
     {
-        cJSON_AddStringToObject(sensorConfig, "unit_of_measurement", HAUnitsStr[sensor.device_class]);
+        cJSON_AddStringToObject(sensorConfig, "unit_of_meas", HAUnitsStr[sensor.device_class]);
     }
 
     if (sensor.realTime == REAL_TIME)
     {
-        cJSON_AddNumberToObject(sensorConfig, "expire_after", config_values.refreshRate * 4);
+        cJSON_AddNumberToObject(sensorConfig, "exp_aft", config_values.refreshRate * 4);
     }
 
-    cJSON_AddItemToObject(sensorConfig, "device", jsonDevice);
+    cJSON_AddItemToObject(sensorConfig, "dev", jsonDevice);
     char *jsonString = cJSON_PrintUnformatted(sensorConfig);
     strncpy(json, jsonString, 1024);
     free(jsonString);
@@ -485,6 +492,12 @@ int mqtt_send()
     {
         ESP_LOGI(TAG, "MQTT ERROR");
         goto error;
+    }
+
+    if (mqtt_client == NULL)
+    {
+        ESP_LOGW(TAG, "MQTT not initialized, initializing...");
+        mqtt_init();
     }
 
     err = esp_mqtt_client_start(mqtt_client);
