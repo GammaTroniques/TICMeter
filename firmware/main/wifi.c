@@ -71,7 +71,6 @@ Function Implementation
 
 uint8_t wifi_init()
 {
-    ESP_LOGW(TAG, "wifi_init");
     esp_err_t err = ESP_OK;
     err = esp_netif_init();
     if (err != ESP_OK)
@@ -122,7 +121,6 @@ uint8_t wifi_init()
 
 uint8_t wifi_connect()
 {
-    ESP_LOGW(TAG, "wifi_connect");
     esp_err_t err = ESP_OK;
     if (wifi_state == WIFI_CONNECTED) // already connected
         return 1;
@@ -132,7 +130,6 @@ uint8_t wifi_connect()
         ESP_LOGI(TAG, "No Wifi SSID or password");
         return 0;
     }
-
     if (wifi_timeout_counter > 3)
     {
         ESP_LOGE(TAG, "Too many wifi timeout, reset all peripherals (using deepsleep), restart");
@@ -149,7 +146,6 @@ uint8_t wifi_connect()
     // xTaskCreate(gpio_led_task_wifi_connecting, "gpio_led_task_wifi_connecting", 4096, NULL, 1, NULL); // start wifi connect led task
 
     s_retry_num = 0;
-    esp_wifi_set_ps(WIFI_PS_NONE);
     xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
 
     wifi_config_t wifi_config = {
