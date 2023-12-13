@@ -60,6 +60,7 @@ Public Variable
 // clang-format off
 
 uint32_t linky_free_heap_size = 0;
+uint64_t linky_uptime = 0;
 
 const LinkyGroup LinkyLabelList[] =
 {   
@@ -195,13 +196,12 @@ const LinkyGroup LinkyLabelList[] =
     {26,  "Profil du prochain jour",         "PJOURF+1",    &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                     0x0000, 0x0000,  },
     {27,  "Profil du prochain jour pointe",  "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      98, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                     0x0000, 0x0000,  },
     //---------------------------Home Assistant Specific ------------------------------------------------
-    {131, "Temps d'actualisation",          "currRfsh",     &config_values.refreshRate,    UINT16,        0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
-    {0,   "Temps d'actualisation",          "setRfsh",      &config_values.refreshRate,    HA_NUMBER,     0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
+    {131, "Temps d'actualisation",          "now-refresh",  &config_values.refreshRate,    UINT16,        0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
+    {0,   "Temps d'actualisation",          "set-refresh",  &config_values.refreshRate,    HA_NUMBER,     0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
  // {132, "Mode TIC",                       "mode-tic",    &mode,                          UINT16,        0,          ANY,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
  // {133, "Mode Elec",                      "mode-tri",    &linky_tree_phase,              UINT16,        0,          ANY,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,        0,          ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
-    {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,        0,          ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
-    {134, "Temps de fonctionnement",        "uptime",      NULL,                           UINT64,        0,          ANY,      REAL_TIME,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
+    {134, "Temps de fonctionnement",        "uptime",      &linky_uptime,                  UINT64,        0,          ANY,      REAL_TIME,  TIME,        "mdi:clock-time-eight-outline",      0x0000, 0x0000,  },
     {0,   "Free RAM",                       "free-ram",    &linky_free_heap_size,          UINT32,        0,          ANY,      REAL_TIME,  BYTES,       "",                                    0x0000, 0x0000,  },
 
 };
@@ -218,7 +218,7 @@ char linky_buffer[LINKY_BUFFER_SIZE] = {0}; // The UART buffer
 const char *const HADeviceClassStr[] = {
     [NONE_CLASS] = "",
     [CURRENT] = "current",
-    [POWER_VA] = "power",
+    [POWER_VA] = "apparent_power",
     [POWER_kVA] = "power",
     [POWER_W] = "power",
     [POWER_Q] = "power",
@@ -229,7 +229,7 @@ const char *const HADeviceClassStr[] = {
     [TEXT] = "",
     [TIME] = "duration",
     [BOOL] = "binary_sensor",
-    [BYTES] = "bytes",
+    [BYTES] = "",
 };
 
 const char *const HAUnitsStr[] = {
@@ -244,8 +244,9 @@ const char *const HAUnitsStr[] = {
     [TIMESTAMP] = "",
     [TENSION] = "V",
     [TEXT] = "",
-    [TIME] = "sec",
+    [TIME] = "s",
     [BOOL] = "",
+    [BYTES] = "bytes",
 };
 
 const char *const ha_sensors_str[] = {
@@ -389,7 +390,6 @@ static void linky_read()
     if (linky_want_debug_frame)
     {
         linky_create_debug_frame();
-        linky_want_debug_frame = false;
     }
     bool hasFrame = false;
     do
@@ -708,25 +708,29 @@ void linky_print()
  */
 static char linky_checksum(char *label, char *data, char *time)
 {
-    int S1 = 0;                                // sum of the ASCII codes of the characters in the label
-    for (int i = 0; i < strlen(label); i++)    // for each character in the label
-    {                                          //
-        S1 += label[i];                        // add the ASCII code of the label character to the sum
-    }                                          //
-    S1 += linky_group_separator;               // add the ASCII code of the separator to the sum
-    for (int i = 0; i < strlen(data); i++)     // for each character in the data
-    {                                          //
-        S1 += data[i];                         // add the ASCII code of the data character to the sum
-    }                                          //
-    if (linky_mode == MODE_STANDARD)           // if the mode is standard
-    {                                          //
-        S1 += linky_group_separator;           // add the ASCII code of the separator to the sum
-        for (int i = 0; i < strlen(time); i++) // for each character in the time
-        {                                      //
-            S1 += time[i];                     // add the ASCII code of the time character to the sum
-        }                                      //
-    }                                          //
-    return (S1 & 0x3F) + 0x20;                 // return the checksum
+    int S1 = 0;                                    // sum of the ASCII codes of the characters in the label
+    for (int i = 0; i < strlen(label); i++)        // for each character in the label
+    {                                              //
+        S1 += label[i];                            // add the ASCII code of the label character to the sum
+    }                                              //
+    S1 += linky_group_separator;                   // add the ASCII code of the separator to the sum
+    for (int i = 0; i < strlen(data); i++)         // for each character in the data
+    {                                              //
+        S1 += data[i];                             // add the ASCII code of the data character to the sum
+    }                                              //
+    if (linky_mode == MODE_STANDARD)               // if the mode is standard
+    {                                              //
+        S1 += linky_group_separator;               // add the ASCII code of the separator to the sum
+        if (time != NULL && strlen(time) != 0)     //
+        {                                          //
+            for (int i = 0; i < strlen(time); i++) // for each character in the time
+            {                                      //
+                S1 += time[i];                     // add the ASCII code of the time character to the sum
+            }                                      //
+            S1 += linky_group_separator;           //
+        }                                          //
+    }                                              //
+    return (S1 & 0x3F) + 0x20;                     // return the checksum
 }
 
 static time_t linky_decode_time(char *time)
@@ -749,7 +753,7 @@ static time_t linky_decode_time(char *time)
     struct tm tm;
     memset(&tm, 0, sizeof(struct tm));
     tm.tm_year = (time[1] - '0') * 10 + (time[2] - '0') + 100; // year since 1900
-    tm.tm_mon = (time[3] - '0') * 10 + (time[4] - '0') - 1;    // month since January [0-11]
+    tm.tm_mon = (time[3] - '0') * 10 + (time[4] - '0') - 1;    // month sinc S1 += linky_group_separator;e January [0-11]
     tm.tm_mday = (time[5] - '0') * 10 + (time[6] - '0');       // day of the month [1-31]
     tm.tm_hour = (time[7] - '0') * 10 + (time[8] - '0');       // hours since midnight [0-23]
     tm.tm_min = (time[9] - '0') * 10 + (time[10] - '0');       // minutes after the hour [0-59]

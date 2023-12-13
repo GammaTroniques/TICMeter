@@ -95,6 +95,7 @@ int8_t config_erase()
         .linkyMode = AUTO,
         .mode = MODE_MQTT_HA,
     };
+    snprintf(blank_config.mqtt.topic, sizeof(blank_config.mqtt.topic), "TICMeter/%s", efuse_values.macAddress + 6);
     config_values = blank_config;
     return 0;
 }
