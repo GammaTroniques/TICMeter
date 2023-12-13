@@ -271,6 +271,7 @@ extern uint8_t linky_tree_phase;
 extern uint8_t linky_reading;
 extern uint8_t linky_want_debug_frame;
 extern uint32_t linky_free_heap_size;
+extern uint64_t linky_uptime;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/

@@ -27,10 +27,10 @@
 #define STATIC_VALUE 0
 #define REAL_TIME 1
 
-#define MQTT_NAME "TICMeter"
-#define MQTT_ID "TICMeter"
+#define MQTT_ID "TICMeter"      // for the home assistant discovery
 #define MQTT_SEND_TIMEOUT 10000 // in ms
 #define MANUFACTURER "GammaTroniques"
+#define MQTT_QOS 1
 /*==============================================================================
  Local Macro
 ===============================================================================*/
@@ -46,6 +46,15 @@ typedef enum
     MQTT_CONNECTED,
     MQTT_FAILED
 } mqtt_state_t;
+
+typedef struct
+{
+    char name[20];
+    char unique_id_base[20];
+    char ha_identifier_topic[50]; // ADCO or ADSC home assistant topic
+    char ha_discovery_configured;
+    char ha_discovery_configured_temp;
+} mqtt_topic_t;
 
 /*==============================================================================
  Local Function Declaration
@@ -64,6 +73,7 @@ esp_mqtt_client_handle_t mqtt_client = NULL;
 static mqtt_state_t mqtt_state = MQTT_DEINIT;
 static uint16_t mqtt_sent_count = 0;
 static uint16_t mqtt_sensors_count = 0;
+static mqtt_topic_t mqtt_topics;
 
 /*==============================================================================
 Function Implementation
@@ -80,8 +90,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
 {
     const esp_app_desc_t *app_desc = esp_app_get_description();
     cJSON *jsonDevice = cJSON_CreateObject(); // Create the root object
-    // cJSON_AddStringToObject(jsonDevice, "ids", MQTT_ID);
-    cJSON_AddStringToObject(jsonDevice, "name", MQTT_NAME);
+    cJSON_AddStringToObject(jsonDevice, "name", mqtt_topics.name);
     cJSON_AddStringToObject(jsonDevice, "mdl", app_desc->project_name);
     cJSON_AddStringToObject(jsonDevice, "mf", MANUFACTURER);
     cJSON_AddStringToObject(jsonDevice, "sw", app_desc->version);
@@ -96,14 +105,18 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     cJSON *sensorConfig = cJSON_CreateObject(); // Create the root object
     cJSON_AddStringToObject(sensorConfig, "~", config_values.mqtt.topic);
     cJSON_AddStringToObject(sensorConfig, "name", sensor.name);
-    char unique_id[100];
-    snprintf(unique_id, sizeof(unique_id), "TICMeter_%s_%s", efuse_values.macAddress + 6, sensor.label);
-    cJSON_AddStringToObject(sensorConfig, "uniq_id", unique_id);
-    cJSON_AddStringToObject(sensorConfig, "obj_id", unique_id);
+    char uniq_id[50];
+    snprintf(uniq_id, sizeof(uniq_id), "%s_%s", mqtt_topics.unique_id_base, sensor.label);
+    cJSON_AddStringToObject(sensorConfig, "uniq_id", uniq_id);
+    cJSON_AddStringToObject(sensorConfig, "obj_id", uniq_id);
 
     char state_topic[100];
     snprintf(state_topic, sizeof(state_topic), "~/%s", sensor.label);
-    snprintf(config_topic, 100, "homeassistant/%s/%s/%s/config", ha_sensors_str[sensor.type], MQTT_ID, sensor.label);
+    snprintf(config_topic, sizeof(state_topic), "homeassistant/%s/%s/%s/config", ha_sensors_str[sensor.type], mqtt_topics.name, sensor.label);
+    if (strcmp(sensor.label, "ADCO") == 0 || strcmp(sensor.label, "ADSC") == 0)
+    {
+        strncpy(mqtt_topics.ha_identifier_topic, config_topic, sizeof(mqtt_topics.ha_identifier_topic));
+    }
 
     if (sensor.type == HA_NUMBER)
     {
@@ -158,12 +171,12 @@ uint8_t mqtt_prepare_publish(LinkyData *linkydata)
         return 0;
     }
 
-    static uint8_t HAConfigured = 0;
     uint8_t has_error = 0;
-    if (config_values.mode == MODE_MQTT_HA && HAConfigured == 0)
+    mqtt_topics.ha_discovery_configured_temp = 0;
+    if (config_values.mode == MODE_MQTT_HA && mqtt_topics.ha_discovery_configured == 0)
     {
+        ESP_LOGW(TAG, "Home Assistant Discovery not configured, configuring...");
         mqtt_setup_ha_discovery(linkydata);
-        HAConfigured = 1;
     }
 
     char topic[150];
@@ -247,7 +260,7 @@ uint8_t mqtt_prepare_publish(LinkyData *linkydata)
         mqtt_sensors_count++;
         ESP_LOGD(TAG, "Publishing to  %s = %s", topic, strValue);
         // esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
-        int ret = esp_mqtt_client_enqueue(mqtt_client, topic, strValue, 0, 2, 0, true);
+        int ret = esp_mqtt_client_enqueue(mqtt_client, topic, strValue, 0, MQTT_QOS, 0, true);
         if (ret == -1)
         {
             ESP_LOGE(TAG, "Error while enqueue: %d", ret);
@@ -335,8 +348,6 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
-    // esp_mqtt_client_handle_t client = event->client;
-    // int msg_id;
     switch ((esp_mqtt_event_id_t)event_id)
     {
     case MQTT_EVENT_CONNECTED:
@@ -354,6 +365,12 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
                 esp_mqtt_client_subscribe(mqtt_client, topic, 1);
                 ESP_LOGI(TAG, "Subscribing to %s", topic);
             }
+        }
+
+        if (config_values.mode == MODE_MQTT_HA && strlen(mqtt_topics.ha_identifier_topic) > 0)
+        {
+            esp_mqtt_client_subscribe(mqtt_client, mqtt_topics.ha_identifier_topic, 1);
+            ESP_LOGI(TAG, "Subscribing to %s", mqtt_topics.ha_identifier_topic);
         }
         break;
     case MQTT_EVENT_DISCONNECTED:
@@ -373,16 +390,27 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         break;
     case MQTT_EVENT_DATA:
     {
-        ESP_LOGI(TAG, "MQTT_EVENT_DATA: %.*s=%.*s", event->topic_len, event->topic, event->data_len, event->data);
+        ESP_LOGI(TAG, "MQTT_EVENT_DATA: %.*s", event->topic_len, event->topic);
         char fullname[50];
-        char strValue[20];
+        char strValue[512]; // prevent buffer overflow with long string (ha discovery)
         strncpy(fullname, event->topic, event->topic_len);
         fullname[event->topic_len] = '\0';
         strncpy(strValue, event->data, event->data_len);
         strValue[event->data_len] = '\0';
+
         if (strlen(fullname) == 0)
         {
             break;
+        }
+        if (config_values.mode == MODE_MQTT_HA)
+        {
+            if (strcmp(fullname, mqtt_topics.ha_identifier_topic) == 0)
+            {
+                ESP_LOGI(TAG, "Home Assistant discovery is already configured");
+                mqtt_topics.ha_discovery_configured_temp = 1;
+                mqtt_topics.ha_discovery_configured = 1;
+                break;
+            }
         }
         char *name = fullname + strlen(config_values.mqtt.topic) + 1; // +1 for '/'
         for (int i = 0; i < LinkyLabelListSize; i++)
@@ -459,6 +487,8 @@ int mqtt_init(void)
         return -1;
     }
 
+    snprintf(mqtt_topics.name, sizeof(mqtt_topics.name), MQTT_ID "_%s", efuse_values.macAddress + 6);
+    snprintf(mqtt_topics.unique_id_base, sizeof(mqtt_topics.unique_id_base), "TICMeter_%s_", efuse_values.macAddress + 6);
     mqtt_state = MQTT_CONNECTING;
     char uri[200];
     snprintf(uri, sizeof(uri), "mqtt://%s:%d", config_values.mqtt.host, config_values.mqtt.port);
@@ -469,6 +499,7 @@ int mqtt_init(void)
         .credentials.authentication.password = config_values.mqtt.password,
         .task.priority = 1,
         .broker.address.uri = uri,
+        .credentials.client_id = mqtt_topics.name,
     };
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
@@ -519,6 +550,8 @@ int mqtt_send()
         vTaskDelay(100 / portTICK_PERIOD_MS);
         ESP_LOGD(TAG, "Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
     }
+
+    mqtt_topics.ha_discovery_configured = mqtt_topics.ha_discovery_configured_temp;
 
     if (mqtt_state == MQTT_FAILED)
     {

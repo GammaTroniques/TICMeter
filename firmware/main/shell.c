@@ -14,6 +14,7 @@
 ===============================================================================*/
 #include "shell.h"
 #include "esp_ota_ops.h"
+#include "esp_timer.h"
 #include "gpio.h"
 #include "main.h"
 #include "mqtt.h"
@@ -258,7 +259,7 @@ static int esp_reset_command(int argc, char **argv)
   ESP_LOGI(TAG, "Resetting the device");
   gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
   gpio_set_level(GPIO_NUM_15, 0);
-  // esp_restart();
+  esp_restart();
   return 0;
 }
 
@@ -630,6 +631,7 @@ static int info_command(int argc, char **argv)
   printf("Git tag: %s\n", GIT_TAG);
   printf("Git branch: %s\n", GIT_BRANCH);
   printf("Build time: %s\n", BUILD_TIME);
+  printf("Up time: %lld s\n", esp_timer_get_time() / 1000000);
   printf("%c", 3);
   return 0;
 }
