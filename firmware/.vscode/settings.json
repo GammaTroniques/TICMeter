@@ -22,6 +22,11 @@
     "efuse_table.h": "c",
     "esp_efuse_table.h": "c",
     "tests.h": "c",
-    "gpio.h": "c"
+    "gpio.h": "c",
+    "typeinfo": "c",
+    "chrono": "c",
+    "future": "c",
+    "system_error": "c",
+    "xlocale": "c"
   }
 }

@@ -20,6 +20,7 @@
 #include "driver/uart.h"
 
 #include "freertos/timers.h"
+#include "esp_timer.h"
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "esp_netif.h"
@@ -243,10 +244,10 @@ void app_main(void)
   }
   // start linky fetch task
 
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16 * 1024, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 }
 
-void fetchLinkyDataTask(void *pvParameters)
+void main_fetch_linky_data_task(void *pvParameters)
 {
 #define MAX_DATA_INDEX 5
   LinkyData dataArray[MAX_DATA_INDEX];
@@ -255,7 +256,7 @@ void fetchLinkyDataTask(void *pvParameters)
   uint32_t last_heap = esp_get_free_heap_size();
   while (1)
   {
-  sleep:
+    // sleep:
     uint32_t sleepTime = abs(config_values.refreshRate - 10);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
     while (sleepTime > 0)
@@ -279,9 +280,9 @@ void fetchLinkyDataTask(void *pvParameters)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed:");
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
-      goto sleep;
+      // goto sleep;
     }
-    // linky_print();
+
     switch (config_values.mode)
     {
     case MODE_WEB: // send data to web server
@@ -315,6 +316,7 @@ void fetchLinkyDataTask(void *pvParameters)
     case MODE_MQTT_HA: // send data to mqtt server
     {
       linky_free_heap_size = esp_get_free_heap_size();
+      linky_uptime = esp_timer_get_time() / 1000000;
       uint8_t ret = mqtt_prepare_publish(&linky_data);
       if (ret == 0)
       {
