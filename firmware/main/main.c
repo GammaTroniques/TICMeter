@@ -20,6 +20,7 @@
 #include "driver/uart.h"
 
 #include "freertos/timers.h"
+#include "esp_timer.h"
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "esp_netif.h"
@@ -43,6 +44,9 @@
 #include "zigbee.h"
 #include "tuya.h"
 #include "ota.h"
+
+#include "esp_heap_trace.h"
+#include "esp_err.h"
 
 /*==============================================================================
  Local Define
@@ -74,10 +78,50 @@ TaskHandle_t noConfigLedTaskHandle = NULL;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
-
 void app_main(void)
 {
-  ESP_LOGI(MAIN_TAG, "Starting ESP32 Linky...");
+  ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
+
+  switch (esp_reset_reason())
+  {
+  case ESP_RST_UNKNOWN:
+    ESP_LOGI(MAIN_TAG, "Reset reason: unknown");
+    break;
+  case ESP_RST_POWERON:
+    ESP_LOGI(MAIN_TAG, "Reset reason: power on");
+    break;
+  case ESP_RST_EXT:
+    ESP_LOGI(MAIN_TAG, "Reset reason: external");
+    break;
+  case ESP_RST_SW:
+    ESP_LOGI(MAIN_TAG, "Reset reason: software");
+    break;
+  case ESP_RST_PANIC:
+    ESP_LOGE(MAIN_TAG, "Reset reason: panic");
+    break;
+  case ESP_RST_INT_WDT:
+    ESP_LOGE(MAIN_TAG, "Reset reason: interrupt watchdog");
+    break;
+  case ESP_RST_TASK_WDT:
+    ESP_LOGE(MAIN_TAG, "Reset reason: task watchdog");
+    break;
+  case ESP_RST_WDT:
+    ESP_LOGE(MAIN_TAG, "Reset reason: watchdog");
+    break;
+  case ESP_RST_DEEPSLEEP:
+    ESP_LOGI(MAIN_TAG, "Reset reason: deep sleep");
+    break;
+  case ESP_RST_BROWNOUT:
+    ESP_LOGE(MAIN_TAG, "Reset reason: brownout: reset all peripherals...");
+    // esp_restart();
+    break;
+  case ESP_RST_SDIO:
+    ESP_LOGI(MAIN_TAG, "Reset reason: SDIO");
+    break;
+  default:
+    break;
+  }
+
   gpio_init_pins();
   config_begin();
   gpio_boot_led_pattern();
@@ -116,7 +160,7 @@ void app_main(void)
   if (gpio_get_vusb() < 3 && gpio_get_vcondo() < 3.5 && config_values.sleep && gpio_get_level(BOOT_PIN))
   {
     ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
-    esp_sleep_enable_timer_wakeup(10 * 1000000); // 10 second
+    esp_sleep_enable_timer_wakeup(20 * 1000000); // 10 second
     esp_deep_sleep_start();
   }
 
@@ -176,19 +220,19 @@ void app_main(void)
   }
   // start linky fetch task
 
-  xTaskCreate(fetchLinkyDataTask, "fetchLinkyDataTask", 16 * 1024, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 }
 
-void fetchLinkyDataTask(void *pvParameters)
+void main_fetch_linky_data_task(void *pvParameters)
 {
 #define MAX_DATA_INDEX 5
   LinkyData dataArray[MAX_DATA_INDEX];
   unsigned int dataIndex = 0;
   linky_init(MODE_HISTORIQUE, RX_LINKY);
-
+  uint32_t last_heap = esp_get_free_heap_size();
   while (1)
   {
-  sleep:
+    // sleep:
     uint32_t sleepTime = abs(config_values.refreshRate - 10);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
     while (sleepTime > 0)
@@ -198,6 +242,7 @@ void fetchLinkyDataTask(void *pvParameters)
       if (gpio_get_vusb() < 3 && config_values.sleep)
       {
         ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", sleepTime);
+        uart_set_wakeup_threshold(UART_NUM_0, 3);
         esp_sleep_enable_uart_wakeup(UART_NUM_0);
         esp_sleep_enable_ext1_wakeup(1ULL << V_USB_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
         esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
@@ -205,15 +250,16 @@ void fetchLinkyDataTask(void *pvParameters)
         esp_light_sleep_start();
       }
     }
+    ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
     if (!linky_update() ||
         !linky_presence())
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed:");
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
-      goto sleep;
+      // goto sleep;
     }
-    linky_print();
+
     switch (config_values.mode)
     {
     case MODE_WEB: // send data to web server
@@ -246,15 +292,21 @@ void fetchLinkyDataTask(void *pvParameters)
     case MODE_MQTT:
     case MODE_MQTT_HA: // send data to mqtt server
     {
-      int ret = wifi_connect();
+      linky_free_heap_size = esp_get_free_heap_size();
+      linky_uptime = esp_timer_get_time() / 1000000;
+      uint8_t ret = mqtt_prepare_publish(&linky_data);
+      if (ret == 0)
+      {
+        ESP_LOGE(MAIN_TAG, "Some data will not be sent, but we continue");
+      }
+      ret = wifi_connect();
       if (ret == 0)
       {
         ESP_LOGE(MAIN_TAG, "Wifi connection failed");
         goto send_error;
       }
-
       ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
-      ret = mqtt_send(&linky_data);
+      ret = mqtt_send();
       if (ret == 0)
       {
         ESP_LOGE(MAIN_TAG, "MQTT send failed");
@@ -312,5 +364,8 @@ void fetchLinkyDataTask(void *pvParameters)
     default:
       break;
     }
+    ESP_LOGW(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
+    ESP_LOGW(MAIN_TAG, "Heap diff: %ld", last_heap - esp_get_free_heap_size());
+    last_heap = esp_get_free_heap_size();
   }
 }

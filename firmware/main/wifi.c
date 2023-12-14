@@ -22,7 +22,9 @@
 #include <time.h>
 #include "esp_netif_sntp.h"
 #include "esp_mac.h"
-
+#include "esp_private/periph_ctrl.h"
+#include "soc/periph_defs.h"
+#include "esp_sleep.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -30,6 +32,7 @@
 #define NTP_SERVER "pool.ntp.org"
 
 #define ESP_MAXIMUM_RETRY 4
+#define WIFI_CONNECT_FAIL_COUNT_BEFORE_RESET 10
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
 /*==============================================================================
@@ -55,6 +58,7 @@ Public Variable
 ===============================================================================*/
 wifi_state_t wifi_state = WIFI_DISCONNECTED;
 uint8_t wifi_sending = 0;
+uint32_t wifi_timeout_counter = 0;
 
 /*==============================================================================
  Local Variable
@@ -112,6 +116,7 @@ uint8_t wifi_init()
         ESP_LOGE(TAG, "esp_event_handler_instance_register failed with 0x%X", err);
         return 0;
     }
+    s_wifi_event_group = xEventGroupCreate();
     return 1;
 }
 
@@ -126,16 +131,19 @@ uint8_t wifi_connect()
         ESP_LOGI(TAG, "No Wifi SSID or password");
         return 0;
     }
-    wifi_state = WIFI_CONNECTING;
-    xTaskCreate(gpio_led_task_wifi_connecting, "gpio_led_task_wifi_connecting", 4096, NULL, 1, NULL); // start wifi connect led task
+    if (wifi_timeout_counter > WIFI_CONNECT_FAIL_COUNT_BEFORE_RESET)
+    {
+        ESP_LOGE(TAG, "Too many wifi timeout (%ld): Hard reset", wifi_timeout_counter);
+        gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
+        gpio_set_level(GPIO_NUM_15, 0);
+        return 0;
+    }
 
-    // free heap memory
-    ESP_LOGW(TAG, "Free heap memory: %ld", esp_get_free_heap_size());
-    ESP_LOGW(TAG, "Free internal heap memory: %d", heap_caps_get_free_size(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL));
+    wifi_state = WIFI_CONNECTING;
+    // xTaskCreate(gpio_led_task_wifi_connecting, "gpio_led_task_wifi_connecting", 4096, NULL, 1, NULL); // start wifi connect led task
 
     s_retry_num = 0;
-    esp_wifi_set_ps(WIFI_PS_NONE);
-    s_wifi_event_group = xEventGroupCreate();
+    xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -150,6 +158,11 @@ uint8_t wifi_connect()
     strncpy((char *)wifi_config.sta.ssid, config_values.ssid, sizeof(wifi_config.sta.ssid));
     strncpy((char *)wifi_config.sta.password, config_values.password, sizeof(wifi_config.sta.password));
 
+    err = esp_wifi_set_ps(WIFI_PS_NONE);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_ps failed with 0x%X", err);
+    }
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err != ESP_OK)
     {
@@ -189,6 +202,7 @@ uint8_t wifi_connect()
     if (bits & WIFI_CONNECTED_BIT)
     {
         ESP_LOGI(TAG, "Connected to ap SSID:%s", (char *)wifi_config.sta.ssid);
+        wifi_timeout_counter = 0;
         return 1;
     }
     else if (bits & WIFI_FAIL_BIT)
@@ -200,8 +214,9 @@ uint8_t wifi_connect()
     else
     {
         ESP_LOGE(TAG, "Failed to connect to SSID:%s Timeout", (char *)wifi_config.sta.ssid);
+        wifi_timeout_counter++;
         wifi_state = WIFI_FAILED;
-        gpio_start_led_pattern(PATTERN_WIFI_FAILED);
+        // gpio_start_led_pattern(PATTERN_WIFI_FAILED);
         wifi_disconnect();
         return 0;
     }
@@ -287,7 +302,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
 
 static void wifi_time_sync_notification_cb(struct timeval *tv)
 {
-    ESP_LOGW(TAG, "Notification of a time synchronization event");
+    // ESP_LOGW(TAG, "Notification of a time synchronization event");
 }
 
 time_t wifi_get_timestamp()
@@ -329,7 +344,7 @@ time_t wifi_get_timestamp()
         sntp_sync_status_t status = sntp_get_sync_status();
         if (status == SNTP_SYNC_STATUS_RESET)
         {
-            ESP_LOGE(TAG, "Failed to get time from NTP server, return last time: %d", status);
+            ESP_LOGE(TAG, "Failed to get time from NTP server, return last time");
         }
         // esp_netif_sntp_deinit();
     }
