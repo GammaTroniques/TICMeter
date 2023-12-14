@@ -64,31 +64,7 @@
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
-char logs[1024];
-static heap_trace_record_t trace_record[1000];
 
-void esp_heap_trace_alloc_hook(void *ptr, size_t size, uint32_t caps)
-{
-  // if (heap_index >= sizeof(heap) / sizeof(heap_t))
-  // {
-  //   return;
-  // }
-  // heap[heap_index].addr = ptr;
-  // heap[heap_index].size = size;
-  // heap_index++;
-}
-void esp_heap_trace_free_hook(void *ptr)
-{
-  // for (int i = 0; i < heap_index; i++)
-  // {
-  //   if (heap[i].addr == ptr)
-  //   {
-  //     heap[i].addr = NULL;
-  //     heap[i].size = 0;
-  //     break;
-  //   }
-  // }
-}
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -266,6 +242,7 @@ void main_fetch_linky_data_task(void *pvParameters)
       if (gpio_get_vusb() < 3 && config_values.sleep)
       {
         ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", sleepTime);
+        uart_set_wakeup_threshold(UART_NUM_0, 3);
         esp_sleep_enable_uart_wakeup(UART_NUM_0);
         esp_sleep_enable_ext1_wakeup(1ULL << V_USB_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
         esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
