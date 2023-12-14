@@ -16,6 +16,7 @@
 #include "linky.h"
 #include "esp_efuse.h"
 #include "efuse_table.h"
+#include "esp_efuse_table.h"
 #include "esp_vfs.h"
 #include "esp_spiffs.h"
 /*==============================================================================
@@ -94,6 +95,7 @@ int8_t config_erase()
         .linkyMode = AUTO,
         .mode = MODE_MQTT_HA,
     };
+    snprintf(blank_config.mqtt.topic, sizeof(blank_config.mqtt.topic), "TICMeter/%s", efuse_values.macAddress + 6);
     config_values = blank_config;
     return 0;
 }
@@ -477,7 +479,22 @@ static uint8_t config_efuse_init()
 
 uint8_t config_efuse_read()
 {
-    esp_err_t err = esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA_SERIALNUMBER, efuse_values.serialNumber, (sizeof(efuse_values.serialNumber) - 1) * 8);
+    esp_err_t err;
+
+    // read mac
+    uint8_t mac[6];
+    err = esp_efuse_read_field_blob(ESP_EFUSE_MAC_FACTORY, mac, sizeof(mac) * 8);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error 0x%x reading mac!\n", err);
+    }
+    else
+    {
+        snprintf(efuse_values.macAddress, sizeof(efuse_values.macAddress), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        ESP_LOGI(TAG, "MAC address: %s", efuse_values.macAddress);
+    }
+
+    err = esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA_SERIALNUMBER, efuse_values.serialNumber, (sizeof(efuse_values.serialNumber) - 1) * 8);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error 0x%x reading serial number!\n", err);

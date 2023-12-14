@@ -58,27 +58,31 @@ static void linky_clear_data();
 Public Variable
 ===============================================================================*/
 // clang-format off
+
+uint32_t linky_free_heap_size = 0;
+uint64_t linky_uptime = 0;
+
 const LinkyGroup LinkyLabelList[] =
 {   
     //     Name                          Label           DataPtr                             Type          MODE             UpdateType    Class          Icon                           ZB_CLUSTER_ID, ZB_ATTRIBUTE_ID
     //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     //--------------------------- MODE HISTORIQUE --------------------------------
-    {101, "Identifiant",                     "ADCO",        &linky_data.hist.ADCO,         STRING,      12, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",          0x0000, 0x0000,  },
+    {101, "Identifiant",                     "ADCO",        &linky_data.hist.ADCO,         STRING,      12, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",          0x0702, 0x0308,  },
     {102, "Option tarifaire",                "OPTARIF",     &linky_data.hist.OPTARIF,      STRING,       4, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:cash-multiple",                 0x0000, 0x0000,  },
-    {103, "Intensité souscrite",             "ISOUSC",      &linky_data.hist.ISOUSC,       UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0000, 0x0000,  },
+    {103, "Intensité souscrite",             "ISOUSC",      &linky_data.hist.ISOUSC,       UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0B01, 0x000D,  },
 
     {104, "Index Base",                      "BASE",        &linky_data.hist.BASE,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0000,  },
-    {105, "Index Heures Creuses",            "HCHC",        &linky_data.hist.HCHC,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {106, "Index Heures Pleines",            "HCHP",        &linky_data.hist.HCHP,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {107, "Index Heures Normales",           "EJPHN",       &linky_data.hist.EJPHN,        UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {108, "Index Heures de Pointe Mobile",   "EJPHPM",      &linky_data.hist.EJPHPM,       UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
+    {105, "Index Heures Creuses",            "HCHC",        &linky_data.hist.HCHC,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  },
+    {106, "Index Heures Pleines",            "HCHP",        &linky_data.hist.HCHP,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  },
+    {107, "Index Heures Normales",           "EJPHN",       &linky_data.hist.EJPHN,        UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  },
+    {108, "Index Heures de Pointe Mobile",   "EJPHPM",      &linky_data.hist.EJPHPM,       UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  },
     {0,   "Préavis Début EJP",               "PEJP",        &linky_data.hist.PEJP,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  BOOL,        "mdi:clock",                         0x0000, 0x0000,  },
-    {109, "Heures Creuses Jours Bleus",      "BBRHCJB",     &linky_data.hist.BBRHCJB,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {110, "Heures Pleines Jours Bleus",      "BBRHPJB",     &linky_data.hist.BBRHPJB,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {111, "Heures Creuses Jours Blancs",     "BBRHCJW",     &linky_data.hist.BBRHCJW,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {112, "Heures Pleines Jours Blancs",     "BBRHPJW",     &linky_data.hist.BBRHPJW,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {113, "Heures Creuses Jours Rouges",     "BBRHCJR",     &linky_data.hist.BBRHCJR,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {114, "Heures Pleines Jours Rouges",     "BBRHPJR",     &linky_data.hist.BBRHPJR,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
+    {109, "Heures Creuses Jours Bleus",      "BBRHCJB",     &linky_data.hist.BBRHCJB,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  },
+    {110, "Heures Pleines Jours Bleus",      "BBRHPJB",     &linky_data.hist.BBRHPJB,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  },
+    {111, "Heures Creuses Jours Blancs",     "BBRHCJW",     &linky_data.hist.BBRHCJW,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0104,  },
+    {112, "Heures Pleines Jours Blancs",     "BBRHPJW",     &linky_data.hist.BBRHPJW,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0106,  },
+    {113, "Heures Creuses Jours Rouges",     "BBRHCJR",     &linky_data.hist.BBRHCJR,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0108,  },
+    {114, "Heures Pleines Jours Rouges",     "BBRHPJR",     &linky_data.hist.BBRHPJR,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x010A,  },
 
     {115, "Période tarifaire en cours",      "PTEC",        &linky_data.hist.PTEC,         STRING,       4, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",                0x0000, 0x0000,  },
     {116, "Couleur du lendemain",            "DEMAIN",      &linky_data.hist.DEMAIN,       STRING,       4, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
@@ -182,8 +186,8 @@ const LinkyGroup LinkyLabelList[] =
     {20,  "Début Pointe Mobile 3",           "DPM3",        &linky_data.std.DPM3,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     {21,  "Fin Pointe Mobile 3",             "FPM3",        &linky_data.std.FPM3,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
 
-    {22,  "Message court",                   "MSG1",        &linky_data.std.MSG1,          STRING,      32, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:message-text-outline",          0x0000, 0x0000,  },
-    {123, "Message Ultra court",             "MSG2",        &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,        "mdi:message-outline",               0x0000, 0x0000,  },
+    {22,  "Message court",                   "MSG1",        &linky_data.std.MSG1,          STRING,      32, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:message-text-outline",          0x0000, 0x0000,  },
+    {123, "Message Ultra court",             "MSG2",        &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:message-outline",               0x0000, 0x0000,  },
     {23,  "PRM",                             "PRM",         &linky_data.std.PRM,           STRING,      14, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     {143, "Relais",                          "RELAIS",      &linky_data.std.RELAIS,        STRING,       3, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:toggle-switch-outline",         0x0000, 0x0000,  },
     {144, "Index tarifaire en cours",        "NTARF",       &linky_data.std.NTARF,         STRING,       2, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
@@ -192,13 +196,13 @@ const LinkyGroup LinkyLabelList[] =
     {26,  "Profil du prochain jour",         "PJOURF+1",    &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                     0x0000, 0x0000,  },
     {27,  "Profil du prochain jour pointe",  "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      98, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                     0x0000, 0x0000,  },
     //---------------------------Home Assistant Specific ------------------------------------------------
-    {131, "Temps d'actualisation",          "currRfsh",     &config_values.refreshRate,    UINT16,        0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
-    {0,   "Temps d'actualisation",          "setRfsh",      &config_values.refreshRate,    HA_NUMBER,     0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
+    {131, "Temps d'actualisation",          "now-refresh",  &config_values.refreshRate,    UINT16,        0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
+    {0,   "Temps d'actualisation",          "set-refresh",  &config_values.refreshRate,    HA_NUMBER,     0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
  // {132, "Mode TIC",                       "mode-tic",    &mode,                          UINT16,        0,          ANY,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
  // {133, "Mode Elec",                      "mode-tri",    &linky_tree_phase,              UINT16,        0,          ANY,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
     {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,        0,          ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
-    {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,        0,          ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
-    {134, "Temps de fonctionnement",        "uptime",      NULL,                           UINT64,        0,          ANY,      REAL_TIME,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
+    {134, "Temps de fonctionnement",        "uptime",      &linky_uptime,                  UINT64,        0,          ANY,      REAL_TIME,  TIME,        "mdi:clock-time-eight-outline",      0x0000, 0x0000,  },
+    {0,   "Free RAM",                       "free-ram",    &linky_free_heap_size,          UINT32,        0,          ANY,      REAL_TIME,  BYTES,       "",                                    0x0000, 0x0000,  },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
@@ -214,7 +218,7 @@ char linky_buffer[LINKY_BUFFER_SIZE] = {0}; // The UART buffer
 const char *const HADeviceClassStr[] = {
     [NONE_CLASS] = "",
     [CURRENT] = "current",
-    [POWER_VA] = "power",
+    [POWER_VA] = "apparent_power",
     [POWER_kVA] = "power",
     [POWER_W] = "power",
     [POWER_Q] = "power",
@@ -225,6 +229,7 @@ const char *const HADeviceClassStr[] = {
     [TEXT] = "",
     [TIME] = "duration",
     [BOOL] = "binary_sensor",
+    [BYTES] = "",
 };
 
 const char *const HAUnitsStr[] = {
@@ -239,8 +244,9 @@ const char *const HAUnitsStr[] = {
     [TIMESTAMP] = "",
     [TENSION] = "V",
     [TEXT] = "",
-    [TIME] = "sec",
+    [TIME] = "s",
     [BOOL] = "",
+    [BYTES] = "bytes",
 };
 
 const char *const ha_sensors_str[] = {
@@ -357,14 +363,14 @@ void linky_set_mode(linky_mode_t newMode)
         ESP_LOGE(TAG, "uart_param_config failed: %s", esp_err_to_name(ret));
         return;
     }
-    ESP_LOGI(TAG, "UART configured: pins RX:%d", linky_uart_rx);
+    ESP_LOGD(TAG, "UART configured: pins RX:%d", linky_uart_rx);
     ret = uart_set_pin(UART_NUM_1, UART_PIN_NO_CHANGE, linky_uart_rx, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "uart_set_pin failed: %s", esp_err_to_name(ret));
         return;
     }
-    ESP_LOGI(TAG, "UART set up");
+    ESP_LOGD(TAG, "UART set up");
 }
 
 /**
@@ -384,7 +390,6 @@ static void linky_read()
     if (linky_want_debug_frame)
     {
         linky_create_debug_frame();
-        linky_want_debug_frame = false;
     }
     bool hasFrame = false;
     do
@@ -572,7 +577,7 @@ static char linky_decode()
         if (linky_checksum(label, value, time) != checksum[0]) // check the checksum with the label, data and time
         {
             // error: checksum is not correct, skip the field
-            ESP_LOGI(TAG, "ERROR: %s checksum is not correct (%c != %c)", label, linky_checksum(label, value, time), checksum[0]);
+            ESP_LOGE(TAG, "%s checksum is not correct (%c != %c)", label, linky_checksum(label, value, time), checksum[0]);
             continue;
         }
         else
@@ -703,25 +708,29 @@ void linky_print()
  */
 static char linky_checksum(char *label, char *data, char *time)
 {
-    int S1 = 0;                                // sum of the ASCII codes of the characters in the label
-    for (int i = 0; i < strlen(label); i++)    // for each character in the label
-    {                                          //
-        S1 += label[i];                        // add the ASCII code of the label character to the sum
-    }                                          //
-    S1 += linky_group_separator;               // add the ASCII code of the separator to the sum
-    for (int i = 0; i < strlen(data); i++)     // for each character in the data
-    {                                          //
-        S1 += data[i];                         // add the ASCII code of the data character to the sum
-    }                                          //
-    if (linky_mode == MODE_STANDARD)           // if the mode is standard
-    {                                          //
-        S1 += linky_group_separator;           // add the ASCII code of the separator to the sum
-        for (int i = 0; i < strlen(time); i++) // for each character in the time
-        {                                      //
-            S1 += time[i];                     // add the ASCII code of the time character to the sum
-        }                                      //
-    }                                          //
-    return (S1 & 0x3F) + 0x20;                 // return the checksum
+    int S1 = 0;                                    // sum of the ASCII codes of the characters in the label
+    for (int i = 0; i < strlen(label); i++)        // for each character in the label
+    {                                              //
+        S1 += label[i];                            // add the ASCII code of the label character to the sum
+    }                                              //
+    S1 += linky_group_separator;                   // add the ASCII code of the separator to the sum
+    for (int i = 0; i < strlen(data); i++)         // for each character in the data
+    {                                              //
+        S1 += data[i];                             // add the ASCII code of the data character to the sum
+    }                                              //
+    if (linky_mode == MODE_STANDARD)               // if the mode is standard
+    {                                              //
+        S1 += linky_group_separator;               // add the ASCII code of the separator to the sum
+        if (time != NULL && strlen(time) != 0)     //
+        {                                          //
+            for (int i = 0; i < strlen(time); i++) // for each character in the time
+            {                                      //
+                S1 += time[i];                     // add the ASCII code of the time character to the sum
+            }                                      //
+            S1 += linky_group_separator;           //
+        }                                          //
+    }                                              //
+    return (S1 & 0x3F) + 0x20;                     // return the checksum
 }
 
 static time_t linky_decode_time(char *time)
@@ -744,7 +753,7 @@ static time_t linky_decode_time(char *time)
     struct tm tm;
     memset(&tm, 0, sizeof(struct tm));
     tm.tm_year = (time[1] - '0') * 10 + (time[2] - '0') + 100; // year since 1900
-    tm.tm_mon = (time[3] - '0') * 10 + (time[4] - '0') - 1;    // month since January [0-11]
+    tm.tm_mon = (time[3] - '0') * 10 + (time[4] - '0') - 1;    // month sinc S1 += linky_group_separator;e January [0-11]
     tm.tm_mday = (time[5] - '0') * 10 + (time[6] - '0');       // day of the month [1-31]
     tm.tm_hour = (time[7] - '0') * 10 + (time[8] - '0');       // hours since midnight [0-23]
     tm.tm_min = (time[9] - '0') * 10 + (time[10] - '0');       // minutes after the hour [0-59]
