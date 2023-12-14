@@ -16,7 +16,6 @@
 #include "mqtt.h"
 #include "wifi.h"
 #include "gpio.h"
-// #include <ArduinoJson.h>
 #include "cJSON.h"
 #include "esp_ota_ops.h"
 #include "mbedtls/md.h"
@@ -28,9 +27,10 @@
 #define STATIC_VALUE 0
 #define REAL_TIME 1
 
-#define MQTT_NAME "TICMeter"
-#define MQTT_ID "TICMeter"
+#define MQTT_ID "TICMeter"      // for the home assistant discovery
+#define MQTT_SEND_TIMEOUT 10000 // in ms
 #define MANUFACTURER "GammaTroniques"
+#define MQTT_QOS 1
 /*==============================================================================
  Local Macro
 ===============================================================================*/
@@ -40,11 +40,21 @@
 ===============================================================================*/
 typedef enum
 {
+    MQTT_DEINIT,
     MQTT_DISCONNETED,
     MQTT_CONNECTING,
     MQTT_CONNECTED,
     MQTT_FAILED
 } mqtt_state_t;
+
+typedef struct
+{
+    char name[20];
+    char unique_id_base[20];
+    char ha_identifier_topic[50]; // ADCO or ADSC home assistant topic
+    char ha_discovery_configured;
+    char ha_discovery_configured_temp;
+} mqtt_topic_t;
 
 /*==============================================================================
  Local Function Declaration
@@ -60,9 +70,10 @@ esp_mqtt_client_handle_t mqtt_client = NULL;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
-static mqtt_state_t mqtt_state = 0;
+static mqtt_state_t mqtt_state = MQTT_DEINIT;
 static uint16_t mqtt_sent_count = 0;
 static uint16_t mqtt_sensors_count = 0;
+static mqtt_topic_t mqtt_topics;
 
 /*==============================================================================
 Function Implementation
@@ -78,44 +89,55 @@ static void log_error_if_nonzero(const char *message, int error_code)
 static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor)
 {
     const esp_app_desc_t *app_desc = esp_app_get_description();
-
     cJSON *jsonDevice = cJSON_CreateObject(); // Create the root object
-    cJSON_AddStringToObject(jsonDevice, "identifiers", MQTT_ID);
-    cJSON_AddStringToObject(jsonDevice, "name", MQTT_NAME);
-    cJSON_AddStringToObject(jsonDevice, "model", app_desc->project_name);
-    cJSON_AddStringToObject(jsonDevice, "manufacturer", MANUFACTURER);
-    cJSON_AddStringToObject(jsonDevice, "sw_version", app_desc->version);
+    cJSON_AddStringToObject(jsonDevice, "name", mqtt_topics.name);
+    cJSON_AddStringToObject(jsonDevice, "mdl", app_desc->project_name);
+    cJSON_AddStringToObject(jsonDevice, "mf", MANUFACTURER);
+    cJSON_AddStringToObject(jsonDevice, "sw", app_desc->version);
+    // serial
+    cJSON *sn = cJSON_CreateArray();
+    cJSON *cns = cJSON_CreateArray();
+    cJSON_AddItemToArray(sn, cJSON_CreateString("SN"));
+    cJSON_AddItemToArray(sn, cJSON_CreateString(efuse_values.serialNumber));
+    cJSON_AddItemToObject(cns, "", sn);
+    cJSON_AddItemToObject(jsonDevice, "cns", cns);
 
     cJSON *sensorConfig = cJSON_CreateObject(); // Create the root object
     cJSON_AddStringToObject(sensorConfig, "~", config_values.mqtt.topic);
     cJSON_AddStringToObject(sensorConfig, "name", sensor.name);
-    cJSON_AddStringToObject(sensorConfig, "unique_id", sensor.label);
-    cJSON_AddStringToObject(sensorConfig, "object_id", sensor.label);
+    char uniq_id[50];
+    snprintf(uniq_id, sizeof(uniq_id), "%s_%s", mqtt_topics.unique_id_base, sensor.label);
+    cJSON_AddStringToObject(sensorConfig, "uniq_id", uniq_id);
+    cJSON_AddStringToObject(sensorConfig, "obj_id", uniq_id);
 
     char state_topic[100];
     snprintf(state_topic, sizeof(state_topic), "~/%s", sensor.label);
-    snprintf(config_topic, 100, "homeassistant/%s/%s/%s/config", ha_sensors_str[sensor.type], MQTT_ID, sensor.label);
+    snprintf(config_topic, sizeof(state_topic), "homeassistant/%s/%s/%s/config", ha_sensors_str[sensor.type], mqtt_topics.name, sensor.label);
+    if (strcmp(sensor.label, "ADCO") == 0 || strcmp(sensor.label, "ADSC") == 0)
+    {
+        strncpy(mqtt_topics.ha_identifier_topic, config_topic, sizeof(mqtt_topics.ha_identifier_topic));
+    }
 
     if (sensor.type == HA_NUMBER)
     {
-        cJSON_AddStringToObject(sensorConfig, "command_topic", state_topic);
+        cJSON_AddStringToObject(sensorConfig, "cmd_t", state_topic);
         cJSON_AddStringToObject(sensorConfig, "mode", "box");
         cJSON_AddNumberToObject(sensorConfig, "min", 30);
         cJSON_AddNumberToObject(sensorConfig, "max", 3600);
-        cJSON_AddStringToObject(sensorConfig, "retain", "true");
+        cJSON_AddStringToObject(sensorConfig, "ret", "true");
         cJSON_AddNumberToObject(sensorConfig, "qos", 2);
     }
     else
     {
-        cJSON_AddStringToObject(sensorConfig, "state_topic", state_topic);
+        cJSON_AddStringToObject(sensorConfig, "stat_t", state_topic);
     }
     if (sensor.device_class == TIMESTAMP)
     {
-        cJSON_AddStringToObject(sensorConfig, "value_template", "{{ as_datetime(value) }}");
+        cJSON_AddStringToObject(sensorConfig, "val_tpl", "{{ as_datetime(value) }}");
     }
     if (strlen(HADeviceClassStr[sensor.device_class]) > 0)
     {
-        cJSON_AddStringToObject(sensorConfig, "device_class", HADeviceClassStr[sensor.device_class]);
+        cJSON_AddStringToObject(sensorConfig, "dev_cla", HADeviceClassStr[sensor.device_class]);
     }
     if (strlen(sensor.icon) > 0)
     {
@@ -124,35 +146,43 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
 
     if (sensor.device_class != NONE_CLASS && sensor.device_class != TIMESTAMP)
     {
-        cJSON_AddStringToObject(sensorConfig, "unit_of_measurement", HAUnitsStr[sensor.device_class]);
+        cJSON_AddStringToObject(sensorConfig, "unit_of_meas", HAUnitsStr[sensor.device_class]);
     }
 
     if (sensor.realTime == REAL_TIME)
     {
-        cJSON_AddNumberToObject(sensorConfig, "expire_after", config_values.refreshRate * 4);
+        cJSON_AddNumberToObject(sensorConfig, "exp_aft", config_values.refreshRate * 4);
     }
 
-    cJSON_AddItemToObject(sensorConfig, "device", jsonDevice);
+    cJSON_AddItemToObject(sensorConfig, "dev", jsonDevice);
     char *jsonString = cJSON_PrintUnformatted(sensorConfig);
     strncpy(json, jsonString, 1024);
     free(jsonString);
     cJSON_Delete(sensorConfig);
 }
 
-static void mqtt_send_ha(LinkyData *linkydata)
+uint8_t mqtt_prepare_publish(LinkyData *linkydata)
 {
     mqtt_sensors_count = 0;
     mqtt_sent_count = 0;
-
-    static uint8_t HAConfigured = 0;
-    if (config_values.mode == MODE_MQTT_HA && HAConfigured == 0)
+    if (mqtt_state == MQTT_DEINIT)
     {
+        ESP_LOGE(TAG, "Cant prepare data: MQTT not initialized");
+        return 0;
+    }
+
+    uint8_t has_error = 0;
+    mqtt_topics.ha_discovery_configured_temp = 0;
+    if (config_values.mode == MODE_MQTT_HA && mqtt_topics.ha_discovery_configured == 0)
+    {
+        ESP_LOGW(TAG, "Home Assistant Discovery not configured, configuring...");
         mqtt_setup_ha_discovery(linkydata);
-        HAConfigured = 1;
     }
 
     char topic[150];
     char strValue[20];
+
+    ESP_LOGI(TAG, "Pre-send Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
 
     linkydata->timestamp = wifi_get_timestamp();
     for (int i = 0; i < LinkyLabelListSize; i++)
@@ -229,49 +259,31 @@ static void mqtt_send_ha(LinkyData *linkydata)
         }
         mqtt_sensors_count++;
         ESP_LOGD(TAG, "Publishing to  %s = %s", topic, strValue);
-        esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
-    }
-    time_t mqtt_send_timeout = MILLIS + 10000;
-    ESP_LOGI(TAG, "Waiting for MQTT send done");
-
-    while ((mqtt_send_timeout > MILLIS) && mqtt_sent_count < mqtt_sensors_count)
-    {
-        if (mqtt_state != MQTT_CONNECTED)
+        // esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
+        int ret = esp_mqtt_client_enqueue(mqtt_client, topic, strValue, 0, MQTT_QOS, 0, true);
+        if (ret == -1)
         {
-            break;
+            ESP_LOGE(TAG, "Error while enqueue: %d", ret);
+            has_error = 1;
         }
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        else if (ret == -2)
+        {
+            ESP_LOGE(TAG, "Outbox full: %d", ret);
+            has_error = 1;
+        }
+        ESP_LOGD(TAG, "Outbox size filling: %d %s", esp_mqtt_client_get_outbox_size(mqtt_client), topic);
     }
 
-    if (mqtt_state == MQTT_FAILED)
+    if (has_error)
     {
-        ESP_LOGE(TAG, "Send Failed");
-        return;
+        return 0;
     }
-
-    if (mqtt_sent_count < mqtt_sensors_count)
-    {
-        ESP_LOGE(TAG, "Send Timeout: %d/%d", mqtt_sent_count, mqtt_sensors_count);
-    }
-    else
-    {
-        ESP_LOGI(TAG, "Send Done");
-    }
+    ESP_LOGI(TAG, "All data are in the outbox");
+    return 1;
 }
 
 void mqtt_setup_ha_discovery()
 {
-    if (wifi_state == WIFI_DISCONNECTED)
-    {
-        ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
-        return;
-    }
-    if (mqtt_state != MQTT_CONNECTED)
-    {
-        ESP_LOGI(TAG, "MQTT not connected, skipping Home Assistant Discovery");
-        return;
-    }
-
     char mqttBuffer[1024];
     char config_topic[100];
 
@@ -325,9 +337,8 @@ void mqtt_setup_ha_discovery()
             continue;
             break;
         }
-
         mqtt_create_sensor(mqttBuffer, config_topic, LinkyLabelList[i]);
-        esp_mqtt_client_publish(mqtt_client, config_topic, mqttBuffer, 0, 2, 1);
+        esp_mqtt_client_enqueue(mqtt_client, config_topic, mqttBuffer, 0, 2, 1, true);
         mqtt_sensors_count++;
     }
     ESP_LOGI(TAG, "Home Assistant Discovery done");
@@ -337,14 +348,29 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
-    // esp_mqtt_client_handle_t client = event->client;
-    // int msg_id;
     switch ((esp_mqtt_event_id_t)event_id)
     {
     case MQTT_EVENT_CONNECTED:
         if (mqtt_state != MQTT_CONNECTED)
         {
             mqtt_state = MQTT_CONNECTED;
+        }
+        // subscribe to input topic
+        for (int i = 0; i < LinkyLabelListSize; i++)
+        {
+            if (LinkyLabelList[i].type == HA_NUMBER)
+            {
+                char topic[150];
+                snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, LinkyLabelList[i].label);
+                esp_mqtt_client_subscribe(mqtt_client, topic, 1);
+                ESP_LOGI(TAG, "Subscribing to %s", topic);
+            }
+        }
+
+        if (config_values.mode == MODE_MQTT_HA && strlen(mqtt_topics.ha_identifier_topic) > 0)
+        {
+            esp_mqtt_client_subscribe(mqtt_client, mqtt_topics.ha_identifier_topic, 1);
+            ESP_LOGI(TAG, "Subscribing to %s", mqtt_topics.ha_identifier_topic);
         }
         break;
     case MQTT_EVENT_DISCONNECTED:
@@ -364,77 +390,79 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         break;
     case MQTT_EVENT_DATA:
     {
-        char topic[100] = {0};
-        memcpy(topic, event->topic, event->topic_len); // copy to not const string (add \0)
-        if (strcmp(topic, MQTT_ID "/Refresh") == 0)
+        ESP_LOGI(TAG, "MQTT_EVENT_DATA: %.*s", event->topic_len, event->topic);
+        char fullname[50];
+        char strValue[512]; // prevent buffer overflow with long string (ha discovery)
+        strncpy(fullname, event->topic, event->topic_len);
+        fullname[event->topic_len] = '\0';
+        strncpy(strValue, event->data, event->data_len);
+        strValue[event->data_len] = '\0';
+
+        if (strlen(fullname) == 0)
         {
-            uint16_t refreshRate = atoi(event->data);
-            if (config_values.refreshRate != refreshRate)
+            break;
+        }
+        if (config_values.mode == MODE_MQTT_HA)
+        {
+            if (strcmp(fullname, mqtt_topics.ha_identifier_topic) == 0)
             {
-                config_values.refreshRate = refreshRate;
-                ESP_LOGI(TAG, "New RefreshRate = %d", config_values.refreshRate);
+                ESP_LOGI(TAG, "Home Assistant discovery is already configured");
+                mqtt_topics.ha_discovery_configured_temp = 1;
+                mqtt_topics.ha_discovery_configured = 1;
+                break;
             }
         }
-        else
+        char *name = fullname + strlen(config_values.mqtt.topic) + 1; // +1 for '/'
+        for (int i = 0; i < LinkyLabelListSize; i++)
         {
-            ESP_LOGI(TAG, "MQTT_EVENT_DATA");
-            char *name = strnstr(event->topic, MQTT_ID "/", sizeof(topic));
-            if (name != NULL)
+            if (strcmp(LinkyLabelList[i].label, name) == 0)
             {
-                name += strlen(MQTT_ID "/");
-
-                for (int i = 0; i < LinkyLabelListSize; i++)
+                if (LinkyLabelList[i].data == NULL)
                 {
-                    if (strcmp(LinkyLabelList[i].label, name) == 0)
-                    {
-                        if (LinkyLabelList[i].data == NULL)
-                        {
-                            ESP_LOGE(TAG, "Null pointer for %s", name);
-                            break;
-                        }
-                        ESP_LOGI(TAG, "Value for %s", name);
-                        switch (LinkyLabelList[i].type)
-                        {
-                        case UINT8:
-                            *(uint8_t *)LinkyLabelList[i].data = atoi(event->data);
-                            break;
-                        case UINT16:
-                            *(uint16_t *)LinkyLabelList[i].data = atoi(event->data);
-                            break;
-                        case UINT32:
-                            *(uint32_t *)LinkyLabelList[i].data = atol(event->data);
-                            break;
-                        case UINT64:
-                            *(uint64_t *)LinkyLabelList[i].data = atoll(event->data);
-                            break;
-                        case STRING:
-                            strncpy((char *)LinkyLabelList[i].data, event->data, LinkyLabelList[i].size);
-                            break;
-                        case UINT32_TIME:
-                            ((TimeLabel *)LinkyLabelList[i].data)->value = atol(event->data);
-                            break;
-                        case HA_NUMBER:
-                            uint16_t value = atoi(event->data);
-                            uint16_t *config = (uint16_t *)LinkyLabelList[i].data;
-                            if (value != *config)
-                            {
-                                *config = value;
-                                ESP_LOGI(TAG, "New config for %s = %d", name, *config);
-                                config_write();
-                            }
-                            break;
-                        default:
-                            break;
-                        }
-                        break;
-                    }
+                    ESP_LOGE(TAG, "Null pointer for %s", name);
+                    break;
                 }
+
+                switch (LinkyLabelList[i].type)
+                {
+                case UINT8:
+                    *(uint8_t *)LinkyLabelList[i].data = atoi(strValue);
+                    break;
+                case UINT16:
+                    *(uint16_t *)LinkyLabelList[i].data = atoi(strValue);
+                    break;
+                case UINT32:
+                    *(uint32_t *)LinkyLabelList[i].data = atol(strValue);
+                    break;
+                case UINT64:
+                    *(uint64_t *)LinkyLabelList[i].data = atoll(strValue);
+                    break;
+                case STRING:
+                    strncpy((char *)LinkyLabelList[i].data, strValue, LinkyLabelList[i].size);
+                    break;
+                case UINT32_TIME:
+                    ((TimeLabel *)LinkyLabelList[i].data)->value = atol(strValue);
+                    break;
+                case HA_NUMBER:
+                    uint16_t value = atoi(strValue);
+                    uint16_t *config = (uint16_t *)LinkyLabelList[i].data;
+                    if (value != *config)
+                    {
+                        *config = value;
+                        ESP_LOGI(TAG, "Set %s = %d", name, *config);
+                        config_write();
+                    }
+                    break;
+                default:
+                    break;
+                }
+                break;
             }
         }
     }
     break;
     case MQTT_EVENT_ERROR:
-        ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
+        ESP_LOGI(TAG, "MQTT_EVENT_ERROR, msg_id=%d", event->msg_id);
         if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT)
         {
             log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
@@ -459,15 +487,20 @@ int mqtt_init(void)
         return -1;
     }
 
+    snprintf(mqtt_topics.name, sizeof(mqtt_topics.name), MQTT_ID "_%s", efuse_values.macAddress + 6);
+    snprintf(mqtt_topics.unique_id_base, sizeof(mqtt_topics.unique_id_base), "TICMeter_%s_", efuse_values.macAddress + 6);
     mqtt_state = MQTT_CONNECTING;
     char uri[200];
-    esp_mqtt_client_config_t mqtt_cfg = {};
-
     snprintf(uri, sizeof(uri), "mqtt://%s:%d", config_values.mqtt.host, config_values.mqtt.port);
-    mqtt_cfg.credentials.username = config_values.mqtt.username;
-    mqtt_cfg.credentials.authentication.password = config_values.mqtt.password;
-    mqtt_cfg.broker.address.uri = uri;
-
+    esp_mqtt_client_config_t mqtt_cfg = {
+        .session.message_retransmit_timeout = 500,
+        .outbox.limit = 16 * 1024,
+        .credentials.username = config_values.mqtt.username,
+        .credentials.authentication.password = config_values.mqtt.password,
+        .task.priority = 1,
+        .broker.address.uri = uri,
+        .credentials.client_id = mqtt_topics.name,
+    };
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
     esp_mqtt_client_register_event(mqtt_client, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
@@ -475,7 +508,7 @@ int mqtt_init(void)
     return 1;
 }
 
-int mqtt_send(LinkyData *linky)
+int mqtt_send()
 {
     esp_err_t err = ESP_OK;
     if (wifi_state == WIFI_DISCONNECTED)
@@ -484,7 +517,19 @@ int mqtt_send(LinkyData *linky)
         goto error;
     }
     wifi_sending = 1;
-    xTaskCreate(gpio_led_task_sending, "sendingLedTask", 2048, NULL, 1, NULL);
+    xTaskCreate(gpio_led_task_sending, "sendingLedTask", 4096, NULL, 1, NULL);
+
+    if (mqtt_state == MQTT_FAILED)
+    {
+        ESP_LOGI(TAG, "MQTT ERROR");
+        goto error;
+    }
+
+    if (mqtt_client == NULL)
+    {
+        ESP_LOGW(TAG, "MQTT not initialized, initializing...");
+        mqtt_init();
+    }
 
     err = esp_mqtt_client_start(mqtt_client);
     if (err != ESP_OK)
@@ -493,42 +538,43 @@ int mqtt_send(LinkyData *linky)
         goto error;
     }
 
-    for (int i = 0; i < LinkyLabelListSize; i++)
+    ESP_LOGI(TAG, "Waiting for MQTT send done, outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
+    time_t mqtt_send_timeout = MILLIS + MQTT_SEND_TIMEOUT;
+    while ((mqtt_send_timeout > MILLIS) && /*mqtt_sent_count < mqtt_sensors_count*/ esp_mqtt_client_get_outbox_size(mqtt_client) > 0)
     {
-        if (LinkyLabelList[i].type == HA_NUMBER)
+        if (mqtt_state == MQTT_DISCONNETED || mqtt_state == MQTT_FAILED)
         {
-            char topic[150];
-            snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, LinkyLabelList[i].label);
-            esp_mqtt_client_subscribe(mqtt_client, topic, 1);
-            ESP_LOGW(TAG, "Subscribing to %s", topic);
+            ESP_LOGE(TAG, "MQTT Exit: %d", mqtt_state);
+            break;
         }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+        ESP_LOGD(TAG, "Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
     }
 
-    switch (config_values.mode)
-    {
-    case MODE_MQTT:
-    case MODE_MQTT_HA:
-        mqtt_send_ha(linky);
-        break;
-    default:
-        ESP_LOGI(TAG, "MQTT not configured: MQTT ERROR");
-        goto error;
-        break;
-    }
+    mqtt_topics.ha_discovery_configured = mqtt_topics.ha_discovery_configured_temp;
+
     if (mqtt_state == MQTT_FAILED)
     {
-        ESP_LOGI(TAG, "MQTT ERROR");
+        ESP_LOGE(TAG, "Send Failed");
         goto error;
     }
 
+    if (/*mqtt_sent_count < mqtt_sensors_count*/ esp_mqtt_client_get_outbox_size(mqtt_client) > 0)
+    {
+        ESP_LOGE(TAG, "Send Timeout: %d/%d", mqtt_sent_count, mqtt_sensors_count);
+        goto error;
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Send Done");
+    }
     esp_mqtt_client_disconnect(mqtt_client);
     esp_mqtt_client_stop(mqtt_client);
-
     wifi_sending = 0;
     return 1;
 error:
-    wifi_sending = 0;
     esp_mqtt_client_disconnect(mqtt_client);
     esp_mqtt_client_stop(mqtt_client);
+    wifi_sending = 0;
     return 0;
 }

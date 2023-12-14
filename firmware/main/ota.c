@@ -240,6 +240,8 @@ int ota_get_latest(ota_version_t *version)
 
         ESP_LOGD(TAG, "Version: %s", ota_version_buffer);
         ota_to_use_version = i;
+        // free(ota_cert); //TODO
+        // ota_cert = NULL;
         break;
     }
 

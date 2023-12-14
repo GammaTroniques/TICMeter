@@ -14,13 +14,16 @@
 ===============================================================================*/
 #include "shell.h"
 #include "esp_ota_ops.h"
+#include "esp_timer.h"
 #include "gpio.h"
 #include "main.h"
 #include "mqtt.h"
 #include "ota.h"
 #include "wifi.h"
+#include "tests.h"
 #include "nvs_flash.h"
-
+#include "esp_private/periph_ctrl.h"
+#include "soc/periph_defs.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -106,6 +109,8 @@ static int rw_command(int argc, char **argv);
 static int efuse_read(int argc, char **argv);
 static int efuse_write(int argc, char **argv);
 static int nvs_stats(int argc, char **argv);
+static int print_task_list(int argc, char **argv);
+static int start_test_command(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -169,6 +174,8 @@ static const shell_cmd_t shell_cmds[] = {
     {"efuse-read",                  "Read efuse",                               &efuse_read,                        0, {}, {}},
     {"efuse-write",                 "Write efuse",                              &efuse_write,                       1, {"<serialnumber>"}, {"The serial number to write"}},
     {"nvs-stats",                   "Print nvs stats",                          &nvs_stats,                         0, {}, {}},
+    {"task-list",                   "Print task list",                          &print_task_list,                   0, {}, {}},
+    {"start-test",                  "Start a test",                             &start_test_command,                1, {"<test-name>"}, {"Available tests: adc"}},
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -176,7 +183,9 @@ const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
-
+void null_printf(const char *fmt, ...)
+{
+}
 void shell_init()
 {
   esp_log_level_set("wifi", ESP_LOG_ERROR);
@@ -238,12 +247,18 @@ void shell_init()
   ESP_ERROR_CHECK(
       esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
 #endif
+
+  // vprintf_like_t orig_log_output = esp_log_set_vprintf(null_printf);
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
+  // vTaskDelay(1000 / portTICK_PERIOD_MS);
+  // esp_log_set_vprintf(orig_log_output);
 }
 
 static int esp_reset_command(int argc, char **argv)
 {
   ESP_LOGI(TAG, "Resetting the device");
+  gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
+  gpio_set_level(GPIO_NUM_15, 0);
   esp_restart();
   return 0;
 }
@@ -616,6 +631,7 @@ static int info_command(int argc, char **argv)
   printf("Git tag: %s\n", GIT_TAG);
   printf("Git branch: %s\n", GIT_BRANCH);
   printf("Build time: %s\n", BUILD_TIME);
+  printf("Up time: %lld s\n", esp_timer_get_time() / 1000000);
   printf("%c", 3);
   return 0;
 }
@@ -772,5 +788,34 @@ static int nvs_stats(int argc, char **argv)
       stats.free_entries,
       stats.total_entries,
       stats.namespace_count);
+  return 0;
+}
+
+static int print_task_list(int argc, char **argv)
+{
+  printf("NOT IMPLEMENTED\n");
+  // printf("Task Name\tStatus\tPrio\tHWM\tTask\tAffinity\n");
+  // char stats_buffer[1024];
+  // vTaskList(stats_buffer);
+  // printf("%s\n", stats_buffer);
+  return 0;
+}
+
+static int start_test_command(int argc, char **argv)
+{
+  if (argc != 2)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  char *test_name = argv[1];
+  for (int i = 0; i < tests_count; i++)
+  {
+    if (strcmp(test_name, tests_available_tests[i]) == 0)
+    {
+      start_test((tests_t)i);
+      return 0;
+    }
+  }
+  printf("Test not found\n");
   return 0;
 }

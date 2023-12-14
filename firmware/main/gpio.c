@@ -332,7 +332,7 @@ float gpio_get_vusb()
     int vusb_level = gpio_get_level(V_USB_PIN);
     // ESP_LOGW(TAG, "vUSB: %ld, ret: %d", vUSB, vusb_level);
 
-    // return (float)vUSB / 1000;
+    return (float)vUSB / 1000;
     if (vusb_level)
     {
         return 5.0;
@@ -530,7 +530,7 @@ void gpio_start_led_pattern(uint8_t pattern)
     static TaskHandle_t ledPatternTaskHandle = NULL;
     static uint8_t lastPattern;
     lastPattern = pattern;
-    xTaskCreate(gpio_led_pattern_task, "gpio_led_pattern_task", 2048, &lastPattern, 5, &ledPatternTaskHandle);
+    xTaskCreate(gpio_led_pattern_task, "gpio_led_pattern_task", 4096, &lastPattern, 5, &ledPatternTaskHandle);
 }
 
 void gpio_boot_led_pattern()
@@ -579,8 +579,6 @@ void gpio_led_task_wifi_connecting(void *pvParameters)
     ESP_LOGI(TAG, "Starting wifi led task");
     uint32_t timout = MILLIS + WIFI_CONNECT_TIMEOUT;
     pattern_in_progress = 1;
-
-    ESP_LOGI(TAG, "wifi_state: %d", wifi_state);
     while (wifi_state == WIFI_CONNECTING && MILLIS < timout)
     {
         gpio_set_led_color(WEB_FLASH);

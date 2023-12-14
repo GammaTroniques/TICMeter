@@ -45,6 +45,6 @@ extern TaskHandle_t noConfigLedTaskHandle;
  *
  * @param pvParameters Not used
  */
-void fetchLinkyDataTask(void *pvParameters);
+void main_fetch_linky_data_task(void *pvParameters);
 
 #endif /* MAIN_H */
