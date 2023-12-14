@@ -8,25 +8,6 @@
   "idf.port": "/dev/ttyACM0",
   "idf.gitPathWin": "c:\\Espressif\\IDF_TOOLS_PATH\\tools\\idf-git\\2.39.2\\cmd\\git.exe",
   "files.associations": {
-    "*.vhd": "vhdl",
-    "esp_ota_ops.h": "c",
-    "shell.h": "c",
-    "wifi.h": "c",
-    "nvs_flash.h": "c",
-    "periph_ctrl.h": "c",
-    "periph_defs.h": "c",
-    "linky.h": "c",
-    "esp_console.h": "c",
-    "mqtt.h": "c",
-    "esp_efuse.h": "c",
-    "efuse_table.h": "c",
-    "esp_efuse_table.h": "c",
-    "tests.h": "c",
-    "gpio.h": "c",
-    "typeinfo": "c",
-    "chrono": "c",
-    "future": "c",
-    "system_error": "c",
-    "xlocale": "c"
+    "*.yaml": "home-assistant"
   }
 }
