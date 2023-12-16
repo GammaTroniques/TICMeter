@@ -64,7 +64,7 @@ uint64_t linky_uptime = 0;
 
 const LinkyGroup LinkyLabelList[] =
 {   
-    //     Name                          Label           DataPtr                             Type          MODE             UpdateType    Class          Icon                           ZB_CLUSTER_ID, ZB_ATTRIBUTE_ID
+    // ID  Name                               Label         DataPtr                        Type                MODE          UpdateType      Class        Icon                                   ZB_CLUSTER_ID, ZB_ATTRIBUTE_ID
     //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     //--------------------------- MODE HISTORIQUE --------------------------------
     {101, "Identifiant",                     "ADCO",        &linky_data.hist.ADCO,         STRING,      12, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",          0x0702, 0x0308,  },

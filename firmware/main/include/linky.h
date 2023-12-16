@@ -209,6 +209,15 @@ typedef enum
     ANY,
 } linky_mode_t;
 
+// typedef enum
+// {
+//     ANY,
+//     BASE,
+//     HCHC,
+//     EJP,
+//     TEMPO,
+// } linky_contract_t;
+
 typedef enum
 {
     STATIC_VALUE,
