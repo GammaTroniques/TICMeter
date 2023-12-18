@@ -22,6 +22,8 @@
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "string.h"
+#include "esp_zigbee_core.h"
+
 /*==============================================================================
  Public Defines
 ==============================================================================*/
@@ -29,6 +31,10 @@
 /*==============================================================================
  Public Macro
 ==============================================================================*/
+
+#define ZB_RP ESP_ZB_ZCL_ATTR_ACCESS_REPORTING
+#define ZB_RO ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY
+#define ZB_RW ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE
 
 /*==============================================================================
  Public Type
@@ -256,6 +262,7 @@ typedef struct
     const char *icon;
     const uint16_t clusterID;
     const uint16_t attributeID;
+    const esp_zb_zcl_attr_access_t zb_access;
 } LinkyGroup;
 
 typedef struct

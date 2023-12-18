@@ -111,6 +111,8 @@ static int efuse_write(int argc, char **argv);
 static int nvs_stats(int argc, char **argv);
 static int print_task_list(int argc, char **argv);
 static int start_test_command(int argc, char **argv);
+
+static int zigbee_reset_command(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -176,6 +178,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"nvs-stats",                   "Print nvs stats",                          &nvs_stats,                         0, {}, {}},
     {"task-list",                   "Print task list",                          &print_task_list,                   0, {}, {}},
     {"start-test",                  "Start a test",                             &start_test_command,                1, {"<test-name>"}, {"Available tests: adc"}},
+    {"zigbee-reset",                "Clear Zigbee config",                      &zigbee_reset_command,              0, {}, {}},
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -817,5 +820,17 @@ static int start_test_command(int argc, char **argv)
     }
   }
   printf("Test not found\n");
+  return 0;
+}
+
+static int zigbee_reset_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  printf("Resetting Zigbee config\n");
+  esp_zb_factory_reset();
+  printf("Zigbee config reset\n");
   return 0;
 }

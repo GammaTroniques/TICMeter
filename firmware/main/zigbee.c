@@ -155,7 +155,7 @@ void zigbee_init_stack()
     config.host_config.host_connection_mode = HOST_CONNECTION_MODE_NONE;
 
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
-    xTaskCreate(zigbee_task, "Zigbee_main", 8 * 1024, NULL, 5, NULL);
+    xTaskCreate(zigbee_task, "Zigbee_main", 8 * 1024, NULL, 3, NULL);
 }
 
 static void zigbee_task(void *pvParameters)
@@ -165,6 +165,8 @@ static void zigbee_task(void *pvParameters)
     // esp_zb_factory_reset();
     // ESP_LOGI(TAG, "Starting Zigbee stack");
     /* initialize Zigbee stack with Zigbee end-device config */
+    uint64_t trash = 0;
+
     esp_zb_cfg_t zigbee_cfg = {};
     zigbee_cfg.esp_zb_role = ESP_ZB_DEVICE_TYPE_ED;
     zigbee_cfg.install_code_policy = false;
@@ -198,12 +200,20 @@ static void zigbee_task(void *pvParameters)
     identify_cluster_cfg.identify_time = 0;
     esp_zb_attribute_list_t *esp_zb_identify_cluster = esp_zb_identify_cluster_create(&identify_cluster_cfg);
 
+    // ---------------------- Meter identification cluster ----------------------
+    // esp_zb_attribute_list_t *esp_zb_meter_identification_cluster = esp_zb_cluster_create
+
     // ---------------------- Metering cluster ----------------------
 
     esp_zb_metering_cluster_cfg_t metering_cluster_cfg = {
         .uint_of_measure = ESP_ZB_ZCL_METERING_UNIT_KW_KWH_BINARY,
+        .metering_device_type = ESP_ZB_ZCL_METERING_ELECTRIC_METERING,
+        .summation_formatting = 1,
     };
     esp_zb_attribute_list_t *esp_zb_metering_cluster = esp_zb_metering_cluster_create(&metering_cluster_cfg);
+    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_48BIT, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &trash);
+    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_TIER1_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_48BIT, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &trash);
+    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_TIER2_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_48BIT, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &trash);
     // TODO: wait zigbee update
 
     //------------------ Electrical Measurement cluster ------------------
@@ -348,11 +358,11 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
 uint8_t zigbee_send(LinkyData *data)
 {
     static uint8_t fistCall = 0;
-    if (fistCall == 0)
-    {
-        fistCall = 1;
-        zigbee_init_stack();
-    }
+    // if (fistCall == 0)
+    // {
+    //     fistCall = 1;
+    //     zigbee_init_stack();
+    // }
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
@@ -363,7 +373,7 @@ uint8_t zigbee_send(LinkyData *data)
         {
             continue;
         }
-        if (LinkyLabelList[i].clusterID == 0)
+        if (LinkyLabelList[i].clusterID == 0 || LinkyLabelList[i].zb_access == 0)
         {
             continue;
         }
@@ -401,20 +411,26 @@ uint8_t zigbee_send(LinkyData *data)
             }
             break;
         }
+        case STRING:
+        {
+            if (strnlen((char *)LinkyLabelList[i].data, LinkyLabelList[i].size) == 0)
+            {
+                continue;
+            }
+            break;
+        }
         default:
             break;
         };
-        if (LinkyLabelList[i].clusterID == ESP_ZB_ZCL_CLUSTER_ID_ELECTRICAL_MEASUREMENT && LinkyLabelList[i].mode == MODE_HISTORIQUE)
+        if (LinkyLabelList[i].zb_access == ESP_ZB_ZCL_ATTR_ACCESS_REPORTING)
         {
-            ESP_LOGI(TAG, "Repprting attribute: %s, value: %d", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
-            if (LinkyLabelList[i].realTime == REAL_TIME)
-            {
-                zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, LinkyLabelList[i].type);
-            }
-            else
-            {
-                esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, true);
-            }
+            ESP_LOGI(TAG, "Repporting cluster: 0x%x, attribute: 0x%x, name: %s, value: %d", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+            zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, LinkyLabelList[i].type);
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Set attribute cluster: 0x%x, attribute: 0x%x, name: %s, value: %d", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+            esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, false);
         }
     }
     return 0;
