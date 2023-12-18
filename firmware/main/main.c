@@ -198,7 +198,7 @@ void app_main(void)
     }
     break;
   case MODE_ZIGBEE:
-    // zigbee_init_stack();
+    zigbee_init_stack();
     // zigbee_task(0);
     break;
   case MODE_TUYA:
