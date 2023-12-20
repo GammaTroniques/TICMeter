@@ -54,23 +54,23 @@ typedef struct
     char OPTARIF[5];     //     4                     Option tarifaire choisie
     uint16_t ISOUSC;     //     2         A           Intensité souscrite 
 
-    uint32_t BASE;       //     9         Wh          Index option Base 
+    uint64_t BASE;       //     9         Wh          Index option Base 
     //----------------------Index option Heures Creuses ----------------------
-    uint32_t HCHC;       //     9         Wh          Index option Heures Creuses: Heures Creuses
-    uint32_t HCHP;       //     9         Wh          Index option Heures Creuses: Heures Pleines
+    uint64_t HCHC;       //     9         Wh          Index option Heures Creuses: Heures Creuses
+    uint64_t HCHP;       //     9         Wh          Index option Heures Creuses: Heures Pleines
     
     //---------------------- Index option EJP  (Effacement des Jours de Pointe) --> 22 jours par an prix du kWh plus cher
-    uint32_t EJPHN;      //     9         Wh          Heures Normales
-    uint32_t EJPHPM;     //     9         Wh          Heures de Pointe Mobile
-    uint32_t PEJP;       //     2         minutes     Préavis Début EJP (30 min)
+    uint64_t EJPHN;      //     9         Wh          Heures Normales
+    uint64_t EJPHPM;     //     9         Wh          Heures de Pointe Mobile
+    uint64_t PEJP;       //     2         minutes     Préavis Début EJP (30 min)
 
     //---------------------- Index option Tempo ----------------------
-    uint32_t BBRHCJB;    //     9         Wh          Heures Creuses Jours Bleus
-    uint32_t BBRHPJB;    //     9         Wh          Heures Pleines Jours Bleus
-    uint32_t BBRHCJW;    //     9         Wh          Heures Creuses Jours Blancs
-    uint32_t BBRHPJW;    //     9         Wh          Heures Pleines Jours Blancs
-    uint32_t BBRHCJR;    //     9         Wh          Heures Creuses Jours Rouges
-    uint32_t BBRHPJR;    //     9         Wh          Heures Pleines Jours Rouges
+    uint64_t BBRHCJB;    //     9         Wh          Heures Creuses Jours Bleus
+    uint64_t BBRHPJB;    //     9         Wh          Heures Pleines Jours Bleus
+    uint64_t BBRHCJW;    //     9         Wh          Heures Creuses Jours Blancs
+    uint64_t BBRHPJW;    //     9         Wh          Heures Pleines Jours Blancs
+    uint64_t BBRHCJR;    //     9         Wh          Heures Creuses Jours Rouges
+    uint64_t BBRHPJR;    //     9         Wh          Heures Pleines Jours Rouges
 
     char PTEC[5];        //     4                     Période Tarifaire en cours: TH.. Heures Creuses, HP.. Heures Pleines, HC.. Heures Creuses, HN.. Heures Normales, PM.. Heures de Pointe Mobile, HCJB.. Heures Creuses Jours Bleus, HPJB.. Heures Pleines Jours Bleus, HCJW.. Heures Creuses Jours Blancs, HPJW.. Heures Pleines Jours Blancs, HCJR.. Heures Creuses Jours Rouges, HPJR.. Heures Pleines Jours Rouges
     char DEMAIN[5];      //     4                     Couleur du lendemain 
