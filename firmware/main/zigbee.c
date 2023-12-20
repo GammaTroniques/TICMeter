@@ -110,7 +110,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         }
         break;
     default:
-        ESP_LOGI(TAG, "ZDO signal: %d, status: %d", sig_type, err_status);
+        ESP_LOGI(TAG, "ZDO signal: 0x%x, status: 0x%x", sig_type, err_status);
         break;
     }
 }
@@ -150,9 +150,10 @@ void zigbee_init_stack()
 {
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_LOGI(TAG, "Initializing Zigbee stack");
-    esp_zb_platform_config_t config = {};
-    config.radio_config.radio_mode = RADIO_MODE_NATIVE;
-    config.host_config.host_connection_mode = HOST_CONNECTION_MODE_NONE;
+    esp_zb_platform_config_t config = {
+        .radio_config.radio_mode = RADIO_MODE_NATIVE,
+        .host_config.host_connection_mode = HOST_CONNECTION_MODE_NONE,
+    };
 
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
     xTaskCreate(zigbee_task, "Zigbee_main", 8 * 1024, NULL, 3, NULL);
@@ -165,18 +166,20 @@ static void zigbee_task(void *pvParameters)
     // esp_zb_factory_reset();
     // ESP_LOGI(TAG, "Starting Zigbee stack");
     /* initialize Zigbee stack with Zigbee end-device config */
-    uint64_t trash = 0;
+    uint64_t trash = 18;
 
-    esp_zb_cfg_t zigbee_cfg = {};
-    zigbee_cfg.esp_zb_role = ESP_ZB_DEVICE_TYPE_ED;
-    zigbee_cfg.install_code_policy = false;
-    zigbee_cfg.nwk_cfg.zed_cfg.ed_timeout = ESP_ZB_ED_AGING_TIMEOUT_64MIN;
-    zigbee_cfg.nwk_cfg.zed_cfg.keep_alive = 3000; // in seconds
+    esp_zb_cfg_t zigbee_cfg = {
+        .esp_zb_role = ESP_ZB_DEVICE_TYPE_ED,
+        .install_code_policy = false,
+        .nwk_cfg.zed_cfg.ed_timeout = ESP_ZB_ED_AGING_TIMEOUT_2MIN,
+        .nwk_cfg.zed_cfg.keep_alive = 3000, // in seconds
+    };
     esp_zb_init(&zigbee_cfg);
     ESP_LOGI(TAG, "Zigbee stack initialized");
     //------------------ Basic cluster ------------------
-    esp_zb_basic_cluster_cfg_t basic_cluster_cfg = {};
-    basic_cluster_cfg.zcl_version = ESP_ZB_ZCL_BASIC_ZCL_VERSION_DEFAULT_VALUE;
+    esp_zb_basic_cluster_cfg_t basic_cluster_cfg = {
+        .zcl_version = ESP_ZB_ZCL_BASIC_ZCL_VERSION_DEFAULT_VALUE,
+    };
     esp_zb_attribute_list_t *esp_zb_basic_cluster = esp_zb_basic_cluster_create(&basic_cluster_cfg);
 
     uint8_t ApplicationVersion = 1;
@@ -211,9 +214,9 @@ static void zigbee_task(void *pvParameters)
         .summation_formatting = 1,
     };
     esp_zb_attribute_list_t *esp_zb_metering_cluster = esp_zb_metering_cluster_create(&metering_cluster_cfg);
-    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_48BIT, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &trash);
-    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_TIER1_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_48BIT, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &trash);
-    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_TIER2_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_48BIT, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &trash);
+    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_U48, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &trash);
+    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_TIER1_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_U48, ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY, &trash);
+    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_TIER2_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_U48, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &trash);
     // TODO: wait zigbee update
 
     //------------------ Electrical Measurement cluster ------------------
@@ -313,8 +316,8 @@ static void zigbee_task(void *pvParameters)
     esp_zb_cluster_list_add_identify_cluster(esp_zb_cluster_list, esp_zb_identify_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_add_electrical_meas_cluster(esp_zb_cluster_list, esp_zb_electrical_meas_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_add_metering_cluster(esp_zb_cluster_list, esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
-    esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_linky_custom_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
-    esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_meter_custom_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+    // esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_linky_custom_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+    // esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_meter_custom_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_t temp = *esp_zb_cluster_list;
     temp = temp;
 
@@ -354,6 +357,7 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
     memcpy(value_r->data_p, value, value_length);
     esp_zb_zcl_report_attr_cmd_req(&cmd);
 }
+uint64_t temp = 150;
 
 uint8_t zigbee_send(LinkyData *data)
 {
@@ -424,14 +428,15 @@ uint8_t zigbee_send(LinkyData *data)
         };
         if (LinkyLabelList[i].zb_access == ESP_ZB_ZCL_ATTR_ACCESS_REPORTING)
         {
-            ESP_LOGI(TAG, "Repporting cluster: 0x%x, attribute: 0x%x, name: %s, value: %d", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+            ESP_LOGI(TAG, "Repporting cluster: 0x%x, attribute: 0x%x, name: %s, value: %llu", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
             zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, LinkyLabelList[i].type);
         }
         else
         {
-            ESP_LOGI(TAG, "Set attribute cluster: 0x%x, attribute: 0x%x, name: %s, value: %d", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+            ESP_LOGI(TAG, "Set attribute cluster: 0x%x, attribute: 0x%x, name: %s, value: %llu", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
             esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, false);
         }
+        zigbee_report_attribute(LINKY_TIC_ENDPOINT, 0x0702, ESP_ZB_ZCL_ATTR_METERING_CURRENT_TIER2_SUMMATION_DELIVERED_ID, &temp, 6);
     }
     return 0;
 }
