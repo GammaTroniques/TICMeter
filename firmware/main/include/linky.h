@@ -208,21 +208,28 @@ typedef enum
 
 typedef enum
 {
-    MODE_HISTORIQUE,
-    MODE_STANDARD,
+    MODE_HIST,
+    MODE_STD,
     AUTO,
     NONE,
     ANY,
 } linky_mode_t;
 
-// typedef enum
-// {
-//     ANY,
-//     BASE,
-//     HCHC,
-//     EJP,
-//     TEMPO,
-// } linky_contract_t;
+typedef enum
+{
+    C_ANY,
+    C_BASE,
+    C_HCHC,
+    C_EJP,
+    C_TEMPO,
+} linky_contract_t;
+
+typedef enum
+{
+    G_ANY,
+    G_MONO,
+    G_TRI,
+} linky_grid_t;
 
 typedef enum
 {
@@ -257,6 +264,8 @@ typedef struct
     const LinkyLabelType type;
     const uint8_t size;
     const linky_mode_t mode;
+    const linky_contract_t contract;
+    const linky_grid_t grid;
     const real_time_t realTime;
     const HADeviceClass device_class;
     const char *icon;
@@ -295,7 +304,7 @@ extern uint64_t linky_uptime;
 /**
  * @brief Init the linky
  *
- * @param mode: MODE_HISTORIQUE, MODE_STANDARD OR AUTO
+ * @param mode: MODE_HIST, MODE_STD OR AUTO
  * @param RX: The RX pin of the Linky
  */
 void linky_init(linky_mode_t mode, int RX);
@@ -317,7 +326,7 @@ void linky_print();
 /**
  * @brief Set the current mode of the linky
  *
- * @param mode: MODE_HISTORIQUE or MODE_STANDARD
+ * @param mode: MODE_HIST or MODE_STD
  */
 
 void linky_set_mode(linky_mode_t mode);
