@@ -251,10 +251,12 @@ void shell_init()
       esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
 #endif
 
-  FILE *file = freopen("/dev/null", "w", stdout);
-  int fd = dup2(f
-  
+  // FILE *before = freopen("/dev/null", "w", stdout);
+  // int fd = dup(fileno(stdout));
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
+  // vTaskDelay(1000 / portTICK_PERIOD_MS);
+  // dup2(fd, fileno(stdout));
+  // close(fd);
 }
 
 static int esp_reset_command(int argc, char **argv)

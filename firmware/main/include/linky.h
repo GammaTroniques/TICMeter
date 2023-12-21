@@ -32,10 +32,6 @@
  Public Macro
 ==============================================================================*/
 
-#define ZB_RP ESP_ZB_ZCL_ATTR_ACCESS_REPORTING
-#define ZB_RO ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY
-#define ZB_RW ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE
-
 /*==============================================================================
  Public Type
 ==============================================================================*/
@@ -52,7 +48,7 @@ typedef struct
     //-----------------------------------------------------------------------
     char ADCO[13];       //    12                     Adresse du compteur 
     char OPTARIF[5];     //     4                     Option tarifaire choisie
-    uint16_t ISOUSC;     //     2         A           Intensité souscrite 
+    uint32_t ISOUSC;     //     2         A           Intensité souscrite 
 
     uint64_t BASE;       //     9         Wh          Index option Base 
     //----------------------Index option Heures Creuses ----------------------
