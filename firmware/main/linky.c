@@ -42,7 +42,10 @@
 /*==============================================================================
  Local Macro
 ===============================================================================*/
-
+#define ZB_RP ESP_ZB_ZCL_ATTR_ACCESS_REPORTING
+#define ZB_RO ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY
+#define ZB_RW ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE
+#define ZB_NO 0
 /*==============================================================================
  Local Type
 ===============================================================================*/
@@ -71,9 +74,9 @@ const LinkyGroup LinkyLabelList[] =
     //--------------------------- MODE HISTORIQUE --------------------------------
     {101, "Identifiant",                     "ADCO",        &linky_data.hist.ADCO,         STRING,      12, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",            0x0702, 0x0308,  ZB_RO},
     {102, "Option tarifaire",                "OPTARIF",     &linky_data.hist.OPTARIF,      STRING,       4, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:cash-multiple",                   0x0000, 0x0000,  ZB_RO},  
-    {103, "Intensité souscrite",             "ISOUSC",      &linky_data.hist.ISOUSC,       UINT16,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0B01, 0x000D,  0},    
+    {103, "Intensité souscrite",             "ISOUSC",      &linky_data.hist.ISOUSC,       UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0B01, 0x000D,  ZB_NO},    
 
-    {104, "Index Base",                      "BASE",        &linky_data.hist.BASE,         UINT64,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0000,  ZB_RO},
+    {104, "Index Base",                      "BASE",        &linky_data.hist.BASE,         UINT64,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP},
     {105, "Index Heures Creuses",            "HCHC",        &linky_data.hist.HCHC,         UINT64,       0, MODE_HIST, C_HCHC,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP},
     {106, "Index Heures Pleines",            "HCHP",        &linky_data.hist.HCHP,         UINT64,       0, MODE_HIST, C_HCHC,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP},
     {107, "Index Heures Normales",           "EJPHN",       &linky_data.hist.EJPHN,        UINT64,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP},
@@ -86,7 +89,7 @@ const LinkyGroup LinkyLabelList[] =
     {113, "Heures Creuses Jours Rouges",     "BBRHCJR",     &linky_data.hist.BBRHCJR,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0108,  ZB_RP},
     {114, "Heures Pleines Jours Rouges",     "BBRHPJR",     &linky_data.hist.BBRHPJR,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x010A,  ZB_RP},
 
-    {115, "Période tarifaire en cours",      "PTEC",        &linky_data.hist.PTEC,         STRING,       4, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",                  0x0000, 0x0000,  ZB_RO},
+    {115, "Période tarifaire en cours",      "PTEC",        &linky_data.hist.PTEC,         STRING,       4, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",                  0x0702, 0x0020,  ZB_NO},
     {116, "Couleur du lendemain",            "DEMAIN",      &linky_data.hist.DEMAIN,       STRING,       4, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_RP},
 
     {117, "Intensité instantanée",           "IINST",       &linky_data.hist.IINST,        UINT16,       0, MODE_HIST, C_ANY,   G_MONO, REAL_TIME,     CURRENT,     "",                                    0x0B04, 0x0508,  ZB_RP},
@@ -107,7 +110,7 @@ const LinkyGroup LinkyLabelList[] =
     {12,  "Présence des potentiels",         "PPOT",        &linky_data.hist.PPOT,         UINT32,       0, MODE_HIST, C_ANY,   G_TRI,  REAL_TIME,     NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_RO},
 
     {122, "Horaire Heures Creuses",          "HHPHC",       &linky_data.hist.HHPHC,        STRING,       3, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:home-clock",                      0x0000, 0x0000,  ZB_RO},
-    {123,  "Mot d'état du compteur",         "MOTDETAT",    &linky_data.hist.MOTDETAT,     STRING,       6, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0x0000, 0x0000,  ZB_RO},
+    {123, "Mot d'état du compteur",          "MOTDETAT",    &linky_data.hist.MOTDETAT,     STRING,       6, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0x0000, 0x0000,  ZB_RO},
 
     //------------------------ MODE STANDARD -----------------------C_ANY, G_ANY, 
     {101, "Identifiant",                     "ADSC",        &linky_data.std.ADSC,          STRING,      12, MODE_STD,  C_ANY, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",            0x0000, 0x0000,  ZB_RO},
@@ -198,13 +201,13 @@ const LinkyGroup LinkyLabelList[] =
     {26,  "Profil du prochain jour",         "PJOURF+1",    &linky_data.std.MSG2,          STRING,      16, MODE_STD,  C_ANY, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0x0000, 0x0000,  ZB_RP},
     {27,  "Profil du prochain jour pointe",  "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      98, MODE_STD,  C_ANY, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0x0000, 0x0000,  ZB_RP},
     //---------------------------Home Assistant Specific ------------------------------------------------
-    {131, "Temps d'actualisation",          "now-refresh",  &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY, G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_RP},
-    {0,   "Temps d'actualisation",          "set-refresh",  &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY, G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_RP},
- // {132, "Mode TIC",                       "mode-tic",    &mode,                          UINT16,       0,      ANY,  C_ANY, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_RP},
- // {133, "Mode Elec",                      "mode-tri",    &linky_tree_phase,              UINT16,       0,      ANY,  C_ANY, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_RP},
-    {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,       0,      ANY,  C_ANY, G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_RP},
-    {134, "Temps de fonctionnement",        "uptime",      &linky_uptime,                  UINT64,       0,      ANY,  C_ANY, G_ANY,     REAL_TIME,  TIME,        "mdi:clock-time-eight-outline",        0x0000, 0x0000,  ZB_RP},
-    {0,   "Free RAM",                       "free-ram",    &linky_free_heap_size,          UINT32,       0,      ANY,  C_ANY, G_ANY,     REAL_TIME,  BYTES,       "",                                    0x0000, 0x0000,  ZB_RP},
+    {131, "Temps d'actualisation",          "now-refresh",  &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY, G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO},
+    {0,   "Temps d'actualisation",          "set-refresh",  &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY, G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO},
+ // {132, "Mode TIC",                       "mode-tic",    &mode,                          UINT16,       0,      ANY,  C_ANY, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO},
+ // {133, "Mode Elec",                      "mode-tri",    &linky_tree_phase,              UINT16,       0,      ANY,  C_ANY, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO},
+    {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,       0,      ANY,  C_ANY, G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO},
+    {134, "Temps de fonctionnement",        "uptime",      &linky_uptime,                  UINT64,       0,      ANY,  C_ANY, G_ANY,     REAL_TIME,  TIME,        "mdi:clock-time-eight-outline",        0x0000, 0x0000,  ZB_NO},
+    {0,   "Free RAM",                       "free-ram",    &linky_free_heap_size,          UINT32,       0,      ANY,  C_ANY, G_ANY,     REAL_TIME,  BYTES,       "",                                    0x0000, 0x0000,  ZB_NO},
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
@@ -861,8 +864,6 @@ static void linky_clear_data()
     for (uint32_t i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].data == NULL)
-            continue;
-        if (linky_mode != LinkyLabelList[i].mode)
             continue;
 
         switch (LinkyLabelList[i].type)
