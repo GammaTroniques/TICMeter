@@ -251,10 +251,10 @@ void shell_init()
       esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
 #endif
 
-  // vprintf_like_t orig_log_output = esp_log_set_vprintf(null_printf);
+  FILE *file = freopen("/dev/null", "w", stdout);
+  int fd = dup2(f
+  
   ESP_ERROR_CHECK(esp_console_start_repl(repl));
-  // vTaskDelay(1000 / portTICK_PERIOD_MS);
-  // esp_log_set_vprintf(orig_log_output);
 }
 
 static int esp_reset_command(int argc, char **argv)
@@ -539,7 +539,7 @@ static int get_linky_mode_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  const char *modes[] = {"MODE_HISTORIQUE", "MODE_STANDARD", "MODE_AUTO"};
+  const char *modes[] = {"MODE_HIST", "MODE_STD", "MODE_AUTO"};
   printf("Current Linky mode: %d: %s\n", linky_mode, modes[linky_mode]);
   printf("Configured Linky mode: %d: %s\n", config_values.linkyMode,
          modes[config_values.linkyMode]);

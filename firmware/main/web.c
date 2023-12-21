@@ -59,7 +59,7 @@ void web_preapare_json_data(LinkyData *data, char dataIndex, char *json, unsigne
         cJSON *dataItem = cJSON_CreateObject();
         switch (linky_mode)
         {
-        case MODE_HISTORIQUE:
+        case MODE_HIST:
             cJSON_AddNumberToObject(dataItem, "DATE", data[i].timestamp);
             cJSON_AddStringToObject(dataItem, "ADCO", data[i].hist.ADCO);
             cJSON_AddStringToObject(dataItem, "OPTARIF", data[i].hist.OPTARIF);
@@ -77,8 +77,8 @@ void web_preapare_json_data(LinkyData *data, char dataIndex, char *json, unsigne
             cJSON_AddStringToObject(dataItem, "HHPHC", data[i].hist.HHPHC);
             cJSON_AddStringToObject(dataItem, "MOTDETAT", data[i].hist.MOTDETAT);
             break;
-        case MODE_STANDARD:
-            ESP_LOGI("WEB", "MODE_STANDARD not implemented yet");
+        case MODE_STD:
+            ESP_LOGI("WEB", "MODE_STD not implemented yet");
             break;
         default:
             break;
