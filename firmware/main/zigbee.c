@@ -172,6 +172,7 @@ static void zigbee_task(void *pvParameters)
     // esp_zb_factory_reset();
     // ESP_LOGI(TAG, "Starting Zigbee stack");
     /* initialize Zigbee stack with Zigbee end-device config */
+    // esp_zb_set_trace_level_mask(ESP_ZB_TRACE_LEVEL_DEBUG, ESP_ZB_TRACE_SUBSYSTEM_ZCL | ESP_ZB_TRACE_SUBSYSTEM_APP);
     esp_zb_cfg_t zigbee_cfg = {
         .esp_zb_role = ESP_ZB_DEVICE_TYPE_ED,
         .install_code_policy = false,
@@ -211,13 +212,19 @@ static void zigbee_task(void *pvParameters)
     // esp_zb_attribute_list_t *esp_zb_meter_identification_cluster = esp_zb_cluster_create
 
     // ---------------------- Metering cluster ----------------------
-
+    uint8_t formating = (1 << 7) | (15 << 3) | (3 << 0);
+    uint32_t divisor = 1000;
     esp_zb_metering_cluster_cfg_t metering_cluster_cfg = {
         .uint_of_measure = ESP_ZB_ZCL_METERING_UNIT_KW_KWH_BINARY,
         .metering_device_type = ESP_ZB_ZCL_METERING_ELECTRIC_METERING,
-        .summation_formatting = 1,
+        //
+        .summation_formatting = formating,
     };
     esp_zb_attribute_list_t *esp_zb_metering_cluster = esp_zb_metering_cluster_create(&metering_cluster_cfg);
+    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_DEMAND_FORMATTING_ID, ESP_ZB_ZCL_ATTR_TYPE_8BITMAP, ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY, &formating);
+    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_HISTORICAL_CONSUMPTION_FORMATTING_ID, ESP_ZB_ZCL_ATTR_TYPE_8BITMAP, ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY, &formating);
+    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_UNIT_OF_MEASURE_ID, ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM, ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY, &metering_cluster_cfg.uint_of_measure);
+    esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_DIVISOR_ID, ESP_ZB_ZCL_ATTR_TYPE_U24, ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY, &divisor);
 
     // esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_U48, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &trash);
     // esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_TIER1_SUMMATION_DELIVERED_ID, ESP_ZB_ZCL_ATTR_TYPE_U48, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, &trash);
@@ -292,8 +299,6 @@ static void zigbee_task(void *pvParameters)
             break;
         };
 
-        ESP_LOGI(TAG, "Adding %s : Cluster: %x, attribute: %x, value: %d", LinkyLabelList[i].label, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, *(uint16_t *)LinkyLabelList[i].data);
-
         uint8_t type;
         switch (LinkyLabelList[i].type)
         {
@@ -310,13 +315,39 @@ static void zigbee_task(void *pvParameters)
             type = ESP_ZB_ZCL_ATTR_TYPE_U48;
             break;
         case STRING:
-            type = ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING;
+            type = ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING;
             break;
         default:
             ESP_LOGE(TAG, "%s : Unknown type", LinkyLabelList[i].label);
             return;
             break;
         }
+
+        char str_value[100];
+        switch (LinkyLabelList[i].type)
+        {
+        case UINT8:
+            sprintf(str_value, "%u", *(uint8_t *)LinkyLabelList[i].data);
+            break;
+        case UINT16:
+            sprintf(str_value, "%u", *(uint16_t *)LinkyLabelList[i].data);
+            break;
+        case UINT32:
+            sprintf(str_value, "%lu", *(uint32_t *)LinkyLabelList[i].data);
+            break;
+        case UINT64:
+            sprintf(str_value, "%llu", *(uint64_t *)LinkyLabelList[i].data);
+            break;
+        case STRING:
+            sprintf(str_value, "%s", (char *)LinkyLabelList[i].data);
+            break;
+        default:
+            ESP_LOGE(TAG, "%s : Unknown type", LinkyLabelList[i].label);
+            return;
+            break;
+        }
+
+        ESP_LOGI(TAG, "Adding %s : Cluster: %x, attribute: %x, zbtype: %x, value: %s", LinkyLabelList[i].label, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, type, str_value);
 
         switch (LinkyLabelList[i].clusterID)
         {
@@ -327,7 +358,7 @@ static void zigbee_task(void *pvParameters)
         }
         case ESP_ZB_ZCL_CLUSTER_ID_METERING:
         {
-            esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, LinkyLabelList[i].attributeID, type, ESP_ZB_ZCL_ATTR_ACCESS_REPORTING, LinkyLabelList[i].data);
+            esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, LinkyLabelList[i].attributeID, type, LinkyLabelList[i].zb_access, LinkyLabelList[i].data);
             break;
         }
         default:
@@ -480,6 +511,16 @@ uint8_t zigbee_send(LinkyData *data)
         }
         else
         {
+            if (LinkyLabelList[i].type == STRING)
+            {
+                char *str = (char *)LinkyLabelList[i].data;
+                char temp[100];
+                memcpy(temp + 1, str, LinkyLabelList[i].size + 1);
+                temp[LinkyLabelList[i].size + 2] = '\0';
+                temp[0] = strlen(temp + 1);
+                memcpy(LinkyLabelList[i].data, temp, LinkyLabelList[i].size);
+                ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
+            }
             ESP_LOGI(TAG, "Set attribute cluster: 0x%x, attribute: 0x%x, name: %s, value: %llu", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
             esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, true);
         }

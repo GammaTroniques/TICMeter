@@ -1846,7 +1846,7 @@ CONFIG_ZB_RADIO_NATIVE=y
 #
 # Zigbee trace log option
 #
-# CONFIG_ESP_ZB_TRACE_ENABLE is not set
+CONFIG_ESP_ZB_TRACE_ENABLE=y
 # end of Zigbee trace log option
 # end of Zigbee
 # end of Component config
