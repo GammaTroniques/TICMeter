@@ -8,6 +8,8 @@
   "idf.port": "/dev/ttyACM0",
   "idf.gitPathWin": "c:\\Espressif\\IDF_TOOLS_PATH\\tools\\idf-git\\2.39.2\\cmd\\git.exe",
   "files.associations": {
-    "*.yaml": "home-assistant"
+    "*.vhd": "vhdl",
+    "*.yaml": "home-assistant",
+    "zigbee.h": "c"
   }
 }
