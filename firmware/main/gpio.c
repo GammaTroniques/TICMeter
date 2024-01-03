@@ -472,9 +472,21 @@ void gpio_pairing_button_task(void *pvParameters)
                         break;
                     case MODE_ZIGBEE:
                         pairingState = 1;
-                        ESP_LOGI(TAG, "Zigbee pairing TODO");
+                        ESP_LOGI(TAG, "Zigbee pairing");
+                        if (config_values.zigbee.state == ZIGBEE_PAIRED)
+                        {
+                            ESP_LOGI(TAG, "Already paired, resetting");
+                            config_values.zigbee.state = ZIGBEE_WANT_PAIRING;
+                            config_write();
+                            esp_zb_factory_reset();
+                        }
+                        else
+                        {
+                            config_values.zigbee.state = ZIGBEE_PAIRING;
+                            zigbee_start_pairing();
+                        }
+                        // esp_zb_factory_reset();
                         // start_zigbee_pairing();
-                        esp_zb_factory_reset();
                         break;
                     default:
                         ESP_LOGI(TAG, "No pairing mode");
@@ -626,6 +638,10 @@ void gpio_led_task_pairing(void *pvParameters)
         vTaskDelay(100 / portTICK_PERIOD_MS);
         gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);
+        if (config_values.mode == MODE_ZIGBEE && config_values.zigbee.state == ZIGBEE_PAIRED)
+        {
+            break;
+        }
     }
     vTaskDelete(NULL); // Delete this task
 }

@@ -75,6 +75,7 @@ static struct config_item_t config_items[] = {
     {"mqtt-conf",     BLOB, &config_values.mqtt,            sizeof(config_values.mqtt),             &config_handle},
     {"tuya-keys",     BLOB, &config_values.tuya,            sizeof(config_values.tuya),             &ro_config_handle},
     {"pairing",      UINT8, &config_values.pairing_state,   sizeof(config_values.pairing_state),    &config_handle},
+    {"zigbee",        BLOB, &config_values.zigbee,          sizeof(config_values.zigbee),           &config_handle},
  
     {"version",     STRING, &config_values.version,         sizeof(config_values.version),          &config_handle},
     {"refresh",     UINT16, &config_values.refreshRate,     sizeof(config_values.refreshRate),      &config_handle},

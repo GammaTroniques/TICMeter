@@ -13,6 +13,7 @@
  Local Include
 ===============================================================================*/
 #include "zigbee.h"
+#include "gpio.h"
 #include "esp_zigbee_core.h"
 #include "esp_app_desc.h"
 #include <stdio.h>
@@ -42,8 +43,8 @@
 /*==============================================================================
  Local Type
 ===============================================================================*/
-DEFINE_PSTRING(zigbee_device_name, "TICMeter");
-// DEFINE_PSTRING(zigbee_device_name, "ZLinky_TIC");
+// DEFINE_PSTRING(zigbee_device_name, "TICMeter");
+DEFINE_PSTRING(zigbee_device_name, "ZLinky_TIC");
 DEFINE_PSTRING(zigbee_device_manufacturer, "GammaTroniques");
 DEFINE_PSTRING(zigbee_date_code, "2023-12-16");
 
@@ -67,6 +68,10 @@ Public Variable
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
+void zigbee_start_pairing()
+{
+    esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
+}
 
 void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
 {
@@ -84,8 +89,18 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     case ESP_ZB_BDB_SIGNAL_DEVICE_REBOOT:
         if (err_status == ESP_OK)
         {
-            ESP_LOGI(TAG, "Start network steering");
-            esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
+            switch (config_values.zigbee.state)
+            {
+            case ZIGBEE_WANT_PAIRING:
+                xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 2048, NULL, 5, &gpio_led_pairing_task_handle);
+                // fall through
+            case ZIGBEE_PAIRING:
+                ESP_LOGI(TAG, "Start network steering");
+                esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
+                break;
+            default:
+                break;
+            }
         }
         else
         {
@@ -103,6 +118,12 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                      extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4],
                      extended_pan_id[3], extended_pan_id[2], extended_pan_id[1], extended_pan_id[0],
                      esp_zb_get_pan_id(), esp_zb_get_current_channel());
+            if (config_values.zigbee.state == ZIGBEE_PAIRING)
+            {
+                config_values.zigbee.state = ZIGBEE_PAIRED;
+                ESP_LOGI(TAG, "Zigbee paired");
+                config_write();
+            }
         }
         else
         {
@@ -149,12 +170,6 @@ static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback
 
 void zigbee_init_stack()
 {
-    static uint8_t fistCall = 0;
-    if (fistCall == 1)
-    {
-        return;
-    }
-    fistCall = 1;
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_LOGI(TAG, "Initializing Zigbee stack");
     esp_zb_platform_config_t config = {
@@ -428,6 +443,12 @@ uint8_t zigbee_send(LinkyData *data)
     //     fistCall = 1;
     //     zigbee_init_stack();
     // }
+    if (config_values.zigbee.state != ZIGBEE_PAIRED)
+    {
+        ESP_LOGE(TAG, "Zigbee not paired");
+        return 1;
+    }
+
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)

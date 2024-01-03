@@ -84,6 +84,20 @@ typedef struct
     char device_auth[40];
 } tuyaConfig_t;
 
+typedef enum
+{
+    ZIGBEE_NOT_CONFIGURED,
+    ZIGBEE_PAIRING,
+    ZIGBEE_PAIRED,
+    ZIGBEE_WANT_PAIRING,
+} zigbee_pairing_state_t;
+
+typedef struct
+{
+    zigbee_pairing_state_t state;
+
+} zigbee_config_t;
+
 typedef struct
 {
     uint8_t initialized; // should be 1 if the config is initialized
@@ -96,6 +110,7 @@ typedef struct
     mqttConfig_t mqtt;
     pairing_state_t pairing_state;
     tuyaConfig_t tuya;
+    zigbee_config_t zigbee;
 
     char version[10];
     uint16_t refreshRate;
