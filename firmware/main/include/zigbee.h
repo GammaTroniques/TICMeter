@@ -48,5 +48,6 @@
 ==============================================================================*/
 extern void zigbee_init_stack();
 extern uint8_t zigbee_send(LinkyData *data);
+void zigbee_start_pairing();
 
 #endif // ZIGBEE_H

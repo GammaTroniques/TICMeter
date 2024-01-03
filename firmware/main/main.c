@@ -199,6 +199,8 @@ void app_main(void)
     break;
   case MODE_ZIGBEE:
     // zigbee_task(0);
+    zigbee_init_stack();
+
     break;
   case MODE_TUYA:
     if (config_values.pairing_state != TUYA_PAIRED)
@@ -358,8 +360,6 @@ void main_fetch_linky_data_task(void *pvParameters)
       }
       break;
     case MODE_ZIGBEE:
-      zigbee_init_stack();
-      vTaskDelay(5000 / portTICK_PERIOD_MS);
       zigbee_send(&linky_data);
       break;
     default:

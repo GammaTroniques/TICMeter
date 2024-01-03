@@ -10,7 +10,8 @@
   "files.associations": {
     "*.vhd": "vhdl",
     "*.yaml": "home-assistant",
-    "zigbee.h": "c"
+    "zigbee.h": "c",
+    "config.h": "c"
   },
   "idf.flashBaudRate": "1000000"
 }
