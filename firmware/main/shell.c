@@ -113,6 +113,7 @@ static int print_task_list(int argc, char **argv);
 static int start_test_command(int argc, char **argv);
 
 static int zigbee_reset_command(int argc, char **argv);
+static int skip_command(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -179,6 +180,8 @@ static const shell_cmd_t shell_cmds[] = {
     {"task-list",                   "Print task list",                          &print_task_list,                   0, {}, {}},
     {"start-test",                  "Start a test",                             &start_test_command,                1, {"<test-name>"}, {"Available tests: adc"}},
     {"zigbee-reset",                "Clear Zigbee config",                      &zigbee_reset_command,              0, {}, {}},
+    {"skip",                        "Skip refresh rate delay",                  &skip_command,                      0, {}, {}},
+
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -203,6 +206,7 @@ void shell_init()
   esp_log_level_set("gpio", ESP_LOG_ERROR);
   esp_log_level_set("uart", ESP_LOG_ERROR);
   esp_log_level_set("NimBLE", ESP_LOG_ERROR);
+  esp_log_level_set("gpio", ESP_LOG_ERROR);
   // esp_log_level_set("*", ESP_LOG_WARN);
 
   esp_console_repl_t *repl = NULL;
@@ -834,5 +838,15 @@ static int zigbee_reset_command(int argc, char **argv)
   printf("Resetting Zigbee config\n");
   esp_zb_factory_reset();
   printf("Zigbee config reset\n");
+  return 0;
+}
+
+static int skip_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  main_sleep_time = 1;
   return 0;
 }

@@ -9,5 +9,5 @@ zb_storage,    data,       fat,    0x12000,      16K,
     zb_fct,    data,       fat,    0x16000,       1K,
    storage,    data,    spiffs,    0x17000,      64K,
    nvs_key,    data,  nvs_keys,    0x27000,       4k, encrypted
-     ota_0,     app,     ota_0,    0x30000,    2900K,
-#     ota_1,     app,     ota_1,    0x210000,    1900K,
+     ota_0,     app,     ota_0,    0x30000,    1900K,
+     ota_1,     app,     ota_1,    0x210000,   1900K,

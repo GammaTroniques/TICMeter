@@ -35,6 +35,7 @@
 extern TaskHandle_t fetchLinkyDataTaskHandle;
 extern TaskHandle_t sendDataTaskHandle;
 extern TaskHandle_t noConfigLedTaskHandle;
+extern uint32_t main_sleep_time;
 
 /*==============================================================================
  Public Functions Declaration

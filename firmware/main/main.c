@@ -70,7 +70,7 @@ Public Variable
 ===============================================================================*/
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
 TaskHandle_t noConfigLedTaskHandle = NULL;
-
+uint32_t main_sleep_time = 99999;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
@@ -231,21 +231,20 @@ void main_fetch_linky_data_task(void *pvParameters)
   uint32_t last_heap = esp_get_free_heap_size();
   while (1)
   {
-    // sleep:
-    uint32_t sleepTime = abs(config_values.refreshRate - 10);
-    ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", sleepTime);
-    while (sleepTime > 0)
+    main_sleep_time = abs(config_values.refreshRate - 10);
+    ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
+    while (main_sleep_time > 0)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
-      sleepTime--;
+      main_sleep_time--;
       if (gpio_get_vusb() < 3 && config_values.sleep)
       {
-        ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", sleepTime);
+        ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", main_sleep_time);
         uart_set_wakeup_threshold(UART_NUM_0, 3);
         esp_sleep_enable_uart_wakeup(UART_NUM_0);
         esp_sleep_enable_ext1_wakeup(1ULL << V_USB_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
-        esp_sleep_enable_timer_wakeup(sleepTime * 1000000); // wait for refreshRate seconds before next loop
-        sleepTime = 0;
+        esp_sleep_enable_timer_wakeup(main_sleep_time * 1000000); // wait for refreshRate seconds before next loop
+        main_sleep_time = 0;
         esp_light_sleep_start();
       }
     }

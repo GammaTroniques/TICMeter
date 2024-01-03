@@ -590,7 +590,7 @@ int tuya_mqtt_stop(tuya_mqtt_context_t *context)
 		return OPRT_INVALID_PARM;
 	}
 
-	int ret = tuya_mqtt_subscribe_message_callback_unregister(context, context->signature.topic_in);
+	tuya_mqtt_subscribe_message_callback_unregister(context, context->signature.topic_in);
 	TY_LOGD("MQTT unsubscribe result:%ld", ret);
 
 	mqtt_client_status_t mqtt_status;

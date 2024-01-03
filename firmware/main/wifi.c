@@ -378,11 +378,11 @@ static void wifi_init_softap(void)
     // read MAC address
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
-    sprintf(ssid, "%s_%02X%02X%02X", AP_SSID, mac[3], mac[4], mac[5]);
+    sprintf(ssid, "%s %s", AP_SSID, efuse_values.macAddress + 6);
 
     strncpy((char *)wifi_config.ap.ssid, ssid, sizeof(wifi_config.ap.ssid));
     strncpy((char *)wifi_config.ap.password, AP_PASS, sizeof(wifi_config.ap.password));
-    wifi_config.ap.ssid_len = strlen(AP_SSID);
+    wifi_config.ap.ssid_len = strlen(ssid);
     wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
     wifi_config.ap.max_connection = 4;
     if (strlen(AP_PASS) == 0)
@@ -417,7 +417,7 @@ static void stop_captive_portal_task(void *pvParameter)
         {
             readCount = 0;
         }
-        if (readCount > 3)
+        if (readCount > 6)
         {
             ESP_LOGI(TAG, "VUSB is not connected, stop captive portal");
             esp_restart();
@@ -425,7 +425,7 @@ static void stop_captive_portal_task(void *pvParameter)
         // gpio_set_level(LED_GREEN, 1);
         // vTaskDelay(50 / portTICK_PERIOD_MS);
         // gpio_set_level(LED_GREEN, 0);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 

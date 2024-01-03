@@ -11,5 +11,6 @@
     "*.vhd": "vhdl",
     "*.yaml": "home-assistant",
     "zigbee.h": "c"
-  }
+  },
+  "idf.flashBaudRate": "1000000"
 }
