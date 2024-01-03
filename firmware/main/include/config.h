@@ -86,6 +86,7 @@ typedef struct
 
 typedef struct
 {
+    uint8_t initialized; // should be 1 if the config is initialized
     char ssid[50];
     char password[50];
 
