@@ -231,6 +231,9 @@ void main_fetch_linky_data_task(void *pvParameters)
   unsigned int dataIndex = 0;
   linky_init(MODE_HIST, RX_LINKY);
   uint32_t last_heap = esp_get_free_heap_size();
+
+  uint64_t next_update_check = wifi_get_timestamp();
+
   while (1)
   {
     main_sleep_time = abs(config_values.refreshRate - 10);
@@ -262,7 +265,9 @@ void main_fetch_linky_data_task(void *pvParameters)
 
     switch (config_values.mode)
     {
-    case MODE_WEB: // send data to web server
+    case MODE_WEB:
+    {
+      // send data to web server
       if (dataIndex >= MAX_DATA_INDEX)
       {
         dataIndex = 0;
@@ -289,6 +294,7 @@ void main_fetch_linky_data_task(void *pvParameters)
         dataIndex = 0;
       }
       break;
+    }
     case MODE_MQTT:
     case MODE_MQTT_HA: // send data to mqtt server
     {
@@ -313,12 +319,13 @@ void main_fetch_linky_data_task(void *pvParameters)
         goto send_error;
       }
 
-      if (gpio_get_vusb() > 3)
+      if (gpio_get_vusb() > 3 && next_update_check < wifi_get_timestamp())
       {
+        ESP_LOGI(MAIN_TAG, "Checking for update");
+        next_update_check = wifi_get_timestamp() + 3600;
         ota_version_t version;
         ota_get_latest(&version);
       }
-
       wifi_disconnect();
       gpio_start_led_pattern(PATTERN_SEND_OK);
       break;
@@ -349,8 +356,10 @@ void main_fetch_linky_data_task(void *pvParameters)
       tuya_disconect:
         // tuya_stop();
         // tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
-        if (gpio_get_vcondo() > 3.8)
+        if (gpio_get_vusb() > 3 && next_update_check < wifi_get_timestamp())
         {
+          ESP_LOGI(MAIN_TAG, "Checking for update");
+          next_update_check = wifi_get_timestamp() + 3600;
           ota_version_t version;
           ota_get_latest(&version);
         }
