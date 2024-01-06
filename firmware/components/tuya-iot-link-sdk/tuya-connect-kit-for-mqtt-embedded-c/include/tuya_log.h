@@ -2,6 +2,7 @@
 #define __TUYA_LOG_H__
 
 #include "log.h"
+#define ENABLE_LOGS
 
 #ifdef ENABLE_LOGS
 #define TY_LOGE log_error
