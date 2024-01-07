@@ -270,12 +270,12 @@ const char *const ha_sensors_str[] = {
 /*==============================================================================
  Local Variable
 ===============================================================================*/
-static char linky_uart_rx = 0;               // The RX pin of the linky
-static char *linky_frame = NULL;             // The received frame from the linky
+static char linky_uart_rx = 0; // The RX pin of the linky
+// static char *linky_frame = NULL;             // The received frame from the linky
 static uint8_t linky_group_separator = 0x20; // The group separator character (changes depending on the mode) (0x20 in historique mode, 0x09 in standard mode)
 static uint16_t linky_frame_size = 0;        // The size of the frame
 static uint32_t linky_rx_bytes = 0;          // store the number of bytes read
-
+static char linky_frame[LINKY_BUFFER_SIZE] = {0};
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -440,34 +440,19 @@ static void linky_read()
     {
         ESP_LOGE(TAG, "Error: Frame not found");
         linky_frame_size = 0;
-        linky_frame = NULL;
+        linky_frame[0] = 0;
         return;
     }
     else
     {
-        ESP_LOGW(TAG, "Start of frame: %lu", startOfFrame);
-        ESP_LOGW(TAG, "End of frame: %lu", endOfFrame);
+        ESP_LOGD(TAG, "Start of frame: %lu", startOfFrame);
+        ESP_LOGD(TAG, "End of frame: %lu", endOfFrame);
         linky_frame_size = endOfFrame - startOfFrame;
-        linky_frame = linky_buffer + startOfFrame;
+        memcpy(linky_frame, linky_buffer + startOfFrame, linky_frame_size);
+        linky_frame[linky_frame_size] = 0;
     }
-    ESP_LOG_BUFFER_HEXDUMP(TAG, linky_buffer, linky_rx_bytes, ESP_LOG_DEBUG);
-    ESP_LOGW(TAG, "-------------------");
-    for (int i = 0; i < linky_frame_size + 2; i++)
-    {
-        if (linky_frame[i] <= 0x20)
-        {
-            printf("[%d]", linky_frame[i]);
-        }
-        else
-        {
-            printf("%c", linky_frame[i]);
-        }
-        if (linky_frame[i] == 10)
-        {
-            printf("\n");
-        }
-    }
-
+    // ESP_LOG_BUFFER_HEXDUMP(TAG, linky_buffer, linky_rx_bytes, ESP_LOG_DEBUG);
+    // ESP_LOGW(TAG, "-------------------");
     // ESP_LOGW(TAG, "Buffer: %s", linky_buffer);
 }
 
@@ -482,7 +467,7 @@ static char linky_decode()
     // Clear the previous data
     //----------------------------------------------------------
     linky_clear_data();
-    if (!linky_frame)
+    if (linky_frame[0] == 0)
     {
         if (config_values.linkyMode == AUTO)
         {
@@ -529,7 +514,8 @@ static char linky_decode()
     unsigned int endOfGroup[GROUP_COUNT] = {UINT_MAX};   // store ends index of each group
     unsigned int startOfGroupIndex = 0;                  // store the current index of starts of group array
     unsigned int endOfGroupIndex = 0;                    // store the current index of ends of group array
-    for (unsigned int i = 0; i < linky_frame_size; i++)  // for each character in the frame
+
+    for (unsigned int i = 0; i < linky_frame_size + 1; i++) // for each character in the frame
     {
         switch (linky_frame[i])
         {
@@ -586,14 +572,15 @@ static char linky_decode()
 
         //-----------------------------------------------------------------------------------------------------------------replace to MEMCOPY
         memcpy(label, linky_frame + startOfGroup[i] + 1, separators[0] - startOfGroup[i] - 1); // copy the label from the group
-        memcpy(value, linky_frame + separators[0] + 1, separators[1] - separators[0] - 1);     // copy the data from the group
         if (linky_mode == MODE_STD && separatorIndex == 3)                                     // if the mode is standard and the number of separators is 3
         {
-            memcpy(time, linky_frame + separators[1] + 1, separators[2] - separators[1] - 1);     // copy the time from the group
+            memcpy(time, linky_frame + separators[0] + 1, separators[1] - separators[0] - 1);     // copy the time from the group
+            memcpy(value, linky_frame + separators[1] + 1, separators[2] - separators[1] - 1);    // copy the data from the group
             memcpy(checksum, linky_frame + separators[2] + 1, endOfGroup[i] - separators[2] - 1); // copy the checksum from the group
         }
         else
         {
+            memcpy(value, linky_frame + separators[0] + 1, separators[1] - separators[0] - 1);    // copy the data from the group
             memcpy(checksum, linky_frame + separators[1] + 1, endOfGroup[i] - separators[1] - 1); // copy the checksum from the group
         }
         // ESP_LOGI(TAG, "label: %s value: %s checksum: %s", label, value, checksum);
@@ -618,8 +605,17 @@ static char linky_decode()
                     switch (LinkyLabelList[j].type)
                     {
                     case STRING:
-                        strncpy((char *)LinkyLabelList[j].data, value, LinkyLabelList[j].size);
+                    {
+                        uint32_t size = strlen(value);
+                        if (size > LinkyLabelList[j].size)
+                        {
+                            size = LinkyLabelList[j].size;
+                        }
+                        strncpy((char *)LinkyLabelList[j].data, value, size);
+                        ((char *)LinkyLabelList[j].data)[size] = 0;
                         break;
+                    }
+
                     case UINT8:
                         *(uint8_t *)LinkyLabelList[j].data = strtoul(value, NULL, 10);
                         break;
@@ -682,27 +678,34 @@ void linky_print()
 
         if (linky_mode != LinkyLabelList[i].mode)
             continue;
+
+        char str_value[100] = {0};
         switch (LinkyLabelList[i].type)
         {
         case STRING:
             if (strlen((char *)LinkyLabelList[i].data) > 0) // print only if we have a value
-                ESP_LOGI(TAG, "%s: %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
+                // ESP_LOGI(TAG, "%s: %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
+                strncpy(str_value, (char *)LinkyLabelList[i].data, strlen((char *)LinkyLabelList[i].data));
             break;
         case UINT8:
             if (*(uint8_t *)LinkyLabelList[i].data != UINT8_MAX) // print only if we have a value
-                ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
+                // ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
+                sprintf(str_value, "%u", *(uint8_t *)LinkyLabelList[i].data);
             break;
         case UINT16:
             if (*(uint16_t *)LinkyLabelList[i].data != UINT16_MAX) // print only if we have a value
-                ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+                // ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+                sprintf(str_value, "%u", *(uint16_t *)LinkyLabelList[i].data);
             break;
         case UINT32:
             if (*(uint32_t *)LinkyLabelList[i].data != UINT32_MAX) // print only if we have a value
-                ESP_LOGI(TAG, "%s: %lu", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
+                // ESP_LOGI(TAG, "%s: %lu", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
+                sprintf(str_value, "%lu", *(uint32_t *)LinkyLabelList[i].data);
             break;
         case UINT64:
             if (*(uint64_t *)LinkyLabelList[i].data != UINT64_MAX) // print only if we have a value
-                ESP_LOGI(TAG, "%s: %llu", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
+                // ESP_LOGI(TAG, "%s: %llu", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
+                sprintf(str_value, "%llu", *(uint64_t *)LinkyLabelList[i].data);
             break;
         case UINT32_TIME:
         {
@@ -712,12 +715,17 @@ void linky_print()
                 struct tm *timeinfo = localtime(&timeLabel.timestamp);
                 char timeString[20];
                 strftime(timeString, sizeof(timeString), "%d/%m/%Y %H:%M:%S", timeinfo);
-                ESP_LOGI(TAG, "%s: %s %lu", LinkyLabelList[i].label, timeString, timeLabel.value);
+                // ESP_LOGI(TAG, "%s: %s %lu", LinkyLabelList[i].label, timeString, timeLabel.value);
+                sprintf(str_value, "%s - %lu", timeString, timeLabel.value);
             }
             break;
         }
         default:
             break;
+        }
+        if (strlen(str_value) > 0)
+        {
+            ESP_LOGI(TAG, "%s (%s): %s %s", LinkyLabelList[i].name, LinkyLabelList[i].label, str_value, HAUnitsStr[LinkyLabelList[i].device_class]);
         }
     }
     ESP_LOGI(TAG, "-------------------");
@@ -918,4 +926,25 @@ static void linky_clear_data()
             break;
         }
     }
+}
+
+void linky_print_debug_frame()
+{
+    printf("\n");
+    for (int i = 0; i < linky_frame_size + 2; i++)
+    {
+        if (linky_frame[i] <= 0x20)
+        {
+            printf("[%d]", linky_frame[i]);
+        }
+        else
+        {
+            printf("%c", linky_frame[i]);
+        }
+        if (linky_frame[i] == 13)
+        {
+            printf("\n");
+        }
+    }
+    printf("\n");
 }
