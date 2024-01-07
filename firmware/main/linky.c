@@ -31,7 +31,7 @@
 #define END_OF_GROUP    0x0D    // The end of group character
 
 
-#define RX_BUF_SIZE     1024 // The size of the UART buffer
+#define RX_BUF_SIZE     2048 // The size of the UART buffer
 #define FRAME_COUNT     5   // The max number of frame in buffer
 #define FRAME_SIZE      500   // The size of one frame buffer
 #define GROUP_COUNT     50
@@ -293,7 +293,7 @@ void linky_init(linky_mode_t mode, int RX)
     // mode Historique: 0x20
     // mode Standard: 0x09
     linky_group_separator = (mode == MODE_HIST) ? 0x20 : 0x09;
-    esp_log_level_set(TAG, ESP_LOG_INFO);
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
 
     switch (config_values.linkyMode)
     {
@@ -445,14 +445,30 @@ static void linky_read()
     }
     else
     {
-        ESP_LOGD(TAG, "Start of frame: %lu", startOfFrame);
-        ESP_LOGD(TAG, "End of frame: %lu", endOfFrame);
+        ESP_LOGW(TAG, "Start of frame: %lu", startOfFrame);
+        ESP_LOGW(TAG, "End of frame: %lu", endOfFrame);
         linky_frame_size = endOfFrame - startOfFrame;
         linky_frame = linky_buffer + startOfFrame;
     }
     ESP_LOG_BUFFER_HEXDUMP(TAG, linky_buffer, linky_rx_bytes, ESP_LOG_DEBUG);
-    ESP_LOGD(TAG, "-------------------");
-    ESP_LOGD(TAG, "Buffer: %s", linky_buffer);
+    ESP_LOGW(TAG, "-------------------");
+    for (int i = 0; i < linky_frame_size + 2; i++)
+    {
+        if (linky_frame[i] <= 0x20)
+        {
+            printf("[%d]", linky_frame[i]);
+        }
+        else
+        {
+            printf("%c", linky_frame[i]);
+        }
+        if (linky_frame[i] == 10)
+        {
+            printf("\n");
+        }
+    }
+
+    // ESP_LOGW(TAG, "Buffer: %s", linky_buffer);
 }
 
 /**
@@ -563,9 +579,9 @@ static char linky_decode()
             }
         }
 
-        char label[10] = {0};   // store the label as a string
+        char label[20] = {0};   // store the label as a string
         char value[100] = {0};  // store the data as a string
-        char time[15] = {0};    // store the time as a string (H081225223518)
+        char time[20] = {0};    // store the time as a string (H081225223518)
         char checksum[5] = {0}; // store the checksum as a string
 
         //-----------------------------------------------------------------------------------------------------------------replace to MEMCOPY
