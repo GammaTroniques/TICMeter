@@ -163,7 +163,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
-    {"linky-print",                 "Print linky linky_data",                   &linky_print_command,               0, {}, {}},
+    {"linky-print",                 "Print linky linky_data",                   &linky_print_command,               1, {"<debug>"}, {"View raw frame, bool 0/1"}},
     {"linky-simulate",              "Simulate linky linky_data",                &linky_simulate,                    0, {}, {}},
     {"get-voltage",                 "Get Voltages",                             &get_voltages,                      0, {}, {}},
     {"set-sleep",                   "Enable/Disable sleep",                     &set_sleep_command,                 1, {"<enable>"}, {"Enable/Disable deep sleep"}},
@@ -566,9 +566,18 @@ static int set_linky_mode_command(int argc, char **argv)
 
 static int linky_print_command(int argc, char **argv)
 {
-  if (argc != 1)
+  if (argc < 1 || argc > 2)
   {
     return ESP_ERR_INVALID_ARG;
+  }
+
+  if (argc == 2)
+  {
+    if (atoi(argv[1]) == 1)
+    {
+      linky_print_debug_frame();
+      return 0;
+    }
   }
   linky_print();
   return 0;

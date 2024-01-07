@@ -334,4 +334,6 @@ void linky_set_mode(linky_mode_t mode);
  */
 uint8_t linky_presence();
 
+void linky_print_debug_frame();
+
 #endif /* Linky_H */
