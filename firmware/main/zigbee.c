@@ -43,8 +43,7 @@
 /*==============================================================================
  Local Type
 ===============================================================================*/
-// DEFINE_PSTRING(zigbee_device_name, "TICMeter");
-DEFINE_PSTRING(zigbee_device_name, "ZLinky_TIC");
+DEFINE_PSTRING(zigbee_device_name, "TICMeter");
 DEFINE_PSTRING(zigbee_device_manufacturer, "GammaTroniques");
 DEFINE_PSTRING(zigbee_date_code, "2023-12-16");
 

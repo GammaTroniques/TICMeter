@@ -220,22 +220,7 @@ void app_main(void)
     break;
   }
   // start linky fetch task
-
-  // xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
-  xTaskCreate(temp_loop, "temp_loop", 16 * 1024, NULL, 1, NULL); //
-}
-
-void temp_loop(void *pvParameters)
-{
-  linky_init(MODE_HIST, RX_LINKY);
-  vTaskDelay(2000 / portTICK_PERIOD_MS);
-  ESP_LOGI(MAIN_TAG, "Starting temp loop");
-  while (1)
-  {
-    linky_update();
-    linky_print();
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
-  }
+  xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
 }
 
 void main_fetch_linky_data_task(void *pvParameters)
@@ -245,7 +230,6 @@ void main_fetch_linky_data_task(void *pvParameters)
   unsigned int dataIndex = 0;
   linky_init(MODE_HIST, RX_LINKY);
   uint32_t last_heap = esp_get_free_heap_size();
-
   uint64_t next_update_check = wifi_get_timestamp();
 
   while (1)
