@@ -13,6 +13,8 @@
 /*==============================================================================
  Local Include
 ===============================================================================*/
+// #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#include "esp_log.h"
 #include "mqtt.h"
 #include "wifi.h"
 #include "gpio.h"
@@ -56,12 +58,22 @@ typedef struct
     char ha_discovery_configured_temp;
 } mqtt_topic_t;
 
+#ifdef MQTT_DEBUG
+typedef struct
+{
+    int id;
+    char name[150];
+    char value[100];
+} mqtt_debug_t;
+
+#endif
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
 static void log_error_if_nonzero(const char *message, int error_code);
 static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor);
 void mqtt_setup_ha_discovery();
+void mqtt_topic_comliance(char *topic, int size);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -73,8 +85,13 @@ esp_mqtt_client_handle_t mqtt_client = NULL;
 static mqtt_state_t mqtt_state = MQTT_DEINIT;
 static uint16_t mqtt_sent_count = 0;
 static uint16_t mqtt_sensors_count = 0;
+
 static mqtt_topic_t mqtt_topics;
 
+#ifdef MQTT_DEBUG
+static mqtt_debug_t mqtt_messages[100];
+static int mqtt_messages_count = 0;
+#endif
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -154,6 +171,25 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
         cJSON_AddNumberToObject(sensorConfig, "exp_aft", config_values.refreshRate * 4);
     }
 
+    switch (sensor.device_class)
+    {
+    case ENERGY:
+    case ENERGY_Q:
+        cJSON_AddStringToObject(sensorConfig, "stat_cla", "total_increasing");
+        break;
+
+    case POWER_kVA:
+    case POWER_VA:
+    case POWER_Q:
+    case POWER_W:
+    case CURRENT:
+    case TENSION:
+        cJSON_AddStringToObject(sensorConfig, "stat_cla", "measurement");
+        break;
+    default:
+        break;
+    }
+
     cJSON_AddItemToObject(sensorConfig, "dev", jsonDevice);
     char *jsonString = cJSON_PrintUnformatted(sensorConfig);
     strncpy(json, jsonString, 1024);
@@ -180,7 +216,7 @@ uint8_t mqtt_prepare_publish(LinkyData *linkydata)
     }
 
     char topic[150];
-    char strValue[20];
+    char strValue[100];
 
     ESP_LOGI(TAG, "Pre-send Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
 
@@ -221,6 +257,8 @@ uint8_t mqtt_prepare_publish(LinkyData *linkydata)
             uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
             if (*value == UINT32_MAX)
                 continue;
+            if (LinkyLabelList[i].device_class == ENERGY && *(uint32_t *)(LinkyLabelList[i].data) == 0)
+                continue;
             snprintf(strValue, sizeof(strValue), "%ld", *value);
             break;
         }
@@ -246,7 +284,6 @@ uint8_t mqtt_prepare_publish(LinkyData *linkydata)
             TimeLabel *timeLabel = (TimeLabel *)LinkyLabelList[i].data;
             if (timeLabel->value == UINT32_MAX)
                 continue;
-            snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, (char *)LinkyLabelList[i].label);
             snprintf(strValue, sizeof(strValue), "%lu", timeLabel->value);
             break;
         }
@@ -258,9 +295,16 @@ uint8_t mqtt_prepare_publish(LinkyData *linkydata)
             break;
         }
         mqtt_sensors_count++;
-        ESP_LOGD(TAG, "Publishing to  %s = %s", topic, strValue);
         // esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
+        mqtt_topic_comliance(topic, sizeof(topic));
         int ret = esp_mqtt_client_enqueue(mqtt_client, topic, strValue, 0, MQTT_QOS, 0, true);
+        ESP_LOGD(TAG, "Prepared id= %d %s = %s", ret, topic, strValue);
+
+#ifdef MQTT_DEBUG
+        mqtt_messages[mqtt_messages_count++].id = ret;
+        strncpy(mqtt_messages[mqtt_messages_count - 1].name, topic, sizeof(topic));
+        strncpy(mqtt_messages[mqtt_messages_count - 1].value, strValue, sizeof(strValue));
+#endif
         if (ret == -1)
         {
             ESP_LOGE(TAG, "Error while enqueue: %d", ret);
@@ -314,6 +358,9 @@ void mqtt_setup_ha_discovery()
         case UINT32:
             if (*(uint32_t *)LinkyLabelList[i].data == UINT32_MAX)
                 continue;
+            if (LinkyLabelList[i].device_class == ENERGY && *(uint32_t *)(LinkyLabelList[i].data) == 0)
+                continue;
+
             ESP_LOGD(TAG, "Adding %s: value = %ld", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
             break;
         case UINT64:
@@ -338,6 +385,7 @@ void mqtt_setup_ha_discovery()
             break;
         }
         mqtt_create_sensor(mqttBuffer, config_topic, LinkyLabelList[i]);
+        mqtt_topic_comliance(config_topic, sizeof(config_topic));
         esp_mqtt_client_enqueue(mqtt_client, config_topic, mqttBuffer, 0, 2, 1, true);
         mqtt_sensors_count++;
     }
@@ -369,12 +417,12 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 
         if (config_values.mode == MODE_MQTT_HA && strlen(mqtt_topics.ha_identifier_topic) > 0)
         {
+            ESP_LOGI(TAG, "Subscribing to identifier %s", mqtt_topics.ha_identifier_topic);
             esp_mqtt_client_subscribe(mqtt_client, mqtt_topics.ha_identifier_topic, 1);
-            ESP_LOGI(TAG, "Subscribing to %s", mqtt_topics.ha_identifier_topic);
         }
         break;
     case MQTT_EVENT_DISCONNECTED:
-        if (mqtt_state != MQTT_DISCONNETED)
+        if (mqtt_state != MQTT_FAILED)
         {
             mqtt_state = MQTT_DISCONNETED;
         }
@@ -386,6 +434,16 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         ESP_LOGI(TAG, "MQTT_EVENT_UNSUBSCRIBED, msg_id=%d", event->msg_id);
         break;
     case MQTT_EVENT_PUBLISHED:
+#ifdef MQTT_DEBUG
+        for (int i = 0; i < mqtt_messages_count; i++)
+        {
+            if (mqtt_messages[i].id == event->msg_id)
+            {
+                mqtt_messages[i].id = -1;
+                break;
+            }
+        }
+#endif
         mqtt_sent_count++;
         break;
     case MQTT_EVENT_DATA:
@@ -493,11 +551,14 @@ int mqtt_init(void)
     char uri[200];
     snprintf(uri, sizeof(uri), "mqtt://%s:%d", config_values.mqtt.host, config_values.mqtt.port);
     esp_mqtt_client_config_t mqtt_cfg = {
-        .session.message_retransmit_timeout = 500,
-        .outbox.limit = 16 * 1024,
+        // .session.message_retransmit_timeout = 500,
+        .outbox.limit = 32 * 1024,
         .credentials.username = config_values.mqtt.username,
         .credentials.authentication.password = config_values.mqtt.password,
-        .task.priority = 1,
+        .task = {
+            .stack_size = 16 * 1024,
+            .priority = 2,
+        },
         .broker.address.uri = uri,
         .credentials.client_id = mqtt_topics.name,
     };
@@ -519,9 +580,19 @@ int mqtt_send()
     wifi_sending = 1;
     xTaskCreate(gpio_led_task_sending, "sendingLedTask", 4096, NULL, 1, NULL);
 
+#ifdef MQTT_DEBUG
+    mqtt_messages_count = 0;
+    for (int i = 0; i < mqtt_sensors_count; i++)
+    {
+        mqtt_messages[i].id = -1;
+    }
+#endif
+
     if (mqtt_state == MQTT_FAILED)
     {
-        ESP_LOGI(TAG, "MQTT ERROR");
+        ESP_LOGI(TAG, "MQTT Failed state: reconnecting...");
+        mqtt_state = MQTT_CONNECTING;
+        err = esp_mqtt_client_reconnect(mqtt_client);
         goto error;
     }
 
@@ -542,10 +613,18 @@ int mqtt_send()
     time_t mqtt_send_timeout = MILLIS + MQTT_SEND_TIMEOUT;
     while ((mqtt_send_timeout > MILLIS) && /*mqtt_sent_count < mqtt_sensors_count*/ esp_mqtt_client_get_outbox_size(mqtt_client) > 0)
     {
-        if (mqtt_state == MQTT_DISCONNETED || mqtt_state == MQTT_FAILED)
+        if (mqtt_state == MQTT_DISCONNETED)
         {
             ESP_LOGE(TAG, "MQTT Exit: %d", mqtt_state);
             break;
+        }
+        if (mqtt_state == MQTT_FAILED)
+        {
+            ESP_LOGW(TAG, "MQTT faild");
+            break;
+            // esp_mqtt_client_disconnect(mqtt_client);
+            // vTaskDelay(100 / portTICK_PERIOD_MS);
+            // esp_mqtt_client_start(mqtt_client);
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
         ESP_LOGD(TAG, "Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
@@ -553,9 +632,20 @@ int mqtt_send()
 
     mqtt_topics.ha_discovery_configured = mqtt_topics.ha_discovery_configured_temp;
 
+#ifdef MQTT_DEBUG
+
+    for (int i = 0; i < mqtt_messages_count; i++)
+    {
+        if (mqtt_messages[i].id != -1)
+        {
+            ESP_LOGE(TAG, "Message not sent: %d %s = %s", mqtt_messages[i].id, mqtt_messages[i].name, mqtt_messages[i].value);
+        }
+    }
+
+#endif
     if (mqtt_state == MQTT_FAILED)
     {
-        ESP_LOGE(TAG, "Send Failed");
+        ESP_LOGE(TAG, "Send Failed: %d/%d", mqtt_sent_count, mqtt_sensors_count);
         goto error;
     }
 
@@ -577,4 +667,15 @@ error:
     esp_mqtt_client_stop(mqtt_client);
     wifi_sending = 0;
     return 0;
+}
+
+void mqtt_topic_comliance(char *topic, int size)
+{
+    for (int j = 0; j < size; j++)
+    {
+        if (topic[j] == '+')
+        {
+            topic[j] = '_';
+        }
+    }
 }

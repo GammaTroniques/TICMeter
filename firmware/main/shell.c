@@ -207,6 +207,8 @@ void shell_init()
   esp_log_level_set("uart", ESP_LOG_ERROR);
   esp_log_level_set("NimBLE", ESP_LOG_ERROR);
   esp_log_level_set("gpio", ESP_LOG_ERROR);
+  esp_log_level_set("GPIO", ESP_LOG_ERROR);
+  esp_log_level_set("adc_hal", ESP_LOG_ERROR);
   // esp_log_level_set("*", ESP_LOG_WARN);
 
   esp_console_repl_t *repl = NULL;
