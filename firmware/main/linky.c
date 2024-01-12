@@ -918,8 +918,7 @@ static void linky_clear_data()
             break;
         case UINT32_TIME:
         {
-            TimeLabel timeLabel = {0};
-            *(TimeLabel *)LinkyLabelList[i].data = timeLabel;
+            memset((char *)LinkyLabelList[i].data, 0xFF, sizeof(TimeLabel));
             break;
         }
         default:
