@@ -268,6 +268,7 @@ typedef struct
     const uint16_t clusterID;
     const uint16_t attributeID;
     const esp_zb_zcl_attr_access_t zb_access;
+    const esp_zb_zcl_attr_type_t zb_type;
 } LinkyGroup;
 
 typedef struct

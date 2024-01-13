@@ -141,4 +141,6 @@ void gpio_boot_led_pattern();
 
 void gpio_led_task_ota(void *pvParameters);
 
+void gpio_start_pariring();
+
 #endif /* __GPIO_H__ */

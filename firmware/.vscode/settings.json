@@ -1,7 +1,7 @@
 {
   "idf.adapterTargetName": "esp32c6",
   "idf.flashType": "UART",
-  "idf.portWin": "COM6",
+  "idf.portWin": "COM3",
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",
   "C_Cpp.intelliSenseEngine": "default",
@@ -11,7 +11,16 @@
     "*.vhd": "vhdl",
     "*.yaml": "home-assistant",
     "zigbee.h": "c",
-    "config.h": "c"
+    "config.h": "c",
+    "array": "c",
+    "compare": "c",
+    "functional": "c",
+    "ratio": "c",
+    "tuple": "c",
+    "type_traits": "c",
+    "utility": "c",
+    "gpio.h": "c",
+    "esp_zigbee_zcl_pressure_meas.h": "c"
   },
   "idf.flashBaudRate": "1000000"
 }
