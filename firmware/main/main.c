@@ -125,6 +125,7 @@ void app_main(void)
   gpio_init_pins();
   config_begin();
   gpio_boot_led_pattern();
+  linky_init(MODE_HIST, RX_LINKY);
   xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, 1, NULL); // start push button task
   shell_init();                                                                           // init shell
   wifi_init();                                                                            // init wifi
@@ -199,6 +200,11 @@ void app_main(void)
     break;
   case MODE_ZIGBEE:
     // zigbee_task(0);
+    linky_update();
+    if (!linky_presence())
+    {
+      ESP_LOGE(MAIN_TAG, "Cant find Linky");
+    }
     zigbee_init_stack();
 
     break;
@@ -228,7 +234,7 @@ void main_fetch_linky_data_task(void *pvParameters)
 #define MAX_DATA_INDEX 5
   LinkyData dataArray[MAX_DATA_INDEX];
   unsigned int dataIndex = 0;
-  linky_init(MODE_HIST, RX_LINKY);
+
   uint32_t last_heap = esp_get_free_heap_size();
   uint64_t next_update_check = wifi_get_timestamp();
 

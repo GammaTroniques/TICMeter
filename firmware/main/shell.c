@@ -114,6 +114,8 @@ static int start_test_command(int argc, char **argv);
 
 static int zigbee_reset_command(int argc, char **argv);
 static int skip_command(int argc, char **argv);
+
+static int start_pairing_command(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -181,7 +183,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"start-test",                  "Start a test",                             &start_test_command,                1, {"<test-name>"}, {"Available tests: adc"}},
     {"zigbee-reset",                "Clear Zigbee config",                      &zigbee_reset_command,              0, {}, {}},
     {"skip",                        "Skip refresh rate delay",                  &skip_command,                      0, {}, {}},
-
+    {"pairing",                     "Start pairing",                            &start_pairing_command,             0, {}, {}},
 };
 
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -859,5 +861,16 @@ static int skip_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   main_sleep_time = 1;
+  return 0;
+}
+
+static int start_pairing_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  printf("Starting pairing\n");
+  gpio_start_pariring();
   return 0;
 }

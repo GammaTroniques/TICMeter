@@ -71,7 +71,6 @@ static void gpio_led_pattern_task(void *pvParameters);
 static void gpio_set_led_rgb(uint32_t color, uint32_t brightness);
 static void gpio_init_adc(adc_unit_t adc_unit, adc_oneshot_unit_handle_t *out_handle);
 static void gpio_init_adc_cali(adc_oneshot_unit_handle_t adc_handle, adc_channel_t adc_channel, adc_cali_handle_t *out_adc_cali_handle, char *name);
-
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -449,49 +448,8 @@ void gpio_pairing_button_task(void *pvParameters)
                         // already in pairing mode
                         esp_restart();
                     }
-                    switch (config_values.mode)
-                    {
-                    case MODE_WEB:
-                    case MODE_MQTT:
-                    case MODE_MQTT_HA:
-                        ESP_LOGI(TAG, "Web pairing");
-                        pairingState = 1;
-                        suspendTask(fetchLinkyDataTaskHandle);
-                        if (wifi_state == WIFI_CONNECTED)
-                        {
-                            wifi_disconnect();
-                            vTaskDelay(1000 / portTICK_PERIOD_MS);
-                        }
-                        ESP_LOGI(TAG, "Starting captive portal");
-                        wifi_start_captive_portal();
-                        break;
-                    case MODE_TUYA:
-                        pairingState = 1;
-                        ESP_LOGI(TAG, "Tuya pairing");
-                        xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8 * 1024, NULL, 5, NULL);
-                        break;
-                    case MODE_ZIGBEE:
-                        pairingState = 1;
-                        ESP_LOGI(TAG, "Zigbee pairing");
-                        if (config_values.zigbee.state == ZIGBEE_PAIRED)
-                        {
-                            ESP_LOGI(TAG, "Already paired, resetting");
-                            config_values.zigbee.state = ZIGBEE_WANT_PAIRING;
-                            config_write();
-                            esp_zb_factory_reset();
-                        }
-                        else
-                        {
-                            config_values.zigbee.state = ZIGBEE_PAIRING;
-                            zigbee_start_pairing();
-                        }
-                        // esp_zb_factory_reset();
-                        // start_zigbee_pairing();
-                        break;
-                    default:
-                        ESP_LOGI(TAG, "No pairing mode");
-                        break;
-                    }
+                    pairingState = 1;
+                    gpio_start_pariring();
                 }
                 else
                 {
@@ -783,4 +741,48 @@ void gpio_led_task_ota(void *pvParameters)
         }
     }
     vTaskDelete(NULL); // Delete this task
+}
+
+void gpio_start_pariring()
+{
+    switch (config_values.mode)
+    {
+    case MODE_WEB:
+    case MODE_MQTT:
+    case MODE_MQTT_HA:
+        ESP_LOGI(TAG, "Web pairing");
+        suspendTask(fetchLinkyDataTaskHandle);
+        if (wifi_state == WIFI_CONNECTED)
+        {
+            wifi_disconnect();
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+        }
+        ESP_LOGI(TAG, "Starting captive portal");
+        wifi_start_captive_portal();
+        break;
+    case MODE_TUYA:
+        ESP_LOGI(TAG, "Tuya pairing");
+        xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8 * 1024, NULL, 5, NULL);
+        break;
+    case MODE_ZIGBEE:
+        ESP_LOGI(TAG, "Zigbee pairing");
+        if (config_values.zigbee.state == ZIGBEE_PAIRED)
+        {
+            ESP_LOGI(TAG, "Already paired, resetting");
+            config_values.zigbee.state = ZIGBEE_WANT_PAIRING;
+            config_write();
+            esp_zb_factory_reset();
+        }
+        else
+        {
+            config_values.zigbee.state = ZIGBEE_PAIRING;
+            zigbee_start_pairing();
+        }
+        // esp_zb_factory_reset();
+        // start_zigbee_pairing();
+        break;
+    default:
+        ESP_LOGI(TAG, "No pairing mode");
+        break;
+    }
 }

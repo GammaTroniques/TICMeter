@@ -1839,14 +1839,24 @@ CONFIG_WIFI_PROV_STA_ALL_CHANNEL_SCAN=y
 CONFIG_ZB_ENABLED=y
 # CONFIG_ZB_ZCZR is not set
 CONFIG_ZB_ZED=y
+# CONFIG_ZB_ZGPD is not set
 # CONFIG_ZB_RCP is not set
 CONFIG_ZB_RADIO_NATIVE=y
 # CONFIG_ZB_RADIO_MACSPLIT_UART is not set
 
 #
+# Zigbee Example
+#
+# CONFIG_ZB_R22_ENABLE is not set
+# CONFIG_ZB_SNIFFER_ENABLE is not set
+# end of Zigbee Example
+
+#
 # Zigbee trace log option
 #
 # CONFIG_ESP_ZB_TRACE_ENABLE is not set
+CONFIG_ZB_TRACE_LEVEL=-1
+CONFIG_ZB_TRACE_MASK=0x0
 # end of Zigbee trace log option
 # end of Zigbee
 # end of Component config
