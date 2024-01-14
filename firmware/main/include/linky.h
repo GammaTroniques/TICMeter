@@ -46,8 +46,8 @@ typedef struct
 {
     //  Variables                   Taille      Unité       Description
     //-----------------------------------------------------------------------
-    char ADCO[13];       //    12                     Adresse du compteur 
-    char OPTARIF[5];     //     4                     Option tarifaire choisie
+    char ADCO[14];       //    12                     Adresse du compteur 
+    char OPTARIF[6];     //     4                     Option tarifaire choisie
     uint32_t ISOUSC;     //     2         A           Intensité souscrite 
 
     uint64_t BASE;       //     9         Wh          Index option Base 
@@ -68,8 +68,8 @@ typedef struct
     uint64_t BBRHCJR;    //     9         Wh          Heures Creuses Jours Rouges
     uint64_t BBRHPJR;    //     9         Wh          Heures Pleines Jours Rouges
 
-    char PTEC[5];        //     4                     Période Tarifaire en cours: TH.. Heures Creuses, HP.. Heures Pleines, HC.. Heures Creuses, HN.. Heures Normales, PM.. Heures de Pointe Mobile, HCJB.. Heures Creuses Jours Bleus, HPJB.. Heures Pleines Jours Bleus, HCJW.. Heures Creuses Jours Blancs, HPJW.. Heures Pleines Jours Blancs, HCJR.. Heures Creuses Jours Rouges, HPJR.. Heures Pleines Jours Rouges
-    char DEMAIN[5];      //     4                     Couleur du lendemain 
+    char PTEC[6];        //     4                     Période Tarifaire en cours: TH.. Heures Creuses, HP.. Heures Pleines, HC.. Heures Creuses, HN.. Heures Normales, PM.. Heures de Pointe Mobile, HCJB.. Heures Creuses Jours Bleus, HPJB.. Heures Pleines Jours Bleus, HCJW.. Heures Creuses Jours Blancs, HPJW.. Heures Pleines Jours Blancs, HCJR.. Heures Creuses Jours Rouges, HPJR.. Heures Pleines Jours Rouges
+    char DEMAIN[6];      //     4                     Couleur du lendemain 
 
     uint16_t IINST;      //     3         A           Intensité Instantanée
     uint16_t IINST1;     //     3         A           Intensité Instantanée Phase 1
@@ -88,8 +88,8 @@ typedef struct
     uint32_t PMAX;       //     5         W           Puissance maximale triphasée atteinte 
     uint32_t PPOT;       //     2                     Présence des potentiels??????????????????????????????
 
-    char HHPHC[4];       //     1                     Horaire Heures Pleines Heures Creuses
-    char MOTDETAT[7];    //     6                     Mot d'état du compteur                            
+    char HHPHC[5];       //     1                     Horaire Heures Pleines Heures Creuses
+    char MOTDETAT[8];    //     6                     Mot d'état du compteur                            
 
 } LinkyDataHist;
 
@@ -98,11 +98,11 @@ typedef struct
 {
     //  Variables                           Taille      Unité       Description
     //--------------------------------------------------------------------------------------
-    char ADSC[13];       //     12                   Adresse Secondaire du Compteur
-    char VTIC[3];        //     2                    Version de la TIC
+    char ADSC[14];       //     12                   Adresse Secondaire du Compteur
+    char VTIC[4];        //     2                    Version de la TIC
     TimeLabel DATE;      //     0                    Date du jour
-    char NGTF[17];       //     16                   Nom du calendrier tarifaire fournisseur
-    char LTARF[17];      //     16                   Libellé du calendrier tarifaire
+    char NGTF[18];       //     16                   Nom du calendrier tarifaire fournisseur
+    char LTARF[18];      //     16                   Libellé du calendrier tarifaire
     
     uint32_t EAST;       //     9         Wh         Energie active soutirée totale
     uint32_t EASF01;     //     9         Wh         Energie active soutirée Fournisseur, index 01
@@ -168,7 +168,7 @@ typedef struct
     TimeLabel UMOY2;     //      3         V          Tension moyenne, phase 2
     TimeLabel UMOY3;     //      3         V          Tension moyenne, phase 3
 
-    char STGE[9];        //      8         -          Registre de Statuts
+    char STGE[10];        //      8         -          Registre de Statuts
 
     TimeLabel DPM1;      //      2         -          Début Pointe Mobile 1
     TimeLabel FPM1;      //      2         -          Fin Pointe Mobile 1
@@ -177,15 +177,15 @@ typedef struct
     TimeLabel DPM3;      //      2         -          Début Pointe Mobile 3
     TimeLabel FPM3;      //      2         -          Fin Pointe Mobile 3
 
-    char MSG1[33];       //      32        -          Message court
-    char MSG2[17];       //      16        -          Message Ultra court 
-    char PRM[15];        //      14        -          PRM En mode standard la TIC retransmet le PRM.
-    char RELAIS[4];      //      3         -          Etat des relais: Les données transmises correspondent à l’état des 8 relais dont 1 réel et 7 virtuels.
-    char NTARF[3];       //      2         -          Numéro de l’index tarifaire en cours
-    char NJOURF[3];      //      2         -          Numéro du jour en cours calendrier fournisseur
-    char NJOURF_1[3];    //      2         -          Numéro du prochain jour calendrier fournisseur
-    char PJOURF_1[99];   //      98        -          Profil du prochain jour calendrier fournisseur 
-    char PPOINTE[99];    //      98        -          Profil du prochain jour de pointe
+    char MSG1[34];       //      32        -          Message court
+    char MSG2[18];       //      16        -          Message Ultra court 
+    char PRM[16];        //      14        -          PRM En mode standard la TIC retransmet le PRM.
+    char RELAIS[5];      //      3         -          Etat des relais: Les données transmises correspondent à l’état des 8 relais dont 1 réel et 7 virtuels.
+    char NTARF[4];       //      2         -          Numéro de l’index tarifaire en cours
+    char NJOURF[4];      //      2         -          Numéro du jour en cours calendrier fournisseur
+    char NJOURF_1[4];    //      2         -          Numéro du prochain jour calendrier fournisseur
+    char PJOURF_1[100];  //      98        -          Profil du prochain jour calendrier fournisseur 
+    char PPOINTE[100];   //      98        -          Profil du prochain jour de pointe
 
 }LinkyDataStd;
 

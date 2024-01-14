@@ -63,6 +63,7 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
 /*==============================================================================
 Public Variable
 ===============================================================================*/
+extern const char *BUILD_TIME;
 
 /*==============================================================================
  Local Variable
@@ -70,7 +71,7 @@ Public Variable
 
 DEFINE_PSTRING(zigbee_device_name, "TICMeter");
 DEFINE_PSTRING(zigbee_device_manufacturer, "GammaTroniques");
-DEFINE_PSTRING(zigbee_date_code, "2023-12-16");
+// DEFINE_PSTRING(zigbee_date_code, BUILD_TIME);
 
 zigbee_state_t zigbee_state = ZIGBEE_NOT_CONNECTED;
 
@@ -223,6 +224,10 @@ static void zigbee_task(void *pvParameters)
     uint8_t SWBuildID[35];
     snprintf((char *)SWBuildID, sizeof(SWBuildID), "%c%s", strlen(app_desc->version), app_desc->version);
 
+    char zigbee_date_code[50];
+    snprintf(zigbee_date_code + 1, sizeof(zigbee_date_code), "%s", BUILD_TIME);
+    zigbee_date_code[0] = strlen(BUILD_TIME);
+
     esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_APPLICATION_VERSION_ID, &ApplicationVersion);
     esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_STACK_VERSION_ID, &StackVersion);
     esp_zb_basic_cluster_add_attr(esp_zb_basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_HW_VERSION_ID, &HWVersion);
@@ -348,6 +353,17 @@ static void zigbee_task(void *pvParameters)
             break;
         case STRING:
             sprintf(str_value, "%s", (char *)LinkyLabelList[i].data);
+            char *str = (char *)LinkyLabelList[i].data;
+            char temp[100];
+            memcpy(temp + 1, str, LinkyLabelList[i].size + 1);
+            temp[0] = strlen(temp + 1);
+            if (temp[0] > LinkyLabelList[i].size)
+            {
+                temp[0] = LinkyLabelList[i].size;
+            }
+            temp[LinkyLabelList[i].size + 2] = '\0';
+            memcpy(LinkyLabelList[i].data, temp, LinkyLabelList[i].size + 1);
+            ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
             break;
         default:
             ESP_LOGE(TAG, "%s : Unknown type", LinkyLabelList[i].label);
@@ -424,8 +440,10 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
     memcpy(value_r->data_p, value, value_length);
     esp_zb_zcl_report_attr_cmd_req(&cmd);
 }
-uint64_t temp = 150;
+char string_buffer[100];
 
+uint64_t temp = 150;
+uint64_t zigbee_summation_delivered = 0;
 uint8_t zigbee_send(LinkyData *data)
 {
     if (config_values.zigbee.state != ZIGBEE_PAIRED)
@@ -479,6 +497,10 @@ uint8_t zigbee_send(LinkyData *data)
             {
                 continue;
             }
+            if (LinkyLabelList[i].device_class == ENERGY && *(uint32_t *)LinkyLabelList[i].data == 0)
+            {
+                continue;
+            }
             break;
         }
         case UINT64:
@@ -495,45 +517,45 @@ uint8_t zigbee_send(LinkyData *data)
             {
                 continue;
             }
-
+            char *str = (char *)LinkyLabelList[i].data;
+            char temp[100];
+            memcpy(temp + 1, str, LinkyLabelList[i].size + 1);
+            temp[0] = strlen(temp + 1);
+            if (temp[0] > LinkyLabelList[i].size)
+            {
+                temp[0] = LinkyLabelList[i].size;
+            }
+            temp[LinkyLabelList[i].size + 2] = '\0';
+            memcpy(LinkyLabelList[i].data, temp, LinkyLabelList[i].size + 1);
+            ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
             break;
         }
         default:
             break;
         };
+
+        if (LinkyLabelList[i].device_class == ENERGY)
+        {
+            zigbee_summation_delivered += *(uint32_t *)LinkyLabelList[i].data;
+        }
+
         if (LinkyLabelList[i].zb_access == ESP_ZB_ZCL_ATTR_ACCESS_REPORTING)
         {
             ESP_LOGI(TAG, "Repporting cluster: 0x%x, attribute: 0x%x, name: %s, value: %llu", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
             uint8_t size = LinkyLabelList[i].type;
             if (size == STRING)
             {
-                size = LinkyLabelList[i].size;
+                size = LinkyLabelList[i].size + 1;
             }
             zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, size);
         }
         else
         {
-            if (LinkyLabelList[i].type == STRING)
-            {
-                // char *str = (char *)LinkyLabelList[i].data;
-                // char temp[100];
-                // memcpy(temp + 1, str, LinkyLabelList[i].size + 1);
-                // temp[LinkyLabelList[i].size + 2] = '\0';
-                // temp[0] = strlen(temp + 1);
-                // memcpy(LinkyLabelList[i].data, temp, LinkyLabelList[i].size);
-                char string_buffer[100];
-                memcpy(string_buffer + 1, LinkyLabelList[i].data, LinkyLabelList[i].size);
-                string_buffer[0] = strlen(string_buffer + 1);
-                esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, string_buffer, true);
-                ESP_LOGI(TAG, "Set attribute cluster: 0x%x, attribute: 0x%x, name: %s, size: %d, value: %s", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, string_buffer[0], string_buffer + 1);
-            }
-            else
-            {
-                esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, true);
-                ESP_LOGI(TAG, "Set attribute cluster: 0x%x, attribute: 0x%x, name: %s, value: %lu", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
-            }
-            esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, TICMETER_CLUSTER_ID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, 0x0018, &LinkyLabelList[17].data, true);
+            esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, false);
+            ESP_LOGI(TAG, "Set attribute cluster: 0x%x, attribute: 0x%x, name: %s, value: %lu", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
         }
     }
+    esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, false);
+
     return 0;
 }
