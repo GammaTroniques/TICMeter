@@ -20,7 +20,10 @@
     "type_traits": "c",
     "utility": "c",
     "gpio.h": "c",
-    "esp_zigbee_zcl_pressure_meas.h": "c"
+    "esp_zigbee_zcl_pressure_meas.h": "c",
+    "*.tcc": "c",
+    "system_error": "c",
+    "regex": "c"
   },
   "idf.flashBaudRate": "1000000"
 }
