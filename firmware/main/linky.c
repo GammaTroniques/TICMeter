@@ -36,7 +36,7 @@
 #define FRAME_SIZE      500   // The size of one frame buffer
 #define GROUP_COUNT     50
 
-#define TAG "Linky"
+#define TAG "LINKY"
 
 // clang-format on
 /*==============================================================================
@@ -315,8 +315,8 @@ void linky_init(linky_mode_t mode, int RX)
     switch (config_values.linkyMode)
     {
     case AUTO:
-        ESP_LOGI(TAG, "Trying to autodetect Linky mode, testing last known mode: %s", (linky_mode == MODE_HIST) ? "MODE_HISTORIQUE" : "MODE_STANDARD");
-        linky_set_mode(config_values.linkyMode);
+        ESP_LOGI(TAG, "Trying to autodetect Linky mode, testing last known mode: %s", (config_values.last_linky_mode == MODE_HIST) ? "MODE_HISTORIQUE" : "MODE_STANDARD");
+        linky_set_mode(config_values.last_linky_mode);
         break;
     case MODE_HIST:
         linky_set_mode(MODE_HIST);
@@ -484,7 +484,7 @@ static char linky_decode()
     // Clear the previous data
     //----------------------------------------------------------
     linky_clear_data();
-    if (linky_frame[0] == 0)
+    if (linky_frame[0] == 0) // if no frame found
     {
         if (config_values.linkyMode == AUTO)
         {
@@ -520,9 +520,17 @@ static char linky_decode()
                 break;
             }
         }
-
         return 0;
     }
+
+    // if we have a valid frame, with mode auto and its a new value mode, we save it.
+    if (config_values.linkyMode == AUTO && linky_mode != config_values.last_linky_mode)
+    {
+        ESP_LOGI(TAG, "Auto mode: New mode found: %s", (linky_mode == MODE_HIST) ? "MODE_HISTORIQUE" : "MODE_STANDARD");
+        config_values.last_linky_mode = linky_mode;
+        config_write();
+    }
+
     // ESP_LOG_BUFFER_HEXDUMP(TAG, frame, endOfFrame - startOfFrame, ESP_LOG_INFO);
     //-------------------------------------
     // Second step: Find goups of data in the frame
@@ -679,6 +687,7 @@ char linky_update()
         linky_reading = 0;
         return 1;
     }
+    linky_clear_data();
     linky_reading = 0;
     return 0;
 }

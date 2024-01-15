@@ -105,6 +105,7 @@ typedef struct
     char password[50];
 
     linky_mode_t linkyMode;
+    linky_mode_t last_linky_mode;
     connectivity_t mode;
     webConfig_t web;
     mqttConfig_t mqtt;
