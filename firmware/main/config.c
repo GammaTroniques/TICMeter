@@ -64,22 +64,24 @@ static esp_efuse_coding_scheme_t config_efuse_coding_scheme = EFUSE_CODING_SCHEM
 static nvs_handle_t config_handle = 0;
 static nvs_handle_t ro_config_handle = 0;
 static struct config_item_t config_items[] = {
-    {"init",         UINT8, &config_values.initialized,     sizeof(config_values.initialized),      &config_handle},
-    {"wifi-ssid",   STRING, &config_values.ssid,            sizeof(config_values.ssid),             &config_handle},
-    {"wifi-pw"  ,   STRING, &config_values.password,        sizeof(config_values.password),         &config_handle},
+    {"init",            UINT8,  &config_values.initialized,     sizeof(config_values.initialized),      &config_handle},
+    {"wifi-ssid",       STRING, &config_values.ssid,            sizeof(config_values.ssid),             &config_handle},
+    {"wifi-pw"  ,       STRING, &config_values.password,        sizeof(config_values.password),         &config_handle},
     
-    {"linky-mode",   UINT8, &config_values.linkyMode,       sizeof(config_values.linkyMode),        &config_handle},
-    {"connect-mode", UINT8, &config_values.mode,            sizeof(config_values.mode),             &config_handle},
+    {"linky-mode",      UINT8,  &config_values.linkyMode,       sizeof(config_values.linkyMode),        &config_handle},
+    {"last-linky-mode", UINT8,  &config_values.last_linky_mode, sizeof(config_values.last_linky_mode),  &config_handle},
+
+    {"connect-mode",    UINT8, &config_values.mode,             sizeof(config_values.mode),             &config_handle},
     
-    {"web-conf",      BLOB, &config_values.web,             sizeof(config_values.web),              &config_handle},
-    {"mqtt-conf",     BLOB, &config_values.mqtt,            sizeof(config_values.mqtt),             &config_handle},
-    {"tuya-keys",     BLOB, &config_values.tuya,            sizeof(config_values.tuya),             &ro_config_handle},
-    {"pairing",      UINT8, &config_values.pairing_state,   sizeof(config_values.pairing_state),    &config_handle},
-    {"zigbee",        BLOB, &config_values.zigbee,          sizeof(config_values.zigbee),           &config_handle},
+    {"web-conf",        BLOB,   &config_values.web,             sizeof(config_values.web),              &config_handle},
+    {"mqtt-conf",       BLOB,   &config_values.mqtt,            sizeof(config_values.mqtt),             &config_handle},
+    {"tuya-keys",       BLOB,   &config_values.tuya,            sizeof(config_values.tuya),             &ro_config_handle},
+    {"pairing",         UINT8,  &config_values.pairing_state,   sizeof(config_values.pairing_state),    &config_handle},
+    {"zigbee",          BLOB,   &config_values.zigbee,          sizeof(config_values.zigbee),           &config_handle},
  
-    {"version",     STRING, &config_values.version,         sizeof(config_values.version),          &config_handle},
-    {"refresh",     UINT16, &config_values.refreshRate,     sizeof(config_values.refreshRate),      &config_handle},
-    {"sleep",        UINT8, &config_values.sleep,           sizeof(config_values.sleep),            &config_handle},
+    {"version",         STRING, &config_values.version,         sizeof(config_values.version),          &config_handle},
+    {"refresh",         UINT16, &config_values.refreshRate,     sizeof(config_values.refreshRate),      &config_handle},
+    {"sleep",           UINT8,  &config_values.sleep,           sizeof(config_values.sleep),            &config_handle},
 };
 static const int32_t config_items_size = sizeof(config_items) / sizeof(config_items[0]);
 
@@ -96,6 +98,7 @@ int8_t config_erase()
         .refreshRate = 60,
         .sleep = 1,
         .linkyMode = AUTO,
+        .last_linky_mode = NONE,
         .mode = MODE_MQTT_HA,
         .mqtt.port = 1883,
     };

@@ -264,6 +264,7 @@ void main_fetch_linky_data_task(void *pvParameters)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed:");
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
+      
       // goto sleep;
     }
 
