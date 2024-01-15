@@ -116,7 +116,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         else
         {
             /* commissioning failed */
-            ESP_LOGW(TAG, "Failed to initialize Zigbee stack (status: %d)", err_status);
+            ESP_LOGW(TAG, "Commissioning failed (status: %d)", err_status);
         }
         break;
 
@@ -143,6 +143,9 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             esp_zb_scheduler_alarm((esp_zb_callback_t)zigbee_bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 1000);
             zigbee_state = ZIGBEE_CONNECTING;
         }
+        break;
+    case ESP_ZB_COMMON_SIGNAL_CAN_SLEEP:
+        ESP_LOGW(TAG, "Can sleep");
         break;
     default:
         ESP_LOGI(TAG, "ZDO signal: 0x%x, status: 0x%x", sig_type, err_status);
@@ -208,6 +211,7 @@ static void zigbee_task(void *pvParameters)
         .nwk_cfg.zed_cfg.ed_timeout = ESP_ZB_ED_AGING_TIMEOUT_2MIN,
         .nwk_cfg.zed_cfg.keep_alive = 3000, // in seconds
     };
+    esp_zb_sleep_enable(true);
     esp_zb_init(&zigbee_cfg);
     ESP_LOGI(TAG, "Zigbee stack initialized");
     //------------------ Basic cluster ------------------
@@ -451,7 +455,7 @@ uint8_t zigbee_send(LinkyData *data)
         ESP_LOGE(TAG, "Zigbee not paired");
         return 1;
     }
-
+    zigbee_summation_delivered = 0;
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)

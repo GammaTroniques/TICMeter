@@ -31,6 +31,8 @@
 #include "string.h"
 #include "sdkconfig.h"
 #include "esp_ota_ops.h"
+#include "esp_pm.h"
+#include "esp_private/esp_clk.h"
 
 #include "common.h"
 #include "linky.h"
@@ -120,6 +122,23 @@ void app_main(void)
     break;
   default:
     break;
+  }
+
+  esp_err_t rc = ESP_OK;
+#ifdef CONFIG_PM_ENABLE
+  int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
+  esp_pm_config_t pm_config = {
+    .max_freq_mhz = cur_cpu_freq_mhz,
+    .min_freq_mhz = 40,
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+  // .light_sleep_enable = true
+#endif
+  };
+  rc = esp_pm_configure(&pm_config);
+#endif
+  if (rc != ESP_OK)
+  {
+    ESP_LOGE(MAIN_TAG, "esp_pm_configure failed: 0x%x", rc);
   }
 
   gpio_init_pins();
@@ -264,7 +283,7 @@ void main_fetch_linky_data_task(void *pvParameters)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed:");
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
-      
+
       // goto sleep;
     }
 
@@ -375,6 +394,7 @@ void main_fetch_linky_data_task(void *pvParameters)
       break;
     case MODE_ZIGBEE:
       zigbee_send(&linky_data);
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
       break;
     default:
       break;
