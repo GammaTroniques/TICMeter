@@ -23,7 +23,9 @@
     "esp_zigbee_zcl_pressure_meas.h": "c",
     "*.tcc": "c",
     "system_error": "c",
-    "regex": "c"
+    "regex": "c",
+    "cache_hal.h": "c",
+    "esp_log.h": "c"
   },
   "idf.flashBaudRate": "1000000"
 }

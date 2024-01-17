@@ -394,7 +394,7 @@ void main_fetch_linky_data_task(void *pvParameters)
       break;
     case MODE_ZIGBEE:
       zigbee_send(&linky_data);
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskDelay(10000 / portTICK_PERIOD_MS);
       break;
     default:
       break;
