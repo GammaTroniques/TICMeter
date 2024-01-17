@@ -23,6 +23,7 @@
 #include "esp_log.h"
 #include "string.h"
 #include "esp_zigbee_core.h"
+#include "time.h"
 
 /*==============================================================================
  Public Defines
