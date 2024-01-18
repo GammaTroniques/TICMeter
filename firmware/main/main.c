@@ -218,7 +218,22 @@ void app_main(void)
     }
     break;
   case MODE_ZIGBEE:
-    // zigbee_task(0);
+    esp_err_t rc = ESP_OK;
+#ifdef CONFIG_PM_ENABLE
+    int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
+    esp_pm_config_t pm_config = {
+      .max_freq_mhz = cur_cpu_freq_mhz,
+      .min_freq_mhz = 10,
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+      .light_sleep_enable = true
+#endif
+    };
+    rc = esp_pm_configure(&pm_config);
+#endif
+    if (rc != ESP_OK)
+    {
+      ESP_LOGE(MAIN_TAG, "esp_pm_configure failed: 0x%x", rc);
+    }
     linky_update();
     if (!linky_presence())
     {
@@ -265,7 +280,7 @@ void main_fetch_linky_data_task(void *pvParameters)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       main_sleep_time--;
-      if (gpio_get_vusb() < 3 && config_values.sleep)
+      if (gpio_get_vusb() < 3 && config_values.sleep && config_values.mode != MODE_ZIGBEE)
       {
         ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", main_sleep_time);
         uart_set_wakeup_threshold(UART_NUM_0, 3);
@@ -394,7 +409,6 @@ void main_fetch_linky_data_task(void *pvParameters)
       break;
     case MODE_ZIGBEE:
       zigbee_send(&linky_data);
-      vTaskDelay(10000 / portTICK_PERIOD_MS);
       break;
     default:
       break;

@@ -97,7 +97,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         break;
     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
     case ESP_ZB_BDB_SIGNAL_DEVICE_REBOOT:
-        ESP_LOGW(TAG, "Signal: %x", sig_type);
+        // ESP_LOGW(TAG, "Signal: %x", sig_type);
         zigbee_state = ZIGBEE_CONNECTING;
         if (err_status == ESP_OK)
         {
@@ -146,10 +146,20 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         }
         break;
     case ESP_ZB_COMMON_SIGNAL_CAN_SLEEP:
-        ESP_LOGW(TAG, "Can sleep");
+        // ESP_LOGW(TAG, "Can sleep");
+        esp_zb_sleep_now();
+
+        // if (gpio_get_vusb() > 3.0)
+        // {
+        // }
+        // else
+        // {
+        //     ESP_LOGW(TAG, "Can sleep");
+        // }
         break;
     default:
-        ESP_LOGI(TAG, "ZDO signal: 0x%x, status: 0x%x", sig_type, err_status);
+        ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
+
         break;
     }
 }
@@ -195,7 +205,7 @@ void zigbee_init_stack()
     };
 
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
-    xTaskCreate(zigbee_task, "Zigbee_main", 8 * 1024, NULL, 3, NULL);
+    xTaskCreate(zigbee_task, "Zigbee_main", 8 * 1024, NULL, 10, NULL);
 }
 
 static void zigbee_task(void *pvParameters)
@@ -205,15 +215,20 @@ static void zigbee_task(void *pvParameters)
     // esp_zb_factory_reset();
     // ESP_LOGI(TAG, "Starting Zigbee stack");
     /* initialize Zigbee stack with Zigbee end-device config */
-    esp_zb_set_trace_level_mask(ESP_ZB_TRACE_LEVEL_INFO, ESP_ZB_TRACE_SUBSYSTEM_NWK | ESP_ZB_TRACE_SUBSYSTEM_APP);
+    // esp_zb_set_trace_level_mask(ESP_ZB_TRACE_LEVEL_WARN, ESP_ZB_TRACE_SUBSYSTEM_NWK | ESP_ZB_TRACE_SUBSYSTEM_APP);
+    // esp_zb_set_trace_level_mask(ESP_ZB_TRACE_LEVEL_INFO, ESP_ZB_TRACE_SUBSYSTEM_COMMON);
     esp_zb_cfg_t zigbee_cfg = {
         .esp_zb_role = ESP_ZB_DEVICE_TYPE_ED,
         .install_code_policy = false,
         .nwk_cfg.zed_cfg.ed_timeout = ESP_ZB_ED_AGING_TIMEOUT_2MIN,
-        .nwk_cfg.zed_cfg.keep_alive = 3000, // in seconds
+        // .nwk_cfg.zed_cfg.keep_alive = 3000, // in seconds
     };
-    // esp_zb_sleep_enable(true);
+
+    esp_zb_sleep_enable(true);
+    // esp_zb_sleep_set_threshold(1000);
     esp_zb_init(&zigbee_cfg);
+    // esp_zb_sleep_set_threshold(50);
+
     ESP_LOGI(TAG, "Zigbee stack initialized");
     //------------------ Basic cluster ------------------
     esp_zb_basic_cluster_cfg_t basic_cluster_cfg = {
@@ -378,7 +393,7 @@ static void zigbee_task(void *pvParameters)
             }
             temp[LinkyLabelList[i].size + 2] = '\0';
             memcpy(LinkyLabelList[i].data, temp, LinkyLabelList[i].size + 1);
-            ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
+            // ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
             break;
         default:
             ESP_LOGE(TAG, "%s : Unknown type", LinkyLabelList[i].label);
@@ -542,7 +557,7 @@ uint8_t zigbee_send(LinkyData *data)
             }
             temp[LinkyLabelList[i].size + 2] = '\0';
             memcpy(LinkyLabelList[i].data, temp, LinkyLabelList[i].size + 1);
-            ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
+            // ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
             break;
         }
         default:
