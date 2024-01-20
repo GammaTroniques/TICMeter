@@ -235,7 +235,7 @@ void tuya_init()
         ESP_LOGI(TAG, "Tuya already init");
         return;
     }
-    xTaskCreate(tuya_link_app_task, "tuya_link", 1024 * 6, NULL, 4, &tuyaTaskHandle);
+    xTaskCreate(tuya_link_app_task, "tuya_link", 1024 * 6, NULL, PRIORITY_TUYA, &tuyaTaskHandle);
 }
 
 static void tuya_send_callback(int result, void *user_data)

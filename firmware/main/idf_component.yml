@@ -3,4 +3,4 @@ dependencies:
   espressif/esp-zboss-lib: "~1.0.0"
   espressif/led_strip: "^2.4.3"
   idf:
-    version: "^5.1.2"
+    version: "^5.2.0"

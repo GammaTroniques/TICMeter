@@ -83,71 +83,14 @@ Function Implementation
 void app_main(void)
 {
   ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
-
-  switch (esp_reset_reason())
-  {
-  case ESP_RST_UNKNOWN:
-    ESP_LOGI(MAIN_TAG, "Reset reason: unknown");
-    break;
-  case ESP_RST_POWERON:
-    ESP_LOGI(MAIN_TAG, "Reset reason: power on");
-    break;
-  case ESP_RST_EXT:
-    ESP_LOGI(MAIN_TAG, "Reset reason: external");
-    break;
-  case ESP_RST_SW:
-    ESP_LOGI(MAIN_TAG, "Reset reason: software");
-    break;
-  case ESP_RST_PANIC:
-    ESP_LOGE(MAIN_TAG, "Reset reason: panic");
-    break;
-  case ESP_RST_INT_WDT:
-    ESP_LOGE(MAIN_TAG, "Reset reason: interrupt watchdog");
-    break;
-  case ESP_RST_TASK_WDT:
-    ESP_LOGE(MAIN_TAG, "Reset reason: task watchdog");
-    break;
-  case ESP_RST_WDT:
-    ESP_LOGE(MAIN_TAG, "Reset reason: watchdog");
-    break;
-  case ESP_RST_DEEPSLEEP:
-    ESP_LOGI(MAIN_TAG, "Reset reason: deep sleep");
-    break;
-  case ESP_RST_BROWNOUT:
-    ESP_LOGE(MAIN_TAG, "Reset reason: brownout: reset all peripherals...");
-    // esp_restart();
-    break;
-  case ESP_RST_SDIO:
-    ESP_LOGI(MAIN_TAG, "Reset reason: SDIO");
-    break;
-  default:
-    break;
-  }
-
-  esp_err_t rc = ESP_OK;
-#ifdef CONFIG_PM_ENABLE
-  int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
-  esp_pm_config_t pm_config = {
-    .max_freq_mhz = cur_cpu_freq_mhz,
-    .min_freq_mhz = 40,
-#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
-  // .light_sleep_enable = true
-#endif
-  };
-  rc = esp_pm_configure(&pm_config);
-#endif
-  if (rc != ESP_OK)
-  {
-    ESP_LOGE(MAIN_TAG, "esp_pm_configure failed: 0x%x", rc);
-  }
-
+  shell_wake_reason();
   gpio_init_pins();
   config_begin();
   gpio_boot_led_pattern();
   linky_init(MODE_HIST, RX_LINKY);
-  xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, 1, NULL); // start push button task
-  shell_init();                                                                           // init shell
-  wifi_init();                                                                            // init wifi
+  xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
+  shell_init();                                                                                          // init shell
+  wifi_init();                                                                                           // init wifi
 
   // if (gpio_get_vusb() > 3 && config_values.mode == MODE_TUYA && config_values.tuyaBinded == 2) //
   // {
@@ -161,7 +104,7 @@ void app_main(void)
 
   if (config_verify())
   {
-    xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 4 * 1024, NULL, 1, &noConfigLedTaskHandle); // start no config led task
+    xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 4 * 1024, NULL, PRIORITY_LED_NO_CONFIG, &noConfigLedTaskHandle); // start no config led task
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config_verify())
     {
@@ -218,21 +161,28 @@ void app_main(void)
     }
     break;
   case MODE_ZIGBEE:
-    esp_err_t rc = ESP_OK;
-#ifdef CONFIG_PM_ENABLE
-    int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
-    esp_pm_config_t pm_config = {
-      .max_freq_mhz = cur_cpu_freq_mhz,
-      .min_freq_mhz = 10,
-#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
-      .light_sleep_enable = true
-#endif
-    };
-    rc = esp_pm_configure(&pm_config);
-#endif
-    if (rc != ESP_OK)
+
+    // if (gpio_get_vusb() < 3)
+    if (1)
     {
-      ESP_LOGE(MAIN_TAG, "esp_pm_configure failed: 0x%x", rc);
+      ESP_LOGW(MAIN_TAG, "Enable PM");
+
+      esp_err_t rc = ESP_OK;
+#ifdef CONFIG_PM_ENABLE
+      int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
+      esp_pm_config_t pm_config = {
+        .max_freq_mhz = cur_cpu_freq_mhz,
+        .min_freq_mhz = 10,
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+        .light_sleep_enable = true
+#endif
+      };
+      rc = esp_pm_configure(&pm_config);
+#endif
+      if (rc != ESP_OK)
+      {
+        ESP_LOGE(MAIN_TAG, "esp_pm_configure failed: 0x%x", rc);
+      }
     }
     linky_update();
     if (!linky_presence())
@@ -260,7 +210,7 @@ void app_main(void)
     break;
   }
   // start linky fetch task
-  xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, 1, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &fetchLinkyDataTaskHandle); // start linky task
 }
 
 void main_fetch_linky_data_task(void *pvParameters)

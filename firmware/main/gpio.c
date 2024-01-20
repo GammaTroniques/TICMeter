@@ -442,7 +442,7 @@ void gpio_pairing_button_task(void *pvParameters)
                 else if (pushTime > 2000 && pushTime <= 4000)
                 {
                     ESP_LOGI(TAG, "Pairing mode");
-                    xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 2048, NULL, 5, &gpio_led_pairing_task_handle);
+                    xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 2048, NULL, PRIORITY_LED_PAIRING, &gpio_led_pairing_task_handle);
                     if (pairingState)
                     {
                         // already in pairing mode
@@ -461,7 +461,7 @@ void gpio_pairing_button_task(void *pvParameters)
                         resumeTask(tuyaTaskHandle);
                         ota_state = OTA_INSTALLING;
                         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for led task to update
-                        xTaskCreate(ota_perform_task, "ota_perform_task", 16 * 1024, NULL, 5, NULL);
+                        xTaskCreate(ota_perform_task, "ota_perform_task", 16 * 1024, NULL, PRIORITY_OTA, NULL);
                     }
                     else
                     {
@@ -500,7 +500,7 @@ void gpio_start_led_pattern(uint8_t pattern)
     static TaskHandle_t ledPatternTaskHandle = NULL;
     static uint8_t lastPattern;
     lastPattern = pattern;
-    xTaskCreate(gpio_led_pattern_task, "gpio_led_pattern_task", 4096, &lastPattern, 5, &ledPatternTaskHandle);
+    xTaskCreate(gpio_led_pattern_task, "gpio_led_pattern_task", 4096, &lastPattern, PRIORITY_LED_PATTERN, &ledPatternTaskHandle);
 }
 
 void gpio_boot_led_pattern()
@@ -762,7 +762,7 @@ void gpio_start_pariring()
         break;
     case MODE_TUYA:
         ESP_LOGI(TAG, "Tuya pairing");
-        xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8 * 1024, NULL, 5, NULL);
+        xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8 * 1024, NULL, PRIORITY_TUYA, NULL);
         break;
     case MODE_ZIGBEE:
         ESP_LOGI(TAG, "Zigbee pairing");

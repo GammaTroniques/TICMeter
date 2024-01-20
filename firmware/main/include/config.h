@@ -35,6 +35,26 @@
 #define AP_PASS ""
 #define HOSTNAME "TICMeter"
 
+// smaller number = smaller priority
+
+#define PRIORITY_TEST 1
+#define PRIORITY_ZIGBEE 3
+#define PRIORITY_TUYA 3
+#define PRIORITY_SHELL 5
+#define PRIORITY_OTA 10
+#define PRIORITY_MQTT 5
+#define PRIORITY_FETCH_LINKY 1
+#define PRIORITY_PAIRING 1
+#define PRIORITY_DNS 16
+
+#define PRIORITY_LED_PATTERN 5
+#define PRIORITY_LED_PAIRING 5
+#define PRIORITY_LED_WIFI 1
+#define PRIORITY_LED_SENDING 1
+#define PRIORITY_LED_NO_CONFIG 1
+#define PRIORITY_LED_LINKY_READING 10
+#define PRIORITY_STOP_CAPTIVE_PORTAL 5
+
 /*==============================================================================
  Public Macro
 ==============================================================================*/

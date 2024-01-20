@@ -578,7 +578,7 @@ int mqtt_send()
         goto error;
     }
     wifi_sending = 1;
-    xTaskCreate(gpio_led_task_sending, "sendingLedTask", 4096, NULL, 1, NULL);
+    xTaskCreate(gpio_led_task_sending, "sendingLedTask", 4096, NULL, PRIORITY_MQTT, NULL);
 
 #ifdef MQTT_DEBUG
     mqtt_messages_count = 0;

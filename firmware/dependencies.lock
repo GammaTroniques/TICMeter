@@ -1,16 +1,16 @@
 dependencies:
   espressif/esp-zboss-lib:
-    component_hash: d303582b0af110d0bde0bcc43b56d13c6d3d49fa559d5b273cd9a14a9141a95d
+    component_hash: d862969a8276cf71e276061332d340a7b6c8bb29c4c2cf6f109c8ddd8d21c231
     source:
       service_url: https://api.components.espressif.com/
       type: service
-    version: 1.0.8
+    version: 1.0.9
   espressif/esp-zigbee-lib:
-    component_hash: 871d5394a70995111f88599f77e694b78cf5155ec310eefc20d76c3f73109125
+    component_hash: 98f2d5907d80514d8722f3f5b751a18f95c977f26d5f8c6fb6642035952e5416
     source:
       service_url: https://api.components.espressif.com/
       type: service
-    version: 1.0.8
+    version: 1.0.9
   espressif/led_strip:
     component_hash: ed1d5c6113fa545e20c7be17e6e7c09d43b18fcb43068e2b2b27a412de6a405a
     source:
@@ -22,6 +22,6 @@ dependencies:
     source:
       type: idf
     version: 5.2.0
-manifest_hash: d3478007cdf8f8255d1d575a6985852cbd9847edc4177136095aec01cc90b4f1
+manifest_hash: 9a545bf5c1b8133e1a6fdae317139deedac5a707dc47d61e21ccb0837e0caa31
 target: esp32c6
 version: 1.0.0

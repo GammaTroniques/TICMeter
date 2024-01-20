@@ -48,4 +48,5 @@
 extern void shell_init();
 uint8_t tuya_stop();
 uint8_t tuya_restart();
+extern void shell_wake_reason();
 #endif /* SHELL_H */

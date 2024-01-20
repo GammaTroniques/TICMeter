@@ -218,6 +218,7 @@ void shell_init()
 
   repl_config.prompt = ">";
   repl_config.max_cmdline_length = 100;
+  // repl_config.task_priority = PRIORITY_SHELL;
 
   for (int i = 0; i < shell_cmds_num; i++)
   {
@@ -682,7 +683,7 @@ static int ota_start(int argc, char **argv)
   {
     ESP_LOGI(TAG, "Update partition : %s, size: %ld", update_partition->label, update_partition->size);
   }
-  xTaskCreate(&ota_perform_task, "ota_perform_task", 8192, NULL, 1, NULL);
+  xTaskCreate(&ota_perform_task, "ota_perform_task", 8192, NULL, PRIORITY_OTA, NULL);
   return 0;
 }
 
@@ -873,4 +874,47 @@ static int start_pairing_command(int argc, char **argv)
   printf("Starting pairing\n");
   gpio_start_pariring();
   return 0;
+}
+
+void shell_wake_reason()
+{
+  switch (esp_reset_reason())
+  {
+  case ESP_RST_UNKNOWN:
+    ESP_LOGI(TAG, "Reset reason: unknown");
+    break;
+  case ESP_RST_POWERON:
+    ESP_LOGI(TAG, "Reset reason: power on");
+    break;
+  case ESP_RST_EXT:
+    ESP_LOGI(TAG, "Reset reason: external");
+    break;
+  case ESP_RST_SW:
+    ESP_LOGI(TAG, "Reset reason: software");
+    break;
+  case ESP_RST_PANIC:
+    ESP_LOGE(TAG, "Reset reason: panic");
+    break;
+  case ESP_RST_INT_WDT:
+    ESP_LOGE(TAG, "Reset reason: interrupt watchdog");
+    break;
+  case ESP_RST_TASK_WDT:
+    ESP_LOGE(TAG, "Reset reason: task watchdog");
+    break;
+  case ESP_RST_WDT:
+    ESP_LOGE(TAG, "Reset reason: watchdog");
+    break;
+  case ESP_RST_DEEPSLEEP:
+    ESP_LOGI(TAG, "Reset reason: deep sleep");
+    break;
+  case ESP_RST_BROWNOUT:
+    ESP_LOGE(TAG, "Reset reason: brownout");
+
+    break;
+  case ESP_RST_SDIO:
+    ESP_LOGI(TAG, "Reset reason: SDIO");
+    break;
+  default:
+    break;
+  }
 }

@@ -25,7 +25,9 @@
     "system_error": "c",
     "regex": "c",
     "cache_hal.h": "c",
-    "esp_log.h": "c"
+    "esp_log.h": "c",
+    "esp_system.h": "c",
+    "shell.h": "c"
   },
   "idf.flashBaudRate": "1000000"
 }

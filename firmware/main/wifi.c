@@ -140,7 +140,7 @@ uint8_t wifi_connect()
     }
 
     wifi_state = WIFI_CONNECTING;
-    // xTaskCreate(gpio_led_task_wifi_connecting, "gpio_led_task_wifi_connecting", 4096, NULL, 1, NULL); // start wifi connect led task
+    xTaskCreate(gpio_led_task_wifi_connecting, "gpio_led_task_wifi_connecting", 4096, NULL, PRIORITY_LED_WIFI, NULL); // start wifi connect led task
 
     s_retry_num = 0;
     xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
@@ -432,7 +432,7 @@ static void stop_captive_portal_task(void *pvParameter)
 void wifi_start_captive_portal()
 {
     ESP_LOGI(TAG, "Start captive portal");
-    xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, 1, NULL);
+    xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, PRIORITY_STOP_CAPTIVE_PORTAL, NULL);
     // // Initialize networking stack
     // ESP_ERROR_CHECK(esp_netif_init());
 

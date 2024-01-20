@@ -13,6 +13,7 @@
  Local Include
 ===============================================================================*/
 #include "tests.h"
+#include "config.h"
 #include "esp_log.h"
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
@@ -57,7 +58,7 @@ Function Implementation
 
 esp_err_t start_test(tests_t test)
 {
-    xTaskCreate(tests_task, "tests_task", 4 * 1024, (void *)test, 1, NULL);
+    xTaskCreate(tests_task, "tests_task", 4 * 1024, (void *)test, PRIORITY_TEST, NULL);
     return ESP_OK;
 }
 
