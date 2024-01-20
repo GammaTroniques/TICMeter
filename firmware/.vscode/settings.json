@@ -27,7 +27,9 @@
     "cache_hal.h": "c",
     "esp_log.h": "c",
     "esp_system.h": "c",
-    "shell.h": "c"
+    "shell.h": "c",
+    "esp_heap_trace.h": "c",
+    "common.h": "c"
   },
   "idf.flashBaudRate": "1000000"
 }
