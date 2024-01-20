@@ -211,8 +211,8 @@ void app_main(void)
   }
   // start linky fetch task
   xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(temp_loop, "test_task", 8 * 1024, NULL, 1, NULL);                                                                            // start linky task
 }
-
 void main_fetch_linky_data_task(void *pvParameters)
 {
 #define MAX_DATA_INDEX 5
@@ -222,9 +222,30 @@ void main_fetch_linky_data_task(void *pvParameters)
   uint32_t last_heap = esp_get_free_heap_size();
   uint64_t next_update_check = wifi_get_timestamp();
 
+  int32_t fetching_time = 0;
+  switch (config_values.mode)
+  {
+  case MODE_WEB:
+    fetching_time = 10;
+    break;
+  case MODE_MQTT:
+  case MODE_MQTT_HA:
+    fetching_time = 10;
+    break;
+  case MODE_ZIGBEE:
+    fetching_time = 2;
+    break;
+  case MODE_TUYA:
+    fetching_time = 10;
+    break;
+  default:
+    fetching_time = 10;
+    break;
+  }
+
   while (1)
   {
-    main_sleep_time = abs(config_values.refreshRate - 10);
+    main_sleep_time = abs(config_values.refreshRate - fetching_time);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
     while (main_sleep_time > 0)
     {
@@ -248,8 +269,6 @@ void main_fetch_linky_data_task(void *pvParameters)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed:");
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
-
-      // goto sleep;
     }
 
     switch (config_values.mode)
@@ -366,5 +385,15 @@ void main_fetch_linky_data_task(void *pvParameters)
     ESP_LOGW(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
     ESP_LOGW(MAIN_TAG, "Heap diff: %ld", last_heap - esp_get_free_heap_size());
     last_heap = esp_get_free_heap_size();
+  }
+}
+
+void temp_loop(void *pvParameters)
+{
+  while (1)
+  {
+    uint32_t cpu_freq = esp_clk_cpu_freq();
+    ESP_LOGI(MAIN_TAG, "CPU Freq: %lu", cpu_freq);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 }

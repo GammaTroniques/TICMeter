@@ -146,16 +146,8 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         }
         break;
     case ESP_ZB_COMMON_SIGNAL_CAN_SLEEP:
-        ESP_LOGW(TAG, "Can sleep");
+        // ESP_LOGW(TAG, "Can sleep");
         esp_zb_sleep_now();
-
-        // if (gpio_get_vusb() > 3.0)
-        // {
-        // }
-        // else
-        // {
-        //     ESP_LOGW(TAG, "Can sleep");
-        // }
         break;
     case ESP_ZB_ZDO_SIGNAL_LEAVE:
         ESP_LOGI(TAG, "Leave signal");
@@ -233,7 +225,7 @@ static void zigbee_task(void *pvParameters)
     esp_zb_sleep_enable(true);
     // esp_zb_sleep_set_threshold(1000);
     esp_zb_init(&zigbee_cfg);
-    esp_zb_sleep_set_threshold(50);
+    // esp_zb_sleep_set_threshold(500);
 
     ESP_LOGI(TAG, "Zigbee stack initialized");
     //------------------ Basic cluster ------------------
