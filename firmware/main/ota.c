@@ -348,7 +348,7 @@ int ota_get_latest(ota_version_t *version)
     ota_state = OTA_AVAILABLE;
     if (!gpip_led_ota_task_handle)
     {
-        xTaskCreate(gpio_led_task_ota, "gpio_led_task_update_available", 4 * 1024, NULL, 1, &gpip_led_ota_task_handle); // start update led task
+        xTaskCreate(gpio_led_task_ota, "gpio_led_task_update_available", 4 * 1024, NULL, PRIORITY_OTA, &gpip_led_ota_task_handle); // start update led task
     }
 
     return 1;

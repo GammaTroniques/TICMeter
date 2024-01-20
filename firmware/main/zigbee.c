@@ -104,7 +104,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             switch (config_values.zigbee.state)
             {
             case ZIGBEE_WANT_PAIRING:
-                xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 2048, NULL, 5, &gpio_led_pairing_task_handle);
+                xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 2048, NULL, PRIORITY_LED_PAIRING, &gpio_led_pairing_task_handle);
                 // fall through
             case ZIGBEE_PAIRING:
                 ESP_LOGI(TAG, "Start network steering");
@@ -146,7 +146,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         }
         break;
     case ESP_ZB_COMMON_SIGNAL_CAN_SLEEP:
-        // ESP_LOGW(TAG, "Can sleep");
+        ESP_LOGW(TAG, "Can sleep");
         esp_zb_sleep_now();
 
         // if (gpio_get_vusb() > 3.0)
@@ -156,6 +156,11 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         // {
         //     ESP_LOGW(TAG, "Can sleep");
         // }
+        break;
+    case ESP_ZB_ZDO_SIGNAL_LEAVE:
+        ESP_LOGI(TAG, "Leave signal");
+        config_values.zigbee.state = ZIGBEE_NOT_CONFIGURED;
+        config_write();
         break;
     default:
         ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
@@ -205,7 +210,7 @@ void zigbee_init_stack()
     };
 
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
-    xTaskCreate(zigbee_task, "Zigbee_main", 8 * 1024, NULL, 10, NULL);
+    xTaskCreate(zigbee_task, "Zigbee_main", 8 * 1024, NULL, PRIORITY_ZIGBEE, NULL);
 }
 
 static void zigbee_task(void *pvParameters)
@@ -224,10 +229,11 @@ static void zigbee_task(void *pvParameters)
         // .nwk_cfg.zed_cfg.keep_alive = 3000, // in seconds
     };
 
+    ESP_LOGW(TAG, "Enable sleep");
     esp_zb_sleep_enable(true);
     // esp_zb_sleep_set_threshold(1000);
     esp_zb_init(&zigbee_cfg);
-    // esp_zb_sleep_set_threshold(50);
+    esp_zb_sleep_set_threshold(50);
 
     ESP_LOGI(TAG, "Zigbee stack initialized");
     //------------------ Basic cluster ------------------

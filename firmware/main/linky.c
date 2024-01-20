@@ -680,7 +680,7 @@ static char linky_decode()
 char linky_update()
 {
     linky_reading = 1;
-    xTaskCreate(gpio_led_task_linky_reading, "gpio_led_task_linky_reading", 2048, NULL, 10, NULL);
+    xTaskCreate(gpio_led_task_linky_reading, "gpio_led_task_linky_reading", 2048, NULL, PRIORITY_LED_LINKY_READING, NULL);
     linky_read();       // read the UART
     if (linky_decode()) // decode the frame
     {

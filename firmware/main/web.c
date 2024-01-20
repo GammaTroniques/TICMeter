@@ -126,7 +126,7 @@ uint8_t wifi_send_to_server(const char *json)
         return 0;
     }
     wifi_sending = 1;
-    xTaskCreate(gpio_led_task_sending, "gpio_led_task_sending", 2048, NULL, 1, NULL);
+    xTaskCreate(gpio_led_task_sending, "gpio_led_task_sending", 2048, NULL, PRIORITY_LED_SENDING, NULL);
 
     char url[100] = {0};
     web_create_http_url(url, config_values.web.host, config_values.web.postUrl);
