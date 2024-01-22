@@ -166,7 +166,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
     {"linky-print",                 "Print linky linky_data",                   &linky_print_command,               1, {"<debug>"}, {"View raw frame, bool 0/1"}},
-    {"linky-simulate",              "Simulate linky linky_data",                &linky_simulate,                    0, {}, {}},
+    {"linky-simulate",              "Simulate linky linky_data",                &linky_simulate,                    1, {"<std>"}, {"Mode STD ? 0/1"}},
     {"get-voltage",                 "Get Voltages",                             &get_voltages,                      0, {}, {}},
     {"set-sleep",                   "Enable/Disable sleep",                     &set_sleep_command,                 1, {"<enable>"}, {"Enable/Disable deep sleep"}},
     {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
@@ -590,11 +590,20 @@ static int linky_print_command(int argc, char **argv)
 
 static int linky_simulate(int argc, char **argv)
 {
-  if (argc != 1)
+  if (argc > 2)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  linky_want_debug_frame = true;
+
+  if (argc == 2 && atoi(argv[1]) == 1)
+  {
+    linky_want_debug_frame = 2;
+  }
+  else
+  {
+    linky_want_debug_frame = 1;
+  }
+
   return 0;
 }
 
