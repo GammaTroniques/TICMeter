@@ -164,7 +164,7 @@ static void gpio_init_adc_cali(adc_oneshot_unit_handle_t adc_handle, adc_channel
 {
     esp_err_t ret = ESP_OK;
     adc_oneshot_chan_cfg_t config = {
-        .atten = ADC_ATTEN_DB_11,
+        .atten = ADC_ATTEN_DB_12,
         .bitwidth = ADC_BITWIDTH_DEFAULT,
     };
 
@@ -174,7 +174,7 @@ static void gpio_init_adc_cali(adc_oneshot_unit_handle_t adc_handle, adc_channel
         ESP_LOGE(TAG, "Failed to init %s ADC: %s", name, esp_err_to_name(ret));
     }
 
-    bool cal = gpio_adc_calibration_init(ADC_UNIT_1, adc_channel, ADC_ATTEN_DB_11, out_adc_cali_handle);
+    bool cal = gpio_adc_calibration_init(ADC_UNIT_1, adc_channel, ADC_ATTEN_DB_12, out_adc_cali_handle);
     if (!cal)
     {
         ESP_LOGW(TAG, "Failed to init USB ADC calibration");
