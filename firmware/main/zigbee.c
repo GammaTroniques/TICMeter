@@ -482,6 +482,7 @@ uint8_t zigbee_send(LinkyData *data)
     zigbee_summation_delivered = 0;
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
+        ESP_LOGD(TAG, "check %s %d", LinkyLabelList[i].label, i);
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
         {
             continue;
@@ -567,6 +568,8 @@ uint8_t zigbee_send(LinkyData *data)
             zigbee_summation_delivered += *(uint32_t *)LinkyLabelList[i].data;
         }
 
+        ESP_LOGD(TAG, "Send %s", LinkyLabelList[i].label);
+
         esp_zb_zcl_status_t status = ESP_ZB_ZCL_STATUS_SUCCESS;
         if (LinkyLabelList[i].zb_access == ESP_ZB_ZCL_ATTR_ACCESS_REPORTING)
         {
@@ -584,7 +587,7 @@ uint8_t zigbee_send(LinkyData *data)
             ESP_LOGI(TAG, "Set attribute cluster: Status: 0x%X 0x%x, attribute: 0x%x, name: %s, value: %lu", status, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
         }
     }
-    zigbee_report_attribute(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, sizeof(zigbee_summation_delivered));
+    // zigbee_report_attribute(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, sizeof(zigbee_summation_delivered));
 
     return 0;
 }

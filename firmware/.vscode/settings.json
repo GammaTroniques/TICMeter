@@ -29,7 +29,8 @@
     "esp_system.h": "c",
     "shell.h": "c",
     "esp_heap_trace.h": "c",
-    "common.h": "c"
+    "common.h": "c",
+    "sstream": "c"
   },
   "idf.flashBaudRate": "1000000"
 }

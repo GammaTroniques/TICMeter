@@ -92,6 +92,8 @@ void app_main(void)
   shell_init();                                                                                          // init shell
   wifi_init();                                                                                           // init wifi
 
+  // xTaskCreate(temp_loop, "test_task", 8 * 1024, NULL, 1, NULL); // start linky task
+
   // if (gpio_get_vusb() > 3 && config_values.mode == MODE_TUYA && config_values.tuyaBinded == 2) //
   // {
   //   ESP_LOGI(MAIN_TAG, "Tuya pairing");
@@ -161,35 +163,33 @@ void app_main(void)
     }
     break;
   case MODE_ZIGBEE:
-
     // if (gpio_get_vusb() < 3)
-    if (1)
-    {
-      ESP_LOGW(MAIN_TAG, "Enable PM");
-
-      esp_err_t rc = ESP_OK;
+    ESP_LOGW(MAIN_TAG, "Enable PM");
+    esp_err_t rc = ESP_OK;
 #ifdef CONFIG_PM_ENABLE
-      int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
-      esp_pm_config_t pm_config = {
-        .max_freq_mhz = cur_cpu_freq_mhz,
-        .min_freq_mhz = 10,
+    int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
+    esp_pm_config_t pm_config = {
+      .max_freq_mhz = cur_cpu_freq_mhz,
+      .min_freq_mhz = 10,
 #if CONFIG_FREERTOS_USE_TICKLESS_IDLE
-        .light_sleep_enable = true
+      .light_sleep_enable = true
 #endif
-      };
-      rc = esp_pm_configure(&pm_config);
+    };
+    rc = esp_pm_configure(&pm_config);
 #endif
-      if (rc != ESP_OK)
-      {
-        ESP_LOGE(MAIN_TAG, "esp_pm_configure failed: 0x%x", rc);
-      }
-    }
-    linky_update();
-    if (!linky_presence())
+    if (rc != ESP_OK)
     {
-      ESP_LOGE(MAIN_TAG, "Cant find Linky");
+      ESP_LOGE(MAIN_TAG, "esp_pm_configure failed: 0x%x", rc);
     }
-    zigbee_init_stack();
+
+    if (!linky_update())
+    {
+      ESP_LOGE(MAIN_TAG, "Cant find Linky: dont init zigbee");
+    }
+    else
+    {
+      zigbee_init_stack();
+    }
 
     break;
   case MODE_TUYA:
@@ -211,7 +211,6 @@ void app_main(void)
   }
   // start linky fetch task
   xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &fetchLinkyDataTaskHandle); // start linky task
-  xTaskCreate(temp_loop, "test_task", 8 * 1024, NULL, 1, NULL);                                                                            // start linky task
 }
 void main_fetch_linky_data_task(void *pvParameters)
 {
@@ -267,7 +266,7 @@ void main_fetch_linky_data_task(void *pvParameters)
     if (!linky_update() ||
         !linky_presence())
     {
-      ESP_LOGE(MAIN_TAG, "Linky update failed:");
+      ESP_LOGE(MAIN_TAG, "Linky update failed");
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
     }
 
@@ -390,6 +389,14 @@ void main_fetch_linky_data_task(void *pvParameters)
 
 void temp_loop(void *pvParameters)
 {
+
+  esp_err_t rc = ESP_OK;
+  int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
+  esp_pm_config_t pm_config = {
+      .max_freq_mhz = 10,
+      .min_freq_mhz = 10,
+  };
+  rc = esp_pm_configure(&pm_config);
   while (1)
   {
     uint32_t cpu_freq = esp_clk_cpu_freq();
