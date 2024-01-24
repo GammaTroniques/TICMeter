@@ -745,6 +745,7 @@ void gpio_led_task_ota(void *pvParameters)
 
 void gpio_start_pariring()
 {
+    ESP_LOGI(TAG, "Starting pairing");
     switch (config_values.mode)
     {
     case MODE_WEB:
@@ -766,18 +767,19 @@ void gpio_start_pariring()
         break;
     case MODE_ZIGBEE:
         ESP_LOGI(TAG, "Zigbee pairing");
-        if (config_values.zigbee.state == ZIGBEE_PAIRED)
-        {
-            ESP_LOGI(TAG, "Already paired, resetting");
-            config_values.zigbee.state = ZIGBEE_WANT_PAIRING;
-            config_write();
-            esp_zb_factory_reset();
-        }
-        else
-        {
-            config_values.zigbee.state = ZIGBEE_PAIRING;
-            zigbee_start_pairing();
-        }
+        ESP_LOGI(TAG, "Already paired, resetting");
+        config_values.zigbee.state = ZIGBEE_WANT_PAIRING;
+        config_write();
+        esp_zb_factory_reset();
+        // if (config_values.zigbee.state == ZIGBEE_PAIRED)
+        // {
+        // }
+        // else
+        // {
+        //     ESP_LOGI(TAG, "Not paired, starting pairing");
+        //     config_values.zigbee.state = ZIGBEE_PAIRING;
+        //     zigbee_start_pairing();
+        // }
         // esp_zb_factory_reset();
         // start_zigbee_pairing();
         break;
