@@ -92,6 +92,8 @@ void app_main(void)
   shell_init();                                                                                          // init shell
   wifi_init();                                                                                           // init wifi
 
+  linky_want_debug_frame = 2; // TODO: remove this
+
   // xTaskCreate(temp_loop, "test_task", 8 * 1024, NULL, 1, NULL); // start linky task
 
   // if (gpio_get_vusb() > 3 && config_values.mode == MODE_TUYA && config_values.tuyaBinded == 2) //
@@ -163,23 +165,25 @@ void app_main(void)
     }
     break;
   case MODE_ZIGBEE:
-    // if (gpio_get_vusb() < 3)
-    ESP_LOGW(MAIN_TAG, "Enable PM");
-    esp_err_t rc = ESP_OK;
-#ifdef CONFIG_PM_ENABLE
-    int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
-    esp_pm_config_t pm_config = {
-      .max_freq_mhz = cur_cpu_freq_mhz,
-      .min_freq_mhz = 10,
-#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
-      .light_sleep_enable = true
-#endif
-    };
-    rc = esp_pm_configure(&pm_config);
-#endif
-    if (rc != ESP_OK)
+    if (gpio_get_vusb() < 3)
     {
-      ESP_LOGE(MAIN_TAG, "esp_pm_configure failed: 0x%x", rc);
+      ESP_LOGW(MAIN_TAG, "Enable PM");
+      esp_err_t rc = ESP_OK;
+#ifdef CONFIG_PM_ENABLE
+      int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
+      esp_pm_config_t pm_config = {
+        .max_freq_mhz = cur_cpu_freq_mhz,
+        .min_freq_mhz = 10,
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+        .light_sleep_enable = true
+#endif
+      };
+      rc = esp_pm_configure(&pm_config);
+#endif
+      if (rc != ESP_OK)
+      {
+        ESP_LOGE(MAIN_TAG, "esp_pm_configure failed: 0x%x", rc);
+      }
     }
 
     if (!linky_update())
