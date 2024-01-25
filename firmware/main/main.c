@@ -92,7 +92,7 @@ void app_main(void)
   shell_init();                                                                                          // init shell
   wifi_init();                                                                                           // init wifi
 
-  linky_want_debug_frame = 2; // TODO: remove this
+  // linky_want_debug_frame = 2; // TODO: remove this
 
   // xTaskCreate(temp_loop, "test_task", 8 * 1024, NULL, 1, NULL); // start linky task
 

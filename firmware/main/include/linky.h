@@ -105,24 +105,24 @@ typedef struct
     char NGTF[18];       //     16                   Nom du calendrier tarifaire fournisseur
     char LTARF[18];      //     16                   Libellé du calendrier tarifaire
     
-    uint32_t EAST;       //     9         Wh         Energie active soutirée totale
-    uint32_t EASF01;     //     9         Wh         Energie active soutirée Fournisseur, index 01
-    uint32_t EASF02;     //     9         Wh         Energie active soutirée Fournisseur, index 02
-    uint32_t EASF03;     //     9         Wh         Energie active soutirée Fournisseur, index 03
-    uint32_t EASF04;     //     9         Wh         Energie active soutirée Fournisseur, index 04
-    uint32_t EASF05;     //     9         Wh         Energie active soutirée Fournisseur, index 05
-    uint32_t EASF06;     //     9         Wh         Energie active soutirée Fournisseur, index 06
-    uint32_t EASF07;     //     9         Wh         Energie active soutirée Fournisseur, index 07
-    uint32_t EASF08;     //     9         Wh         Energie active soutirée Fournisseur, index 08
-    uint32_t EASF09;     //     9         Wh         Energie active soutirée Fournisseur, index 09
-    uint32_t EASF10;     //     9         Wh         Energie active soutirée Fournisseur, index 10
+    uint64_t EAST;       //     9         Wh         Energie active soutirée totale
+    uint64_t EASF01;     //     9         Wh         Energie active soutirée Fournisseur, index 01
+    uint64_t EASF02;     //     9         Wh         Energie active soutirée Fournisseur, index 02
+    uint64_t EASF03;     //     9         Wh         Energie active soutirée Fournisseur, index 03
+    uint64_t EASF04;     //     9         Wh         Energie active soutirée Fournisseur, index 04
+    uint64_t EASF05;     //     9         Wh         Energie active soutirée Fournisseur, index 05
+    uint64_t EASF06;     //     9         Wh         Energie active soutirée Fournisseur, index 06
+    uint64_t EASF07;     //     9         Wh         Energie active soutirée Fournisseur, index 07
+    uint64_t EASF08;     //     9         Wh         Energie active soutirée Fournisseur, index 08
+    uint64_t EASF09;     //     9         Wh         Energie active soutirée Fournisseur, index 09
+    uint64_t EASF10;     //     9         Wh         Energie active soutirée Fournisseur, index 10
 
-    uint32_t EASD01;     //      9         Wh         Energie active soutirée Distributeur, index 01
-    uint32_t EASD02;     //      9         Wh         Energie active soutirée Distributeur, index 02
-    uint32_t EASD03;     //      9         Wh         Energie active soutirée Distributeur, index 03
-    uint32_t EASD04;     //      9         Wh         Energie active soutirée Distributeur, index 04
+    uint64_t EASD01;     //      9         Wh         Energie active soutirée Distributeur, index 01
+    uint64_t EASD02;     //      9         Wh         Energie active soutirée Distributeur, index 02
+    uint64_t EASD03;     //      9         Wh         Energie active soutirée Distributeur, index 03
+    uint64_t EASD04;     //      9         Wh         Energie active soutirée Distributeur, index 04
 
-    uint32_t EAIT;       //      9         Wh         Energie active injectée totale
+    uint64_t EAIT;       //      9         Wh         Energie active injectée totale
 
     uint32_t ERQ1;       //      9         Wh         Energie réactive Q1 totale 
     uint32_t ERQ2;       //      9         Wh         Energie réactive Q2 totale
