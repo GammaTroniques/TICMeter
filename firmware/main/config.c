@@ -52,7 +52,16 @@ static uint8_t config_tuya_rw = 0;
 /*==============================================================================
 Public Variable
 ===============================================================================*/
-const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER", "TUYA"};
+const char *const MODES[] = {
+    [MODE_NONE] = "NONE",
+    [MODE_WEB] = "WEB",
+    [MODE_MQTT] = "MQTT",
+    [MODE_MQTT_HA] = "MQTT_HA",
+    [MODE_ZIGBEE] = "ZIGBEE",
+    [MODE_MATTER] = "MATTER",
+    [MODE_TUYA] = "TUYA",
+};
+
 config_t config_values = {0};
 efuse_t efuse_values = {0};
 static esp_efuse_coding_scheme_t config_efuse_coding_scheme = EFUSE_CODING_SCHEME_NONE;
@@ -556,5 +565,37 @@ uint8_t config_efuse_write(const char *serialnumber, uint8_t len)
         return 1;
     }
 
+    return 0;
+}
+
+uint8_t config_factory_reset()
+{
+    nvs_flash_erase();
+    printf("Full nvs clear done\n");
+    config_begin();
+    config_erase();
+    config_write();
+
+    ESP_LOGI(TAG, "Clearing zigbee storage partition...");
+    const char *partition_label = "zb_storage";
+
+    const esp_partition_t *partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, partition_label);
+
+    if (partition == NULL)
+    {
+        ESP_LOGE(TAG, "Can't find partition %s", partition_label);
+        return 1;
+    }
+
+    esp_err_t erase_result = esp_partition_erase_range(partition, 0, partition->size);
+
+    if (erase_result == ESP_OK)
+    {
+        ESP_LOGI(TAG, "Partition %s erased", partition_label);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Can't erase partition %s, error %d", partition_label, erase_result);
+    }
     return 0;
 }

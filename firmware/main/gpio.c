@@ -46,14 +46,16 @@
 /*==============================================================================
  Local Type
 ===============================================================================*/
-typedef enum
-{
-    NO_FLASH,
-    PAIRING_FLASH,
-    WEB_FLASH = 0x0008FF,
-    ZIGBEE_FLASH = 0xFF0000,
-    TUYA_FLASH = 0xFA650F,
-} led_state_t;
+
+const uint32_t color_mode[] = {
+    [MODE_NONE] = 0x000000,
+    [MODE_WEB] = 0x0008FF,
+    [MODE_MQTT] = 0x8803FC,
+    [MODE_MQTT_HA] = 0x8803FC,
+    [MODE_ZIGBEE] = 0xFF0000,
+    [MODE_MATTER] = 0xFFFFFF,
+    [MODE_TUYA] = 0xFA650F,
+};
 
 typedef struct ledPattern_t
 {
@@ -97,6 +99,7 @@ static const ledPattern_t ledPattern[][PATTERN_SIZE] = {
     {{0xFF0000,       50, 100},  {0xFF0000,       50, 100}, {0xFF0000,       50, 100 }}, // NO_CONFIG // TODO: remove 
     {{0xE5FF00,       50,   0}                                                            }, // START
     {{0x8803FC,       100,  400}                                                          }, // PAIRING
+    {{0xFF0000,       500, 500},  {0xFF0000,       500, 500}, {0xFF0000,       2000, 100}    }, // FACTORY_RESET
 };
 
 static uint8_t pattern_in_progress = 0;
@@ -347,7 +350,8 @@ void gpio_pairing_button_task(void *pvParameters)
     uint32_t startPushTime = 0;
     uint8_t lastState = 1;
     uint32_t pushTime = MILLIS - startPushTime;
-    led_state_t ledState = NO_FLASH;
+    uint8_t push_from_boot = 0;
+    connectivity_t current_mode_led = MODE_NONE;
     uint8_t pairingState = 0;
     while (1)
     {
@@ -355,57 +359,62 @@ void gpio_pairing_button_task(void *pvParameters)
         {
             if (lastState == 1)
             {
-                ESP_LOGI(TAG, "Start pushing");
+                ESP_LOGI(TAG, "Start pushing %ld", MILLIS);
                 suspendTask(tuyaTaskHandle);
                 suspendTask(noConfigLedTaskHandle);
                 lastState = 0;
-                ledState = NO_FLASH;
+                current_mode_led = MODE_NONE;
                 startPushTime = MILLIS;
+                if (MILLIS < 1000)
+                {
+                    push_from_boot = 1;
+                }
             }
             pushTime = MILLIS - startPushTime;
             if (pushTime > 4000)
             {
                 // Color Wheel
                 ESP_LOGI(TAG, "pushTime: %lu, %%: %lu", pushTime, pushTime % 1000);
-                if (pushTime % 1000 == 0)
+                if (pushTime % 1000 < 50)
                 {
-                    switch (ledState)
+
+                    current_mode_led++;
+                    if (current_mode_led == MODE_MQTT)
                     {
-                    case NO_FLASH:
-                        ledState = WEB_FLASH;
-                        break;
-                    case PAIRING_FLASH:
-                        ledState = WEB_FLASH;
-                        break;
-                    case WEB_FLASH:
-                        ledState = ZIGBEE_FLASH;
-                        break;
-                    case ZIGBEE_FLASH:
-                        ledState = TUYA_FLASH;
-                        break;
-                    case TUYA_FLASH:
-                        ledState = WEB_FLASH;
-                        break;
-                    default:
-                        break;
+                        current_mode_led++;
                     }
-                    ESP_LOGI(TAG, "------------------------LED state: %d", ledState);
-                    gpio_set_led_color(ledState);
+                    if (current_mode_led >= MODE_LAST)
+                    {
+                        current_mode_led = MODE_WEB;
+                    }
+                    ESP_LOGI(TAG, "------------------------LED state: %d", current_mode_led);
+                    gpio_set_led_color(color_mode[current_mode_led]);
                 }
             }
             else if (pushTime > 2000)
             {
                 // Announce pairing mode
-                if (ledState == NO_FLASH)
+                if (push_from_boot)
                 {
-                    ledState = PAIRING_FLASH; // flash pairing led
+                    // factory reset
+                    ESP_LOGI(TAG, "Factory reset");
+                    gpio_start_led_pattern(PATTERN_FACTORY_RESET);
+                    config_factory_reset();
+                    vTaskDelay(2000 / portTICK_PERIOD_MS);
+                    esp_restart();
+                }
+                if (current_mode_led == MODE_NONE)
+                {
+                    // flash pairing led
+                    current_mode_led = config_values.mode;
                     suspendTask(noConfigLedTaskHandle);
-                    gpio_start_led_pattern(PATTERN_PAIRING);
+                    // gpio_start_led_pattern(PATTERN_PAIRING);
+                    gpio_boot_led_pattern();
                 }
             }
             else
             {
-                ledState = NO_FLASH;
+                current_mode_led = MODE_NONE;
             }
         }
         else // if button is not pushed
@@ -421,20 +430,7 @@ void gpio_pairing_button_task(void *pvParameters)
                         noConfigLedTaskHandle = NULL;
                     }
                     ESP_LOGI(TAG, "Changing mode");
-                    switch (ledState)
-                    {
-                    case WEB_FLASH:
-                        config_values.mode = MODE_WEB;
-                        break;
-                    case ZIGBEE_FLASH:
-                        config_values.mode = MODE_ZIGBEE;
-                        break;
-                    case TUYA_FLASH:
-                        config_values.mode = MODE_TUYA;
-                        break;
-                    default:
-                        break;
-                    }
+                    config_values.mode = current_mode_led;
                     config_write();
                     vTaskDelay(2000 / portTICK_PERIOD_MS);
                     esp_restart();
@@ -473,7 +469,7 @@ void gpio_pairing_button_task(void *pvParameters)
                     }
                 }
                 lastState = 1;
-                ledState = NO_FLASH;
+                current_mode_led = MODE_NONE;
             }
         }
         vTaskDelay(50 / portTICK_PERIOD_MS);
@@ -505,23 +501,8 @@ void gpio_start_led_pattern(uint8_t pattern)
 
 void gpio_boot_led_pattern()
 {
-    switch (config_values.mode)
-    {
-    case MODE_WEB:
-    case MODE_MQTT:
-    case MODE_MQTT_HA:
-        gpio_set_led_color(WEB_FLASH);
-        break;
 
-    case MODE_TUYA:
-        gpio_set_led_color(TUYA_FLASH);
-        break;
-    case MODE_ZIGBEE:
-        gpio_set_led_color(ZIGBEE_FLASH);
-        break;
-    default:
-        break;
-    }
+    gpio_set_led_color(color_mode[config_values.mode]);
     vTaskDelay(100 / portTICK_PERIOD_MS);
     gpio_set_led_color(0);
 }
@@ -551,7 +532,7 @@ void gpio_led_task_wifi_connecting(void *pvParameters)
     pattern_in_progress = 1;
     while (wifi_state == WIFI_CONNECTING && MILLIS < timout)
     {
-        gpio_set_led_color(WEB_FLASH);
+        gpio_set_led_color(color_mode[MODE_WEB]);
         vTaskDelay(100 / portTICK_PERIOD_MS);
         gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);

@@ -634,7 +634,7 @@ uint8_t zigbee_send(LinkyData *data)
             status = esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, false);
         }
     }
-    // zigbee_report_attribute(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, sizeof(zigbee_summation_delivered));
+    zigbee_report_attribute(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, sizeof(zigbee_summation_delivered));
 
     return 0;
 }

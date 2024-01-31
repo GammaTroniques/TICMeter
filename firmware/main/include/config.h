@@ -64,12 +64,14 @@
 ==============================================================================*/
 typedef enum
 {
+    MODE_NONE,
     MODE_WEB,
     MODE_MQTT,
     MODE_MQTT_HA,
     MODE_ZIGBEE,
-    MODE_MATTER,
     MODE_TUYA,
+    MODE_LAST,
+    MODE_MATTER,
 } connectivity_t;
 
 typedef struct
@@ -147,7 +149,7 @@ typedef struct
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
-extern const char *MODES[];
+extern const char *const MODES[];
 extern const char *GIT_TAG;
 extern const char *GIT_REV;
 extern const char *GIT_BRANCH;
@@ -167,4 +169,5 @@ uint8_t config_verify();
 uint8_t config_rw();
 uint8_t config_efuse_read();
 uint8_t config_efuse_write(const char *serialnumber, uint8_t len);
+uint8_t config_factory_reset();
 #endif /* CONFIG_H */
