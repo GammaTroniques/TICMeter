@@ -14,19 +14,12 @@ body:
       placeholder: What I did, what I saw...
     validations:
       required: true
-  - type: dropdown
+  - type: input
     id: version
     attributes:
       label: Firmware version
       description: What version of our software are you running?
-      options:
-        - Other / Don't Know
-        - V2.x.x
-        - V3.0.x
-        - V3.1.x or more
-      default: 0
-    validations:
-      required: true
+      placeholder: ex. V2.0.1
   - type: textarea
     id: bug-reproduction
     attributes:
