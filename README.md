@@ -32,42 +32,28 @@
 [![espidf](https://img.shields.io/badge/espressif%20idf-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://github.com/espressif/esp-idf)
 [![vscode](https://img.shields.io/badge/visual%20studio%20code-0078d7?style=for-the-badge&logo=visual-studio-code&logoColor=white)](https://www.espressif.com/)
 
-## Electronic
-![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
-
-| Top Side | Bottom Side | PCB in the Linky meter |
-|-----|-----|-----|
-| ![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square) | ![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square) | ![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square) | 
-
-#### PCB
-![oldversion](https://shields.io/badge/-old%20version-critical?style=flat-square)
-
-| Top Side  | Bottom Side |
-| ------------- | ------------- |
-| ![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square) | ![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square) |
-
 ## Installation
 
 #### ESP32 :satellite:
-Compile and send [`firmware`](/esp32/src) files to the ESP32-C6
+Compile and send [`firmware`](/firmware) files to the ESP32-C6
 
 ## Demo
 
 #### Web example
 
-![webpageimg](img/WebPage.png)
+<img src="img/WebPage.png" alt="webpageimg" height="500"/>
 
 #### MQTT example - Home Assistant
 
-![mqttexample](img/MQTT_Example.png)
+<img src="img/MQTT_Example.png" alt="mqttexample" height="600"/>
 
 #### Zigbee example - Home Assistant
 
-![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square)
+<img src="img/Zigbee_Example.png" alt="zigbeeexample" height="600"/>
 
 #### Tuya example
 
-![indev](https://shields.io/badge/-in%20the%20next%20update-inactive?style=flat-square)
+<img src="img/Tuya_Example.png" alt="tuyaexample" height="600"/>
 
 ## Authors
 
