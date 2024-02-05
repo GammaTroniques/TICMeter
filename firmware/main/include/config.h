@@ -122,6 +122,22 @@ typedef struct
 
 typedef struct
 {
+
+    uint64_t index_01;
+    uint64_t index_02;
+    uint64_t index_03;
+    uint64_t index_04;
+    uint64_t index_05;
+    uint64_t index_06;
+    uint64_t index_07;
+    uint64_t index_08;
+    uint64_t index_09;
+    uint64_t index_10;
+    uint8_t value_saved;
+} index_offset_t;
+
+typedef struct
+{
     uint8_t initialized; // should be 1 if the config is initialized
     char ssid[50];
     char password[50];
@@ -138,6 +154,7 @@ typedef struct
     char version[10];
     uint16_t refreshRate;
     uint8_t sleep;
+    index_offset_t index_offset;
 } config_t;
 
 typedef struct

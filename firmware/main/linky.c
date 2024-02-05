@@ -221,13 +221,13 @@ const LinkyGroup LinkyLabelList[] =
     {26,  "Profil du prochain jour",         "PJOURF+1",    &linky_data.std.PJOURF_1,      STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0x0000, 0x0000,  ZB_NO, ZB_CHARSTR   },
     {27,  "Profil du prochain jour pointe",  "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      98, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0x0000, 0x0000,  ZB_NO, ZB_CHARSTR   },
     //---------------------------Home Assistant Specific ------------------------------------------------
-    {131, "Temps d'actualisation",          "now-refresh",  &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {0,   "Temps d'actualisation",          "set-refresh",  &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
- // {132, "Mode TIC",                       "mode-tic",    &mode,                          UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
- // {133, "Mode Elec",                      "mode-tri",    &linky_tree_phase,              UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {134, "Temps de fonctionnement",        "uptime",      &linky_uptime,                  UINT64,       0,      ANY,  C_ANY,   G_ANY,     REAL_TIME,  TIME,        "mdi:clock-time-eight-outline",        0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {0,   "Free RAM",                       "free-ram",    &linky_free_heap_size,          UINT32,       0,      ANY,  C_ANY,   G_ANY,     REAL_TIME,  BYTES,       "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {131, "Temps d'actualisation",           "now-refresh", &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {0,   "Temps d'actualisation",           "set-refresh", &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
+ // {132, "Mode TIC",                       "mode-tic",     &mode,                         UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
+ // {133, "Mode Elec",                      "mode-tri",     &linky_tree_phase,             UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {0,   "Dernière actualisation",         "timestamp",    &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {134, "Temps de fonctionnement",        "uptime",       &linky_uptime,                 UINT64,       0,      ANY,  C_ANY,   G_ANY,     REAL_TIME,  TIME,        "mdi:clock-time-eight-outline",        0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {0,   "Free RAM",                       "free-ram",     &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,     REAL_TIME,  BYTES,       "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
