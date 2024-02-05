@@ -202,7 +202,7 @@ const LinkyGroup LinkyLabelList[] =
     {13,  "Tension moyenne Phase 2",         "UMOY2",       &linky_data.std.UMOY2,         UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0911,  ZB_NO, ZB_UINT16,   },
     {14,  "Tension moyenne Phase 3",         "UMOY3",       &linky_data.std.UMOY3,         UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0A11,  ZB_NO, ZB_UINT16,   },
 
-    {15,  "Registre de Statuts",             "STGE",        &linky_data.std.STGE,          STRING,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x001b,  ZB_NO, ZB_OCTSTR,   },
+    {15,  "Registre de Statuts",             "STGE",        &linky_data.std.STGE,          STRING,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x001b,  ZB_NO, ZB_OCTSTR,   }, // TODO: Enedis-NOI-CPT_54E p25 Couleur du lendemain --> tuya 116
 
     {16,  "Début Pointe Mobile 1",           "DPM1",        &linky_data.std.DPM1,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x001c,  ZB_NO, ZB_UINT8,    },
     {17,  "Fin Pointe Mobile 1",             "FPM1",        &linky_data.std.FPM1,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x001d,  ZB_NO, ZB_UINT8,    },
