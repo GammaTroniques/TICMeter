@@ -421,6 +421,7 @@ void gpio_pairing_button_task(void *pvParameters)
         {
             if (lastState == 0) // button was released
             {
+                push_from_boot = 0;
                 ESP_LOGI(TAG, "Button pushed for %lu ms", pushTime);
                 if (pushTime > 5000)
                 {
@@ -573,7 +574,7 @@ void gpio_led_task_pairing(void *pvParameters)
 {
     while (1)
     {
-        gpio_set_led_color(0x8803FC);
+        gpio_set_led_color(color_mode[config_values.mode]);
         vTaskDelay(100 / portTICK_PERIOD_MS);
         gpio_set_led_color(0);
         vTaskDelay(900 / portTICK_PERIOD_MS);

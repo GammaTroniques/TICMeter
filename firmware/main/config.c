@@ -91,6 +91,8 @@ static struct config_item_t config_items[] = {
     {"version",         STRING, &config_values.version,         sizeof(config_values.version),          &config_handle},
     {"refresh",         UINT16, &config_values.refreshRate,     sizeof(config_values.refreshRate),      &config_handle},
     {"sleep",           UINT8,  &config_values.sleep,           sizeof(config_values.sleep),            &config_handle},
+    {"index-offset",    BLOB,   &config_values.index_offset,    sizeof(config_values.index_offset),     &config_handle},
+
 };
 static const int32_t config_items_size = sizeof(config_items) / sizeof(config_items[0]);
 
@@ -110,6 +112,9 @@ int8_t config_erase()
         .last_linky_mode = NONE,
         .mode = MODE_MQTT_HA,
         .mqtt.port = 1883,
+        .pairing_state = TUYA_NOT_CONFIGURED,
+        .zigbee.state = ZIGBEE_NOT_CONFIGURED,
+        .index_offset = {0},
     };
     snprintf(blank_config.mqtt.topic, sizeof(blank_config.mqtt.topic), "TICMeter/%s", efuse_values.macAddress + 6);
     config_values = blank_config;
