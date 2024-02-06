@@ -404,7 +404,7 @@ static int mqtt_send_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("MQTT send\n");
-  LinkyData linky_data;
+  linky_data_t linky_data;
   // linky_data.hist->timestamp = wifi_get_timestamp();
   // linky_data.hist->BASE = 5050;
   // linky_data.hist->IINST = 10;

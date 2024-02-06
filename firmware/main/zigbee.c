@@ -485,7 +485,7 @@ char string_buffer[100];
 
 uint64_t temp = 150;
 uint64_t zigbee_summation_delivered = 0;
-uint8_t zigbee_send(LinkyData *data)
+uint8_t zigbee_send(linky_data_t *data)
 {
     if (config_values.zigbee.state != ZIGBEE_PAIRED)
     {

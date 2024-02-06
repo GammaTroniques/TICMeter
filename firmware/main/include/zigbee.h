@@ -47,7 +47,7 @@
  Public Functions Declaration
 ==============================================================================*/
 extern void zigbee_init_stack();
-extern uint8_t zigbee_send(LinkyData *data);
+extern uint8_t zigbee_send(linky_data_t *data);
 void zigbee_start_pairing();
 
 #endif // ZIGBEE_H

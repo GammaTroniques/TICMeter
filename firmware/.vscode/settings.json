@@ -30,7 +30,9 @@
     "shell.h": "c",
     "esp_heap_trace.h": "c",
     "common.h": "c",
-    "sstream": "c"
+    "sstream": "c",
+    "linky.h": "c",
+    "limits": "c"
   },
   "idf.flashBaudRate": "1000000"
 }

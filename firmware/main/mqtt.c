@@ -197,7 +197,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     cJSON_Delete(sensorConfig);
 }
 
-uint8_t mqtt_prepare_publish(LinkyData *linkydata)
+uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
 {
     mqtt_sensors_count = 0;
     mqtt_sent_count = 0;
