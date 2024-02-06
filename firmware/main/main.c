@@ -219,7 +219,7 @@ void app_main(void)
 void main_fetch_linky_data_task(void *pvParameters)
 {
 #define MAX_DATA_INDEX 5
-  LinkyData dataArray[MAX_DATA_INDEX];
+  linky_data_t dataArray[MAX_DATA_INDEX];
   unsigned int dataIndex = 0;
 
   uint32_t last_heap = esp_get_free_heap_size();

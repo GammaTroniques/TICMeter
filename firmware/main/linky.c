@@ -97,8 +97,8 @@ const LinkyGroup LinkyLabelList[] =
     {103, "Intensité souscrite",             "ISOUSC",      &linky_data.hist.ISOUSC,       UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0B01, 0x000D,  ZB_NO, ZB_INT24,    }, //TODO: zigbee: when  Meter Identification cluster
 
     {104, "Index Base",                      "BASE",        &linky_data.hist.BASE,         UINT64,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
-    {105, "Index Heures Creuses",            "HCHC",        &linky_data.hist.HCHC,         UINT64,       0, MODE_HIST, C_HCHC,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
-    {106, "Index Heures Pleines",            "HCHP",        &linky_data.hist.HCHP,         UINT64,       0, MODE_HIST, C_HCHC,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
+    {105, "Index Heures Creuses",            "HCHC",        &linky_data.hist.HCHC,         UINT64,       0, MODE_HIST, C_HCHP,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
+    {106, "Index Heures Pleines",            "HCHP",        &linky_data.hist.HCHP,         UINT64,       0, MODE_HIST, C_HCHP,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
     {107, "Index Heures Normales",           "EJPHN",       &linky_data.hist.EJPHN,        UINT64,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
     {108, "Index Heures de Pointe Mobile",   "EJPHPM",      &linky_data.hist.EJPHPM,       UINT64,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
     {0,   "Préavis Début EJP",               "PEJP",        &linky_data.hist.PEJP,         UINT64,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  BOOL,        "mdi:clock",                           0xFF42, 0x0001,  ZB_RP, ZB_UINT48,   },
@@ -233,11 +233,14 @@ const LinkyGroup LinkyLabelList[] =
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
 // clang-format on
 
-LinkyData linky_data; // The data
+linky_data_t linky_data; // The data
 linky_mode_t linky_mode = MODE_HIST;
+linky_contract_t linky_contract = C_ANY;
+
 uint8_t linky_tree_phase = 0;
 uint8_t linky_reading = 0;
 uint8_t linky_want_debug_frame = 0;
+
 char linky_buffer[LINKY_BUFFER_SIZE] = {0}; // The UART buffer
 
 const char *const HADeviceClassStr[] = {
@@ -282,6 +285,29 @@ const char *const ha_sensors_str[] = {
     [STRING] = "sensor",
     [UINT32_TIME] = "sensor",
     [HA_NUMBER] = "number",
+};
+
+const char *const linky_str_contract[] = {
+    [C_ANY] = "ANY",
+    [C_BASE] = "BASE",
+    [C_HCHP] = "HCHP",
+    [C_EJP] = "EJP",
+    [C_TEMPO] = "TEMPO",
+};
+
+const char *const linky_str_tarif[] = {
+    [T_ANY] = "ANY",
+    [T_BASE] = "BASE",
+    [T_HC] = "HC",
+    [T_HP] = "HP",
+    [T_HN] = "HN",
+    [T_PM] = "PM",
+    [T_HCJB] = "HCJB",
+    [T_HPJB] = "HPJB",
+    [T_HCJW] = "HCJW",
+    [T_HPJW] = "HPJW",
+    [T_HCJR] = "HCJR",
+    [T_HPJR] = "HPJR",
 };
 
 /*==============================================================================
@@ -335,7 +361,7 @@ void linky_init(linky_mode_t mode, int RX)
 
 void linky_set_mode(linky_mode_t newMode)
 {
-    LinkyData empty;
+    linky_data_t empty;
     memset(&empty, 0, sizeof empty);
 
     linky_mode = newMode;
@@ -998,4 +1024,35 @@ void linky_print_debug_frame()
         }
     }
     printf("\n");
+}
+
+linky_contract_t linky_get_contract(linky_data_t *data)
+{
+    assert(data != NULL);
+    linky_contract_t contract = C_ANY;
+    char raw[20] = {0};
+    switch (linky_mode)
+    {
+    case MODE_HIST:
+        strncpy(raw, data->hist.OPTARIF, MIN(sizeof(data->hist.OPTARIF), sizeof(raw)));
+        break;
+    case MODE_STD:
+        strncpy(raw, data->std.NGTF, MIN(sizeof(data->std.NGTF), sizeof(raw)));
+        break;
+    default:
+        ESP_LOGE(TAG, "linky_get_contract: Unknown mode");
+        return C_ANY;
+        break;
+    }
+
+    for (int i = 0; i < sizeof(linky_str_contract) / sizeof(linky_str_contract[0]); i++)
+    {
+        if (strncmp(linky_str_contract[i], raw, sizeof(raw)) == 0)
+        {
+            contract = i;
+            break;
+        }
+    }
+
+    return contract;
 }

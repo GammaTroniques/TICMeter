@@ -216,10 +216,26 @@ typedef enum
 {
     C_ANY,
     C_BASE,
-    C_HCHC,
+    C_HCHP,
     C_EJP,
     C_TEMPO,
 } linky_contract_t;
+
+typedef enum
+{
+    T_ANY,
+    T_BASE,
+    T_HC,
+    T_HP,
+    T_HN, // Heure Normale
+    T_PM, // Heure de Pointe Mobile
+    T_HCJB,
+    T_HPJB,
+    T_HCJW,
+    T_HPJW,
+    T_HCJR,
+    T_HPJR,
+} linky_tarif_t;
 
 typedef enum
 {
@@ -277,7 +293,7 @@ typedef struct
     LinkyDataHist hist;
     LinkyDataStd std;
     time_t timestamp;
-} LinkyData;
+} linky_data_t;
 
 /*==============================================================================
  Public Variables Declaration
@@ -285,11 +301,16 @@ typedef struct
 extern const char *const HADeviceClassStr[];
 extern const char *const HAUnitsStr[];
 extern const char *const ha_sensors_str[];
+extern const char *const linky_str_contract[];
+extern const char *const linky_str_tarif[];
 
 extern const LinkyGroup LinkyLabelList[];
 extern const int32_t LinkyLabelListSize;
-extern LinkyData linky_data; // The data
+
+extern linky_data_t linky_data;
 extern linky_mode_t linky_mode;
+extern linky_contract_t linky_contract;
+
 extern uint8_t linky_tree_phase;
 extern uint8_t linky_reading;
 extern uint8_t linky_want_debug_frame;
@@ -337,5 +358,7 @@ void linky_set_mode(linky_mode_t mode);
 uint8_t linky_presence();
 
 void linky_print_debug_frame();
+
+linky_contract_t linky_get_contract(linky_data_t *data);
 
 #endif /* Linky_H */

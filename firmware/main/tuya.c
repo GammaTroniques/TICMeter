@@ -244,7 +244,7 @@ static void tuya_send_callback(int result, void *user_data)
     *sendComplete = 1;
 }
 
-uint8_t tuya_compute_offset(LinkyData *linky)
+uint8_t tuya_compute_offset(linky_data_t *linky)
 {
     ESP_LOGI(TAG, "Compute offset for tuya");
     if (config_values.index_offset.value_saved == 0)
@@ -302,7 +302,7 @@ uint8_t tuya_compute_offset(LinkyData *linky)
     return 0;
 }
 
-uint8_t tuya_send_data(LinkyData *linky)
+uint8_t tuya_send_data(linky_data_t *linky)
 {
     // tuya_iot_reconnect(&client);
     ESP_LOGI(TAG, "Send data to tuya");

@@ -48,7 +48,7 @@ Public Variable
 Function Implementation
 ===============================================================================*/
 
-void web_preapare_json_data(LinkyData *data, char dataIndex, char *json, unsigned int jsonSize)
+void web_preapare_json_data(linky_data_t *data, char dataIndex, char *json, unsigned int jsonSize)
 {
     cJSON *jsonObject = cJSON_CreateObject(); // Create the root object
     cJSON_AddStringToObject(jsonObject, "TOKEN", config_values.web.token);
