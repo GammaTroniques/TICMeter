@@ -111,6 +111,7 @@ int8_t config_erase()
         .linkyMode = AUTO,
         .last_linky_mode = NONE,
         .mode = MODE_MQTT_HA,
+
         .mqtt.port = 1883,
         .pairing_state = TUYA_NOT_CONFIGURED,
         .zigbee.state = ZIGBEE_NOT_CONFIGURED,
@@ -417,24 +418,6 @@ uint8_t config_verify()
     return 0;
 }
 
-uint8_t factory_reset()
-{
-
-    // clear nvs
-    esp_err_t err = nvs_flash_erase();
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Error (%s) erasing NVS!", esp_err_to_name(err));
-        return 1;
-    }
-    ESP_LOGI(TAG, "NVS erased");
-
-    config_erase();
-    config_write();
-    ESP_LOGI(TAG, "Config erased");
-    return 0;
-}
-
 uint8_t config_rw()
 {
     esp_err_t err = 0;
@@ -575,9 +558,18 @@ uint8_t config_efuse_write(const char *serialnumber, uint8_t len)
 
 uint8_t config_factory_reset()
 {
-    nvs_flash_erase();
-    printf("Full nvs clear done\n");
-    config_begin();
+
+    esp_err_t err = nvs_flash_erase();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to erase NVS (%s 0x%x)", esp_err_to_name(err), err);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "NVS erased");
+    }
+
+    config_begin(); // ??
     config_erase();
     config_write();
 

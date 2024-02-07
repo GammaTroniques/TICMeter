@@ -367,9 +367,33 @@ uint8_t tuya_send_data(linky_data_t *linky)
         {
             continue; // dont send data for label < 101 : they are not used by tuya
         }
-        if (LinkyLabelList[i].mode != linky_mode)
+        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
         {
             continue; // dont send data for label not used by current mode
+        }
+
+        // TEMP TODO:
+        if (LinkyLabelList[i].id == 108)
+        {
+            continue;
+        }
+
+        if (LinkyLabelList[i].id == 105)
+        {
+
+            switch (linky_mode)
+            {
+            case MODE_HIST:
+                cJSON_AddStringToObject(jsonObject, "105", "Historique");
+                break;
+            case MODE_STD:
+                cJSON_AddStringToObject(jsonObject, "105", "Standard");
+                break;
+            default:
+                cJSON_AddStringToObject(jsonObject, "105", "Unknown");
+                break;
+            }
+            continue;
         }
 
         // json
@@ -436,7 +460,6 @@ uint8_t tuya_send_data(linky_data_t *linky)
             break;
         }
     }
-    cJSON_AddNumberToObject(jsonObject, "134", MILLIS / 1000 / 60);
 
     char *json = cJSON_PrintUnformatted(jsonObject); // Convert the json object to string
     cJSON_Delete(jsonObject);                        // Delete the json object

@@ -76,7 +76,7 @@ uint32_t main_sleep_time = 99999;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
-
+int local_storage_init(void);
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -91,6 +91,8 @@ void app_main(void)
   xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
   shell_init();                                                                                          // init shell
   wifi_init();                                                                                           // init wifi
+
+  local_storage_init();
 
   // linky_want_debug_frame = 2; // TODO: remove this
 
@@ -163,6 +165,7 @@ void app_main(void)
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       wifi_disconnect();
     }
+
     break;
   case MODE_ZIGBEE:
     if (gpio_get_vusb() < 3)
@@ -223,7 +226,7 @@ void main_fetch_linky_data_task(void *pvParameters)
   unsigned int dataIndex = 0;
 
   uint32_t last_heap = esp_get_free_heap_size();
-  uint64_t next_update_check = wifi_get_timestamp();
+  uint64_t next_update_check = MILLIS;
 
   int32_t fetching_time = 0;
   switch (config_values.mode)
@@ -274,6 +277,8 @@ void main_fetch_linky_data_task(void *pvParameters)
       gpio_start_led_pattern(PATTERN_LINKY_ERR);
     }
 
+    linky_uptime = esp_timer_get_time() / 1000000;
+
     switch (config_values.mode)
     {
     case MODE_WEB:
@@ -310,7 +315,6 @@ void main_fetch_linky_data_task(void *pvParameters)
     case MODE_MQTT_HA: // send data to mqtt server
     {
       linky_free_heap_size = esp_get_free_heap_size();
-      linky_uptime = esp_timer_get_time() / 1000000;
       uint8_t ret = mqtt_prepare_publish(&linky_data);
       if (ret == 0)
       {
@@ -330,10 +334,10 @@ void main_fetch_linky_data_task(void *pvParameters)
         goto send_error;
       }
 
-      if (gpio_get_vusb() > 3 && next_update_check < wifi_get_timestamp())
+      if (gpio_get_vusb() > 3 && next_update_check < MILLIS)
       {
         ESP_LOGI(MAIN_TAG, "Checking for update");
-        next_update_check = wifi_get_timestamp() + 3600;
+        next_update_check = MILLIS + 3600000;
         ota_version_t version;
         ota_get_latest(&version);
       }
@@ -367,10 +371,10 @@ void main_fetch_linky_data_task(void *pvParameters)
       tuya_disconect:
         // tuya_stop();
         // tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
-        if (gpio_get_vusb() > 3 && next_update_check < wifi_get_timestamp())
+        if (gpio_get_vusb() > 3 && next_update_check < MILLIS)
         {
           ESP_LOGI(MAIN_TAG, "Checking for update");
-          next_update_check = wifi_get_timestamp() + 3600;
+          next_update_check = MILLIS + 3600000;
           ota_version_t version;
           ota_get_latest(&version);
         }
