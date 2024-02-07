@@ -572,6 +572,7 @@ void gpio_led_task_sending(void *pvParameters)
 
 void gpio_led_task_pairing(void *pvParameters)
 {
+    pattern_in_progress = 1;
     while (1)
     {
         gpio_set_led_color(color_mode[config_values.mode]);
@@ -583,6 +584,7 @@ void gpio_led_task_pairing(void *pvParameters)
             break;
         }
     }
+    pattern_in_progress = 0;
     vTaskDelete(NULL); // Delete this task
 }
 

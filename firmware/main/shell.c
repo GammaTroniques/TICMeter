@@ -548,10 +548,33 @@ static int get_linky_mode_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  const char *modes[] = {"MODE_HIST", "MODE_STD", "MODE_AUTO"};
-  printf("Current Linky mode: %d: %s\n", linky_mode, modes[linky_mode]);
+
+  char mode[10];
+  switch (linky_mode)
+  {
+  case MODE_HIST:
+    strcpy(mode, "HIST");
+    break;
+  case MODE_STD:
+    strcpy(mode, "STD");
+    break;
+  case AUTO:
+    strcpy(mode, "AUTO");
+    break;
+  case NONE:
+    strcpy(mode, "NONE");
+    break;
+  case ANY:
+    strcpy(mode, "ANY");
+    break;
+  default:
+    strcpy(mode, "UNKNOWN");
+    break;
+  }
+
+  printf("Current Linky mode: %d: %s\n", linky_mode, mode);
   printf("Configured Linky mode: %d: %s\n", config_values.linkyMode,
-         modes[config_values.linkyMode]);
+         mode);
   return 0;
 }
 static int set_linky_mode_command(int argc, char **argv)
@@ -562,7 +585,7 @@ static int set_linky_mode_command(int argc, char **argv)
   }
   config_values.linkyMode = (linky_mode_t)atoi(argv[1]);
   config_write();
-  printf("Mode saved\n");
+  printf("Mode saved: %d\n", config_values.linkyMode);
   get_linky_mode_command(1, NULL);
   return 0;
 }
@@ -726,26 +749,11 @@ static int led_off(int argc, char **argv)
 
 static int factory_reset(int argc, char **argv)
 {
-  if (argc == 1)
-  {
-    config_erase();
-    printf("Factory reset done\n");
-    config_write();
-    return 0;
-  }
-  if (argc != 2)
+  if (argc != 1)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  if (atoi(argv[1]) == 1)
-  {
-    nvs_flash_erase();
-    printf("Full nvs clear done\n");
-    config_begin();
-    config_erase();
-    config_write();
-    return 0;
-  }
+  config_factory_reset();
   return 0;
 }
 
@@ -818,6 +826,18 @@ static int nvs_stats(int argc, char **argv)
       stats.free_entries,
       stats.total_entries,
       stats.namespace_count);
+
+  nvs_iterator_t it = NULL;
+  esp_err_t res = nvs_entry_find("nvs", NULL, NVS_TYPE_ANY, &it);
+  ESP_LOGI(TAG, "nvs_entry_find: 0x%x", res);
+  while (res == ESP_OK)
+  {
+    nvs_entry_info_t info;
+    nvs_entry_info(it, &info); // Can omit error check if parameters are guaranteed to be non-NULL
+    printf("Namespace: %s\tKey: %s\tType: %d\t\n", info.namespace_name, info.key, info.type);
+    res = nvs_entry_next(&it);
+  }
+  nvs_release_iterator(it);
   return 0;
 }
 
