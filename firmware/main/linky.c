@@ -350,8 +350,15 @@ void linky_init(linky_mode_t mode, int RX)
     switch (config_values.linkyMode)
     {
     case AUTO:
-        ESP_LOGI(TAG, "Trying to autodetect Linky mode, testing last known mode: %s", (config_values.last_linky_mode == MODE_HIST) ? "MODE_HISTORIQUE" : "MODE_STANDARD");
-        linky_set_mode(config_values.last_linky_mode);
+        ESP_LOGI(TAG, "Trying to autodetect Linky mode, testing last known mode: %s", linky_str_mode[config_values.last_linky_mode]);
+        if (config_values.last_linky_mode == NONE)
+        {
+            linky_set_mode(MODE_STD); // we don't know the last mode, we start with historique
+        }
+        else
+        {
+            linky_set_mode(config_values.last_linky_mode);
+        }
         break;
     case MODE_HIST:
         linky_set_mode(MODE_HIST);
@@ -383,7 +390,7 @@ void linky_set_mode(linky_mode_t newMode)
     default:
         break;
     }
-    ESP_LOGI(TAG, "Changed mode to %s", (newMode == MODE_HIST) ? "MODE_HISTORIQUE" : "MODE_STANDARD");
+    ESP_LOGI(TAG, "Changed mode to %s", linky_str_mode[linky_mode]);
 
     if (uart_is_driver_installed(UART_NUM_1))
     {
@@ -539,6 +546,7 @@ static char linky_decode()
                 {
                     ESP_LOGI(TAG, "Auto mode: Mode Historique Not Found! Try Mode Standard");
                     linky_set_mode(MODE_STD);
+                    return 2;
                 }
                 break;
             case MODE_STD:
@@ -552,6 +560,7 @@ static char linky_decode()
                 {
                     ESP_LOGI(TAG, "Auto mode: Mode Standard Not Found! Try Mode Historique");
                     linky_set_mode(MODE_HIST);
+                    return 2;
                 }
                 break;
             default:
@@ -564,7 +573,7 @@ static char linky_decode()
     // if we have a valid frame, with mode auto and its a new value mode, we save it.
     if (config_values.linkyMode == AUTO && linky_mode != config_values.last_linky_mode)
     {
-        ESP_LOGI(TAG, "Auto mode: New mode found: %s", (linky_mode == MODE_HIST) ? "MODE_HISTORIQUE" : "MODE_STANDARD");
+        ESP_LOGI(TAG, "Auto mode: New mode found: %s", linky_str_mode[linky_mode]);
         config_values.last_linky_mode = linky_mode;
         config_write();
     }
@@ -727,26 +736,39 @@ char linky_update()
 
     xTaskCreate(gpio_led_task_linky_reading, "gpio_led_task_linky_reading", 2048, NULL, PRIORITY_LED_LINKY_READING, NULL);
 
-    ret = linky_read(); // read the data
-    if (ret == 0)
+    uint32_t try = 0;
+    do
     {
-        linky_reading = 0;
-        linky_clear_data();
-        ESP_LOGE(TAG, "Error: no frame found");
-        return 0; // error: no frame found
-    }
+        ret = linky_read(); // read the data
+        if (ret == 0)
+        {
+            ESP_LOGE(TAG, "Error: no frame found");
+            // we continue to decode the frame and test the auto mode
+        }
 
-    ret = linky_decode(); // decode the frame
-    if (ret == 0)
+        ret = linky_decode(); // decode the frame
+        try++;
+
+    } while (ret == 2 && try < 2); // if the mode is auto, we try the other mode if the first one failed
+    linky_reading = 0;
+
+    switch (ret)
     {
-        linky_reading = 0;
+    case 0:
         linky_clear_data();
         ESP_LOGE(TAG, "Error: Decode failed");
         return 0;
-    }
+        break;
 
-    linky_reading = 0;
-    return 1;
+    case 2:
+        ESP_LOGE(TAG, "Auto mode: Unable to find mode automatically");
+        return 0;
+        break;
+
+    default:
+        return 1;
+        break;
+    }
 }
 
 /**
