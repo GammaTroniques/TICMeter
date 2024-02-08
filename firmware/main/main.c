@@ -46,6 +46,7 @@
 #include "zigbee.h"
 #include "tuya.h"
 #include "ota.h"
+#include "power.h"
 
 #include "esp_heap_trace.h"
 #include "esp_err.h"
@@ -66,7 +67,7 @@
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
-void temp_loop(void *pvParameters);
+
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -76,7 +77,7 @@ uint32_t main_sleep_time = 99999;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
-int local_storage_init(void);
+
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -92,24 +93,11 @@ void app_main(void)
   shell_init();                                                                                          // init shell
   wifi_init();                                                                                           // init wifi
 
-  local_storage_init();
-
   // linky_want_debug_frame = 2; // TODO: remove this
-
-  // xTaskCreate(temp_loop, "test_task", 8 * 1024, NULL, 1, NULL); // start linky task
-
-  // if (gpio_get_vusb() > 3 && config_values.mode == MODE_TUYA && config_values.tuyaBinded == 2) //
-  // {
-  //   ESP_LOGI(MAIN_TAG, "Tuya pairing");
-  //   xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8192, NULL, 1, NULL); // start tuya pairing task
-  //   while (config_values.tuyaBinded == 2)
-  //   {
-  //     vTaskDelay(1000 / portTICK_PERIOD_MS);
-  //   }
-  // }
 
   if (config_verify())
   {
+    power_set_frequency(10);
     xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 4 * 1024, NULL, PRIORITY_LED_NO_CONFIG, &noConfigLedTaskHandle); // start no config led task
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config_verify())
@@ -122,6 +110,7 @@ void app_main(void)
       vTaskDelay(5000 / portTICK_PERIOD_MS); // wait 5s to be sure that the web page is sent
       esp_restart();
     }
+    power_set_frequency(80);
   }
 
   // check if VCondo is too low and go to deep sleep
@@ -168,7 +157,7 @@ void app_main(void)
 
     break;
   case MODE_ZIGBEE:
-    if (gpio_get_vusb() < 3)
+    if (gpio_get_vusb() < 3 && 0)
     {
       ESP_LOGW(MAIN_TAG, "Enable PM");
       esp_err_t rc = ESP_OK;
@@ -392,23 +381,5 @@ void main_fetch_linky_data_task(void *pvParameters)
     ESP_LOGW(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
     ESP_LOGW(MAIN_TAG, "Heap diff: %ld", last_heap - esp_get_free_heap_size());
     last_heap = esp_get_free_heap_size();
-  }
-}
-
-void temp_loop(void *pvParameters)
-{
-
-  esp_err_t rc = ESP_OK;
-  int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
-  esp_pm_config_t pm_config = {
-      .max_freq_mhz = 10,
-      .min_freq_mhz = 10,
-  };
-  rc = esp_pm_configure(&pm_config);
-  while (1)
-  {
-    uint32_t cpu_freq = esp_clk_cpu_freq();
-    ESP_LOGI(MAIN_TAG, "CPU Freq: %lu", cpu_freq);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
   }
 }

@@ -310,6 +310,13 @@ const char *const linky_str_tarif[] = {
     [T_HPJR] = "HPJR",
 };
 
+const char *const linky_str_mode[] = {
+    [MODE_STD] = "STD",
+    [MODE_HIST] = "HIST",
+    [AUTO] = "AUTO",
+    [NONE] = "NONE",
+};
+
 /*==============================================================================
  Local Variable
 ===============================================================================*/

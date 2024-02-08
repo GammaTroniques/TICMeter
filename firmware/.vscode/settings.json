@@ -8,5 +8,8 @@
   "idf.port": "/dev/ttyACM0",
   "idf.gitPathWin": "c:\\Espressif\\IDF_TOOLS_PATH\\tools\\idf-git\\2.39.2\\cmd\\git.exe",
   "C_Cpp.autoAddFileAssociations": false,
-  "idf.flashBaudRate": "1000000"
+  "idf.flashBaudRate": "1000000",
+  "files.associations": {
+    "*.yaml": "home-assistant"
+  }
 }
