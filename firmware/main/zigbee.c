@@ -226,7 +226,7 @@ static void zigbee_task(void *pvParameters)
 
     ESP_LOGW(TAG, "Enable sleep");
 
-    if (gpio_get_vusb() < 3)
+    if (gpio_get_vusb() < 3 && 0)
     {
         esp_zb_sleep_enable(true);
     }

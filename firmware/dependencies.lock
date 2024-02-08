@@ -12,11 +12,11 @@ dependencies:
       type: service
     version: 1.0.9
   espressif/led_strip:
-    component_hash: ed1d5c6113fa545e20c7be17e6e7c09d43b18fcb43068e2b2b27a412de6a405a
+    component_hash: 67d2744208e9c12d8b1992d21c979396c1726e57cb7e35e7c171c515be20f8ea
     source:
       service_url: https://api.components.espressif.com/
       type: service
-    version: 2.5.2
+    version: 2.5.3
   idf:
     component_hash: null
     source:

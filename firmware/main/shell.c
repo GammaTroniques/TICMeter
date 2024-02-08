@@ -547,32 +547,9 @@ static int get_linky_mode_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
 
-  char mode[10];
-  switch (linky_mode)
-  {
-  case MODE_HIST:
-    strcpy(mode, "HIST");
-    break;
-  case MODE_STD:
-    strcpy(mode, "STD");
-    break;
-  case AUTO:
-    strcpy(mode, "AUTO");
-    break;
-  case NONE:
-    strcpy(mode, "NONE");
-    break;
-  case ANY:
-    strcpy(mode, "ANY");
-    break;
-  default:
-    strcpy(mode, "UNKNOWN");
-    break;
-  }
-
-  printf("Current Linky mode: %d: %s\n", linky_mode, mode);
-  printf("Configured Linky mode: %d: %s\n", config_values.linkyMode,
-         mode);
+  printf("Current Linky mode: %d: %s\n", linky_mode, linky_str_mode[linky_mode]);
+  printf("Last Known Linky mode: %d: %s\n", config_values.linkyMode, linky_str_mode[config_values.linkyMode]);
+  printf("Configured Linky mode: %d: %s\n", config_values.linkyMode, linky_str_mode[config_values.linkyMode]);
   return 0;
 }
 static int set_linky_mode_command(int argc, char **argv)

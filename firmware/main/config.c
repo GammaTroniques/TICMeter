@@ -412,6 +412,13 @@ uint8_t config_verify()
         //     return 0;
         // }
         break;
+    case MODE_ZIGBEE:
+        if (config_values.zigbee.state == ZIGBEE_NOT_CONFIGURED)
+        {
+            // Zigbee not binded
+            return 1;
+        }
+        break;
     default:
         break;
     }

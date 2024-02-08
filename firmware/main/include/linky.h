@@ -303,6 +303,7 @@ extern const char *const HAUnitsStr[];
 extern const char *const ha_sensors_str[];
 extern const char *const linky_str_contract[];
 extern const char *const linky_str_tarif[];
+extern const char *const linky_str_mode[];
 
 extern const LinkyGroup LinkyLabelList[];
 extern const int32_t LinkyLabelListSize;
