@@ -32,6 +32,7 @@
 #include "zigbee.h"
 #include "tuya.h"
 #include "ota.h"
+#include "power.h"
 
 /*==============================================================================
  Local Define
@@ -73,6 +74,8 @@ static void gpio_led_pattern_task(void *pvParameters);
 static void gpio_set_led_rgb(uint32_t color, uint32_t brightness);
 static void gpio_init_adc(adc_unit_t adc_unit, adc_oneshot_unit_handle_t *out_handle);
 static void gpio_init_adc_cali(adc_oneshot_unit_handle_t adc_handle, adc_channel_t adc_channel, adc_cali_handle_t *out_adc_cali_handle, char *name);
+static void gpio_isr_cb(void *arg);
+
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -86,6 +89,10 @@ static adc_cali_handle_t adc_usb_cali_handle = NULL;
 static adc_cali_handle_t adc_capa_cali_handle = NULL;
 
 static led_strip_handle_t led;
+
+static QueueHandle_t gpio_pairing_button_isr_queue = NULL;
+
+static esp_pm_lock_handle_t gpio_pairing_lock = NULL;
 
 // clang-format off
 static const ledPattern_t ledPattern[][PATTERN_SIZE] = {
@@ -144,9 +151,56 @@ void gpio_init_pins()
     gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
     gpio_init_adc_cali(adc1_handle, V_CONDO_PIN, &adc_capa_cali_handle, "VCondo");
 
+    gpio_config_t pairing_conf = {
+        .pin_bit_mask = (1ULL << PAIRING_PIN),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_NEGEDGE,
+    };
+    gpio_config(&pairing_conf);
+
+    gpio_config_t vusb_conf = {
+        .pin_bit_mask = (1ULL << V_USB_PIN),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_ANYEDGE,
+    };
+
+    gpio_config(&vusb_conf);
+
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add(PAIRING_PIN, gpio_isr_cb, (void *)PAIRING_PIN);
+    gpio_isr_handler_add(V_USB_PIN, gpio_isr_cb, (void *)V_USB_PIN);
+
+    gpio_pairing_button_isr_queue = xQueueCreate(10, sizeof(uint32_t));
+
     // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
     ESP_LOGI(TAG, "VCondo: %fV", gpio_get_vcondo());
     ESP_LOGI(TAG, "VUSB: %fV", gpio_get_vusb());
+
+    esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "gpio_pairing_lock", &gpio_pairing_lock);
+
+    xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
+}
+
+static void IRAM_ATTR gpio_isr_cb(void *arg)
+{
+    uint32_t gpio_num = (uint32_t)arg;
+    esp_rom_printf("IT GPIO %ld\n", gpio_num);
+    switch (gpio_num)
+    {
+    case PAIRING_PIN:
+        xQueueSendFromISR(gpio_pairing_button_isr_queue, &gpio_num, NULL);
+        break;
+    case V_USB_PIN:
+        xQueueSendFromISR(power_vusb_isr_queue, &gpio_num, NULL);
+        break;
+
+    default:
+        break;
+    }
 }
 
 static void gpio_init_adc(adc_unit_t adc_unit, adc_oneshot_unit_handle_t *out_handle)
@@ -353,8 +407,18 @@ void gpio_pairing_button_task(void *pvParameters)
     uint8_t push_from_boot = 0;
     connectivity_t current_mode_led = MODE_NONE;
     uint8_t pairingState = 0;
+    uint32_t io_num = 0;
     while (1)
     {
+
+        if (lastState == 1)
+        {
+            // wait for button push
+            esp_pm_lock_release(gpio_pairing_lock);
+            xQueueReceive(gpio_pairing_button_isr_queue, &io_num, portMAX_DELAY);
+            esp_pm_lock_acquire(gpio_pairing_lock);
+        }
+
         if (gpio_get_level(PAIRING_PIN) == 0) // if button is pushed
         {
             if (lastState == 1)
@@ -375,12 +439,13 @@ void gpio_pairing_button_task(void *pvParameters)
             {
                 // Color Wheel
                 ESP_LOGI(TAG, "pushTime: %lu, %%: %lu", pushTime, pushTime % 1000);
-                if (pushTime % 1000 < 50)
+                if (pushTime % 1000 < 100)
                 {
-
+                    ESP_LOGI(TAG, "------------------------LED state before compute: %d", current_mode_led);
                     current_mode_led++;
                     if (current_mode_led == MODE_MQTT)
                     {
+                        // skip MQTT_HA
                         current_mode_led++;
                     }
                     if (current_mode_led >= MODE_LAST)
@@ -461,17 +526,17 @@ void gpio_pairing_button_task(void *pvParameters)
                     else
                     {
                         gpio_boot_led_pattern();
+                        ESP_LOGI(TAG, "No action");
                         vTaskDelay(500 / portTICK_PERIOD_MS);
                         resumeTask(noConfigLedTaskHandle);
                         resumeTask(tuyaTaskHandle);
-                        ESP_LOGI(TAG, "No action");
                     }
                 }
                 lastState = 1;
                 current_mode_led = MODE_NONE;
             }
         }
-        vTaskDelay(50 / portTICK_PERIOD_MS);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 

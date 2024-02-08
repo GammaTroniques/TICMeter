@@ -67,6 +67,7 @@
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
+void debug_loop(void *);
 
 /*==============================================================================
 Public Variable
@@ -84,16 +85,23 @@ Function Implementation
 void app_main(void)
 {
   ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
+  power_init(); // init power
+  // xTaskCreate(debug_loop, "debug_loop", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
   shell_wake_reason();
   gpio_init_pins();
   config_begin();
   gpio_boot_led_pattern();
   linky_init(MODE_HIST, RX_LINKY);
-  xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
-  shell_init();                                                                                          // init shell
-  wifi_init();                                                                                           // init wifi
+  shell_init(); // init shell
+  wifi_init();  // init wifi
 
   // linky_want_debug_frame = 2; // TODO: remove this
+
+  if (!linky_update())
+  {
+    ESP_LOGE(MAIN_TAG, "Cant find Linky");
+  }
+  return;
 
   if (config_verify())
   {
@@ -178,15 +186,7 @@ void app_main(void)
       }
     }
 
-    if (!linky_update())
-    {
-      ESP_LOGE(MAIN_TAG, "Cant find Linky: dont init zigbee");
-    }
-    else
-    {
-      zigbee_init_stack();
-    }
-
+    zigbee_init_stack();
     break;
   case MODE_TUYA:
     if (config_values.pairing_state != TUYA_PAIRED)
@@ -381,5 +381,14 @@ void main_fetch_linky_data_task(void *pvParameters)
     ESP_LOGW(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
     ESP_LOGW(MAIN_TAG, "Heap diff: %ld", last_heap - esp_get_free_heap_size());
     last_heap = esp_get_free_heap_size();
+  }
+}
+
+void debug_loop(void *)
+{
+  while (1)
+  {
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    esp_pm_dump_locks(stdout);
   }
 }
