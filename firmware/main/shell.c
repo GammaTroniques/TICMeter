@@ -548,7 +548,7 @@ static int get_linky_mode_command(int argc, char **argv)
   }
 
   printf("Current Linky mode: %d: %s\n", linky_mode, linky_str_mode[linky_mode]);
-  printf("Last Known Linky mode: %d: %s\n", config_values.linkyMode, linky_str_mode[config_values.linkyMode]);
+  printf("Last Known Linky mode: %d: %s\n", config_values.last_linky_mode, linky_str_mode[config_values.last_linky_mode]);
   printf("Configured Linky mode: %d: %s\n", config_values.linkyMode, linky_str_mode[config_values.linkyMode]);
   return 0;
 }
