@@ -2,7 +2,8 @@
 #define __STORAGE_INTERFACE_H_
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /**
@@ -11,11 +12,13 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 
-int local_storage_set(const char* key, const uint8_t* buffer, size_t length);
+    int local_storage_set(const char *key, const uint8_t *buffer, size_t length);
 
-int local_storage_get(const char* key, uint8_t* buffer, size_t* length);
+    int local_storage_get(const char *key, uint8_t *buffer, size_t *length);
 
-int local_storage_del(const char* key);
+    int local_storage_del(const char *key);
+
+    int local_storage_clear(void);
 
 #ifdef __cplusplus
 }

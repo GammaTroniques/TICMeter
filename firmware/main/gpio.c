@@ -400,8 +400,6 @@ void gpio_pairing_button_task(void *pvParameters)
                     ESP_LOGI(TAG, "Factory reset");
                     gpio_start_led_pattern(PATTERN_FACTORY_RESET);
                     config_factory_reset();
-                    vTaskDelay(2000 / portTICK_PERIOD_MS);
-                    esp_restart();
                 }
                 if (current_mode_led == MODE_NONE)
                 {

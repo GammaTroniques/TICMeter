@@ -27,6 +27,7 @@
 #define PAIRING_PIN (gpio_num_t)3
 // #define PAIRING_PIN (gpio_num_t)9
 #define BOOT_PIN (gpio_num_t)9
+#define RESET_PIN (gpio_num_t)15
 
 #define LED_EN (gpio_num_t)0
 #define LED_DATA (gpio_num_t)5

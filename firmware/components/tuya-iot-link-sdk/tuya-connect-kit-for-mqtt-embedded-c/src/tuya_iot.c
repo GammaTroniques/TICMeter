@@ -827,6 +827,9 @@ int tuya_iot_activated_data_remove(tuya_iot_client_t *client)
     client->event.type = TUYA_DATE_TYPE_UNDEFINED;
     iot_dispatch_event(client);
 
+    TY_LOGW("Clear local storage...");
+    local_storage_clear();
+
     return OPRT_OK;
 }
 

@@ -594,5 +594,8 @@ uint8_t config_factory_reset()
     {
         ESP_LOGE(TAG, "Can't erase partition %s, error %d", partition_label, erase_result);
     }
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    hard_reset();
     return 0;
 }

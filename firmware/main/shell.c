@@ -269,9 +269,7 @@ void shell_init()
 static int esp_reset_command(int argc, char **argv)
 {
   ESP_LOGI(TAG, "Resetting the device");
-  gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
-  gpio_set_level(GPIO_NUM_15, 0);
-  esp_restart();
+  hard_reset();
   return 0;
 }
 
