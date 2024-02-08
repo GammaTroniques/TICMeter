@@ -1,4 +1,5 @@
 #include "common.h"
+#include "gpio.h"
 
 void deleteTask(TaskHandle_t task)
 {
@@ -23,4 +24,11 @@ void resumeTask(TaskHandle_t task)
     {
         vTaskResume(task);
     }
+}
+
+void hard_reset()
+{
+    gpio_set_direction(RESET_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_level(RESET_PIN, 0);
+    esp_restart();
 }
