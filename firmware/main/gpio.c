@@ -24,6 +24,7 @@
 #include "soc/rtc.h"
 #include "esp_pm.h"
 #include <led_strip.h>
+#include "esp_sleep.h"
 
 #include "gpio.h"
 #include "config.h"
@@ -74,7 +75,9 @@ static void gpio_led_pattern_task(void *pvParameters);
 static void gpio_set_led_rgb(uint32_t color, uint32_t brightness);
 static void gpio_init_adc(adc_unit_t adc_unit, adc_oneshot_unit_handle_t *out_handle);
 static void gpio_init_adc_cali(adc_oneshot_unit_handle_t adc_handle, adc_channel_t adc_channel, adc_cali_handle_t *out_adc_cali_handle, char *name);
-static void gpio_isr_cb(void *arg);
+static void gpio_pairing_isr_cb(void *arg);
+static void gpio_vusb_isr_cb(void *arg);
+static void gpio_vusb_task(void *pvParameter);
 
 /*==============================================================================
 Public Variable
@@ -91,6 +94,8 @@ static adc_cali_handle_t adc_capa_cali_handle = NULL;
 static led_strip_handle_t led;
 
 static QueueHandle_t gpio_pairing_button_isr_queue = NULL;
+static QueueHandle_t power_vusb_isr_queue = NULL;
+static volatile uint8_t vusb_level = 0;
 
 static esp_pm_lock_handle_t gpio_pairing_lock = NULL;
 
@@ -148,7 +153,7 @@ void gpio_init_pins()
     led_strip_refresh(led);
 
     gpio_init_adc(ADC_UNIT_1, &adc1_handle);
-    gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
+    // gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
     gpio_init_adc_cali(adc1_handle, V_CONDO_PIN, &adc_capa_cali_handle, "VCondo");
 
     gpio_config_t pairing_conf = {
@@ -156,7 +161,7 @@ void gpio_init_pins()
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_NEGEDGE,
+        .intr_type = GPIO_INTR_LOW_LEVEL, // light sleep dont support edges
     };
     gpio_config(&pairing_conf);
 
@@ -165,41 +170,108 @@ void gpio_init_pins()
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_ANYEDGE,
     };
 
+    vusb_level = gpio_get_level(V_USB_PIN);
+    vusb_level = gpio_get_level(V_USB_PIN);
+    vusb_level = gpio_get_level(V_USB_PIN);
+    vusb_level = gpio_get_level(V_USB_PIN);
+    ESP_LOGI(TAG, "VUSB level: %d", vusb_level);
+
+    vusb_conf.intr_type = vusb_level ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL;
     gpio_config(&vusb_conf);
 
     gpio_install_isr_service(0);
-    gpio_isr_handler_add(PAIRING_PIN, gpio_isr_cb, (void *)PAIRING_PIN);
-    gpio_isr_handler_add(V_USB_PIN, gpio_isr_cb, (void *)V_USB_PIN);
+    gpio_isr_handler_add(PAIRING_PIN, gpio_pairing_isr_cb, (void *)PAIRING_PIN);
+    gpio_isr_handler_add(V_USB_PIN, gpio_vusb_isr_cb, (void *)V_USB_PIN);
 
     gpio_pairing_button_isr_queue = xQueueCreate(10, sizeof(uint32_t));
+    power_vusb_isr_queue = xQueueCreate(10, sizeof(uint32_t));
 
     // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
     ESP_LOGI(TAG, "VCondo: %fV", gpio_get_vcondo());
     ESP_LOGI(TAG, "VUSB: %fV", gpio_get_vusb());
 
     esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "gpio_pairing_lock", &gpio_pairing_lock);
+    gpio_wakeup_enable(PAIRING_PIN, GPIO_INTR_LOW_LEVEL);
+    gpio_wakeup_enable(V_USB_PIN, vusb_level ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
+    esp_sleep_enable_gpio_wakeup();
 
     xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
+    xTaskCreate(gpio_vusb_task, "gpio_vusb_task", 4 * 1024, NULL, PRIORITY_PAIRING, NULL);                 // start push button task
 }
 
-static void IRAM_ATTR gpio_isr_cb(void *arg)
+static void IRAM_ATTR gpio_pairing_isr_cb(void *arg)
 {
     uint32_t gpio_num = (uint32_t)arg;
-    esp_rom_printf("IT GPIO %ld\n", gpio_num);
-    switch (gpio_num)
+    esp_rom_printf("IT PAIR %ld\n", gpio_num);
+    uint8_t level = gpio_get_level(gpio_num);
+    if (level == 0) // if button is pushed
     {
-    case PAIRING_PIN:
+        gpio_intr_disable(gpio_num);
         xQueueSendFromISR(gpio_pairing_button_isr_queue, &gpio_num, NULL);
-        break;
-    case V_USB_PIN:
-        xQueueSendFromISR(power_vusb_isr_queue, &gpio_num, NULL);
-        break;
+    }
+    portYIELD_FROM_ISR();
+}
 
-    default:
-        break;
+static void IRAM_ATTR gpio_vusb_isr_cb(void *arg)
+{
+    uint32_t gpio_num = (uint32_t)arg;
+    uint32_t level = gpio_get_level(gpio_num);
+    // esp_rom_printf("IT USB %ld lvl: %ld\n", gpio_num, level);
+    gpio_wakeup_disable(gpio_num);
+    gpio_intr_disable(gpio_num);
+    if (level == 0)
+    {
+        gpio_wakeup_enable(gpio_num, GPIO_INTR_HIGH_LEVEL);
+    }
+    else
+    {
+        gpio_wakeup_enable(gpio_num, GPIO_INTR_LOW_LEVEL);
+    }
+    gpio_intr_enable(gpio_num);
+    xQueueSendFromISR(power_vusb_isr_queue, &level, NULL);
+}
+
+static void gpio_vusb_task(void *pvParameter)
+{
+    uint32_t level = 0;
+    err_t ret = ESP_OK;
+    while (1)
+    {
+        xQueueReceive(power_vusb_isr_queue, &level, portMAX_DELAY);
+        if (level == 1)
+        {
+            ESP_LOGI(TAG, "USB connected");
+            esp_pm_config_t pm_config;
+            ret = esp_pm_get_configuration(&pm_config);
+            if (ret != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to get PM config: 0x%x", ret);
+            }
+            pm_config.light_sleep_enable = false;
+            ret = esp_pm_configure(&pm_config);
+            if (ret != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to disable light sleep: 0x%x", ret);
+            }
+        }
+        else
+        {
+            ESP_LOGI(TAG, "USB disconnected");
+            esp_pm_config_t pm_config;
+            ret = esp_pm_get_configuration(&pm_config);
+            if (ret != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to get PM config: 0x%x", ret);
+            }
+            pm_config.light_sleep_enable = true;
+            ret = esp_pm_configure(&pm_config);
+            if (ret != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to enable light sleep: 0x%x", ret);
+            }
+        }
     }
 }
 
@@ -414,7 +486,9 @@ void gpio_pairing_button_task(void *pvParameters)
         if (lastState == 1)
         {
             // wait for button push
+            gpio_intr_enable(PAIRING_PIN);
             esp_pm_lock_release(gpio_pairing_lock);
+
             xQueueReceive(gpio_pairing_button_isr_queue, &io_num, portMAX_DELAY);
             esp_pm_lock_acquire(gpio_pairing_lock);
         }

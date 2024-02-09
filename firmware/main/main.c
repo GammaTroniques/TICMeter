@@ -85,10 +85,10 @@ Function Implementation
 void app_main(void)
 {
   ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
-  power_init(); // init power
   // xTaskCreate(debug_loop, "debug_loop", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
   shell_wake_reason();
   gpio_init_pins();
+  power_init(); // init power
   config_begin();
   gpio_boot_led_pattern();
   linky_init(MODE_HIST, RX_LINKY);
