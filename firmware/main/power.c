@@ -42,12 +42,10 @@
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
-static void power_vusb_task(void *pvParameter);
 
 /*==============================================================================
 Public Variable
 ===============================================================================*/
-QueueHandle_t power_vusb_isr_queue = NULL;
 
 /*==============================================================================
  Local Variable
@@ -101,10 +99,6 @@ esp_err_t power_init()
     };
     ret = esp_pm_light_sleep_register_cbs(&cbs);
 
-    power_vusb_isr_queue = xQueueCreate(10, sizeof(uint32_t));
-
-    xTaskCreate(power_vusb_task, "power_vusb_task", 2048, NULL, 10, NULL);
-
     return ret;
 }
 
@@ -125,22 +119,4 @@ esp_err_t power_set_frequency(uint32_t freq_Mhz)
         ESP_LOGI(TAG, "Frequency set to %ld MHz", freq_Mhz);
     }
     return ret;
-}
-
-static void power_vusb_task(void *pvParameter)
-{
-    uint32_t io_num = 0;
-    while (1)
-    {
-        xQueueReceive(power_vusb_isr_queue, &io_num, portMAX_DELAY);
-        if (gpio_get_level(V_USB_PIN) == 1)
-        {
-            ESP_LOGI(TAG, "USB connected");
-        }
-        else
-        {
-            ESP_LOGI(TAG, "USB disconnected");
-        }
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
 }
