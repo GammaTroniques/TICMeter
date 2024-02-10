@@ -128,7 +128,7 @@ void app_main(void)
       wifi_get_timestamp();               // get timestamp from ntp server
       wifi_http_get_config_from_server(); // get config from server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
-      if (gpio_get_vusb() > 3)
+      if (gpio_vusb_connected())
       {
         ota_version_t version;
         ota_get_latest(&version);
@@ -144,7 +144,7 @@ void app_main(void)
     {
       mqtt_init();          // init mqtt
       wifi_get_timestamp(); // get timestamp from ntp server
-      if (gpio_get_vusb() > 3)
+      if (gpio_vusb_connected())
       {
         ota_version_t version;
         ota_get_latest(&version);
@@ -218,16 +218,6 @@ void main_fetch_linky_data_task(void *pvParameters)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       main_sleep_time--;
-      // if (gpio_get_vusb() < 3 && config_values.sleep && config_values.mode != MODE_ZIGBEE)
-      // {
-      //   ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", main_sleep_time);
-      //   uart_set_wakeup_threshold(UART_NUM_0, 3);
-      //   esp_sleep_enable_uart_wakeup(UART_NUM_0);
-      //   esp_sleep_enable_ext1_wakeup(1ULL << V_USB_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
-      //   esp_sleep_enable_timer_wakeup(main_sleep_time * 1000000); // wait for refreshRate seconds before next loop
-      //   main_sleep_time = 0;
-      //   esp_light_sleep_start();
-      // }
     }
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
@@ -262,7 +252,7 @@ void main_fetch_linky_data_task(void *pvParameters)
           ESP_LOGI(MAIN_TAG, "POST: %s", json);
           wifi_send_to_server(json);
         }
-        if (gpio_get_vusb() > 3)
+        if (gpio_vusb_connected())
         {
           ota_version_t version;
           ota_get_latest(&version);
@@ -295,7 +285,7 @@ void main_fetch_linky_data_task(void *pvParameters)
         goto send_error;
       }
 
-      if (gpio_get_vusb() > 3 && next_update_check < MILLIS)
+      if (gpio_vusb_connected() && next_update_check < MILLIS)
       {
         ESP_LOGI(MAIN_TAG, "Checking for update");
         next_update_check = MILLIS + 3600000;
@@ -332,7 +322,7 @@ void main_fetch_linky_data_task(void *pvParameters)
       tuya_disconect:
         // tuya_stop();
         // tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
-        if (gpio_get_vusb() > 3 && next_update_check < MILLIS)
+        if (gpio_vusb_connected() && next_update_check < MILLIS)
         {
           ESP_LOGI(MAIN_TAG, "Checking for update");
           next_update_check = MILLIS + 3600000;

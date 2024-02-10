@@ -440,6 +440,11 @@ float gpio_get_vusb()
     return (float)vUSB / 1000;
 }
 
+uint8_t gpio_vusb_connected()
+{
+    return gpio_get_level(V_USB_PIN);
+}
+
 void gpio_pairing_button_task(void *pvParameters)
 {
     uint32_t startPushTime = 0;
@@ -556,7 +561,7 @@ void gpio_pairing_button_task(void *pvParameters)
                 }
                 else
                 {
-                    if (ota_state == OTA_AVAILABLE && gpio_get_vusb() > 3)
+                    if (ota_state == OTA_AVAILABLE && gpio_vusb_connected())
                     {
                         ESP_LOGI(TAG, "OTA available, starting update");
                         suspendTask(fetchLinkyDataTaskHandle);
@@ -777,7 +782,7 @@ void gpio_led_task_ota(void *pvParameters)
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             break;
         case WAIT_USB:
-            if (gpio_get_vusb() > 3)
+            if (gpio_vusb_connected())
             {
                 state = OFF;
             }
@@ -824,7 +829,7 @@ void gpio_led_task_ota(void *pvParameters)
             vTaskDelay(50 / portTICK_PERIOD_MS);
             break;
         }
-        if (gpio_get_vusb() < 3.0 && state != WAIT_USB)
+        if (!gpio_vusb_connected() && state != WAIT_USB)
         {
             ESP_LOGE(TAG, "VUSB too low: dont animate");
             state = VUSB_TOO_LOW;

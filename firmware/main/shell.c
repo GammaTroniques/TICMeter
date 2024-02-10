@@ -610,7 +610,7 @@ static int get_voltages(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("VCondo: %f\n", gpio_get_vcondo());
-  printf("VUSB: %f\n", gpio_get_vusb());
+  printf("VUSB: %f : %d\n", gpio_get_vusb(), gpio_vusb_connected());
   return 0;
 }
 
