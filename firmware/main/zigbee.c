@@ -60,6 +60,7 @@ static esp_err_t zigbee_attribute_handler(const esp_zb_zcl_set_attr_value_messag
 static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message);
 static void zigbee_task(void *pvParameters);
 static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length);
+static void zigbee_send_first_datas(void *pvParameters);
 
 /*==============================================================================
 Public Variable
@@ -75,8 +76,8 @@ DEFINE_PSTRING(zigbee_device_manufacturer, "GammaTroniques");
 // DEFINE_PSTRING(zigbee_date_code, BUILD_TIME);
 
 zigbee_state_t zigbee_state = ZIGBEE_NOT_CONNECTED;
-static esp_pm_lock_handle_t zigbee_pm_lock;
-
+// static esp_pm_lock_handle_t zigbee_pm_apb_lock;
+// static esp_pm_lock_handle_t zigbee_pm_cpu_lock;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -139,6 +140,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                 config_write();
             }
             zigbee_state = ZIGBEE_CONNECTED;
+            xTaskCreate(zigbee_send_first_datas, "zigbee_send_first_datas", 4 * 1024, NULL, PRIORITY_ZIGBEE, NULL);
         }
         else
         {
@@ -199,8 +201,10 @@ static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback
 
 void zigbee_init_stack()
 {
-    esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "zigbee_pm_lock", &zigbee_pm_lock);
-    esp_pm_lock_acquire(zigbee_pm_lock); // /!\ Zigbee must be running at max frequency
+    // esp_pm_lock_create(ESP_PM_APB_FREQ_MAX, 0, "zigbee_pm_apb_lock", &zigbee_pm_apb_lock);
+    // esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "zigbee_pm_cpu_lock", &zigbee_pm_cpu_lock);
+    // esp_pm_lock_acquire(zigbee_pm_apb_lock);
+    // esp_pm_lock_acquire(zigbee_pm_cpu_lock); // /!\ Zigbee must be running at max frequency
 
     esp_err_t ret = nvs_flash_init();
     if (ret != ESP_OK)
@@ -500,6 +504,11 @@ uint8_t zigbee_send(linky_data_t *data)
         ESP_LOGE(TAG, "Zigbee not paired");
         return 1;
     }
+    // if (zigbee_state != ZIGBEE_CONNECTED)
+    // {
+    //     ESP_LOGE(TAG, "Zigbee not connected");
+    //     return 1;
+    // }
     zigbee_summation_delivered = 0;
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
@@ -644,5 +653,53 @@ uint8_t zigbee_send(linky_data_t *data)
     }
     zigbee_report_attribute(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, sizeof(zigbee_summation_delivered));
 
+    return 0;
+}
+
+static void zigbee_send_first_datas(void *pvParameters)
+{
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    ESP_LOGI(TAG, "Send first datas");
+    uint8_t ret = zigbee_send(&linky_data);
+    if (ret != 0)
+    {
+        ESP_LOGE(TAG, "Zigbee first send failed");
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Zigbee first send success");
+    }
+
+    vTaskDelete(NULL);
+}
+
+uint8_t zigbee_factory_reset()
+{
+    ESP_LOGI(TAG, "Clearing zigbee storage partition...");
+    const char *partition_label = "zb_storage";
+
+    const esp_partition_t *partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, partition_label);
+
+    if (partition == NULL)
+    {
+        ESP_LOGE(TAG, "Can't find partition %s", partition_label);
+        return 1;
+    }
+
+    esp_err_t erase_result = esp_partition_erase_range(partition, 0, partition->size);
+
+    if (erase_result == ESP_OK)
+    {
+        ESP_LOGI(TAG, "Partition %s erased", partition_label);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Can't erase partition %s, error %d", partition_label, erase_result);
+        return 1;
+    }
+
+    config_values.zigbee.state = ZIGBEE_NOT_CONFIGURED;
+    config_write();
+    ESP_LOGI(TAG, "Zigbee factory reset done");
     return 0;
 }

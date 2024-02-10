@@ -14,6 +14,7 @@
 ===============================================================================*/
 #include "config.h"
 #include "linky.h"
+#include "zigbee.h"
 #include "esp_efuse.h"
 #include "efuse_table.h"
 #include "esp_efuse_table.h"
@@ -580,27 +581,7 @@ uint8_t config_factory_reset()
     config_erase();
     config_write();
 
-    ESP_LOGI(TAG, "Clearing zigbee storage partition...");
-    const char *partition_label = "zb_storage";
-
-    const esp_partition_t *partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_ANY, partition_label);
-
-    if (partition == NULL)
-    {
-        ESP_LOGE(TAG, "Can't find partition %s", partition_label);
-        return 1;
-    }
-
-    esp_err_t erase_result = esp_partition_erase_range(partition, 0, partition->size);
-
-    if (erase_result == ESP_OK)
-    {
-        ESP_LOGI(TAG, "Partition %s erased", partition_label);
-    }
-    else
-    {
-        ESP_LOGE(TAG, "Can't erase partition %s, error %d", partition_label, erase_result);
-    }
+    zigbee_factory_reset();
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     hard_reset();

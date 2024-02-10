@@ -78,6 +78,7 @@ uint32_t main_sleep_time = 99999;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
+static esp_pm_lock_handle_t main_init_lock;
 
 /*==============================================================================
 Function Implementation
@@ -88,22 +89,30 @@ void app_main(void)
   // xTaskCreate(debug_loop, "debug_loop", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
   shell_wake_reason();
   gpio_init_pins();
-  power_init(); // init power
   config_begin();
   gpio_boot_led_pattern();
   linky_init(MODE_HIST, RX_LINKY);
-  shell_init(); // init shell
-  wifi_init();  // init wifi
+  shell_init();
+  wifi_init();
+
+  esp_pm_dump_locks(stdout);
+  power_init();
+  esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "main_init", &main_init_lock);
+  esp_pm_lock_acquire(main_init_lock);
+
+  // if (gpio_get_vcondo() < 3.4)
+  // {
+  //   ESP_LOGW(MAIN_TAG, "VCondo too low, light sleep for 30s");
+  //   esp_pm_lock_release(main_init_lock);
+  //   vTaskDelay(30000 / portTICK_PERIOD_MS);
+  //   esp_pm_lock_acquire(main_init_lock);
+  // }
 
   // linky_want_debug_frame = 2; // TODO: remove this
 
-  if (!linky_update())
-  {
-    ESP_LOGE(MAIN_TAG, "Cant find Linky");
-  }
-
   if (config_verify())
   {
+    // esp_pm_lock_release(main_init_lock);
     xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 4 * 1024, NULL, PRIORITY_LED_NO_CONFIG, &noConfigLedTaskHandle); // start no config led task
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config_verify())
@@ -116,9 +125,15 @@ void app_main(void)
       vTaskDelay(5000 / portTICK_PERIOD_MS); // wait 5s to be sure that the web page is sent
       esp_restart();
     }
+    // esp_pm_lock_acquire(main_init_lock);
   }
-  ESP_LOGI(MAIN_TAG, "Config OK");
+  ESP_LOGI(MAIN_TAG, "Config found. Starting...");
 
+  if (!linky_update())
+  {
+    ESP_LOGE(MAIN_TAG, "Cant find Linky");
+  }
+  ESP_LOGI(MAIN_TAG, "Linky found");
   switch (config_values.mode)
   {
   case MODE_WEB:
@@ -176,6 +191,7 @@ void app_main(void)
   }
   // start linky fetch task
   xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &fetchLinkyDataTaskHandle); // start linky task
+  esp_pm_lock_release(main_init_lock);
 }
 void main_fetch_linky_data_task(void *pvParameters)
 {

@@ -185,6 +185,7 @@ void gpio_init_pins()
     }
     ESP_LOGI(TAG, "VUSB level: %d", vusb_level);
     vusb_conf.intr_type = vusb_level ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL;
+    gpio_config(&vusb_conf);
 
     gpio_install_isr_service(0);
     gpio_isr_handler_add(PAIRING_PIN, gpio_pairing_isr_cb, (void *)PAIRING_PIN);
@@ -862,10 +863,11 @@ void gpio_start_pariring()
         break;
     case MODE_ZIGBEE:
         ESP_LOGI(TAG, "Zigbee pairing");
+        zigbee_factory_reset();
         ESP_LOGI(TAG, "Already paired, resetting");
         config_values.zigbee.state = ZIGBEE_WANT_PAIRING;
         config_write();
-        esp_zb_factory_reset();
+        // esp_zb_factory_reset();
         // if (config_values.zigbee.state == ZIGBEE_PAIRED)
         // {
         // }
