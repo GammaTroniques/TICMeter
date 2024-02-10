@@ -98,6 +98,7 @@ static QueueHandle_t power_vusb_isr_queue = NULL;
 static volatile uint8_t vusb_level = 0;
 
 static esp_pm_lock_handle_t gpio_pairing_lock = NULL;
+static esp_pm_lock_handle_t gpio_vusb_lock = NULL;
 
 // clang-format off
 static const ledPattern_t ledPattern[][PATTERN_SIZE] = {
@@ -156,6 +157,9 @@ void gpio_init_pins()
     // gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
     gpio_init_adc_cali(adc1_handle, V_CONDO_PIN, &adc_capa_cali_handle, "VCondo");
 
+    esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "gpio_pairing_lock", &gpio_pairing_lock);
+    esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "gpio_vusb_lock", &gpio_vusb_lock);
+
     gpio_config_t pairing_conf = {
         .pin_bit_mask = (1ULL << PAIRING_PIN),
         .mode = GPIO_MODE_INPUT,
@@ -171,15 +175,16 @@ void gpio_init_pins()
         .pull_up_en = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
     };
-
-    vusb_level = gpio_get_level(V_USB_PIN);
-    vusb_level = gpio_get_level(V_USB_PIN);
-    vusb_level = gpio_get_level(V_USB_PIN);
-    vusb_level = gpio_get_level(V_USB_PIN);
-    ESP_LOGI(TAG, "VUSB level: %d", vusb_level);
-
-    vusb_conf.intr_type = vusb_level ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL;
     gpio_config(&vusb_conf);
+
+    vusb_level = gpio_get_level(V_USB_PIN);
+    if (vusb_level)
+    {
+        ESP_LOGI(TAG, "USB already connected");
+        esp_pm_lock_acquire(gpio_vusb_lock);
+    }
+    ESP_LOGI(TAG, "VUSB level: %d", vusb_level);
+    vusb_conf.intr_type = vusb_level ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL;
 
     gpio_install_isr_service(0);
     gpio_isr_handler_add(PAIRING_PIN, gpio_pairing_isr_cb, (void *)PAIRING_PIN);
@@ -192,7 +197,6 @@ void gpio_init_pins()
     ESP_LOGI(TAG, "VCondo: %fV", gpio_get_vcondo());
     ESP_LOGI(TAG, "VUSB: %fV", gpio_get_vusb());
 
-    esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "gpio_pairing_lock", &gpio_pairing_lock);
     gpio_wakeup_enable(PAIRING_PIN, GPIO_INTR_LOW_LEVEL);
     gpio_wakeup_enable(V_USB_PIN, vusb_level ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
     esp_sleep_enable_gpio_wakeup();
@@ -243,34 +247,36 @@ static void gpio_vusb_task(void *pvParameter)
         if (level == 1)
         {
             ESP_LOGI(TAG, "USB connected");
-            esp_pm_config_t pm_config;
-            ret = esp_pm_get_configuration(&pm_config);
-            if (ret != ESP_OK)
-            {
-                ESP_LOGE(TAG, "Failed to get PM config: 0x%x", ret);
-            }
-            pm_config.light_sleep_enable = false;
-            ret = esp_pm_configure(&pm_config);
-            if (ret != ESP_OK)
-            {
-                ESP_LOGE(TAG, "Failed to disable light sleep: 0x%x", ret);
-            }
+            esp_pm_lock_acquire(gpio_vusb_lock);
+            // esp_pm_config_t pm_config;
+            // ret = esp_pm_get_configuration(&pm_config);
+            // if (ret != ESP_OK)
+            // {
+            //     ESP_LOGE(TAG, "Failed to get PM config: 0x%x", ret);
+            // }
+            // pm_config.light_sleep_enable = false;
+            // ret = esp_pm_configure(&pm_config);
+            // if (ret != ESP_OK)
+            // {
+            //     ESP_LOGE(TAG, "Failed to disable light sleep: 0x%x", ret);
+            // }
         }
         else
         {
             ESP_LOGI(TAG, "USB disconnected");
-            esp_pm_config_t pm_config;
-            ret = esp_pm_get_configuration(&pm_config);
-            if (ret != ESP_OK)
-            {
-                ESP_LOGE(TAG, "Failed to get PM config: 0x%x", ret);
-            }
-            pm_config.light_sleep_enable = true;
-            ret = esp_pm_configure(&pm_config);
-            if (ret != ESP_OK)
-            {
-                ESP_LOGE(TAG, "Failed to enable light sleep: 0x%x", ret);
-            }
+            esp_pm_lock_release(gpio_vusb_lock);
+            // esp_pm_config_t pm_config;
+            // ret = esp_pm_get_configuration(&pm_config);
+            // if (ret != ESP_OK)
+            // {
+            //     ESP_LOGE(TAG, "Failed to get PM config: 0x%x", ret);
+            // }
+            // pm_config.light_sleep_enable = true;
+            // ret = esp_pm_configure(&pm_config);
+            // if (ret != ESP_OK)
+            // {
+            //     ESP_LOGE(TAG, "Failed to enable light sleep: 0x%x", ret);
+            // }
         }
     }
 }
