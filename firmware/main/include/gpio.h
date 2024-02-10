@@ -80,6 +80,13 @@ void gpio_init_pins();
 float gpio_get_vusb();
 
 /**
+ * @brief Get the state of the USB
+ *
+ * @return uint8_t: 1 if connected, 0 if not
+ */
+uint8_t gpio_vusb_connected();
+
+/**
  * @brief Get the tension of the condo
  *
  * @return float: voltage in V

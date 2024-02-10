@@ -409,7 +409,7 @@ static void stop_captive_portal_task(void *pvParameter)
 
     while (1)
     {
-        if (gpio_get_vusb() < 3)
+        if (!gpio_vusb_connected())
         {
             readCount++;
         }
