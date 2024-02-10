@@ -154,7 +154,7 @@ void gpio_init_pins()
     led_strip_refresh(led);
 
     gpio_init_adc(ADC_UNIT_1, &adc1_handle);
-    // gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
+    gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
     gpio_init_adc_cali(adc1_handle, V_CONDO_PIN, &adc_capa_cali_handle, "VCondo");
 
     esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "gpio_pairing_lock", &gpio_pairing_lock);
@@ -191,7 +191,7 @@ void gpio_init_pins()
     gpio_isr_handler_add(V_USB_PIN, gpio_vusb_isr_cb, (void *)V_USB_PIN);
 
     gpio_pairing_button_isr_queue = xQueueCreate(10, sizeof(uint32_t));
-    power_vusb_isr_queue = xQueueCreate(10, sizeof(uint32_t));
+    power_vusb_isr_queue = xQueueCreate(1, sizeof(uint32_t));
 
     // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
     ESP_LOGI(TAG, "VCondo: %fV", gpio_get_vcondo());
@@ -234,7 +234,7 @@ static void IRAM_ATTR gpio_vusb_isr_cb(void *arg)
         gpio_wakeup_enable(gpio_num, GPIO_INTR_LOW_LEVEL);
     }
     gpio_intr_enable(gpio_num);
-    xQueueSendFromISR(power_vusb_isr_queue, &level, NULL);
+    xQueueOverwriteFromISR(power_vusb_isr_queue, &level, NULL);
 }
 
 static void gpio_vusb_task(void *pvParameter)
@@ -248,35 +248,11 @@ static void gpio_vusb_task(void *pvParameter)
         {
             ESP_LOGI(TAG, "USB connected");
             esp_pm_lock_acquire(gpio_vusb_lock);
-            // esp_pm_config_t pm_config;
-            // ret = esp_pm_get_configuration(&pm_config);
-            // if (ret != ESP_OK)
-            // {
-            //     ESP_LOGE(TAG, "Failed to get PM config: 0x%x", ret);
-            // }
-            // pm_config.light_sleep_enable = false;
-            // ret = esp_pm_configure(&pm_config);
-            // if (ret != ESP_OK)
-            // {
-            //     ESP_LOGE(TAG, "Failed to disable light sleep: 0x%x", ret);
-            // }
         }
         else
         {
             ESP_LOGI(TAG, "USB disconnected");
             esp_pm_lock_release(gpio_vusb_lock);
-            // esp_pm_config_t pm_config;
-            // ret = esp_pm_get_configuration(&pm_config);
-            // if (ret != ESP_OK)
-            // {
-            //     ESP_LOGE(TAG, "Failed to get PM config: 0x%x", ret);
-            // }
-            // pm_config.light_sleep_enable = true;
-            // ret = esp_pm_configure(&pm_config);
-            // if (ret != ESP_OK)
-            // {
-            //     ESP_LOGE(TAG, "Failed to enable light sleep: 0x%x", ret);
-            // }
         }
     }
 }
@@ -461,20 +437,8 @@ float gpio_get_vusb()
         ESP_LOGE(TAG, "Failed to calibrate VUSB: %s", esp_err_to_name(ret));
         return 0.0;
     }
-
     uint32_t vUSB = (vADC * 280) / 180;
-    int vusb_level = gpio_get_level(V_USB_PIN);
-    // ESP_LOGW(TAG, "vUSB: %ld, ret: %d", vUSB, vusb_level);
-
     return (float)vUSB / 1000;
-    if (vusb_level)
-    {
-        return 5.0;
-    }
-    else
-    {
-        return 0.0;
-    }
 }
 
 void gpio_pairing_button_task(void *pvParameters)
