@@ -101,11 +101,9 @@ void app_main(void)
   {
     ESP_LOGE(MAIN_TAG, "Cant find Linky");
   }
-  return;
 
   if (config_verify())
   {
-    power_set_frequency(10);
     xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 4 * 1024, NULL, PRIORITY_LED_NO_CONFIG, &noConfigLedTaskHandle); // start no config led task
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config_verify())
@@ -118,17 +116,17 @@ void app_main(void)
       vTaskDelay(5000 / portTICK_PERIOD_MS); // wait 5s to be sure that the web page is sent
       esp_restart();
     }
-    power_set_frequency(80);
   }
+  ESP_LOGI(MAIN_TAG, "Config OK");
 
   // check if VCondo is too low and go to deep sleep
   // the BOOT_PIN is used to prevent deep sleep when the device is plugged to a computer for debug
-  if (gpio_get_vusb() < 3 && gpio_get_vcondo() < 3.5 && config_values.sleep && gpio_get_level(BOOT_PIN))
-  {
-    ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
-    esp_sleep_enable_timer_wakeup(20 * 1000000); // 10 second
-    esp_deep_sleep_start();
-  }
+  // if (gpio_get_vusb() < 3 && gpio_get_vcondo() < 3.5 && config_values.sleep && gpio_get_level(BOOT_PIN))
+  // {
+  //   ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
+  //   esp_sleep_enable_timer_wakeup(20 * 1000000); // 10 second
+  //   esp_deep_sleep_start();
+  // }
 
   switch (config_values.mode)
   {
@@ -149,6 +147,7 @@ void app_main(void)
     break;
   case MODE_MQTT:
   case MODE_MQTT_HA:
+    ESP_LOGI(MAIN_TAG, "MQTT init...");
     // connect to wifi
     if (wifi_connect())
     {
@@ -165,27 +164,6 @@ void app_main(void)
 
     break;
   case MODE_ZIGBEE:
-    if (gpio_get_vusb() < 3 && 0)
-    {
-      ESP_LOGW(MAIN_TAG, "Enable PM");
-      esp_err_t rc = ESP_OK;
-#ifdef CONFIG_PM_ENABLE
-      int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
-      esp_pm_config_t pm_config = {
-        .max_freq_mhz = cur_cpu_freq_mhz,
-        .min_freq_mhz = 10,
-#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
-        .light_sleep_enable = true
-#endif
-      };
-      rc = esp_pm_configure(&pm_config);
-#endif
-      if (rc != ESP_OK)
-      {
-        ESP_LOGE(MAIN_TAG, "esp_pm_configure failed: 0x%x", rc);
-      }
-    }
-
     zigbee_init_stack();
     break;
   case MODE_TUYA:
@@ -210,6 +188,7 @@ void app_main(void)
 }
 void main_fetch_linky_data_task(void *pvParameters)
 {
+  ESP_LOGI(MAIN_TAG, "Starting fetch linky data task");
 #define MAX_DATA_INDEX 5
   linky_data_t dataArray[MAX_DATA_INDEX];
   unsigned int dataIndex = 0;
@@ -246,16 +225,16 @@ void main_fetch_linky_data_task(void *pvParameters)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       main_sleep_time--;
-      if (gpio_get_vusb() < 3 && config_values.sleep && config_values.mode != MODE_ZIGBEE)
-      {
-        ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", main_sleep_time);
-        uart_set_wakeup_threshold(UART_NUM_0, 3);
-        esp_sleep_enable_uart_wakeup(UART_NUM_0);
-        esp_sleep_enable_ext1_wakeup(1ULL << V_USB_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
-        esp_sleep_enable_timer_wakeup(main_sleep_time * 1000000); // wait for refreshRate seconds before next loop
-        main_sleep_time = 0;
-        esp_light_sleep_start();
-      }
+      // if (gpio_get_vusb() < 3 && config_values.sleep && config_values.mode != MODE_ZIGBEE)
+      // {
+      //   ESP_LOGI(MAIN_TAG, "USB disconnected, going to sleep for %ld seconds", main_sleep_time);
+      //   uart_set_wakeup_threshold(UART_NUM_0, 3);
+      //   esp_sleep_enable_uart_wakeup(UART_NUM_0);
+      //   esp_sleep_enable_ext1_wakeup(1ULL << V_USB_PIN, ESP_EXT1_WAKEUP_ANY_HIGH);
+      //   esp_sleep_enable_timer_wakeup(main_sleep_time * 1000000); // wait for refreshRate seconds before next loop
+      //   main_sleep_time = 0;
+      //   esp_light_sleep_start();
+      // }
     }
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
