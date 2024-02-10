@@ -240,7 +240,6 @@ static void IRAM_ATTR gpio_vusb_isr_cb(void *arg)
 static void gpio_vusb_task(void *pvParameter)
 {
     uint32_t level = 0;
-    err_t ret = ESP_OK;
     while (1)
     {
         xQueueReceive(power_vusb_isr_queue, &level, portMAX_DELAY);
