@@ -22,6 +22,7 @@
 #include "nvs_flash.h"
 #include <string.h>
 #include "esp_check.h"
+#include "esp_pm.h"
 
 #include "config.h"
 /*==============================================================================
@@ -74,6 +75,7 @@ DEFINE_PSTRING(zigbee_device_manufacturer, "GammaTroniques");
 // DEFINE_PSTRING(zigbee_date_code, BUILD_TIME);
 
 zigbee_state_t zigbee_state = ZIGBEE_NOT_CONNECTED;
+static esp_pm_lock_handle_t zigbee_pm_lock;
 
 /*==============================================================================
 Function Implementation
@@ -92,7 +94,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
     switch (sig_type)
     {
     case ESP_ZB_ZDO_SIGNAL_SKIP_STARTUP:
-        ESP_LOGI(TAG, "Zigbee stack initialized");
+        ESP_LOGI(TAG, "ESP_ZB_ZDO_SIGNAL_SKIP_STARTUP");
         esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_INITIALIZATION);
         break;
     case ESP_ZB_BDB_SIGNAL_DEVICE_FIRST_START:
@@ -197,14 +199,26 @@ static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback
 
 void zigbee_init_stack()
 {
-    ESP_ERROR_CHECK(nvs_flash_init());
+    esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "zigbee_pm_lock", &zigbee_pm_lock);
+    esp_pm_lock_acquire(zigbee_pm_lock); // /!\ Zigbee must be running at max frequency
+
+    esp_err_t ret = nvs_flash_init();
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "nvs_flash_init failed: 0x%x", ret);
+    }
+
     ESP_LOGI(TAG, "Initializing Zigbee stack");
     esp_zb_platform_config_t config = {
         .radio_config.radio_mode = RADIO_MODE_NATIVE,
         .host_config.host_connection_mode = HOST_CONNECTION_MODE_NONE,
     };
+    ret = esp_zb_platform_config(&config);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_zb_platform_config failed: 0x%x", ret);
+    }
 
-    ESP_ERROR_CHECK(esp_zb_platform_config(&config));
     xTaskCreate(zigbee_task, "Zigbee_main", 8 * 1024, NULL, PRIORITY_ZIGBEE, NULL);
 }
 
@@ -225,14 +239,8 @@ static void zigbee_task(void *pvParameters)
     };
 
     ESP_LOGW(TAG, "Enable sleep");
-
-    if (gpio_get_vusb() < 3 && 0)
-    {
-        esp_zb_sleep_enable(true);
-    }
-    // esp_zb_sleep_set_threshold(1000);
+    esp_zb_sleep_enable(true);
     esp_zb_init(&zigbee_cfg);
-    // esp_zb_sleep_set_threshold(500);
 
     ESP_LOGI(TAG, "Zigbee stack initialized");
     //------------------ Basic cluster ------------------

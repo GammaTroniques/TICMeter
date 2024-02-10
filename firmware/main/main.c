@@ -119,15 +119,6 @@ void app_main(void)
   }
   ESP_LOGI(MAIN_TAG, "Config OK");
 
-  // check if VCondo is too low and go to deep sleep
-  // the BOOT_PIN is used to prevent deep sleep when the device is plugged to a computer for debug
-  // if (gpio_get_vusb() < 3 && gpio_get_vcondo() < 3.5 && config_values.sleep && gpio_get_level(BOOT_PIN))
-  // {
-  //   ESP_LOGI(MAIN_TAG, "VCondo is too low, going to deep sleep");
-  //   esp_sleep_enable_timer_wakeup(20 * 1000000); // 10 second
-  //   esp_deep_sleep_start();
-  // }
-
   switch (config_values.mode)
   {
   case MODE_WEB:
@@ -221,6 +212,8 @@ void main_fetch_linky_data_task(void *pvParameters)
   {
     main_sleep_time = abs(config_values.refreshRate - fetching_time);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
+    esp_pm_dump_locks(stdout);
+
     while (main_sleep_time > 0)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
