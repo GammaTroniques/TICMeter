@@ -24,6 +24,7 @@
 #include "nvs_flash.h"
 #include "esp_private/periph_ctrl.h"
 #include "soc/periph_defs.h"
+#include "esp_pm.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -116,6 +117,7 @@ static int zigbee_reset_command(int argc, char **argv);
 static int skip_command(int argc, char **argv);
 
 static int start_pairing_command(int argc, char **argv);
+static int pm_stats_command(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -184,8 +186,8 @@ static const shell_cmd_t shell_cmds[] = {
     {"zigbee-reset",                "Clear Zigbee config",                      &zigbee_reset_command,              0, {}, {}},
     {"skip",                        "Skip refresh rate delay",                  &skip_command,                      0, {}, {}},
     {"pairing",                     "Start pairing",                            &start_pairing_command,             0, {}, {}},
+    {"pm-stats",                     "Power management stats",                  &pm_stats_command,                  0, {}, {}},
 };
-
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
 // clang-format on
 /*==============================================================================
@@ -919,4 +921,14 @@ void shell_wake_reason()
   default:
     break;
   }
+}
+
+static int pm_stats_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  esp_pm_dump_locks(stdout);
+  return 0;
 }
