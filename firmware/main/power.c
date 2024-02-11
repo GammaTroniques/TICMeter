@@ -74,10 +74,8 @@ esp_err_t power_sleep_leave()
 esp_err_t power_init()
 {
     esp_err_t ret = ESP_OK;
-    int default_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
-
     esp_pm_config_t pm_config = {
-        .max_freq_mhz = default_cpu_freq_mhz,
+        .max_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ,
         .min_freq_mhz = 10,
 #if CONFIG_FREERTOS_USE_TICKLESS_IDLE
         .light_sleep_enable = true
@@ -93,12 +91,34 @@ esp_err_t power_init()
         ESP_LOGI(TAG, "PM initialized");
     }
 
-    esp_pm_sleep_cbs_register_config_t cbs = {
-        .enter_cb = power_sleep_enter,
-        .exit_cb = power_sleep_leave,
-    };
-    ret = esp_pm_light_sleep_register_cbs(&cbs);
+    // esp_pm_sleep_cbs_register_config_t cbs = {
+    //     .enter_cb = power_sleep_enter,
+    //     .exit_cb = power_sleep_leave,
+    // };
+    // ret = esp_pm_light_sleep_register_cbs(&cbs);
 
+    return ret;
+}
+
+esp_err_t power_set_zigbee()
+{
+    esp_err_t ret = ESP_OK;
+    esp_pm_config_t pm_config = {
+        .max_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ,
+        .min_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ,
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
+        .light_sleep_enable = true
+#endif
+    };
+    ret = esp_pm_configure(&pm_config);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "PM Zigbee init failed: 0x%x", ret);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "PM Zigbee initialized");
+    }
     return ret;
 }
 
