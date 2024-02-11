@@ -14,6 +14,8 @@
 
 **TICMeter** is a project to collect data from a **Linky meter** and send them to a **web server** or a **home automation server**. The system is powered by the pins A of the Linky meter and with the help of a supercapacitor.
 
+More info about the product: https://www.kisskissbankbank.com/fr/projects/ticmeter
+
 - Work with :
 
 [![zigbee](https://img.shields.io/badge/zigbee-F22547?style=for-the-badge&logo=zigbee&logoColor=white)](https://en.wikipedia.org/wiki/Zigbee)
