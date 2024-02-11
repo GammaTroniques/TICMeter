@@ -87,18 +87,20 @@ void app_main(void)
 {
   ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
   // xTaskCreate(debug_loop, "debug_loop", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
+  power_init();
   shell_wake_reason();
   gpio_init_pins();
   config_begin();
   gpio_boot_led_pattern();
   linky_init(MODE_HIST, RX_LINKY);
-  shell_init();
-  wifi_init();
 
-  esp_pm_dump_locks(stdout);
-  power_init();
-  esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "main_init", &main_init_lock);
-  esp_pm_lock_acquire(main_init_lock);
+  if (config_values.mode != MODE_ZIGBEE) // TODO: check why in zigbee mode, the wifi_init is not working
+  {
+    wifi_init();
+    shell_init();
+  }
+
+  esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "main_init", &main_init_lock);
 
   // if (gpio_get_vcondo() < 3.4)
   // {
@@ -109,6 +111,14 @@ void app_main(void)
   // }
 
   // linky_want_debug_frame = 2; // TODO: remove this
+  if (!linky_update())
+  {
+    ESP_LOGE(MAIN_TAG, "Cant find Linky");
+  }
+  else
+  {
+    ESP_LOGI(MAIN_TAG, "Linky found");
+  }
 
   if (config_verify())
   {
@@ -129,10 +139,6 @@ void app_main(void)
   }
   ESP_LOGI(MAIN_TAG, "Config found. Starting...");
 
-  if (!linky_update())
-  {
-    ESP_LOGE(MAIN_TAG, "Cant find Linky");
-  }
   ESP_LOGI(MAIN_TAG, "Linky found");
   switch (config_values.mode)
   {
@@ -170,6 +176,7 @@ void app_main(void)
 
     break;
   case MODE_ZIGBEE:
+    power_set_zigbee();
     zigbee_init_stack();
     break;
   case MODE_TUYA:
@@ -191,7 +198,7 @@ void app_main(void)
   }
   // start linky fetch task
   xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &fetchLinkyDataTaskHandle); // start linky task
-  esp_pm_lock_release(main_init_lock);
+  // esp_pm_lock_release(main_init_lock);
 }
 void main_fetch_linky_data_task(void *pvParameters)
 {
@@ -226,17 +233,23 @@ void main_fetch_linky_data_task(void *pvParameters)
 
   while (1)
   {
+    // esp_pm_lock_release(main_init_lock);
     main_sleep_time = abs(config_values.refreshRate - fetching_time);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
     esp_pm_dump_locks(stdout);
-
     while (main_sleep_time > 0)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       main_sleep_time--;
     }
+
+    // esp_pm_lock_acquire(main_init_lock);
+    esp_pm_dump_locks(stdout);
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
+    linky_init(MODE_HIST, RX_LINKY);
+    gpio_init_led();
+
     if (!linky_update() ||
         !linky_presence())
     {

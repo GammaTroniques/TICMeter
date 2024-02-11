@@ -90,8 +90,8 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
 {
     esp_zb_app_signal_type_t *p_sg_p = (esp_zb_app_signal_type_t *)signal_struct->p_app_signal;
     esp_err_t err_status = signal_struct->esp_err_status;
-
     esp_zb_app_signal_type_t sig_type = *p_sg_p;
+
     switch (sig_type)
     {
     case ESP_ZB_ZDO_SIGNAL_SKIP_STARTUP:
@@ -104,18 +104,29 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         zigbee_state = ZIGBEE_CONNECTING;
         if (err_status == ESP_OK)
         {
-            switch (config_values.zigbee.state)
+            ESP_LOGI(TAG, "Device started up in %s factory-reset mode", esp_zb_bdb_is_factory_new() ? "" : "non");
+            if (esp_zb_bdb_is_factory_new())
             {
-            case ZIGBEE_WANT_PAIRING:
-                xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 2048, NULL, PRIORITY_LED_PAIRING, &gpio_led_pairing_task_handle);
-                // fall through
-            case ZIGBEE_PAIRING:
                 ESP_LOGI(TAG, "Start network steering");
                 esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
-                break;
-            default:
-                break;
             }
+            else
+            {
+                ESP_LOGI(TAG, "Device rebooted");
+            }
+            // TODO: move this somewhere
+            // switch (config_values.zigbee.state)
+            // {
+            // case ZIGBEE_WANT_PAIRING:
+            //     // xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 4 * 1024, NULL, PRIORITY_LED_PAIRING, &gpio_led_pairing_task_handle);
+            //     //  fall through
+            // case ZIGBEE_PAIRING:
+            //     ESP_LOGI(TAG, "Start network steering");
+            //     esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
+            //     break;
+            // default:
+            //     break;
+            // }
         }
         else
         {
@@ -129,10 +140,11 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         {
             esp_zb_ieee_addr_t extended_pan_id;
             esp_zb_get_extended_pan_id(extended_pan_id);
-            ESP_LOGI(TAG, "Joined network successfully (Extended PAN ID: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, PAN ID: 0x%04hx, Channel:%d)",
+            ESP_LOGI(TAG, "Joined network successfully (Extended PAN ID: %02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, PAN ID: 0x%04hx, Channel:%d, Short Address: 0x%04hx)",
                      extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4],
                      extended_pan_id[3], extended_pan_id[2], extended_pan_id[1], extended_pan_id[0],
-                     esp_zb_get_pan_id(), esp_zb_get_current_channel());
+                     esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
+
             if (config_values.zigbee.state != ZIGBEE_PAIRED)
             {
                 ESP_LOGI(TAG, "Zigbee paired");
@@ -238,8 +250,8 @@ static void zigbee_task(void *pvParameters)
     esp_zb_cfg_t zigbee_cfg = {
         .esp_zb_role = ESP_ZB_DEVICE_TYPE_ED,
         .install_code_policy = false,
-        .nwk_cfg.zed_cfg.ed_timeout = ESP_ZB_ED_AGING_TIMEOUT_2MIN,
-        // .nwk_cfg.zed_cfg.keep_alive = 3000, // in seconds
+        .nwk_cfg.zed_cfg.ed_timeout = ESP_ZB_ED_AGING_TIMEOUT_64MIN,
+        .nwk_cfg.zed_cfg.keep_alive = 4000, // in seconds
     };
 
     ESP_LOGW(TAG, "Enable sleep");
@@ -490,6 +502,11 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
         .attributeID = attributeID,
     };
     esp_zb_zcl_attr_t *value_r = esp_zb_zcl_get_attribute(endpoint, clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attributeID);
+    if (value_r == NULL)
+    {
+        ESP_LOGE(TAG, "Attribute not found");
+        return;
+    }
     memcpy(value_r->data_p, value, value_length);
     esp_zb_zcl_report_attr_cmd_req(&cmd);
 }

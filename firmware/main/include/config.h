@@ -38,7 +38,7 @@
 // smaller number = smaller priority
 
 #define PRIORITY_TEST 1
-#define PRIORITY_ZIGBEE 3
+#define PRIORITY_ZIGBEE 5 // old 3
 #define PRIORITY_TUYA 3
 #define PRIORITY_SHELL 5
 #define PRIORITY_OTA 10

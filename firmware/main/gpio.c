@@ -124,34 +124,8 @@ Function Implementation
 
 void gpio_init_pins()
 {
-    gpio_set_direction(LED_EN, GPIO_MODE_OUTPUT);
-    // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
-    gpio_set_level(LED_EN, 1);
 
-    /* LED strip initialization with the GPIO and pixels number*/
-    led_strip_config_t strip_config = {
-        .strip_gpio_num = LED_DATA,               // The GPIO that connected to the LED strip's data line
-        .max_leds = 1,                            // The number of LEDs in the strip,
-        .led_pixel_format = LED_PIXEL_FORMAT_GRB, // Pixel format of your LED strip
-        .led_model = LED_MODEL_WS2812,            // LED strip model
-        .flags = {
-            .invert_out = false, // whether to invert the output signal (useful when your hardware has a level inverter)
-        },
-    };
-
-    led_strip_rmt_config_t rmt_config = {
-        .clk_src = RMT_CLK_SRC_DEFAULT,    // different clock source can lead to different power consumption
-        .resolution_hz = 10 * 1000 * 1000, // 10MHz
-        .mem_block_symbols = 0,
-        .flags = {
-            .with_dma = false, // whether to enable the DMA feature
-        },
-    };
-
-    ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led));
-
-    led_strip_clear(led);
-    led_strip_refresh(led);
+    gpio_init_led();
 
     gpio_init_adc(ADC_UNIT_1, &adc1_handle);
     gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
@@ -223,7 +197,7 @@ static void IRAM_ATTR gpio_vusb_isr_cb(void *arg)
 {
     uint32_t gpio_num = (uint32_t)arg;
     uint32_t level = gpio_get_level(gpio_num);
-    // esp_rom_printf("IT USB %ld lvl: %ld\n", gpio_num, level);
+    esp_rom_printf("IT USB %ld lvl: %ld\n", gpio_num, level);
     gpio_wakeup_disable(gpio_num);
     gpio_intr_disable(gpio_num);
     if (level == 0)
@@ -234,6 +208,7 @@ static void IRAM_ATTR gpio_vusb_isr_cb(void *arg)
     {
         gpio_wakeup_enable(gpio_num, GPIO_INTR_LOW_LEVEL);
     }
+    vusb_level = level;
     gpio_intr_enable(gpio_num);
     xQueueOverwriteFromISR(power_vusb_isr_queue, &level, NULL);
 }
@@ -241,19 +216,28 @@ static void IRAM_ATTR gpio_vusb_isr_cb(void *arg)
 static void gpio_vusb_task(void *pvParameter)
 {
     uint32_t level = 0;
+    uint32_t last_level = vusb_level;
     while (1)
     {
         xQueueReceive(power_vusb_isr_queue, &level, portMAX_DELAY);
-        if (level == 1)
+        ESP_LOGI(TAG, "New message: %ld", level);
+        ESP_LOGI(TAG, "vusb_level: %d", vusb_level);
+        if (level != last_level)
         {
-            ESP_LOGI(TAG, "USB connected");
-            esp_pm_lock_acquire(gpio_vusb_lock);
+            last_level = level;
+
+            if (level == 1)
+            {
+                ESP_LOGI(TAG, "USB connected");
+                esp_pm_lock_acquire(gpio_vusb_lock);
+            }
+            else
+            {
+                ESP_LOGI(TAG, "USB disconnected");
+                esp_pm_lock_release(gpio_vusb_lock);
+            }
         }
-        else
-        {
-            ESP_LOGI(TAG, "USB disconnected");
-            esp_pm_lock_release(gpio_vusb_lock);
-        }
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
@@ -551,7 +535,7 @@ void gpio_pairing_button_task(void *pvParameters)
                 else if (pushTime > 2000 && pushTime <= 4000)
                 {
                     ESP_LOGI(TAG, "Pairing mode");
-                    xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 2048, NULL, PRIORITY_LED_PAIRING, &gpio_led_pairing_task_handle);
+                    xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 4 * 1024, NULL, PRIORITY_LED_PAIRING, &gpio_led_pairing_task_handle);
                     if (pairingState)
                     {
                         // already in pairing mode
@@ -884,4 +868,47 @@ void gpio_start_pariring()
         ESP_LOGI(TAG, "No pairing mode");
         break;
     }
+}
+
+uint32_t gpio_init_led()
+{
+    gpio_set_direction(LED_EN, GPIO_MODE_OUTPUT);
+    // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
+    gpio_set_level(LED_EN, 1);
+
+    /* LED strip initialization with the GPIO and pixels number*/
+    led_strip_config_t strip_config = {
+        .strip_gpio_num = LED_DATA,               // The GPIO that connected to the LED strip's data line
+        .max_leds = 1,                            // The number of LEDs in the strip,
+        .led_pixel_format = LED_PIXEL_FORMAT_GRB, // Pixel format of your LED strip
+        .led_model = LED_MODEL_WS2812,            // LED strip model
+        .flags = {
+            .invert_out = false, // whether to invert the output signal (useful when your hardware has a level inverter)
+        },
+    };
+
+    led_strip_rmt_config_t rmt_config = {
+        .clk_src = RMT_CLK_SRC_DEFAULT,    // different clock source can lead to different power consumption
+        .resolution_hz = 10 * 1000 * 1000, // 10MHz
+        .mem_block_symbols = 0,
+        .flags = {
+            .with_dma = false, // whether to enable the DMA feature
+        },
+    };
+
+    if (led)
+    {
+        led_strip_del(led);
+    }
+    esp_err_t ret = led_strip_new_rmt_device(&strip_config, &rmt_config, &led);
+    if (ret != ESP_OK)
+    {
+        ESP_LOGE(TAG, "LED init failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    led_strip_clear(led);
+    led_strip_refresh(led);
+
+    return 0;
 }
