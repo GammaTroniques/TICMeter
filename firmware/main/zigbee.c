@@ -152,7 +152,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                 config_write();
             }
             zigbee_state = ZIGBEE_CONNECTED;
-            xTaskCreate(zigbee_send_first_datas, "zigbee_send_first_datas", 4 * 1024, NULL, PRIORITY_ZIGBEE, NULL);
+            // xTaskCreate(zigbee_send_first_datas, "zigbee_send_first_datas", 4 * 1024, NULL, PRIORITY_ZIGBEE, NULL);
         }
         else
         {
@@ -668,7 +668,11 @@ uint8_t zigbee_send(linky_data_t *data)
             status = esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, false);
         }
     }
-    zigbee_report_attribute(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, sizeof(zigbee_summation_delivered));
+
+    if (zigbee_summation_delivered != 0)
+    {
+        zigbee_report_attribute(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, sizeof(zigbee_summation_delivered));
+    }
 
     return 0;
 }

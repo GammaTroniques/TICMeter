@@ -920,7 +920,7 @@ uint32_t gpio_init_led()
 
 void gpio_peripheral_reinit()
 {
-    gpio_init_pins();
+    gpio_init_adc(ADC_UNIT_1, &adc1_handle);
     gpio_init_led();
     linky_init(MODE_HIST, RX_LINKY);
 }
