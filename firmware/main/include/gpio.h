@@ -154,4 +154,6 @@ void gpio_start_pariring();
 
 uint32_t gpio_init_led();
 
+void gpio_peripheral_reinit();
+
 #endif /* __GPIO_H__ */

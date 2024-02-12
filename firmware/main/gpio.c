@@ -245,6 +245,11 @@ static void gpio_init_adc(adc_unit_t adc_unit, adc_oneshot_unit_handle_t *out_ha
 {
     esp_err_t ret = ESP_OK;
 
+    if (out_handle != NULL)
+    {
+        adc_oneshot_del_unit(*out_handle);
+    }
+
     adc_oneshot_unit_init_cfg_t vusb_init_config = {
         .unit_id = adc_unit,
     };
@@ -911,4 +916,11 @@ uint32_t gpio_init_led()
     led_strip_refresh(led);
 
     return 0;
+}
+
+void gpio_peripheral_reinit()
+{
+    gpio_init_pins();
+    gpio_init_led();
+    linky_init(MODE_HIST, RX_LINKY);
 }

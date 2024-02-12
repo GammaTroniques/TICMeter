@@ -233,7 +233,7 @@ void main_fetch_linky_data_task(void *pvParameters)
 
   while (1)
   {
-    // esp_pm_lock_release(main_init_lock);
+    esp_pm_lock_release(main_init_lock);
     main_sleep_time = abs(config_values.refreshRate - fetching_time);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
     esp_pm_dump_locks(stdout);
@@ -243,12 +243,11 @@ void main_fetch_linky_data_task(void *pvParameters)
       main_sleep_time--;
     }
 
-    // esp_pm_lock_acquire(main_init_lock);
+    esp_pm_lock_acquire(main_init_lock);
     esp_pm_dump_locks(stdout);
+    gpio_peripheral_reinit();
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
-    linky_init(MODE_HIST, RX_LINKY);
-    gpio_init_led();
 
     if (!linky_update() ||
         !linky_presence())
