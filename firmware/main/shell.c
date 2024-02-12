@@ -25,6 +25,7 @@
 #include "esp_private/periph_ctrl.h"
 #include "soc/periph_defs.h"
 #include "esp_pm.h"
+#include "led.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -481,7 +482,7 @@ static int test_led_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  gpio_start_led_pattern(atoi(argv[1]));
+  led_start_pattern(atoi(argv[1]));
   ESP_LOGI(TAG, "Test led pattern %d", atoi(argv[1]));
   return 0;
 }

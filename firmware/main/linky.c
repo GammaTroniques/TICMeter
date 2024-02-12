@@ -19,6 +19,7 @@
 #include <wifi.h>
 #include "esp_random.h"
 #include "esp_pm.h"
+#include "led.h"
 
 /*==============================================================================
  Local Define
@@ -746,7 +747,7 @@ char linky_update()
         return 0;
     }
 
-    xTaskCreate(gpio_led_task_linky_reading, "gpio_led_task_linky_reading", 4 * 1024, NULL, PRIORITY_LED_LINKY_READING, NULL);
+    led_start_pattern(LED_LINKY_READING);
 
     uint32_t try = 0;
     do
@@ -763,12 +764,16 @@ char linky_update()
 
     } while (ret == 2 && try < 2); // if the mode is auto, we try the other mode if the first one failed
     linky_reading = 0;
+
+    led_stop_pattern(LED_LINKY_READING);
+
     esp_pm_lock_release(linky_pm_lock);
     switch (ret)
     {
     case 0:
         linky_clear_data();
         ESP_LOGE(TAG, "Error: Decode failed");
+        led_start_pattern(LED_LINKY_FAILED);
         return 0;
         break;
 

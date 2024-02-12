@@ -23,9 +23,10 @@
 #include "wifi.h"
 #include "main.h"
 #include "common.h"
-#include "esp_ota_ops.h"
+#include "led.h"
 
 /* BLE */
+#include "esp_ota_ops.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
 #include "host/ble_hs.h"
@@ -505,14 +506,14 @@ void tuya_pairing_task(void *pvParameters)
     {
         ESP_LOGI(TAG, "Tuya pairing failed: timeout, current state: %s", EVENT_ID2STR(lastEvent));
         tuya_stop();
-        gpio_start_led_pattern(PATTERN_SEND_ERR);
+        led_start_pattern(LED_SEND_FAILED);
         vTaskDelete(NULL);
     }
 
     config_values.pairing_state = TUYA_PAIRED;
     config_write();
     ESP_LOGI(TAG, "Tuya pairing: %d", config_values.pairing_state);
-    gpio_start_led_pattern(PATTERN_SEND_OK);
+    led_start_pattern(LED_SEND_OK);
     // will restart via main task
     vTaskDelete(NULL);
 }
