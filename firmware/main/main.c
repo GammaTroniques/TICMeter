@@ -47,6 +47,7 @@
 #include "tuya.h"
 #include "ota.h"
 #include "power.h"
+#include "led.h"
 
 #include "esp_heap_trace.h"
 #include "esp_err.h"
@@ -73,7 +74,6 @@ void debug_loop(void *);
 Public Variable
 ===============================================================================*/
 TaskHandle_t fetchLinkyDataTaskHandle = NULL;
-TaskHandle_t noConfigLedTaskHandle = NULL;
 uint32_t main_sleep_time = 99999;
 /*==============================================================================
  Local Variable
@@ -91,7 +91,7 @@ void app_main(void)
   shell_wake_reason();
   gpio_init_pins();
   config_begin();
-  gpio_boot_led_pattern();
+  led_start_pattern(LED_BOOT);
   linky_init(MODE_HIST, RX_LINKY);
 
   if (config_values.mode != MODE_ZIGBEE) // TODO: check why in zigbee mode, the wifi_init is not working
@@ -123,11 +123,11 @@ void app_main(void)
   if (config_verify())
   {
     // esp_pm_lock_release(main_init_lock);
-    xTaskCreate(gpio_led_task_no_config, "gpio_led_task_no_config", 4 * 1024, NULL, PRIORITY_LED_NO_CONFIG, &noConfigLedTaskHandle); // start no config led task
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config_verify())
     {
-      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      // led_start_pattern(LED_NO_CONFIG);
+      vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
     if (config_values.mode == MODE_WEB)
     {
@@ -253,7 +253,7 @@ void main_fetch_linky_data_task(void *pvParameters)
         !linky_presence())
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed");
-      gpio_start_led_pattern(PATTERN_LINKY_ERR);
+      led_start_pattern(LED_LINKY_FAILED);
     }
 
     linky_uptime = esp_timer_get_time() / 1000000;
@@ -321,12 +321,12 @@ void main_fetch_linky_data_task(void *pvParameters)
         ota_get_latest(&version);
       }
       wifi_disconnect();
-      gpio_start_led_pattern(PATTERN_SEND_OK);
+      led_start_pattern(LED_SEND_OK);
       break;
 
     send_error:
       wifi_disconnect();
-      gpio_start_led_pattern(PATTERN_SEND_ERR);
+      led_start_pattern(LED_SEND_FAILED);
       break;
     }
     case MODE_TUYA:
@@ -337,14 +337,14 @@ void main_fetch_linky_data_task(void *pvParameters)
         if (tuya_wait_event(TUYA_EVENT_MQTT_CONNECTED, 10000))
         {
           ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
-          gpio_start_led_pattern(PATTERN_SEND_ERR);
+          led_start_pattern(LED_SEND_FAILED);
           goto tuya_disconect;
         }
 
         if (tuya_send_data(&linky_data))
         {
           ESP_LOGE(MAIN_TAG, "Tuya SEND ERROR");
-          gpio_start_led_pattern(PATTERN_SEND_ERR);
+          led_start_pattern(LED_SEND_FAILED);
           goto tuya_disconect;
         }
       tuya_disconect:
@@ -359,7 +359,7 @@ void main_fetch_linky_data_task(void *pvParameters)
         }
         wifi_disconnect();
         suspendTask(tuyaTaskHandle);
-        gpio_start_led_pattern(PATTERN_SEND_OK);
+        led_start_pattern(LED_SEND_OK);
       }
       break;
     case MODE_ZIGBEE:

@@ -18,6 +18,7 @@
 #include "mqtt.h"
 #include "wifi.h"
 #include "gpio.h"
+#include "led.h"
 #include "cJSON.h"
 #include "esp_ota_ops.h"
 #include "mbedtls/md.h"
@@ -577,8 +578,7 @@ int mqtt_send()
         ESP_LOGE(TAG, "WIFI not connected: MQTT ERROR");
         goto error;
     }
-    wifi_sending = 1;
-    xTaskCreate(gpio_led_task_sending, "sendingLedTask", 4096, NULL, PRIORITY_MQTT, NULL);
+    led_start_pattern(LED_SENDING);
 
 #ifdef MQTT_DEBUG
     mqtt_messages_count = 0;
@@ -631,6 +631,7 @@ int mqtt_send()
     }
 
     mqtt_topics.ha_discovery_configured = mqtt_topics.ha_discovery_configured_temp;
+    led_stop_pattern(LED_SENDING);
 
 #ifdef MQTT_DEBUG
 
@@ -660,12 +661,12 @@ int mqtt_send()
     }
     esp_mqtt_client_disconnect(mqtt_client);
     esp_mqtt_client_stop(mqtt_client);
-    wifi_sending = 0;
+    led_start_pattern(LED_SEND_OK);
     return 1;
 error:
     esp_mqtt_client_disconnect(mqtt_client);
     esp_mqtt_client_stop(mqtt_client);
-    wifi_sending = 0;
+    led_start_pattern(LED_SEND_FAILED);
     return 0;
 }
 

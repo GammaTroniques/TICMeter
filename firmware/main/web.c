@@ -16,6 +16,7 @@
 #include "config.h"
 #include "gpio.h"
 #include "wifi.h"
+#include "led.h"
 
 /*==============================================================================
  Local Define
@@ -125,8 +126,7 @@ uint8_t wifi_send_to_server(const char *json)
         ESP_LOGE(TAG, "host or postUrl not set");
         return 0;
     }
-    wifi_sending = 1;
-    xTaskCreate(gpio_led_task_sending, "gpio_led_task_sending", 2048, NULL, PRIORITY_LED_SENDING, NULL);
+    led_start_pattern(LED_SENDING);
 
     char url[100] = {0};
     web_create_http_url(url, config_values.web.host, config_values.web.postUrl);
@@ -146,7 +146,9 @@ uint8_t wifi_send_to_server(const char *json)
     // send post request
     esp_http_client_perform(client);
     esp_http_client_cleanup(client);
-    wifi_sending = 0;
+
+    led_stop_pattern(LED_SENDING);
+    led_start_pattern(LED_SEND_OK);
     return 1;
 }
 

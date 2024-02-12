@@ -15,6 +15,7 @@
 #include "wifi.h"
 #include "http.h"
 #include "gpio.h"
+#include "led.h"
 #include "dns_server.h"
 #include "gpio.h"
 #include "driver/gpio.h"
@@ -57,7 +58,6 @@ static void stop_captive_portal_task(void *pvParameter);
 Public Variable
 ===============================================================================*/
 wifi_state_t wifi_state = WIFI_DISCONNECTED;
-uint8_t wifi_sending = 0;
 uint32_t wifi_timeout_counter = 0;
 
 /*==============================================================================
@@ -140,7 +140,7 @@ uint8_t wifi_connect()
     }
 
     wifi_state = WIFI_CONNECTING;
-    xTaskCreate(gpio_led_task_wifi_connecting, "gpio_led_task_wifi_connecting", 4096, NULL, PRIORITY_LED_WIFI, NULL); // start wifi connect led task
+    led_start_pattern(LED_CONNECTING);
 
     s_retry_num = 0;
     xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
@@ -199,6 +199,9 @@ uint8_t wifi_connect()
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
+
+    led_stop_pattern(LED_CONNECTING);
+
     if (bits & WIFI_CONNECTED_BIT)
     {
         ESP_LOGI(TAG, "Connected to ap SSID:%s", (char *)wifi_config.sta.ssid);
@@ -209,6 +212,7 @@ uint8_t wifi_connect()
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
         wifi_disconnect();
+        led_start_pattern(LED_CONNECTING_FAILED);
         return 0;
     }
     else
@@ -216,7 +220,7 @@ uint8_t wifi_connect()
         ESP_LOGE(TAG, "Failed to connect to SSID:%s Timeout", (char *)wifi_config.sta.ssid);
         wifi_timeout_counter++;
         wifi_state = WIFI_FAILED;
-        // gpio_start_led_pattern(PATTERN_WIFI_FAILED);
+        led_start_pattern(LED_CONNECTING_FAILED);
         wifi_disconnect();
         return 0;
     }
@@ -266,7 +270,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
             ESP_LOGE(TAG, "Connect to the AP fail");
-            gpio_start_led_pattern(PATTERN_WIFI_FAILED);
+            led_start_pattern(LED_CONNECTING_FAILED);
             wifi_state = WIFI_FAILED;
         }
     }

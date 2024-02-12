@@ -1,5 +1,5 @@
 /**
- * @file gpio.h
+ * @file led.c
  * @author Dorian Benech
  * @brief
  * @version 1.0
@@ -9,36 +9,45 @@
  *
  */
 
-#ifndef __GPIO_H__
-#define __GPIO_H__
+#ifndef LED_H
+#define LED_H
 
 /*==============================================================================
  Local Include
 ===============================================================================*/
 #include <stdio.h>
-#include "esp_adc/adc_oneshot.h"
+#include <stdint.h>
 
 /*==============================================================================
  Public Defines
 ==============================================================================*/
-#define RX_LINKY (gpio_num_t)23
-#define V_CONDO_PIN ADC_CHANNEL_4
-#define V_USB_PIN ADC_CHANNEL_1
-#define PAIRING_PIN (gpio_num_t)3
-// #define PAIRING_PIN (gpio_num_t)9
-#define BOOT_PIN (gpio_num_t)9
-#define RESET_PIN (gpio_num_t)15
-
-#define LED_EN (gpio_num_t)0
-#define LED_DATA (gpio_num_t)5
-
-#define PAIRING_LED_PIN (gpio_num_t)23 // 23 --> unused
-#define LED_RED (gpio_num_t)23
-#define LED_GREEN (gpio_num_t)23
 
 /*==============================================================================
  Public Macro
 ==============================================================================*/
+
+typedef enum
+{
+    LED_BOOT,
+    LED_NO_CONFIG,
+    LED_FACTORY_RESET,
+
+    LED_LINKY_READING,
+    LED_LINKY_FAILED,
+
+    LED_CONNECTING,
+    LED_CONNECTING_FAILED,
+
+    LED_SEND_OK,
+    LED_SENDING,
+    LED_SEND_FAILED,
+
+    LED_PAIRING,
+
+    LED_OTA_AVAILABLE,
+    LED_OTA_IN_PROGRESS,
+
+} led_pattern_t;
 
 /*==============================================================================
  Public Type
@@ -47,49 +56,15 @@
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
-extern TaskHandle_t gpip_led_ota_task_handle;
-extern TaskHandle_t gpio_led_pairing_task_handle;
 
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
 
-/**
- * @brief Init the GPIOs
- *
- */
-void gpio_init_pins();
+uint32_t led_init();
 
-/**
- * @brief  Get the tension of the USB
- *
- * @return float: voltage in V
- */
-float gpio_get_vusb();
+void led_start_pattern(led_pattern_t pattern);
 
-/**
- * @brief Get the state of the USB
- *
- * @return uint8_t: 1 if connected, 0 if not
- */
-uint8_t gpio_vusb_connected();
+void led_stop_pattern(led_pattern_t pattern);
 
-/**
- * @brief Get the tension of the condo
- *
- * @return float: voltage in V
- */
-float gpio_get_vcondo();
-
-/**
- * @brief The pairing button task
- *
- * @param pvParameter Not used
- */
-void gpio_pairing_button_task(void *pvParameter);
-
-void gpio_peripheral_reinit();
-
-void gpio_start_pariring();
-
-#endif /* __GPIO_H__ */
+#endif /* LED_H */
