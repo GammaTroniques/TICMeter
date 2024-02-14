@@ -99,6 +99,14 @@ void app_main(void)
     wifi_init();
     shell_init();
   }
+  else
+  {
+
+    if (gpio_vusb_connected())
+    {
+      shell_init();
+    }
+  }
 
   esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "main_init", &main_init_lock);
 

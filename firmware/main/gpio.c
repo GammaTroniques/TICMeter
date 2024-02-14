@@ -156,7 +156,7 @@ static void IRAM_ATTR gpio_vusb_isr_cb(void *arg)
 {
     uint32_t gpio_num = (uint32_t)arg;
     uint32_t level = gpio_get_level(gpio_num);
-    esp_rom_printf("IT USB %ld lvl: %ld\n", gpio_num, level);
+    // esp_rom_printf("IT USB %ld lvl: %ld\n", gpio_num, level);
     gpio_wakeup_disable(gpio_num);
     gpio_intr_disable(gpio_num);
     if (level == 0)
@@ -179,8 +179,7 @@ static void gpio_vusb_task(void *pvParameter)
     while (1)
     {
         xQueueReceive(power_vusb_isr_queue, &level, portMAX_DELAY);
-        ESP_LOGI(TAG, "New message: %ld", level);
-        ESP_LOGI(TAG, "vusb_level: %d", vusb_level);
+        level = gpio_get_level(V_USB_PIN);
         if (level != last_level)
         {
             last_level = level;
@@ -189,14 +188,22 @@ static void gpio_vusb_task(void *pvParameter)
             {
                 ESP_LOGI(TAG, "USB connected");
                 esp_pm_lock_acquire(gpio_vusb_lock);
+                if (config_values.mode == MODE_ZIGBEE)
+                {
+                    esp_zb_sleep_enable(false);
+                }
             }
             else
             {
                 ESP_LOGI(TAG, "USB disconnected");
                 esp_pm_lock_release(gpio_vusb_lock);
+                if (config_values.mode == MODE_ZIGBEE)
+                {
+                    esp_zb_sleep_enable(true);
+                }
             }
         }
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
