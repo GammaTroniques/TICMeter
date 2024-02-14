@@ -59,6 +59,7 @@ static void led_set_color(uint32_t color);
 static void led_pattern_task(void *pattern_ptr);
 static void led_task(void *pvParameters);
 static void led_set_rgb(uint32_t color, uint32_t brightness);
+static void led_start_next_pattern();
 
 /*==============================================================================
 Public Variable
@@ -95,8 +96,8 @@ static led_timing_t led_timing[] = {
     
     {LED_PAIRING,           11,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, },
 
-    {LED_OTA_AVAILABLE,     10,     LED_WAVE,       0x0000FF,                       1000,   5000,   FOREVER, 0, },
-    {LED_OTA_IN_PROGRESS,   11,     LED_WAVE,       0xFFFF00,                       1000,   5000,   FOREVER, 0, },
+    {LED_OTA_AVAILABLE,     10,     LED_WAVE,       0x0000FF,                       0,      1000,   FOREVER, 0, },
+    {LED_OTA_IN_PROGRESS,   11,     LED_WAVE,       0xFFFF00,                       0,      1000,   FOREVER, 0, },
 
 };
 
@@ -174,6 +175,17 @@ uint32_t led_init()
  */
 static void led_set_rgb(uint32_t color, uint32_t brightness)
 {
+
+    if (color == 0 || brightness == 0)
+    {
+        led_strip_clear(led);
+        led_strip_refresh(led);
+        vTaskDelay(1);
+        gpio_set_level(LED_EN, 0);
+        // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
+        return;
+    }
+
     uint32_t r = (color >> 16) & 0xFF;
     uint32_t g = (color >> 8) & 0xFF;
     uint32_t b = (color >> 0) & 0xFF;
@@ -183,23 +195,14 @@ static void led_set_rgb(uint32_t color, uint32_t brightness)
     g = (g * brightness) / 1000;
     b = (b * brightness) / 1000;
 
-    ESP_LOGW(TAG, "r: %ld, g: %ld, b: %ld, brightness: %ld", r, g, b, brightness);
+    ESP_LOGD(TAG, "r: %ld, g: %ld, b: %ld, brightness: %ld", r, g, b, brightness);
+    gpio_set_level(LED_EN, 1);
     led_strip_set_pixel(led, 0, r, g, b);
     led_strip_refresh(led);
 }
 
 static void led_set_color(uint32_t color)
 {
-    if (color == 0)
-    {
-        led_strip_clear(led);
-        led_strip_refresh(led);
-        vTaskDelay(1);
-        gpio_set_level(LED_EN, 0);
-        // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
-        return;
-    }
-    gpio_set_level(LED_EN, 1);
     led_set_rgb(color, 50); // 5% brightness
     // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
 }
@@ -305,14 +308,14 @@ static void led_pattern_task(void *pattern_ptr)
             {
                 brightness++;
                 led_set_rgb(pattern->color, brightness);
-                vTaskDelay(100 / portTICK_PERIOD_MS);
+                vTaskDelay(5 / portTICK_PERIOD_MS);
             }
             vTaskDelay(pattern->tOn / portTICK_PERIOD_MS);
             while (brightness > 0)
             {
                 brightness--;
                 led_set_rgb(pattern->color, brightness);
-                vTaskDelay(100 / portTICK_PERIOD_MS);
+                vTaskDelay(5 / portTICK_PERIOD_MS);
             }
             vTaskDelay(pattern->tOff / portTICK_PERIOD_MS);
             if (repeat != FOREVER)
@@ -326,7 +329,11 @@ static void led_pattern_task(void *pattern_ptr)
             break;
         }
     }
+    led_set_color(0);
     pattern->in_progress = 0;
+
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    led_start_next_pattern();
     vTaskDelete(NULL); // Delete this task
 }
 
@@ -357,4 +364,31 @@ void led_stop_pattern(led_pattern_t pattern)
         }
     }
     ESP_LOGW(TAG, "Pattern %d not found", pattern);
+}
+
+static void led_start_next_pattern()
+{
+    uint16_t most_priority = 0;
+
+    // find most priority pattern
+    for (int i = 0; i < led_pattern_size; i++)
+    {
+        if (led_timing[i].in_progress && led_timing[i].repeat == FOREVER)
+        {
+            if (led_timing[i].priority > most_priority)
+            {
+                most_priority = led_timing[i].priority;
+            }
+        }
+    }
+
+    // start most priority pattern
+    for (int i = 0; i < led_pattern_size; i++)
+    {
+        if (led_timing[i].priority == most_priority)
+        {
+            led_start_pattern(led_timing[i].id);
+            return;
+        }
+    }
 }
