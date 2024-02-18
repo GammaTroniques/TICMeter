@@ -227,9 +227,9 @@ const LinkyGroup LinkyLabelList[] =
     {000, "Temps d'actualisation",           "set-refresh", &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
     {105, "Mode TIC",                        "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
     {106, "Mode Electrique",                 "mode-elec",   &linky_tree_phase,             UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {000, "Dernière actualisation",          "timestamp",    &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {104, "Temps de fonctionnement",         "uptime",       &linky_uptime,                 UINT64,       0,      ANY,  C_ANY,   G_ANY,     REAL_TIME,  TIME,        "mdi:clock-time-eight-outline",        0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {000, "Free RAM",                        "free-ram",     &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,     REAL_TIME,  BYTES,       "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {000, "Dernière actualisation",          "timestamp",    &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                   0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {104, "Temps de fonctionnement",         "uptime",       &linky_uptime,                 UINT64,       0,      ANY,  C_ANY,   G_ANY,     REAL_TIME,  TIME,        "mdi:clock-time-eight-outline",       0xFF42, 0x0028,  ZB_RP, ZB_UINT48    },
+    {000, "Free RAM",                        "free-ram",     &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,     REAL_TIME,  BYTES,       "",                                   0x0000, 0x0000,  ZB_NO, ZB_NO        },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
