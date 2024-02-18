@@ -156,6 +156,7 @@ int ota_get_latest(ota_version_t *version)
     FILE *file = fopen("/spiffs/ota_versions.csv", "r");
     if (file == NULL)
     {
+        // backup
         ESP_LOGE(TAG, "Failed to open ota_versions.csv");
         strncpy(ota_versions_url[0].url, OTA_VERSION_URL, sizeof(ota_versions_url[0].url));
         ota_to_use_version = 0;
