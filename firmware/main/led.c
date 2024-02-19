@@ -49,6 +49,7 @@ typedef struct led_timing_t
     const uint32_t tOn;
     const uint32_t tOff;
     const uint32_t repeat;
+    const uint8_t only_usb_powered;
     uint8_t in_progress;
 } led_timing_t;
 
@@ -80,24 +81,24 @@ const uint32_t color_mode[] = {
 
 // clang-format off
 static led_timing_t led_timing[] = {
-    {LED_BOOT,              100,    LED_FLASH_MODE, 0x000000,                       100,    0,      1,       0, },
-    {LED_NO_CONFIG,         99,     LED_FLASH,      0xFF0000,                       50,     100,    2,       0, },
-    {LED_FACTORY_RESET,     101,    LED_FLASH,      0x00F0FF,                       100,    100,    FOREVER, 0, },
+    {LED_BOOT,              100,    LED_FLASH_MODE, 0x000000,                       100,    0,      1,       0, 0,},
+    {LED_NO_CONFIG,         99,     LED_FLASH,      0xFF0000,                       50,     100,    2,       0, 0,},
+    {LED_FACTORY_RESET,     101,    LED_FLASH,      0x00F0FF,                       100,    100,    FOREVER, 0, 0,},
     
-    {LED_LINKY_READING,     50,     LED_FLASH,      0xFF8000,                       100,    900,    FOREVER, 0, },
-    {LED_LINKY_FAILED,      51,     LED_FLASH,      0xFF0000,                       50,     100,    3,       0, },
+    {LED_LINKY_READING,     50,     LED_FLASH,      0xFF8000,                       100,    900,    FOREVER, 0, 0,},
+    {LED_LINKY_FAILED,      51,     LED_FLASH,      0xFF0000,                       50,     100,    3,       0, 0,},
     
-    {LED_CONNECTING,        60,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, },
-    {LED_CONNECTING_FAILED, 61,     LED_FLASH,      0xFF0000,                       50,     100,    4,       0, },
+    {LED_CONNECTING,        60,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
+    {LED_CONNECTING_FAILED, 61,     LED_FLASH,      0xFF0000,                       50,     100,    4,       0, 0,},
     
-    {LED_SENDING,           70,     LED_FLASH,      0x00F0FF,                       100,    1000,   FOREVER, 0, },
-    {LED_SEND_OK,           71,     LED_FLASH,      0x00FF00,                       300,    0,      1,       0, },
-    {LED_SEND_FAILED,       72,     LED_FLASH,      0xFF0000,                       50,     100,    5,       0, },
+    {LED_SENDING,           70,     LED_FLASH,      0x00F0FF,                       100,    1000,   FOREVER, 0, 0,},
+    {LED_SEND_OK,           71,     LED_FLASH,      0x00FF00,                       300,    0,      1,       0, 0,},
+    {LED_SEND_FAILED,       72,     LED_FLASH,      0xFF0000,                       50,     100,    5,       0, 0,},
     
-    {LED_PAIRING,           11,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, },
+    {LED_PAIRING,           11,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
 
-    {LED_OTA_AVAILABLE,     10,     LED_WAVE,       0x0000FF,                       0,      1000,   FOREVER, 0, },
-    {LED_OTA_IN_PROGRESS,   11,     LED_WAVE,       0xFFFF00,                       0,      1000,   FOREVER, 0, },
+    {LED_OTA_AVAILABLE,     10,     LED_WAVE,       0x0000FF,                       0,      1000,   FOREVER, 1, 0,},
+    {LED_OTA_IN_PROGRESS,   11,     LED_WAVE,       0xFFFF00,                       0,      1000,   FOREVER, 1, 0,},
 
 };
 
@@ -364,6 +365,31 @@ void led_stop_pattern(led_pattern_t pattern)
         }
     }
     ESP_LOGW(TAG, "Pattern %d not found", pattern);
+}
+
+void led_usb_event(bool connected)
+{
+    if (connected)
+    {
+    }
+    else
+    {
+        // stop all patterns
+        for (int i = 0; i < led_pattern_size; i++)
+        {
+            if (led_timing[i].in_progress && led_timing[i].only_usb_powered)
+            {
+                led_timing[i].in_progress = 0;
+            }
+        }
+        if (led_current_pattern != NULL && led_current_pattern->only_usb_powered)
+        {
+            led_current_pattern->in_progress = 0;
+            deleteTask(led_pattern_task_handle);
+            led_current_pattern = NULL;
+            led_set_color(0);
+        }
+    }
 }
 
 static void led_start_next_pattern()

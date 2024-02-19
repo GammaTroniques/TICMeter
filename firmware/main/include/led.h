@@ -67,4 +67,6 @@ void led_start_pattern(led_pattern_t pattern);
 
 void led_stop_pattern(led_pattern_t pattern);
 
+void led_usb_event(bool connected);
+
 #endif /* LED_H */
