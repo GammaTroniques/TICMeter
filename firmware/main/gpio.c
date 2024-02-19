@@ -202,6 +202,7 @@ static void gpio_vusb_task(void *pvParameter)
                     esp_zb_sleep_enable(true);
                 }
             }
+            led_usb_event(level);
         }
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
@@ -257,6 +258,11 @@ static bool gpio_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, ad
 #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
     if (!calibrated)
     {
+        if (out_handle != NULL)
+        {
+            adc_cali_delete_scheme_curve_fitting(*out_handle);
+        }
+
         // ESP_LOGI(TAG, "calibration scheme version is %s", "Curve Fitting");
         adc_cali_curve_fitting_config_t cali_config = {
             .unit_id = unit,
@@ -275,6 +281,11 @@ static bool gpio_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, ad
 #if ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
     if (!calibrated)
     {
+        if (out_handle != NULL)
+        {
+            adc_cali_delete_scheme_line_fitting(*out_handle);
+        }
+
         ESP_LOGI(TAG, "calibration scheme version is %s", "Line Fitting");
         adc_cali_line_fitting_config_t cali_config = {
             .unit_id = unit,
@@ -547,6 +558,8 @@ void gpio_start_pariring()
 void gpio_peripheral_reinit()
 {
     gpio_init_adc(ADC_UNIT_1, &adc1_handle);
+    gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
+    gpio_init_adc_cali(adc1_handle, V_CONDO_PIN, &adc_capa_cali_handle, "VCondo");
     led_init();
     linky_init(MODE_HIST, RX_LINKY);
 }

@@ -93,6 +93,8 @@ void app_main(void)
   config_begin();
   led_start_pattern(LED_BOOT);
   linky_init(MODE_HIST, RX_LINKY);
+  esp_pm_lock_create(ESP_PM_APB_FREQ_MAX, 0, "main_init", &main_init_lock);
+  esp_pm_lock_acquire(main_init_lock);
 
   if (config_values.mode != MODE_ZIGBEE) // TODO: check why in zigbee mode, the wifi_init is not working
   {
@@ -107,8 +109,6 @@ void app_main(void)
       shell_init();
     }
   }
-
-  esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "main_init", &main_init_lock);
 
   // if (gpio_get_vcondo() < 3.4)
   // {
@@ -127,6 +127,8 @@ void app_main(void)
   {
     ESP_LOGI(MAIN_TAG, "Linky found");
   }
+
+  esp_pm_dump_locks(stdout);
 
   if (config_verify())
   {
@@ -206,7 +208,7 @@ void app_main(void)
   }
   // start linky fetch task
   xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &fetchLinkyDataTaskHandle); // start linky task
-  // esp_pm_lock_release(main_init_lock);
+  esp_pm_lock_release(main_init_lock);
 }
 void main_fetch_linky_data_task(void *pvParameters)
 {
@@ -244,7 +246,7 @@ void main_fetch_linky_data_task(void *pvParameters)
     esp_pm_lock_release(main_init_lock);
     main_sleep_time = abs(config_values.refreshRate - fetching_time);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
-    esp_pm_dump_locks(stdout);
+    // esp_pm_dump_locks(stdout);
     while (main_sleep_time > 0)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -252,7 +254,7 @@ void main_fetch_linky_data_task(void *pvParameters)
     }
 
     esp_pm_lock_acquire(main_init_lock);
-    esp_pm_dump_locks(stdout);
+    // esp_pm_dump_locks(stdout);
     gpio_peripheral_reinit();
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
@@ -278,7 +280,7 @@ void main_fetch_linky_data_task(void *pvParameters)
       dataArray[dataIndex] = linky_data;
       dataArray[dataIndex++].timestamp = wifi_get_timestamp();
       ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].timestamp);
-      if (dataIndex > 2)
+      if (1)
       {
         char json[1024] = {0};
         web_preapare_json_data(dataArray, dataIndex, json, sizeof(json));
@@ -376,8 +378,16 @@ void main_fetch_linky_data_task(void *pvParameters)
     default:
       break;
     }
-    ESP_LOGW(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
-    ESP_LOGW(MAIN_TAG, "Heap diff: %ld", last_heap - esp_get_free_heap_size());
+    ESP_LOGI(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
+    int32_t diff = last_heap - esp_get_free_heap_size();
+    if (diff > 0)
+    {
+      ESP_LOGW(MAIN_TAG, "Heap: we lost %ld bytes", diff);
+    }
+    else
+    {
+      ESP_LOGI(MAIN_TAG, "Heap: we gained %ld bytes", -diff);
+    }
     last_heap = esp_get_free_heap_size();
   }
 }
