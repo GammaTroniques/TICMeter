@@ -1,39 +1,55 @@
 /**
- * @file
+ * @file led.c
  * @author Dorian Benech
  * @brief
  * @version 1.0
- * @date 2023-10-19
+ * @date 2023-10-11
  *
  * @copyright Copyright (c) 2023 GammaTroniques
  *
  */
 
-#ifndef ZIGBEE_H
-#define ZIGBEE_H
+#ifndef LED_H
+#define LED_H
 
 /*==============================================================================
  Local Include
 ===============================================================================*/
-#include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include <stdio.h>
+#include <stdint.h>
 
-#include "ha/esp_zigbee_ha_standard.h"
-#include "ha/zb_ha_device_config.h"
-#include "zcl/esp_zigbee_zcl_power_config.h"
-#include "linky.h"
 /*==============================================================================
  Public Defines
 ==============================================================================*/
 
-#define LINKY_TIC_ENDPOINT 1
-#define TICMETER_CLUSTER_ID 0xFF42
-#define ZIGBEE_CHANNEL_MASK (1l << 15)
-
 /*==============================================================================
  Public Macro
 ==============================================================================*/
+
+typedef enum
+{
+    LED_COLOR_WHEEL,
+    LED_BOOT,
+    LED_NO_CONFIG,
+    LED_FACTORY_RESET_ADVERT,
+    LED_FACTORY_RESET,
+
+    LED_LINKY_READING,
+    LED_LINKY_FAILED,
+
+    LED_CONNECTING,
+    LED_CONNECTING_FAILED,
+
+    LED_SEND_OK,
+    LED_SENDING,
+    LED_SEND_FAILED,
+
+    LED_PAIRING,
+
+    LED_OTA_AVAILABLE,
+    LED_OTA_IN_PROGRESS,
+
+} led_pattern_t;
 
 /*==============================================================================
  Public Type
@@ -42,12 +58,19 @@
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
-
+extern const uint32_t led_color_mode[];
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
-extern void zigbee_init_stack();
-extern uint8_t zigbee_send(linky_data_t *data);
-void zigbee_start_pairing();
-uint8_t zigbee_factory_reset();
-#endif // ZIGBEE_H
+
+uint32_t led_init();
+
+void led_start_pattern(led_pattern_t pattern);
+
+void led_stop_pattern(led_pattern_t pattern);
+
+void led_set_color(uint32_t color);
+
+void led_usb_event(bool connected);
+
+#endif /* LED_H */

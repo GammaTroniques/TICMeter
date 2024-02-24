@@ -120,6 +120,10 @@ if ser.isOpen():
     dict = responseToDict(response)
     pprint.pprint(dict)
     
+    ser.write("rw\r\n".encode())
+    response = ser.read_until(b"\02")
+    response = ser.read_until(b"\03")
+    
     nTry = 0
     while sendTuya() and nTry < 3:
         print("Try again...")

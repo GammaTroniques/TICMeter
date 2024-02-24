@@ -19,6 +19,8 @@
 #include "lwip/sys.h"
 #include "lwip/netdb.h"
 
+#include "config.h"
+
 #define DNS_PORT (53)
 #define DNS_MAX_LEN (256)
 
@@ -267,5 +269,5 @@ void dns_server_task(void *pvParameters)
 
 void start_dns_server(void)
 {
-    xTaskCreate(dns_server_task, "dns_server", 4096, NULL, 5, NULL);
+    xTaskCreate(dns_server_task, "dns_server", 4096, NULL, PRIORITY_DNS, NULL);
 }

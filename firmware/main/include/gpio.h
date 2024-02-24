@@ -27,6 +27,7 @@
 #define PAIRING_PIN (gpio_num_t)3
 // #define PAIRING_PIN (gpio_num_t)9
 #define BOOT_PIN (gpio_num_t)9
+#define RESET_PIN (gpio_num_t)15
 
 #define LED_EN (gpio_num_t)0
 #define LED_DATA (gpio_num_t)5
@@ -34,17 +35,6 @@
 #define PAIRING_LED_PIN (gpio_num_t)23 // 23 --> unused
 #define LED_RED (gpio_num_t)23
 #define LED_GREEN (gpio_num_t)23
-
-#define PATTERN_WIFI_CONNECTING 0
-#define PATTERN_WIFI_RETRY 1
-#define PATTERN_WIFI_FAILED 2
-#define PATTERN_LINKY_OK 3
-#define PATTERN_LINKY_ERR 4
-#define PATTERN_SEND_OK 5
-#define PATTERN_SEND_ERR 6
-#define PATTERN_NO_CONFIG 7
-#define PATTERN_START 8
-#define PATTERN_PAIRING 9
 
 /*==============================================================================
  Public Macro
@@ -78,6 +68,13 @@ void gpio_init_pins();
 float gpio_get_vusb();
 
 /**
+ * @brief Get the state of the USB
+ *
+ * @return uint8_t: 1 if connected, 0 if not
+ */
+uint8_t gpio_vusb_connected();
+
+/**
  * @brief Get the tension of the condo
  *
  * @return float: voltage in V
@@ -91,54 +88,8 @@ float gpio_get_vcondo();
  */
 void gpio_pairing_button_task(void *pvParameter);
 
-/**
- * @brief Start a led pattern
- *
- * @param pattern: see ledPattern
- */
-void gpio_start_led_pattern(uint8_t pattern);
+void gpio_peripheral_reinit();
 
-/**
- * @brief The blink led task when no config is found
- *
- * @param pvParameters Not used
- */
-void gpio_led_task_no_config(void *pvParameters);
-
-/**
- * @brief The blink led task when wifi is connecting
- *
- * @param pvParameters Not used
- */
-void gpio_led_task_wifi_connecting(void *pvParameters);
-
-/**
- * @brief The blink led task when linky data is fetching
- *
- * @param pvParameters Not used
- */
-void gpio_led_task_linky_reading(void *pvParameters);
-
-/**
- * @brief The blink led task when data is sending
- *
- * @param pvParameters Not used
- */
-void gpio_led_task_sending(void *pvParameters);
-
-/**
- * @brief The blink led task when pairing is in progress
- *
- * @param pvParameters Not used
- */
-void gpio_led_task_pairing(void *pvParameters);
-
-/**
- * @brief Start a led pattern: Blink led when starting with the color of the mode
- *
- */
-void gpio_boot_led_pattern();
-
-void gpio_led_task_ota(void *pvParameters);
+void gpio_start_pariring();
 
 #endif /* __GPIO_H__ */

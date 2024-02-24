@@ -22,6 +22,9 @@
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "string.h"
+#include "esp_zigbee_core.h"
+#include "time.h"
+
 /*==============================================================================
  Public Defines
 ==============================================================================*/
@@ -44,30 +47,30 @@ typedef struct
 {
     //  Variables                   Taille      Unité       Description
     //-----------------------------------------------------------------------
-    char ADCO[13];       //    12                     Adresse du compteur 
-    char OPTARIF[5];     //     4                     Option tarifaire choisie
-    uint16_t ISOUSC;     //     2         A           Intensité souscrite 
+    char ADCO[14];       //    12                     Adresse du compteur 
+    char OPTARIF[6];     //     4                     Option tarifaire choisie
+    uint32_t ISOUSC;     //     2         A           Intensité souscrite 
 
-    uint32_t BASE;       //     9         Wh          Index option Base 
+    uint64_t BASE;       //     9         Wh          Index option Base 
     //----------------------Index option Heures Creuses ----------------------
-    uint32_t HCHC;       //     9         Wh          Index option Heures Creuses: Heures Creuses
-    uint32_t HCHP;       //     9         Wh          Index option Heures Creuses: Heures Pleines
+    uint64_t HCHC;       //     9         Wh          Index option Heures Creuses: Heures Creuses
+    uint64_t HCHP;       //     9         Wh          Index option Heures Creuses: Heures Pleines
     
     //---------------------- Index option EJP  (Effacement des Jours de Pointe) --> 22 jours par an prix du kWh plus cher
-    uint32_t EJPHN;      //     9         Wh          Heures Normales
-    uint32_t EJPHPM;     //     9         Wh          Heures de Pointe Mobile
-    uint32_t PEJP;       //     2         minutes     Préavis Début EJP (30 min)
+    uint64_t EJPHN;      //     9         Wh          Heures Normales
+    uint64_t EJPHPM;     //     9         Wh          Heures de Pointe Mobile
+    uint64_t PEJP;       //     2         minutes     Préavis Début EJP (30 min)
 
     //---------------------- Index option Tempo ----------------------
-    uint32_t BBRHCJB;    //     9         Wh          Heures Creuses Jours Bleus
-    uint32_t BBRHPJB;    //     9         Wh          Heures Pleines Jours Bleus
-    uint32_t BBRHCJW;    //     9         Wh          Heures Creuses Jours Blancs
-    uint32_t BBRHPJW;    //     9         Wh          Heures Pleines Jours Blancs
-    uint32_t BBRHCJR;    //     9         Wh          Heures Creuses Jours Rouges
-    uint32_t BBRHPJR;    //     9         Wh          Heures Pleines Jours Rouges
+    uint64_t BBRHCJB;    //     9         Wh          Heures Creuses Jours Bleus
+    uint64_t BBRHPJB;    //     9         Wh          Heures Pleines Jours Bleus
+    uint64_t BBRHCJW;    //     9         Wh          Heures Creuses Jours Blancs
+    uint64_t BBRHPJW;    //     9         Wh          Heures Pleines Jours Blancs
+    uint64_t BBRHCJR;    //     9         Wh          Heures Creuses Jours Rouges
+    uint64_t BBRHPJR;    //     9         Wh          Heures Pleines Jours Rouges
 
-    char PTEC[5];        //     4                     Période Tarifaire en cours: TH.. Heures Creuses, HP.. Heures Pleines, HC.. Heures Creuses, HN.. Heures Normales, PM.. Heures de Pointe Mobile, HCJB.. Heures Creuses Jours Bleus, HPJB.. Heures Pleines Jours Bleus, HCJW.. Heures Creuses Jours Blancs, HPJW.. Heures Pleines Jours Blancs, HCJR.. Heures Creuses Jours Rouges, HPJR.. Heures Pleines Jours Rouges
-    char DEMAIN[5];      //     4                     Couleur du lendemain 
+    char PTEC[6];        //     4                     Période Tarifaire en cours: TH.. Heures Creuses, HP.. Heures Pleines, HC.. Heures Creuses, HN.. Heures Normales, PM.. Heures de Pointe Mobile, HCJB.. Heures Creuses Jours Bleus, HPJB.. Heures Pleines Jours Bleus, HCJW.. Heures Creuses Jours Blancs, HPJW.. Heures Pleines Jours Blancs, HCJR.. Heures Creuses Jours Rouges, HPJR.. Heures Pleines Jours Rouges
+    char DEMAIN[6];      //     4                     Couleur du lendemain 
 
     uint16_t IINST;      //     3         A           Intensité Instantanée
     uint16_t IINST1;     //     3         A           Intensité Instantanée Phase 1
@@ -86,40 +89,40 @@ typedef struct
     uint32_t PMAX;       //     5         W           Puissance maximale triphasée atteinte 
     uint32_t PPOT;       //     2                     Présence des potentiels??????????????????????????????
 
-    char HHPHC[4];       //     1                     Horaire Heures Pleines Heures Creuses
-    char MOTDETAT[7];    //     6                     Mot d'état du compteur                            
+    char HHPHC[5];       //     1                     Horaire Heures Pleines Heures Creuses
+    char MOTDETAT[8];    //     6                     Mot d'état du compteur                            
 
-} LinkyDataHist;
+} linky_data_hist;
 
 
 typedef struct
 {
     //  Variables                           Taille      Unité       Description
     //--------------------------------------------------------------------------------------
-    char ADSC[13];       //     12                   Adresse Secondaire du Compteur
-    char VTIC[3];        //     2                    Version de la TIC
+    char ADSC[14];       //     12                   Adresse Secondaire du Compteur
+    char VTIC[4];        //     2                    Version de la TIC
     TimeLabel DATE;      //     0                    Date du jour
-    char NGTF[17];       //     16                   Nom du calendrier tarifaire fournisseur
-    char LTARF[17];      //     16                   Libellé du calendrier tarifaire
+    char NGTF[18];       //     16                   Nom du calendrier tarifaire fournisseur
+    char LTARF[18];      //     16                   Libellé du calendrier tarifaire
     
-    uint32_t EAST;       //     9         Wh         Energie active soutirée totale
-    uint32_t EASF01;     //     9         Wh         Energie active soutirée Fournisseur, index 01
-    uint32_t EASF02;     //     9         Wh         Energie active soutirée Fournisseur, index 02
-    uint32_t EASF03;     //     9         Wh         Energie active soutirée Fournisseur, index 03
-    uint32_t EASF04;     //     9         Wh         Energie active soutirée Fournisseur, index 04
-    uint32_t EASF05;     //     9         Wh         Energie active soutirée Fournisseur, index 05
-    uint32_t EASF06;     //     9         Wh         Energie active soutirée Fournisseur, index 06
-    uint32_t EASF07;     //     9         Wh         Energie active soutirée Fournisseur, index 07
-    uint32_t EASF08;     //     9         Wh         Energie active soutirée Fournisseur, index 08
-    uint32_t EASF09;     //     9         Wh         Energie active soutirée Fournisseur, index 09
-    uint32_t EASF10;     //     9         Wh         Energie active soutirée Fournisseur, index 10
+    uint64_t EAST;       //     9         Wh         Energie active soutirée totale
+    uint64_t EASF01;     //     9         Wh         Energie active soutirée Fournisseur, index 01
+    uint64_t EASF02;     //     9         Wh         Energie active soutirée Fournisseur, index 02
+    uint64_t EASF03;     //     9         Wh         Energie active soutirée Fournisseur, index 03
+    uint64_t EASF04;     //     9         Wh         Energie active soutirée Fournisseur, index 04
+    uint64_t EASF05;     //     9         Wh         Energie active soutirée Fournisseur, index 05
+    uint64_t EASF06;     //     9         Wh         Energie active soutirée Fournisseur, index 06
+    uint64_t EASF07;     //     9         Wh         Energie active soutirée Fournisseur, index 07
+    uint64_t EASF08;     //     9         Wh         Energie active soutirée Fournisseur, index 08
+    uint64_t EASF09;     //     9         Wh         Energie active soutirée Fournisseur, index 09
+    uint64_t EASF10;     //     9         Wh         Energie active soutirée Fournisseur, index 10
 
-    uint32_t EASD01;     //      9         Wh         Energie active soutirée Distributeur, index 01
-    uint32_t EASD02;     //      9         Wh         Energie active soutirée Distributeur, index 02
-    uint32_t EASD03;     //      9         Wh         Energie active soutirée Distributeur, index 03
-    uint32_t EASD04;     //      9         Wh         Energie active soutirée Distributeur, index 04
+    uint64_t EASD01;     //      9         Wh         Energie active soutirée Distributeur, index 01
+    uint64_t EASD02;     //      9         Wh         Energie active soutirée Distributeur, index 02
+    uint64_t EASD03;     //      9         Wh         Energie active soutirée Distributeur, index 03
+    uint64_t EASD04;     //      9         Wh         Energie active soutirée Distributeur, index 04
 
-    uint32_t EAIT;       //      9         Wh         Energie active injectée totale
+    uint64_t EAIT;       //      9         Wh         Energie active injectée totale
 
     uint32_t ERQ1;       //      9         Wh         Energie réactive Q1 totale 
     uint32_t ERQ2;       //      9         Wh         Energie réactive Q2 totale
@@ -166,7 +169,7 @@ typedef struct
     TimeLabel UMOY2;     //      3         V          Tension moyenne, phase 2
     TimeLabel UMOY3;     //      3         V          Tension moyenne, phase 3
 
-    char STGE[9];        //      8         -          Registre de Statuts
+    char STGE[10];        //      8         -          Registre de Statuts
 
     TimeLabel DPM1;      //      2         -          Début Pointe Mobile 1
     TimeLabel FPM1;      //      2         -          Fin Pointe Mobile 1
@@ -175,17 +178,17 @@ typedef struct
     TimeLabel DPM3;      //      2         -          Début Pointe Mobile 3
     TimeLabel FPM3;      //      2         -          Fin Pointe Mobile 3
 
-    char MSG1[33];       //      32        -          Message court
-    char MSG2[17];       //      16        -          Message Ultra court 
-    char PRM[15];        //      14        -          PRM En mode standard la TIC retransmet le PRM.
-    char RELAIS[4];      //      3         -          Etat des relais: Les données transmises correspondent à l’état des 8 relais dont 1 réel et 7 virtuels.
-    char NTARF[3];       //      2         -          Numéro de l’index tarifaire en cours
-    char NJOURF[3];      //      2         -          Numéro du jour en cours calendrier fournisseur
-    char NJOURF_1[3];    //      2         -          Numéro du prochain jour calendrier fournisseur
-    char PJOURF_1[99];   //      98        -          Profil du prochain jour calendrier fournisseur 
-    char PPOINTE[99];    //      98        -          Profil du prochain jour de pointe
+    char MSG1[34];       //      32        -          Message court
+    char MSG2[18];       //      16        -          Message Ultra court 
+    char PRM[16];        //      14        -          PRM En mode standard la TIC retransmet le PRM.
+    char RELAIS[5];      //      3         -          Etat des relais: Les données transmises correspondent à l’état des 8 relais dont 1 réel et 7 virtuels.
+    char NTARF[4];       //      2         -          Numéro de l’index tarifaire en cours
+    char NJOURF[4];      //      2         -          Numéro du jour en cours calendrier fournisseur
+    char NJOURF_1[4];    //      2         -          Numéro du prochain jour calendrier fournisseur
+    char PJOURF_1[100];  //      98        -          Profil du prochain jour calendrier fournisseur 
+    char PPOINTE[100];   //      98        -          Profil du prochain jour de pointe
 
-}LinkyDataStd;
+}linky_data_std;
 
 // clang-format on
 typedef enum
@@ -198,16 +201,48 @@ typedef enum
     UINT32_TIME = 12,
     HA_NUMBER = 13,
     BLOB = 14,
-} LinkyLabelType;
+} linky_label_type_t;
 
 typedef enum
 {
-    MODE_HISTORIQUE,
-    MODE_STANDARD,
+    MODE_HIST,
+    MODE_STD,
     AUTO,
     NONE,
     ANY,
 } linky_mode_t;
+
+typedef enum
+{
+    C_ANY,
+    C_BASE,
+    C_HCHP,
+    C_EJP,
+    C_TEMPO,
+} linky_contract_t;
+
+typedef enum
+{
+    T_ANY,
+    T_BASE,
+    T_HC,
+    T_HP,
+    T_HN, // Heure Normale
+    T_PM, // Heure de Pointe Mobile
+    T_HCJB,
+    T_HPJB,
+    T_HCJW,
+    T_HPJW,
+    T_HCJR,
+    T_HPJR,
+} linky_tarif_t;
+
+typedef enum
+{
+    G_ANY,
+    G_MONO,
+    G_TRI,
+} linky_grid_t;
 
 typedef enum
 {
@@ -239,22 +274,26 @@ typedef struct
     const char *name;
     const char *label;
     void *data;
-    const LinkyLabelType type;
+    const linky_label_type_t type;
     const uint8_t size;
     const linky_mode_t mode;
+    const linky_contract_t contract;
+    const linky_grid_t grid;
     const real_time_t realTime;
     const HADeviceClass device_class;
     const char *icon;
     const uint16_t clusterID;
     const uint16_t attributeID;
+    const esp_zb_zcl_attr_access_t zb_access;
+    const esp_zb_zcl_attr_type_t zb_type;
 } LinkyGroup;
 
 typedef struct
 {
-    LinkyDataHist hist;
-    LinkyDataStd std;
+    linky_data_hist hist;
+    linky_data_std std;
     time_t timestamp;
-} LinkyData;
+} linky_data_t;
 
 /*==============================================================================
  Public Variables Declaration
@@ -262,11 +301,17 @@ typedef struct
 extern const char *const HADeviceClassStr[];
 extern const char *const HAUnitsStr[];
 extern const char *const ha_sensors_str[];
+extern const char *const linky_str_contract[];
+extern const char *const linky_str_tarif[];
+extern const char *const linky_str_mode[];
 
 extern const LinkyGroup LinkyLabelList[];
 extern const int32_t LinkyLabelListSize;
-extern LinkyData linky_data; // The data
+
+extern linky_data_t linky_data;
 extern linky_mode_t linky_mode;
+extern linky_contract_t linky_contract;
+
 extern uint8_t linky_tree_phase;
 extern uint8_t linky_reading;
 extern uint8_t linky_want_debug_frame;
@@ -279,7 +324,7 @@ extern uint64_t linky_uptime;
 /**
  * @brief Init the linky
  *
- * @param mode: MODE_HISTORIQUE, MODE_STANDARD OR AUTO
+ * @param mode: MODE_HIST, MODE_STD OR AUTO
  * @param RX: The RX pin of the Linky
  */
 void linky_init(linky_mode_t mode, int RX);
@@ -301,7 +346,7 @@ void linky_print();
 /**
  * @brief Set the current mode of the linky
  *
- * @param mode: MODE_HISTORIQUE or MODE_STANDARD
+ * @param mode: MODE_HIST or MODE_STD
  */
 
 void linky_set_mode(linky_mode_t mode);
@@ -312,5 +357,9 @@ void linky_set_mode(linky_mode_t mode);
  * @return uint8_t 1 if connected, 0 if not
  */
 uint8_t linky_presence();
+
+void linky_print_debug_frame();
+
+linky_contract_t linky_get_contract(linky_data_t *data);
 
 #endif /* Linky_H */

@@ -35,6 +35,27 @@
 #define AP_PASS ""
 #define HOSTNAME "TICMeter"
 
+// smaller number = smaller priority
+
+#define PRIORITY_TEST 1
+#define PRIORITY_ZIGBEE 5 // old 3
+#define PRIORITY_TUYA 3
+#define PRIORITY_SHELL 5
+#define PRIORITY_OTA 10
+#define PRIORITY_MQTT 5
+#define PRIORITY_FETCH_LINKY 1
+#define PRIORITY_PAIRING 1
+#define PRIORITY_DNS 16
+
+#define PRIORITY_LED 5
+#define PRIORITY_LED_PATTERN 5
+#define PRIORITY_LED_PAIRING 5
+#define PRIORITY_LED_WIFI 1
+#define PRIORITY_LED_SENDING 1
+#define PRIORITY_LED_NO_CONFIG 1
+#define PRIORITY_LED_LINKY_READING 10
+#define PRIORITY_STOP_CAPTIVE_PORTAL 5
+
 /*==============================================================================
  Public Macro
 ==============================================================================*/
@@ -44,12 +65,14 @@
 ==============================================================================*/
 typedef enum
 {
+    MODE_NONE,
     MODE_WEB,
     MODE_MQTT,
     MODE_MQTT_HA,
     MODE_ZIGBEE,
-    MODE_MATTER,
     MODE_TUYA,
+    MODE_LAST,
+    MODE_MATTER,
 } connectivity_t;
 
 typedef struct
@@ -84,21 +107,55 @@ typedef struct
     char device_auth[40];
 } tuyaConfig_t;
 
+typedef enum
+{
+    ZIGBEE_NOT_CONFIGURED,
+    ZIGBEE_PAIRING,
+    ZIGBEE_PAIRED,
+    ZIGBEE_WANT_PAIRING,
+} zigbee_pairing_state_t;
+
 typedef struct
 {
+    zigbee_pairing_state_t state;
+
+} zigbee_config_t;
+
+typedef struct
+{
+
+    uint64_t index_01;
+    uint64_t index_02;
+    uint64_t index_03;
+    uint64_t index_04;
+    uint64_t index_05;
+    uint64_t index_06;
+    uint64_t index_07;
+    uint64_t index_08;
+    uint64_t index_09;
+    uint64_t index_10;
+    uint8_t value_saved;
+} index_offset_t;
+
+typedef struct
+{
+    uint8_t initialized; // should be 1 if the config is initialized
     char ssid[50];
     char password[50];
 
     linky_mode_t linkyMode;
+    linky_mode_t last_linky_mode;
     connectivity_t mode;
     webConfig_t web;
     mqttConfig_t mqtt;
     pairing_state_t pairing_state;
     tuyaConfig_t tuya;
+    zigbee_config_t zigbee;
 
     char version[10];
     uint16_t refreshRate;
     uint8_t sleep;
+    index_offset_t index_offset;
 } config_t;
 
 typedef struct
@@ -110,7 +167,7 @@ typedef struct
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
-extern const char *MODES[];
+extern const char *const MODES[];
 extern const char *GIT_TAG;
 extern const char *GIT_REV;
 extern const char *GIT_BRANCH;
@@ -130,4 +187,5 @@ uint8_t config_verify();
 uint8_t config_rw();
 uint8_t config_efuse_read();
 uint8_t config_efuse_write(const char *serialnumber, uint8_t len);
+uint8_t config_factory_reset();
 #endif /* CONFIG_H */

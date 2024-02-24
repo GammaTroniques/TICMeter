@@ -23,9 +23,10 @@
 #include "wifi.h"
 #include "main.h"
 #include "common.h"
-#include "esp_ota_ops.h"
+#include "led.h"
 
 /* BLE */
+#include "esp_ota_ops.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
 #include "host/ble_hs.h"
@@ -235,7 +236,7 @@ void tuya_init()
         ESP_LOGI(TAG, "Tuya already init");
         return;
     }
-    xTaskCreate(tuya_link_app_task, "tuya_link", 1024 * 6, NULL, 4, &tuyaTaskHandle);
+    xTaskCreate(tuya_link_app_task, "tuya_link", 1024 * 6, NULL, PRIORITY_TUYA, &tuyaTaskHandle);
 }
 
 static void tuya_send_callback(int result, void *user_data)
@@ -244,12 +245,122 @@ static void tuya_send_callback(int result, void *user_data)
     *sendComplete = 1;
 }
 
-uint8_t tuya_send_data(LinkyData *linky)
+uint8_t tuya_compute_offset(linky_data_t *linky)
+{
+    ESP_LOGI(TAG, "Compute offset for tuya");
+    if (config_values.index_offset.value_saved == 0)
+    {
+        ESP_LOGI(TAG, "Index offset not saved, skip tuya offset");
+        return 1;
+    }
+    switch (linky_mode)
+    {
+    case MODE_HIST:
+    {
+
+        uint64_t *values[] = {&linky->hist.HCHP, &linky->hist.EJPHN, &linky->hist.EJPHPM, &linky->hist.BBRHCJB, &linky->hist.BBRHPJB, &linky->hist.BBRHCJW, &linky->hist.BBRHPJW, &linky->hist.BBRHCJR, &linky->hist.BBRHPJR};
+        if (linky->hist.BASE != UINT64_MAX)
+        {
+            linky->hist.BASE -= config_values.index_offset.index_01;
+        }
+        else
+        {
+            linky->hist.HCHC -= config_values.index_offset.index_01;
+        }
+
+        uint64_t *index = &config_values.index_offset.index_02;
+        for (int i = 0; i < sizeof(values) / sizeof(values[0]); i++)
+        {
+            if (*values[i] == UINT64_MAX)
+            {
+                continue;
+            }
+            *values[i] -= *index;
+            index++;
+        }
+    }
+    break;
+    case MODE_STD:
+    {
+
+        uint64_t *values[] = {&linky->std.EASF01, &linky->std.EASF02, &linky->std.EASF03, &linky->std.EASF04, &linky->std.EASF05, &linky->std.EASF06, &linky->std.EASF07, &linky->std.EASF08, &linky->std.EASF09, &linky->std.EASF10};
+        uint64_t *index = &config_values.index_offset.index_01;
+        for (int i = 0; i < sizeof(values) / sizeof(values[0]); i++)
+        {
+            if (*values[i] == UINT32_MAX)
+            {
+                continue;
+            }
+            *values[i] -= *index;
+            index++;
+        }
+        break;
+    }
+    default:
+        ESP_LOGE(TAG, "Unknown Linky mode: %d", linky_mode);
+        return 1;
+    }
+    return 0;
+}
+
+uint8_t tuya_send_data(linky_data_t *linky)
 {
     // tuya_iot_reconnect(&client);
     ESP_LOGI(TAG, "Send data to tuya");
     // DynamicJsonDocument device(1024);
     cJSON *jsonObject = cJSON_CreateObject(); // Create the root object
+
+    if (config_values.index_offset.value_saved == 0)
+    {
+        ESP_LOGI(TAG, "Index offset not saved, skip tuya saving...");
+
+        switch (linky_mode)
+        {
+        case MODE_HIST:
+            if (linky->hist.BASE != UINT64_MAX)
+            {
+                config_values.index_offset.index_01 = linky->hist.BASE;
+            }
+            else
+            {
+                config_values.index_offset.index_01 = linky->hist.HCHC;
+            }
+            config_values.index_offset.index_02 = linky->hist.HCHP;
+            config_values.index_offset.index_03 = linky->hist.EJPHN;
+            config_values.index_offset.index_04 = linky->hist.EJPHPM;
+            config_values.index_offset.index_05 = linky->hist.BBRHCJB;
+            config_values.index_offset.index_06 = linky->hist.BBRHPJB;
+            config_values.index_offset.index_07 = linky->hist.BBRHCJW;
+            config_values.index_offset.index_08 = linky->hist.BBRHPJW;
+            config_values.index_offset.index_09 = linky->hist.BBRHCJR;
+            config_values.index_offset.index_10 = linky->hist.BBRHPJR;
+
+            break;
+        case MODE_STD:
+            config_values.index_offset.index_01 = linky->std.EASF01;
+            config_values.index_offset.index_02 = linky->std.EASF02;
+            config_values.index_offset.index_03 = linky->std.EASF03;
+            config_values.index_offset.index_04 = linky->std.EASF04;
+            config_values.index_offset.index_05 = linky->std.EASF05;
+            config_values.index_offset.index_06 = linky->std.EASF06;
+            config_values.index_offset.index_07 = linky->std.EASF07;
+            config_values.index_offset.index_08 = linky->std.EASF08;
+            config_values.index_offset.index_09 = linky->std.EASF09;
+            config_values.index_offset.index_10 = linky->std.EASF10;
+            break;
+        default:
+            ESP_LOGE(TAG, "Unknown Linky mode: %d", linky_mode);
+            break;
+        }
+        config_values.index_offset.value_saved = 1;
+        config_write();
+    }
+
+    if (tuya_compute_offset(linky))
+    {
+        ESP_LOGE(TAG, "Error computing offset for tuya, skip sending data");
+        return 1;
+    }
 
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
@@ -257,9 +368,33 @@ uint8_t tuya_send_data(LinkyData *linky)
         {
             continue; // dont send data for label < 101 : they are not used by tuya
         }
-        if (LinkyLabelList[i].mode != linky_mode)
+        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
         {
             continue; // dont send data for label not used by current mode
+        }
+
+        // TEMP TODO:
+        if (LinkyLabelList[i].id == 108)
+        {
+            continue;
+        }
+
+        if (LinkyLabelList[i].id == 105)
+        {
+
+            switch (linky_mode)
+            {
+            case MODE_HIST:
+                cJSON_AddStringToObject(jsonObject, "105", "Historique");
+                break;
+            case MODE_STD:
+                cJSON_AddStringToObject(jsonObject, "105", "Standard");
+                break;
+            default:
+                cJSON_AddStringToObject(jsonObject, "105", "Unknown");
+                break;
+            }
+            continue;
         }
 
         // json
@@ -326,7 +461,6 @@ uint8_t tuya_send_data(LinkyData *linky)
             break;
         }
     }
-    cJSON_AddNumberToObject(jsonObject, "134", MILLIS / 1000 / 60);
 
     char *json = cJSON_PrintUnformatted(jsonObject); // Convert the json object to string
     cJSON_Delete(jsonObject);                        // Delete the json object
@@ -359,6 +493,7 @@ void tuya_reset()
 
 void tuya_pairing_task(void *pvParameters)
 {
+    config_values.index_offset.value_saved = 0;
     config_values.pairing_state = TUYA_BLE_PAIRING;
     tuya_init();
 
@@ -371,14 +506,14 @@ void tuya_pairing_task(void *pvParameters)
     {
         ESP_LOGI(TAG, "Tuya pairing failed: timeout, current state: %s", EVENT_ID2STR(lastEvent));
         tuya_stop();
-        gpio_start_led_pattern(PATTERN_SEND_ERR);
+        led_start_pattern(LED_SEND_FAILED);
         vTaskDelete(NULL);
     }
 
     config_values.pairing_state = TUYA_PAIRED;
     config_write();
     ESP_LOGI(TAG, "Tuya pairing: %d", config_values.pairing_state);
-    gpio_start_led_pattern(PATTERN_SEND_OK);
+    led_start_pattern(LED_SEND_OK);
     // will restart via main task
     vTaskDelete(NULL);
 }

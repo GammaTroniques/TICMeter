@@ -73,12 +73,12 @@ extern int mqtt_init();
 extern void mqtt_setup_ha_discovery();
 
 /**
- * @brief Send LinkyData to MQTT
+ * @brief Send linky_data_t to MQTT
  *
  * @param linky
  */
 extern int mqtt_send();
 
-extern uint8_t mqtt_prepare_publish(LinkyData *linky);
+extern uint8_t mqtt_prepare_publish(linky_data_t *linky);
 
 #endif /* MQTT_H */

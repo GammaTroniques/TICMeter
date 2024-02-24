@@ -524,7 +524,7 @@ static int run_state_reset(tuya_iot_client_t *client)
 
 int tuya_iot_init(tuya_iot_client_t *client, const tuya_iot_config_t *config)
 {
-    log_set_level(LOG_FATAL);
+    log_set_level(LOG_INFO);
     int ret = OPRT_OK;
     TY_LOGI("tuya_iot_init");
     if (NULL == client || NULL == config)
@@ -826,6 +826,9 @@ int tuya_iot_activated_data_remove(tuya_iot_client_t *client)
     client->event.id = TUYA_EVENT_RESET_COMPLETE;
     client->event.type = TUYA_DATE_TYPE_UNDEFINED;
     iot_dispatch_event(client);
+
+    TY_LOGW("Clear local storage...");
+    local_storage_clear();
 
     return OPRT_OK;
 }

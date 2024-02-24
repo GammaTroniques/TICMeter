@@ -1,12 +1,14 @@
 {
   "idf.adapterTargetName": "esp32c6",
   "idf.flashType": "UART",
-  "idf.portWin": "COM31",
+  "idf.portWin": "COM16",
   "idf.espIdfPathWin": "C:\\Espressif\\ESP-IDF\\esp-idf",
   "idf.toolsPathWin": "c:\\Espressif\\IDF_TOOLS_PATH",
   "C_Cpp.intelliSenseEngine": "default",
   "idf.port": "/dev/ttyACM0",
   "idf.gitPathWin": "c:\\Espressif\\IDF_TOOLS_PATH\\tools\\idf-git\\2.39.2\\cmd\\git.exe",
+  "C_Cpp.autoAddFileAssociations": false,
+  "idf.flashBaudRate": "1000000",
   "files.associations": {
     "*.yaml": "home-assistant"
   }

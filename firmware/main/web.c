@@ -16,6 +16,7 @@
 #include "config.h"
 #include "gpio.h"
 #include "wifi.h"
+#include "led.h"
 
 /*==============================================================================
  Local Define
@@ -48,7 +49,7 @@ Public Variable
 Function Implementation
 ===============================================================================*/
 
-void web_preapare_json_data(LinkyData *data, char dataIndex, char *json, unsigned int jsonSize)
+void web_preapare_json_data(linky_data_t *data, char dataIndex, char *json, unsigned int jsonSize)
 {
     cJSON *jsonObject = cJSON_CreateObject(); // Create the root object
     cJSON_AddStringToObject(jsonObject, "TOKEN", config_values.web.token);
@@ -59,7 +60,7 @@ void web_preapare_json_data(LinkyData *data, char dataIndex, char *json, unsigne
         cJSON *dataItem = cJSON_CreateObject();
         switch (linky_mode)
         {
-        case MODE_HISTORIQUE:
+        case MODE_HIST:
             cJSON_AddNumberToObject(dataItem, "DATE", data[i].timestamp);
             cJSON_AddStringToObject(dataItem, "ADCO", data[i].hist.ADCO);
             cJSON_AddStringToObject(dataItem, "OPTARIF", data[i].hist.OPTARIF);
@@ -77,8 +78,8 @@ void web_preapare_json_data(LinkyData *data, char dataIndex, char *json, unsigne
             cJSON_AddStringToObject(dataItem, "HHPHC", data[i].hist.HHPHC);
             cJSON_AddStringToObject(dataItem, "MOTDETAT", data[i].hist.MOTDETAT);
             break;
-        case MODE_STANDARD:
-            ESP_LOGI("WEB", "MODE_STANDARD not implemented yet");
+        case MODE_STD:
+            ESP_LOGI("WEB", "MODE_STD not implemented yet");
             break;
         default:
             break;
@@ -125,8 +126,7 @@ uint8_t wifi_send_to_server(const char *json)
         ESP_LOGE(TAG, "host or postUrl not set");
         return 0;
     }
-    wifi_sending = 1;
-    xTaskCreate(gpio_led_task_sending, "gpio_led_task_sending", 2048, NULL, 1, NULL);
+    led_start_pattern(LED_SENDING);
 
     char url[100] = {0};
     web_create_http_url(url, config_values.web.host, config_values.web.postUrl);
@@ -146,7 +146,9 @@ uint8_t wifi_send_to_server(const char *json)
     // send post request
     esp_http_client_perform(client);
     esp_http_client_cleanup(client);
-    wifi_sending = 0;
+
+    led_stop_pattern(LED_SENDING);
+    led_start_pattern(LED_SEND_OK);
     return 1;
 }
 
