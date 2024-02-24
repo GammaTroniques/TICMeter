@@ -12,8 +12,7 @@
 /*==============================================================================
  Local Include
 ===============================================================================*/
-#include "zigbee.h"
-#include "gpio.h"
+
 #include "esp_zigbee_core.h"
 #include "esp_app_desc.h"
 #include <stdio.h>
@@ -24,7 +23,11 @@
 #include "esp_check.h"
 #include "esp_pm.h"
 
+#include "zigbee.h"
+#include "gpio.h"
+#include "led.h"
 #include "config.h"
+#include "main.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -61,6 +64,7 @@ static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback
 static void zigbee_task(void *pvParameters);
 static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length);
 static void zigbee_send_first_datas(void *pvParameters);
+static void zigbee_print_value(char *out_buffer, void *data, linky_label_type_t type);
 
 /*==============================================================================
 Public Variable
@@ -109,24 +113,13 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             {
                 ESP_LOGI(TAG, "Start network steering");
                 esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
+                led_start_pattern(LED_PAIRING);
+                suspendTask(main_task_handle);
             }
             else
             {
                 ESP_LOGI(TAG, "Device rebooted");
             }
-            // TODO: move this somewhere
-            // switch (config_values.zigbee.state)
-            // {
-            // case ZIGBEE_WANT_PAIRING:
-            //     // xTaskCreate(gpio_led_task_pairing, "gpio_led_task_pairing", 4 * 1024, NULL, PRIORITY_LED_PAIRING, &gpio_led_pairing_task_handle);
-            //     //  fall through
-            // case ZIGBEE_PAIRING:
-            //     ESP_LOGI(TAG, "Start network steering");
-            //     esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
-            //     break;
-            // default:
-            //     break;
-            // }
         }
         else
         {
@@ -150,6 +143,8 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                 ESP_LOGI(TAG, "Zigbee paired");
                 config_values.zigbee.state = ZIGBEE_PAIRED;
                 config_write();
+                led_stop_pattern(LED_PAIRING);
+                resumeTask(main_task_handle);
             }
             zigbee_state = ZIGBEE_CONNECTED;
             // xTaskCreate(zigbee_send_first_datas, "zigbee_send_first_datas", 4 * 1024, NULL, PRIORITY_ZIGBEE, NULL);
@@ -487,7 +482,7 @@ static void zigbee_task(void *pvParameters)
 
 static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length)
 {
-    ESP_LOGW(TAG, "zigbee_report_attribute: 0x%x, attribute: 0x%x, value: %llu, length: %d", clusterID, attributeID, *(uint64_t *)value, value_length);
+    // ESP_LOGW(TAG, "zigbee_report_attribute: 0x%x, attribute: 0x%x, value: %llu, length: %d", clusterID, attributeID, *(uint64_t *)value, value_length);
     esp_zb_zcl_report_attr_cmd_t cmd = {
         .zcl_basic_cmd = {
             .dst_addr_u = {
@@ -504,7 +499,7 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
     esp_zb_zcl_attr_t *value_r = esp_zb_zcl_get_attribute(endpoint, clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, attributeID);
     if (value_r == NULL)
     {
-        ESP_LOGE(TAG, "Attribute not found");
+        ESP_LOGE(TAG, "Attribute not found: 0x%x, attribute: 0x%x", clusterID, attributeID);
         return;
     }
     memcpy(value_r->data_p, value, value_length);
@@ -618,9 +613,11 @@ uint8_t zigbee_send(linky_data_t *data)
         ESP_LOGD(TAG, "Send %s", LinkyLabelList[i].label);
 
         esp_zb_zcl_status_t status = ESP_ZB_ZCL_STATUS_SUCCESS;
+        char str_value[102];
         if (LinkyLabelList[i].zb_access == ESP_ZB_ZCL_ATTR_ACCESS_REPORTING)
         {
-            ESP_LOGI(TAG, "Repporting cluster: 0x%x, attribute: 0x%x, name: %s, value: %llu", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
+            zigbee_print_value(str_value, LinkyLabelList[i].data, LinkyLabelList[i].type);
+            ESP_LOGI(TAG, "Repporting cluster: 0x%x, attribute: 0x%x, name: %s, value: %s", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, str_value);
             uint8_t size;
             switch (LinkyLabelList[i].zb_type)
             {
@@ -674,6 +671,8 @@ uint8_t zigbee_send(linky_data_t *data)
         zigbee_report_attribute(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, sizeof(zigbee_summation_delivered));
     }
 
+    led_start_pattern(LED_SEND_OK);
+
     return 0;
 }
 
@@ -723,4 +722,28 @@ uint8_t zigbee_factory_reset()
     config_write();
     ESP_LOGI(TAG, "Zigbee factory reset done");
     return 0;
+}
+
+static void zigbee_print_value(char *out_buffer, void *data, linky_label_type_t type)
+{
+    switch (type)
+    {
+    case UINT8:
+        sprintf(out_buffer, "%u", *(uint8_t *)data);
+        break;
+    case UINT16:
+        sprintf(out_buffer, "%u", *(uint16_t *)data);
+        break;
+    case UINT32:
+        sprintf(out_buffer, "%lu", *(uint32_t *)data);
+        break;
+    case UINT64:
+        sprintf(out_buffer, "%llu", *(uint64_t *)data);
+        break;
+    case STRING:
+        sprintf(out_buffer, "%s", (char *)data);
+        break;
+    default:
+        break;
+    };
 }

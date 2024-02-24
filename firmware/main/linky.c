@@ -128,14 +128,14 @@ const LinkyGroup LinkyLabelList[] =
     {000, "Dépassement Intensité Phase 3",   "ADIR3",       &linky_data.hist.ADIR3,        UINT16,       0, MODE_HIST, C_ANY,   G_TRI,  STATIC_VALUE,  CURRENT,     "",                                    0xFF42, 0x0007,  ZB_RP, ZB_UINT16,   },
 
     {122, "Puissance apparente",             "PAPP",        &linky_data.hist.PAPP,         UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  REAL_TIME,     POWER_VA,    "",                                    0x0B04, 0x050F,  ZB_RP, ZB_UINT16,   },
-    {135, "Puissance maximale triphasée",    "PMAX",        &linky_data.hist.PMAX,         UINT32,       0, MODE_HIST, C_ANY,   G_TRI,  STATIC_VALUE,  POWER_W,     "",                                    0x0B04, 0x050D,  ZB_RO, ZB_INT16,    },
-    {000, "Présence des potentiels",         "PPOT",        &linky_data.hist.PPOT,         UINT32,       0, MODE_HIST, C_ANY,   G_TRI,  REAL_TIME,     NONE_CLASS,  "",                                    0xFF42, 0x0008,  ZB_RO, ZB_UINT32,   }, //TODO: check
+    {135, "Puissance maximale triphasée",    "PMAX",        &linky_data.hist.PMAX,         UINT32,       0, MODE_HIST, C_ANY,   G_TRI,  STATIC_VALUE,  POWER_W,     "",                                    0x0B04, 0x050D,  ZB_RP, ZB_INT16,    },
+    {000, "Présence des potentiels",         "PPOT",        &linky_data.hist.PPOT,         UINT32,       0, MODE_HIST, C_ANY,   G_TRI,  REAL_TIME,     NONE_CLASS,  "",                                    0xFF42, 0x0008,  ZB_RP, ZB_UINT32,   }, //TODO: check
 
-    {000, "Horaire Heures Creuses",          "HHPHC",       &linky_data.hist.HHPHC,        STRING,       3, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:home-clock",                      0xFF42, 0x0009,  ZB_RO, ZB_OCTSTR,   },
-    {000, "Mot d'état du compteur",          "MOTDETAT",    &linky_data.hist.MOTDETAT,     STRING,       6, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x000A,  ZB_RO, ZB_OCTSTR,   },
+    {000, "Horaire Heures Creuses",          "HHPHC",       &linky_data.hist.HHPHC,        STRING,       3, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:home-clock",                      0xFF42, 0x0009,  ZB_RP, ZB_OCTSTR,   },
+    {000, "Mot d'état du compteur",          "MOTDETAT",    &linky_data.hist.MOTDETAT,     STRING,       6, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x000A,  ZB_RP, ZB_OCTSTR,   },
 
     //------------------------ MODE STANDARD ----------------------- 
-    {101, "Identifiant",                     "ADSC",        &linky_data.std.ADSC,          STRING,      12, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",            0x0702, 0x0308,  ZB_RO, ZB_OCTSTR,   },
+    {101, "Identifiant",                     "ADSC",        &linky_data.std.ADSC,          STRING,      12, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",            0x0702, 0x0308,  ZB_RP, ZB_OCTSTR,   },
     {000, "Version de la TIC",               "VTIC",        &linky_data.std.VTIC,          STRING,       2, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:tag",                             0x0B01, 0x000A,  ZB_NO, ZB_OCTSTR,   }, //TODO: zigbee: when  Meter Identification cluster
     {000, "Date et heure courante",          "DATE",        &linky_data.std.DATE,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:clipboard-text-clock",            0xFF42, 0x000B,  ZB_RP, ZB_OCTSTR,   },
     {107, "Nom du calendrier tarifaire",     "NGTF",        &linky_data.std.NGTF,          STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",                  0xFF42, 0x000C,  ZB_NO, ZB_OCTSTR,   },
@@ -213,23 +213,23 @@ const LinkyGroup LinkyLabelList[] =
     {000, "Début Pointe Mobile 3",           "DPM3",        &linky_data.std.DPM3,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0020,  ZB_NO, ZB_UINT8,    },
     {000, "Fin Pointe Mobile 3",             "FPM3",        &linky_data.std.FPM3,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0021,  ZB_NO, ZB_UINT8,    },
 
-    {000, "Message court",                   "MSG1",        &linky_data.std.MSG1,          STRING,      32, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:message-text-outline",            0xFF42, 0x0022,  ZB_RO, ZB_CHARSTR,  },
-    {000, "Message Ultra court",             "MSG2",        &linky_data.std.MSG2,          STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:message-outline",                 0xFF42, 0x0023,  ZB_RO, ZB_CHARSTR,  },
-    {000, "PRM",                             "PRM",         &linky_data.std.PRM,           STRING,      14, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0702, 0x0307,  ZB_RO, ZB_CHARSTR,  },
-    {000, "Relais",                          "RELAIS",      &linky_data.std.RELAIS,        STRING,       3, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:toggle-switch-outline",           0xFF42, 0x0024,  ZB_RO, ZB_UINT16,   },
+    {000, "Message court",                   "MSG1",        &linky_data.std.MSG1,          STRING,      32, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:message-text-outline",            0xFF42, 0x0022,  ZB_RP, ZB_CHARSTR,  },
+    {000, "Message Ultra court",             "MSG2",        &linky_data.std.MSG2,          STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:message-outline",                 0xFF42, 0x0023,  ZB_RP, ZB_CHARSTR,  },
+    {000, "PRM",                             "PRM",         &linky_data.std.PRM,           STRING,      14, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0702, 0x0307,  ZB_RP, ZB_CHARSTR,  },
+    {000, "Relais",                          "RELAIS",      &linky_data.std.RELAIS,        STRING,       3, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:toggle-switch-outline",           0xFF42, 0x0024,  ZB_RP, ZB_UINT16,   },
     {000, "Index tarifaire en cours",        "NTARF",       &linky_data.std.NTARF,         STRING,       2, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0025,  ZB_NO, ZB_UINT8,    },
     {000, "N° jours en cours fournisseur",   "NJOURF",      &linky_data.std.NJOURF,        STRING,       2, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0026,  ZB_NO, ZB_UINT8     },
     {000, "N° prochain jour fournisseur",    "NJOURF+1",    &linky_data.std.NJOURF_1,      STRING,       2, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0027,  ZB_NO, ZB_UINT8     },
     {000, "Profil du prochain jour",         "PJOURF+1",    &linky_data.std.PJOURF_1,      STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0x0000, 0x0000,  ZB_NO, ZB_CHARSTR   },
     {000, "Profil du prochain jour pointe",  "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      98, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0x0000, 0x0000,  ZB_NO, ZB_CHARSTR   },
     //---------------------------Home Assistant Specific ------------------------------------------------
-    {103, "Temps d'actualisation",           "now-refresh", &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {103, "Temps d'actualisation",           "now-refresh", &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0xFF42, 0x0002,  ZB_RP, ZB_UINT16    },
     {000, "Temps d'actualisation",           "set-refresh", &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {105, "Mode TIC",                        "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {106, "Mode Electrique",                 "mode-elec",   &linky_tree_phase,             UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {000, "Dernière actualisation",          "timestamp",    &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                   0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {104, "Temps de fonctionnement",         "uptime",       &linky_uptime,                 UINT64,       0,      ANY,  C_ANY,   G_ANY,     REAL_TIME,  TIME,        "mdi:clock-time-eight-outline",       0xFF42, 0x0028,  ZB_RP, ZB_UINT48    },
-    {000, "Free RAM",                        "free-ram",     &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,     REAL_TIME,  BYTES,       "",                                   0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {105, "Mode TIC",                        "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0029,  ZB_RP, ZB_UINT8     },
+    {106, "Mode Electrique",                 "mode-elec",   &linky_tree_phase,             UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x002a,  ZB_RP, ZB_UINT8     },
+    {000, "Dernière actualisation",          "timestamp",   &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {104, "Temps de fonctionnement",         "uptime",      &linky_uptime,                 UINT64,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     TIME,        "mdi:clock-time-eight-outline",        0xFF42, 0x0028,  ZB_RP, ZB_UINT48    },
+    {000, "Free RAM",                        "free-ram",    &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     BYTES,       "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
@@ -1031,6 +1031,10 @@ static void linky_clear_data()
             continue;
         }
         if (LinkyLabelList[i].data == &linky_mode)
+        {
+            continue;
+        }
+        if (LinkyLabelList[i].data == &linky_uptime)
         {
             continue;
         }

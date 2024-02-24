@@ -7,6 +7,6 @@
 void deleteTask(TaskHandle_t task);
 void suspendTask(TaskHandle_t task);
 void resumeTask(TaskHandle_t task);
-void hard_reset();
+void hard_restart();
 
 #endif

@@ -73,12 +73,17 @@ void debug_loop(void *);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
-TaskHandle_t fetchLinkyDataTaskHandle = NULL;
+TaskHandle_t main_task_handle = NULL;
 uint32_t main_sleep_time = 99999;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
 static esp_pm_lock_handle_t main_init_lock;
+
+#define MAX_DATA_INDEX 5
+linky_data_t main_data_array[MAX_DATA_INDEX];
+unsigned int main_data_index = 0;
+uint64_t main_next_update_check;
 
 /*==============================================================================
 Function Implementation
@@ -98,12 +103,11 @@ void app_main(void)
 
   if (config_values.mode != MODE_ZIGBEE) // TODO: check why in zigbee mode, the wifi_init is not working
   {
-    wifi_init();
     shell_init();
+    wifi_init();
   }
   else
   {
-
     if (gpio_vusb_connected())
     {
       shell_init();
@@ -118,7 +122,6 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
-  // linky_want_debug_frame = 2; // TODO: remove this
   if (!linky_update())
   {
     ESP_LOGE(MAIN_TAG, "Cant find Linky");
@@ -136,7 +139,7 @@ void app_main(void)
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config_verify())
     {
-      // led_start_pattern(LED_NO_CONFIG);
+      led_start_pattern(LED_NO_CONFIG);
       vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
     if (config_values.mode == MODE_WEB)
@@ -207,18 +210,14 @@ void app_main(void)
     break;
   }
   // start linky fetch task
-  xTaskCreate(main_fetch_linky_data_task, "main_fetch_linky_data_task", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &fetchLinkyDataTaskHandle); // start linky task
+  xTaskCreate(main_task, "main_task_handle", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &main_task_handle); // start linky task
   esp_pm_lock_release(main_init_lock);
 }
-void main_fetch_linky_data_task(void *pvParameters)
+void main_task(void *pvParameters)
 {
   ESP_LOGI(MAIN_TAG, "Starting fetch linky data task");
-#define MAX_DATA_INDEX 5
-  linky_data_t dataArray[MAX_DATA_INDEX];
-  unsigned int dataIndex = 0;
-
   uint32_t last_heap = esp_get_free_heap_size();
-  uint64_t next_update_check = MILLIS;
+  main_next_update_check = MILLIS;
 
   int32_t fetching_time = 0;
   switch (config_values.mode)
@@ -243,10 +242,18 @@ void main_fetch_linky_data_task(void *pvParameters)
 
   while (1)
   {
-    esp_pm_lock_release(main_init_lock);
+    ESP_LOGI(MAIN_TAG, "USB: %d", gpio_vusb_connected());
+
+    if (config_values.mode == MODE_ZIGBEE)
+    {
+      config_values.refreshRate = 30;
+    }
+
     main_sleep_time = abs(config_values.refreshRate - fetching_time);
+
+    esp_pm_dump_locks(stdout);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
-    // esp_pm_dump_locks(stdout);
+    esp_pm_lock_release(main_init_lock);
     while (main_sleep_time > 0)
     {
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -255,12 +262,11 @@ void main_fetch_linky_data_task(void *pvParameters)
 
     esp_pm_lock_acquire(main_init_lock);
     // esp_pm_dump_locks(stdout);
-    gpio_peripheral_reinit();
+    gpio_peripheral_reinit(); // TODO: enable this
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
 
-    if (!linky_update() ||
-        !linky_presence())
+    if (!linky_update() || !linky_presence())
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed");
       led_start_pattern(LED_LINKY_FAILED);
@@ -268,116 +274,8 @@ void main_fetch_linky_data_task(void *pvParameters)
 
     linky_uptime = esp_timer_get_time() / 1000000;
 
-    switch (config_values.mode)
-    {
-    case MODE_WEB:
-    {
-      // send data to web server
-      if (dataIndex >= MAX_DATA_INDEX)
-      {
-        dataIndex = 0;
-      }
-      dataArray[dataIndex] = linky_data;
-      dataArray[dataIndex++].timestamp = wifi_get_timestamp();
-      ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", dataIndex, dataArray[0].timestamp);
-      if (1)
-      {
-        char json[1024] = {0};
-        web_preapare_json_data(dataArray, dataIndex, json, sizeof(json));
-        ESP_LOGI(MAIN_TAG, "Sending data to server");
-        if (wifi_connect())
-        {
-          ESP_LOGI(MAIN_TAG, "POST: %s", json);
-          wifi_send_to_server(json);
-        }
-        if (gpio_vusb_connected())
-        {
-          ota_version_t version;
-          ota_get_latest(&version);
-        }
-        wifi_disconnect();
-        dataIndex = 0;
-      }
-      break;
-    }
-    case MODE_MQTT:
-    case MODE_MQTT_HA: // send data to mqtt server
-    {
-      linky_free_heap_size = esp_get_free_heap_size();
-      uint8_t ret = mqtt_prepare_publish(&linky_data);
-      if (ret == 0)
-      {
-        ESP_LOGE(MAIN_TAG, "Some data will not be sent, but we continue");
-      }
-      ret = wifi_connect();
-      if (ret == 0)
-      {
-        ESP_LOGE(MAIN_TAG, "Wifi connection failed");
-        goto send_error;
-      }
-      ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
-      ret = mqtt_send();
-      if (ret == 0)
-      {
-        ESP_LOGE(MAIN_TAG, "MQTT send failed");
-        goto send_error;
-      }
+    main_send_data();
 
-      if (gpio_vusb_connected() && next_update_check < MILLIS)
-      {
-        ESP_LOGI(MAIN_TAG, "Checking for update");
-        next_update_check = MILLIS + 3600000;
-        ota_version_t version;
-        ota_get_latest(&version);
-      }
-      wifi_disconnect();
-      led_start_pattern(LED_SEND_OK);
-      break;
-
-    send_error:
-      wifi_disconnect();
-      led_start_pattern(LED_SEND_FAILED);
-      break;
-    }
-    case MODE_TUYA:
-      if (wifi_connect())
-      {
-        ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
-        resumeTask(tuyaTaskHandle); // resume tuya task
-        if (tuya_wait_event(TUYA_EVENT_MQTT_CONNECTED, 10000))
-        {
-          ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
-          led_start_pattern(LED_SEND_FAILED);
-          goto tuya_disconect;
-        }
-
-        if (tuya_send_data(&linky_data))
-        {
-          ESP_LOGE(MAIN_TAG, "Tuya SEND ERROR");
-          led_start_pattern(LED_SEND_FAILED);
-          goto tuya_disconect;
-        }
-      tuya_disconect:
-        // tuya_stop();
-        // tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
-        if (gpio_vusb_connected() && next_update_check < MILLIS)
-        {
-          ESP_LOGI(MAIN_TAG, "Checking for update");
-          next_update_check = MILLIS + 3600000;
-          ota_version_t version;
-          ota_get_latest(&version);
-        }
-        wifi_disconnect();
-        suspendTask(tuyaTaskHandle);
-        led_start_pattern(LED_SEND_OK);
-      }
-      break;
-    case MODE_ZIGBEE:
-      zigbee_send(&linky_data);
-      break;
-    default:
-      break;
-    }
     ESP_LOGI(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
     int32_t diff = last_heap - esp_get_free_heap_size();
     if (diff > 0)
@@ -399,4 +297,119 @@ void debug_loop(void *)
     vTaskDelay(1000 / portTICK_PERIOD_MS);
     esp_pm_dump_locks(stdout);
   }
+}
+
+esp_err_t main_send_data()
+{
+  switch (config_values.mode)
+  {
+  case MODE_WEB:
+  {
+    // send data to web server
+    if (main_data_index >= MAX_DATA_INDEX)
+    {
+      main_data_index = 0;
+    }
+    main_data_array[main_data_index] = linky_data;
+    main_data_array[main_data_index++].timestamp = wifi_get_timestamp();
+    ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", main_data_index, main_data_array[0].timestamp);
+    if (1)
+    {
+      char json[1024] = {0};
+      web_preapare_json_data(main_data_array, main_data_index, json, sizeof(json));
+      ESP_LOGI(MAIN_TAG, "Sending data to server");
+      if (wifi_connect())
+      {
+        ESP_LOGI(MAIN_TAG, "POST: %s", json);
+        wifi_send_to_server(json);
+      }
+      if (gpio_vusb_connected())
+      {
+        ota_version_t version;
+        ota_get_latest(&version);
+      }
+      wifi_disconnect();
+      main_data_index = 0;
+    }
+    break;
+  }
+  case MODE_MQTT:
+  case MODE_MQTT_HA: // send data to mqtt server
+  {
+    linky_free_heap_size = esp_get_free_heap_size();
+    uint8_t ret = mqtt_prepare_publish(&linky_data);
+    if (ret == 0)
+    {
+      ESP_LOGE(MAIN_TAG, "Some data will not be sent, but we continue");
+    }
+    ret = wifi_connect();
+    if (ret == 0)
+    {
+      ESP_LOGE(MAIN_TAG, "Wifi connection failed");
+      goto send_error;
+    }
+    ESP_LOGI(MAIN_TAG, "Sending data to MQTT");
+    ret = mqtt_send();
+    if (ret == 0)
+    {
+      ESP_LOGE(MAIN_TAG, "MQTT send failed");
+      goto send_error;
+    }
+
+    if (gpio_vusb_connected() && main_next_update_check < MILLIS)
+    {
+      ESP_LOGI(MAIN_TAG, "Checking for update");
+      main_next_update_check = MILLIS + 3600000;
+      ota_version_t version;
+      ota_get_latest(&version);
+    }
+    wifi_disconnect();
+    led_start_pattern(LED_SEND_OK);
+    break;
+
+  send_error:
+    wifi_disconnect();
+    led_start_pattern(LED_SEND_FAILED);
+    break;
+  }
+  case MODE_TUYA:
+    if (wifi_connect())
+    {
+      ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
+      resumeTask(tuyaTaskHandle); // resume tuya task
+      if (tuya_wait_event(TUYA_EVENT_MQTT_CONNECTED, 10000))
+      {
+        ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
+        led_start_pattern(LED_SEND_FAILED);
+        goto tuya_disconect;
+      }
+
+      if (tuya_send_data(&linky_data))
+      {
+        ESP_LOGE(MAIN_TAG, "Tuya SEND ERROR");
+        led_start_pattern(LED_SEND_FAILED);
+        goto tuya_disconect;
+      }
+    tuya_disconect:
+      // tuya_stop();
+      // tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
+      if (gpio_vusb_connected() && main_next_update_check < MILLIS)
+      {
+        ESP_LOGI(MAIN_TAG, "Checking for update");
+        main_next_update_check = MILLIS + 3600000;
+        ota_version_t version;
+        ota_get_latest(&version);
+      }
+      wifi_disconnect();
+      suspendTask(tuyaTaskHandle);
+      led_start_pattern(LED_SEND_OK);
+    }
+    break;
+  case MODE_ZIGBEE:
+    zigbee_send(&linky_data);
+    break;
+  default:
+    break;
+  }
+  return ESP_OK;
 }

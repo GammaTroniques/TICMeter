@@ -26,7 +26,7 @@ void resumeTask(TaskHandle_t task)
     }
 }
 
-void hard_reset()
+void hard_restart()
 {
     gpio_set_direction(RESET_PIN, GPIO_MODE_OUTPUT);
     gpio_set_level(RESET_PIN, 0);
