@@ -15,6 +15,7 @@
 #include "wifi.h"
 #include "http.h"
 #include "gpio.h"
+#include "led.h"
 #include "dns_server.h"
 #include "gpio.h"
 #include "driver/gpio.h"
@@ -57,7 +58,6 @@ static void stop_captive_portal_task(void *pvParameter);
 Public Variable
 ===============================================================================*/
 wifi_state_t wifi_state = WIFI_DISCONNECTED;
-uint8_t wifi_sending = 0;
 uint32_t wifi_timeout_counter = 0;
 
 /*==============================================================================
@@ -140,7 +140,7 @@ uint8_t wifi_connect()
     }
 
     wifi_state = WIFI_CONNECTING;
-    // xTaskCreate(gpio_led_task_wifi_connecting, "gpio_led_task_wifi_connecting", 4096, NULL, 1, NULL); // start wifi connect led task
+    led_start_pattern(LED_CONNECTING);
 
     s_retry_num = 0;
     xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
@@ -199,6 +199,9 @@ uint8_t wifi_connect()
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
+
+    led_stop_pattern(LED_CONNECTING);
+
     if (bits & WIFI_CONNECTED_BIT)
     {
         ESP_LOGI(TAG, "Connected to ap SSID:%s", (char *)wifi_config.sta.ssid);
@@ -209,6 +212,7 @@ uint8_t wifi_connect()
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
         wifi_disconnect();
+        led_start_pattern(LED_CONNECTING_FAILED);
         return 0;
     }
     else
@@ -216,7 +220,7 @@ uint8_t wifi_connect()
         ESP_LOGE(TAG, "Failed to connect to SSID:%s Timeout", (char *)wifi_config.sta.ssid);
         wifi_timeout_counter++;
         wifi_state = WIFI_FAILED;
-        // gpio_start_led_pattern(PATTERN_WIFI_FAILED);
+        led_start_pattern(LED_CONNECTING_FAILED);
         wifi_disconnect();
         return 0;
     }
@@ -266,7 +270,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         {
             xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
             ESP_LOGE(TAG, "Connect to the AP fail");
-            gpio_start_led_pattern(PATTERN_WIFI_FAILED);
+            led_start_pattern(LED_CONNECTING_FAILED);
             wifi_state = WIFI_FAILED;
         }
     }
@@ -378,11 +382,11 @@ static void wifi_init_softap(void)
     // read MAC address
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
-    sprintf(ssid, "%s_%02X%02X%02X", AP_SSID, mac[3], mac[4], mac[5]);
+    sprintf(ssid, "%s %s", AP_SSID, efuse_values.macAddress + 6);
 
     strncpy((char *)wifi_config.ap.ssid, ssid, sizeof(wifi_config.ap.ssid));
     strncpy((char *)wifi_config.ap.password, AP_PASS, sizeof(wifi_config.ap.password));
-    wifi_config.ap.ssid_len = strlen(AP_SSID);
+    wifi_config.ap.ssid_len = strlen(ssid);
     wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
     wifi_config.ap.max_connection = 4;
     if (strlen(AP_PASS) == 0)
@@ -409,7 +413,7 @@ static void stop_captive_portal_task(void *pvParameter)
 
     while (1)
     {
-        if (gpio_get_vusb() < 3)
+        if (!gpio_vusb_connected())
         {
             readCount++;
         }
@@ -417,7 +421,7 @@ static void stop_captive_portal_task(void *pvParameter)
         {
             readCount = 0;
         }
-        if (readCount > 3)
+        if (readCount > 6)
         {
             ESP_LOGI(TAG, "VUSB is not connected, stop captive portal");
             esp_restart();
@@ -425,14 +429,14 @@ static void stop_captive_portal_task(void *pvParameter)
         // gpio_set_level(LED_GREEN, 1);
         // vTaskDelay(50 / portTICK_PERIOD_MS);
         // gpio_set_level(LED_GREEN, 0);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
     }
 }
 
 void wifi_start_captive_portal()
 {
     ESP_LOGI(TAG, "Start captive portal");
-    xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, 1, NULL);
+    xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, PRIORITY_STOP_CAPTIVE_PORTAL, NULL);
     // // Initialize networking stack
     // ESP_ERROR_CHECK(esp_netif_init());
 

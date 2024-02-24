@@ -43,7 +43,7 @@ extern void tuya_reset();
 extern void tuya_pairing_task(void *pvParameters);
 extern void tuya_init();
 extern uint8_t tuya_stop();
-extern uint8_t tuya_send_data(LinkyData *linky);
+extern uint8_t tuya_send_data(linky_data_t *linky);
 extern uint8_t tuya_wait_event(tuya_event_id_t event, uint32_t timeout);
 
 #endif

@@ -24,6 +24,8 @@
 #include "nvs_flash.h"
 #include "esp_private/periph_ctrl.h"
 #include "soc/periph_defs.h"
+#include "esp_pm.h"
+#include "led.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -111,6 +113,12 @@ static int efuse_write(int argc, char **argv);
 static int nvs_stats(int argc, char **argv);
 static int print_task_list(int argc, char **argv);
 static int start_test_command(int argc, char **argv);
+
+static int zigbee_reset_command(int argc, char **argv);
+static int skip_command(int argc, char **argv);
+
+static int start_pairing_command(int argc, char **argv);
+static int pm_stats_command(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -155,13 +163,13 @@ static const shell_cmd_t shell_cmds[] = {
     {"get-VCondo",                  "Get VCondo",                               &get_VCondo_command,                0, {}, {}},
     {"test-led",                    "Test led",                                 &test_led_command,                  0, {}, {}},
     {"ota-check",                   "Check for OTA update",                     &ota_check_command,                 0, {}, {}},
-    {"set-tuya",                    "Set tuya config",                          &set_tuya_command,                  3, {"<product_id>", "<device_uuid>", "<device_auth>"}, {"Product ID", "Device UUID", "Device Auth Key"}},
+    {"set-tuya",                    "Set config",                               &set_tuya_command,                  3, {"<product_id>", "<device_uuid>", "<device_auth>"}, {"Product ID", "Device UUID", "Device Auth Key"}},
     {"set-tuya-pairing",            "Set tuya pairing state",                   &set_tuya_pairing,                  1, {"<pairing_state>"}, {"Pairing state"}},
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
-    {"linky-print",                 "Print linky linky_data",                   &linky_print_command,               0, {}, {}},
-    {"linky-simulate",              "Simulate linky linky_data",                &linky_simulate,                    0, {}, {}},
+    {"linky-print",                 "Print linky linky_data",                   &linky_print_command,               1, {"<debug>"}, {"View raw frame, bool 0/1"}},
+    {"linky-simulate",              "Simulate linky linky_data",                &linky_simulate,                    1, {"<std>"}, {"Mode STD ? 0/1"}},
     {"get-voltage",                 "Get Voltages",                             &get_voltages,                      0, {}, {}},
     {"set-sleep",                   "Enable/Disable sleep",                     &set_sleep_command,                 1, {"<enable>"}, {"Enable/Disable deep sleep"}},
     {"get-sleep",                   "Get sleep state",                          &get_sleep_command,                 0, {}, {}},
@@ -176,8 +184,11 @@ static const shell_cmd_t shell_cmds[] = {
     {"nvs-stats",                   "Print nvs stats",                          &nvs_stats,                         0, {}, {}},
     {"task-list",                   "Print task list",                          &print_task_list,                   0, {}, {}},
     {"start-test",                  "Start a test",                             &start_test_command,                1, {"<test-name>"}, {"Available tests: adc"}},
+    {"zigbee-reset",                "Clear Zigbee config",                      &zigbee_reset_command,              0, {}, {}},
+    {"skip",                        "Skip refresh rate delay",                  &skip_command,                      0, {}, {}},
+    {"pairing",                     "Start pairing",                            &start_pairing_command,             0, {}, {}},
+    {"pm-stats",                     "Power management stats",                  &pm_stats_command,                  0, {}, {}},
 };
-
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
 // clang-format on
 /*==============================================================================
@@ -186,6 +197,8 @@ Function Implementation
 void null_printf(const char *fmt, ...)
 {
 }
+esp_console_repl_t *shell_repl = NULL;
+
 void shell_init()
 {
   esp_log_level_set("wifi", ESP_LOG_ERROR);
@@ -200,13 +213,14 @@ void shell_init()
   esp_log_level_set("gpio", ESP_LOG_ERROR);
   esp_log_level_set("uart", ESP_LOG_ERROR);
   esp_log_level_set("NimBLE", ESP_LOG_ERROR);
+  esp_log_level_set("adc_hal", ESP_LOG_ERROR);
   // esp_log_level_set("*", ESP_LOG_WARN);
 
-  esp_console_repl_t *repl = NULL;
   esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
 
   repl_config.prompt = ">";
   repl_config.max_cmdline_length = 100;
+  // repl_config.task_priority = PRIORITY_SHELL;
 
   for (int i = 0; i < shell_cmds_num; i++)
   {
@@ -240,26 +254,38 @@ void shell_init()
     defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
   esp_console_dev_uart_config_t hw_config =
       ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-  ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
+  ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &shell_repl));
 #elif defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG)
   esp_console_dev_usb_serial_jtag_config_t hw_config =
       ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(
-      esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
+      esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &shell_repl));
 #endif
 
-  // vprintf_like_t orig_log_output = esp_log_set_vprintf(null_printf);
-  ESP_ERROR_CHECK(esp_console_start_repl(repl));
+  // FILE *before = freopen("/dev/null", "w", stdout);
+  // int fd = dup(fileno(stdout));
+  ESP_ERROR_CHECK(esp_console_start_repl(shell_repl));
   // vTaskDelay(1000 / portTICK_PERIOD_MS);
-  // esp_log_set_vprintf(orig_log_output);
+  // dup2(fd, fileno(stdout));
+  // close(fd);
+}
+
+void shell_deinit()
+{
+  ESP_LOGI(TAG, "Deinit shell");
+  shell_repl->del(shell_repl);
+}
+
+void shell_reinit()
+{
+  ESP_LOGI(TAG, "Reinit shell");
+  esp_console_start_repl(shell_repl);
 }
 
 static int esp_reset_command(int argc, char **argv)
 {
   ESP_LOGI(TAG, "Resetting the device");
-  gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
-  gpio_set_level(GPIO_NUM_15, 0);
-  esp_restart();
+  hard_restart();
   return 0;
 }
 
@@ -392,7 +418,7 @@ static int mqtt_send_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("MQTT send\n");
-  LinkyData linky_data;
+  linky_data_t linky_data;
   // linky_data.hist->timestamp = wifi_get_timestamp();
   // linky_data.hist->BASE = 5050;
   // linky_data.hist->IINST = 10;
@@ -469,7 +495,7 @@ static int test_led_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  gpio_start_led_pattern(atoi(argv[1]));
+  led_start_pattern(atoi(argv[1]));
   ESP_LOGI(TAG, "Test led pattern %d", atoi(argv[1]));
   return 0;
 }
@@ -536,10 +562,10 @@ static int get_linky_mode_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  const char *modes[] = {"MODE_HISTORIQUE", "MODE_STANDARD", "MODE_AUTO"};
-  printf("Current Linky mode: %d: %s\n", linky_mode, modes[linky_mode]);
-  printf("Configured Linky mode: %d: %s\n", config_values.linkyMode,
-         modes[config_values.linkyMode]);
+
+  printf("Current Linky mode: %d: %s\n", linky_mode, linky_str_mode[linky_mode]);
+  printf("Last Known Linky mode: %d: %s\n", config_values.last_linky_mode, linky_str_mode[config_values.last_linky_mode]);
+  printf("Configured Linky mode: %d: %s\n", config_values.linkyMode, linky_str_mode[config_values.linkyMode]);
   return 0;
 }
 static int set_linky_mode_command(int argc, char **argv)
@@ -550,16 +576,25 @@ static int set_linky_mode_command(int argc, char **argv)
   }
   config_values.linkyMode = (linky_mode_t)atoi(argv[1]);
   config_write();
-  printf("Mode saved\n");
+  printf("Mode saved: %d\n", config_values.linkyMode);
   get_linky_mode_command(1, NULL);
   return 0;
 }
 
 static int linky_print_command(int argc, char **argv)
 {
-  if (argc != 1)
+  if (argc < 1 || argc > 2)
   {
     return ESP_ERR_INVALID_ARG;
+  }
+
+  if (argc == 2)
+  {
+    if (atoi(argv[1]) == 1)
+    {
+      linky_print_debug_frame();
+      return 0;
+    }
   }
   linky_print();
   return 0;
@@ -567,11 +602,20 @@ static int linky_print_command(int argc, char **argv)
 
 static int linky_simulate(int argc, char **argv)
 {
-  if (argc != 1)
+  if (argc > 2)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  linky_want_debug_frame = true;
+
+  if (argc == 2 && atoi(argv[1]) == 1)
+  {
+    linky_want_debug_frame = 2;
+  }
+  else
+  {
+    linky_want_debug_frame = 1;
+  }
+
   return 0;
 }
 
@@ -582,7 +626,7 @@ static int get_voltages(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("VCondo: %f\n", gpio_get_vcondo());
-  printf("VUSB: %f\n", gpio_get_vusb());
+  printf("VUSB: %d\n", gpio_vusb_connected());
   return 0;
 }
 
@@ -643,7 +687,7 @@ static int ota_start(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
 
-  suspendTask(fetchLinkyDataTaskHandle);
+  suspendTask(main_task_handle);
   const esp_partition_t *configured = esp_ota_get_boot_partition();
   const esp_partition_t *running = esp_ota_get_running_partition();
   const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
@@ -660,7 +704,7 @@ static int ota_start(int argc, char **argv)
   {
     ESP_LOGI(TAG, "Update partition : %s, size: %ld", update_partition->label, update_partition->size);
   }
-  xTaskCreate(&ota_perform_task, "ota_perform_task", 8192, NULL, 1, NULL);
+  xTaskCreate(&ota_perform_task, "ota_perform_task", 8192, NULL, PRIORITY_OTA, NULL);
   return 0;
 }
 
@@ -696,26 +740,11 @@ static int led_off(int argc, char **argv)
 
 static int factory_reset(int argc, char **argv)
 {
-  if (argc == 1)
-  {
-    config_erase();
-    printf("Factory reset done\n");
-    config_write();
-    return 0;
-  }
-  if (argc != 2)
+  if (argc != 1)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  if (atoi(argv[1]) == 1)
-  {
-    nvs_flash_erase();
-    printf("Full nvs clear done\n");
-    config_begin();
-    config_erase();
-    config_write();
-    return 0;
-  }
+  config_factory_reset();
   return 0;
 }
 
@@ -788,6 +817,18 @@ static int nvs_stats(int argc, char **argv)
       stats.free_entries,
       stats.total_entries,
       stats.namespace_count);
+
+  nvs_iterator_t it = NULL;
+  esp_err_t res = nvs_entry_find("nvs", NULL, NVS_TYPE_ANY, &it);
+  ESP_LOGI(TAG, "nvs_entry_find: 0x%x", res);
+  while (res == ESP_OK)
+  {
+    nvs_entry_info_t info;
+    nvs_entry_info(it, &info); // Can omit error check if parameters are guaranteed to be non-NULL
+    printf("Namespace: %s\tKey: %s\tType: %d\t\n", info.namespace_name, info.key, info.type);
+    res = nvs_entry_next(&it);
+  }
+  nvs_release_iterator(it);
   return 0;
 }
 
@@ -810,12 +851,98 @@ static int start_test_command(int argc, char **argv)
   char *test_name = argv[1];
   for (int i = 0; i < tests_count; i++)
   {
-    if (strcmp(test_name, tests_available_tests[i]) == 0)
+    if (strcmp(test_name, tests_str_available_tests[i]) == 0)
     {
       start_test((tests_t)i);
       return 0;
     }
   }
   printf("Test not found\n");
+  return 0;
+}
+
+static int zigbee_reset_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  printf("Resetting Zigbee config\n");
+  esp_zb_factory_reset();
+  printf("Zigbee config reset\n");
+  return 0;
+}
+
+static int skip_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  main_sleep_time = 1;
+  return 0;
+}
+
+static int start_pairing_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  printf("Starting pairing\n");
+  gpio_start_pariring();
+  return 0;
+}
+
+void shell_wake_reason()
+{
+  switch (esp_reset_reason())
+  {
+  case ESP_RST_UNKNOWN:
+    ESP_LOGI(TAG, "Reset reason: unknown");
+    break;
+  case ESP_RST_POWERON:
+    ESP_LOGI(TAG, "Reset reason: power on");
+    break;
+  case ESP_RST_EXT:
+    ESP_LOGI(TAG, "Reset reason: external");
+    break;
+  case ESP_RST_SW:
+    ESP_LOGI(TAG, "Reset reason: software");
+    break;
+  case ESP_RST_PANIC:
+    ESP_LOGE(TAG, "Reset reason: panic");
+    break;
+  case ESP_RST_INT_WDT:
+    ESP_LOGE(TAG, "Reset reason: interrupt watchdog");
+    break;
+  case ESP_RST_TASK_WDT:
+    ESP_LOGE(TAG, "Reset reason: task watchdog");
+    break;
+  case ESP_RST_WDT:
+    ESP_LOGE(TAG, "Reset reason: watchdog");
+    break;
+  case ESP_RST_DEEPSLEEP:
+    ESP_LOGI(TAG, "Reset reason: deep sleep");
+    break;
+  case ESP_RST_BROWNOUT:
+    ESP_LOGE(TAG, "Reset reason: brownout");
+
+    break;
+  case ESP_RST_SDIO:
+    ESP_LOGI(TAG, "Reset reason: SDIO");
+    break;
+  default:
+    break;
+  }
+}
+
+static int pm_stats_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  esp_pm_dump_locks(stdout);
   return 0;
 }

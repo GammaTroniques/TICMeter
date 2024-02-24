@@ -32,9 +32,9 @@
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
-extern TaskHandle_t fetchLinkyDataTaskHandle;
+extern TaskHandle_t main_task_handle;
 extern TaskHandle_t sendDataTaskHandle;
-extern TaskHandle_t noConfigLedTaskHandle;
+extern uint32_t main_sleep_time;
 
 /*==============================================================================
  Public Functions Declaration
@@ -45,6 +45,8 @@ extern TaskHandle_t noConfigLedTaskHandle;
  *
  * @param pvParameters Not used
  */
-void main_fetch_linky_data_task(void *pvParameters);
+void main_task(void *pvParameters);
+
+extern esp_err_t main_send_data();
 
 #endif /* MAIN_H */

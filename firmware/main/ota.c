@@ -33,6 +33,7 @@
 #include "wifi.h"
 #include "gpio.h"
 #include "http.h"
+#include "led.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -155,6 +156,7 @@ int ota_get_latest(ota_version_t *version)
     FILE *file = fopen("/spiffs/ota_versions.csv", "r");
     if (file == NULL)
     {
+        // backup
         ESP_LOGE(TAG, "Failed to open ota_versions.csv");
         strncpy(ota_versions_url[0].url, OTA_VERSION_URL, sizeof(ota_versions_url[0].url));
         ota_to_use_version = 0;
@@ -348,7 +350,7 @@ int ota_get_latest(ota_version_t *version)
     ota_state = OTA_AVAILABLE;
     if (!gpip_led_ota_task_handle)
     {
-        xTaskCreate(gpio_led_task_ota, "gpio_led_task_update_available", 4 * 1024, NULL, 1, &gpip_led_ota_task_handle); // start update led task
+        led_start_pattern(LED_OTA_AVAILABLE);
     }
 
     return 1;

@@ -355,7 +355,7 @@ esp_err_t save_config_handler(httpd_req_t *req)
     config_write();
 
     // reboot the device
-    xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 5, NULL);
+    xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL);
     return ESP_OK;
 }
 

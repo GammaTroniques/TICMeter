@@ -558,6 +558,7 @@ static uint16_t __write_hdl = 0, __notify_hdl = 0;
 static void
 gatt_svr_register_cb(struct ble_gatt_register_ctxt *ctxt, void *arg)
 {
+    char buf[BLE_UUID_STR_LEN];
     switch (ctxt->op)
     {
     case BLE_GATT_REGISTER_OP_SVC:

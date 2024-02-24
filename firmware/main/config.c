@@ -14,6 +14,7 @@
 ===============================================================================*/
 #include "config.h"
 #include "linky.h"
+#include "zigbee.h"
 #include "esp_efuse.h"
 #include "efuse_table.h"
 #include "esp_efuse_table.h"
@@ -37,7 +38,7 @@
 struct config_item_t
 {
     const char *name;
-    const LinkyLabelType type;
+    const linky_label_type_t type;
     void *value;
     size_t size;
     nvs_handle_t *handle;
@@ -52,7 +53,16 @@ static uint8_t config_tuya_rw = 0;
 /*==============================================================================
 Public Variable
 ===============================================================================*/
-const char *MODES[] = {"WEB", "MQTT", "MQTT_HA", "ZIGBEE", "MATTER", "TUYA"};
+const char *const MODES[] = {
+    [MODE_NONE] = "NONE",
+    [MODE_WEB] = "WEB",
+    [MODE_MQTT] = "MQTT",
+    [MODE_MQTT_HA] = "MQTT_HA",
+    [MODE_ZIGBEE] = "ZIGBEE",
+    [MODE_MATTER] = "MATTER",
+    [MODE_TUYA] = "TUYA",
+};
+
 config_t config_values = {0};
 efuse_t efuse_values = {0};
 static esp_efuse_coding_scheme_t config_efuse_coding_scheme = EFUSE_CODING_SCHEME_NONE;
@@ -64,20 +74,26 @@ static esp_efuse_coding_scheme_t config_efuse_coding_scheme = EFUSE_CODING_SCHEM
 static nvs_handle_t config_handle = 0;
 static nvs_handle_t ro_config_handle = 0;
 static struct config_item_t config_items[] = {
-    {"wifi-ssid",   STRING, &config_values.ssid,            sizeof(config_values.ssid),             &config_handle},
-    {"wifi-pw"  ,   STRING, &config_values.password,        sizeof(config_values.password),         &config_handle},
+    {"init",            UINT8,  &config_values.initialized,     sizeof(config_values.initialized),      &config_handle},
+    {"wifi-ssid",       STRING, &config_values.ssid,            sizeof(config_values.ssid),             &config_handle},
+    {"wifi-pw"  ,       STRING, &config_values.password,        sizeof(config_values.password),         &config_handle},
     
-    {"linky-mode",   UINT8, &config_values.linkyMode,       sizeof(config_values.linkyMode),        &config_handle},
-    {"connect-mode", UINT8, &config_values.mode,            sizeof(config_values.mode),             &config_handle},
+    {"linky-mode",      UINT8,  &config_values.linkyMode,       sizeof(config_values.linkyMode),        &config_handle},
+    {"last-linky-mode", UINT8,  &config_values.last_linky_mode, sizeof(config_values.last_linky_mode),  &config_handle},
+
+    {"connect-mode",    UINT8, &config_values.mode,             sizeof(config_values.mode),             &config_handle},
     
-    {"web-conf",      BLOB, &config_values.web,             sizeof(config_values.web),              &config_handle},
-    {"mqtt-conf",     BLOB, &config_values.mqtt,            sizeof(config_values.mqtt),             &config_handle},
-    {"tuya-keys",     BLOB, &config_values.tuya,            sizeof(config_values.tuya),             &ro_config_handle},
-    {"pairing",      UINT8, &config_values.pairing_state,   sizeof(config_values.pairing_state),    &config_handle},
+    {"web-conf",        BLOB,   &config_values.web,             sizeof(config_values.web),              &config_handle},
+    {"mqtt-conf",       BLOB,   &config_values.mqtt,            sizeof(config_values.mqtt),             &config_handle},
+    {"tuya-keys",       BLOB,   &config_values.tuya,            sizeof(config_values.tuya),             &ro_config_handle},
+    {"pairing",         UINT8,  &config_values.pairing_state,   sizeof(config_values.pairing_state),    &config_handle},
+    {"zigbee",          BLOB,   &config_values.zigbee,          sizeof(config_values.zigbee),           &config_handle},
  
-    {"version",     STRING, &config_values.version,         sizeof(config_values.version),          &config_handle},
-    {"refresh",     UINT16, &config_values.refreshRate,     sizeof(config_values.refreshRate),      &config_handle},
-    {"sleep",        UINT8, &config_values.sleep,           sizeof(config_values.sleep),            &config_handle},
+    {"version",         STRING, &config_values.version,         sizeof(config_values.version),          &config_handle},
+    {"refresh",         UINT16, &config_values.refreshRate,     sizeof(config_values.refreshRate),      &config_handle},
+    {"sleep",           UINT8,  &config_values.sleep,           sizeof(config_values.sleep),            &config_handle},
+    {"index-offset",    BLOB,   &config_values.index_offset,    sizeof(config_values.index_offset),     &config_handle},
+
 };
 static const int32_t config_items_size = sizeof(config_items) / sizeof(config_items[0]);
 
@@ -90,11 +106,19 @@ Function Implementation
 int8_t config_erase()
 {
     config_t blank_config = {
+        .initialized = 1,
         .refreshRate = 60,
         .sleep = 1,
         .linkyMode = AUTO,
+        .last_linky_mode = NONE,
         .mode = MODE_MQTT_HA,
+
+        .mqtt.port = 1883,
+        .pairing_state = TUYA_NOT_CONFIGURED,
+        .zigbee.state = ZIGBEE_NOT_CONFIGURED,
+        .index_offset = {0},
     };
+
     snprintf(blank_config.mqtt.topic, sizeof(blank_config.mqtt.topic), "TICMeter/%s", efuse_values.macAddress + 6);
     config_values = blank_config;
     return 0;
@@ -105,36 +129,32 @@ int8_t config_begin()
     uint8_t want_init = 0;
     config_efuse_init();
     config_init_spiffs();
+
+    // -------------------------- NVS init --------------------------
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
         // NVS partition was truncated and needs to be erased
         // Retry nvs_flash_init
+        ESP_LOGW(TAG, "NVS partition was truncated and needs to be erased");
         ESP_ERROR_CHECK(nvs_flash_erase());
         err = nvs_flash_init();
         want_init = 1;
     }
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error (%s) initializing NVS!\n", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Error (%s) initializing NVS!", esp_err_to_name(err));
         return 1;
     }
 
     err = nvs_open(CONFIG_NAMESPACE, NVS_READWRITE, &config_handle);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error (%s) opening NVS handle!\n", esp_err_to_name(err));
-    }
-
-    if (want_init)
-    {
-        ESP_LOGI(TAG, "Config not found, creating default config");
-        config_erase();
-        config_write();
+        ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
     }
 
     // ------------------ Read-only partition ------------------
-    want_init = 0;
+    uint8_t want_init_ro = 0;
     err = nvs_flash_init_partition(RO_PARTITION);
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -142,34 +162,24 @@ int8_t config_begin()
         // Retry nvs_flash_init
         ESP_ERROR_CHECK(nvs_flash_erase_partition(RO_PARTITION));
         err = nvs_flash_init_partition(RO_PARTITION);
-        want_init = 1;
+        want_init_ro = 1;
         if (err != ESP_OK)
         {
-            ESP_LOGE(TAG, "Error (%s) initializing ro NVS!\n", esp_err_to_name(err));
+            ESP_LOGE(TAG, "Error (%s) initializing ro NVS!", esp_err_to_name(err));
             return 1;
         }
     }
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error (%s) initializing ro NVS!\n", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Error (%s) initializing ro NVS!", esp_err_to_name(err));
         return 1;
     }
+    err = nvs_open_from_partition(RO_PARTITION, RO_NAMESPACE, NVS_READONLY, &ro_config_handle);
 
-    if (want_init)
-    {
-        err = nvs_open_from_partition(RO_PARTITION, RO_NAMESPACE, NVS_READWRITE, &ro_config_handle);
-    }
-    else
-    {
-        err = nvs_open_from_partition(RO_PARTITION, RO_NAMESPACE, NVS_READONLY, &ro_config_handle);
-    }
     if (err == ESP_ERR_NVS_NOT_FOUND)
     {
-        ESP_LOGE(TAG, "Ro config not found, creating default config tuya");
-        config_tuya_rw = 1;
-        config_rw();
-        config_write();
-        config_tuya_rw = 0;
+        ESP_LOGW(TAG, "Ro config not found, creating default config tuya");
+        want_init_ro = 1;
     }
     else if (err != ESP_OK)
     {
@@ -177,15 +187,30 @@ int8_t config_begin()
         return 1;
     }
 
-    if (want_init)
-    {
-        ESP_LOGI(TAG, "Config not found, creating default config tuya");
-        config_erase();
-        config_write();
-    }
+    // -------------------------- Read config --------------------------
 
     config_read();
-    ESP_LOGI(TAG, "Config OK");
+    if (want_init || config_values.initialized == 0)
+    {
+        ESP_LOGW(TAG, "Config not found, creating default config");
+        config_erase();
+    }
+    if (want_init_ro)
+    {
+        config_rw();
+        ESP_LOGW(TAG, "Config not found, creating default config tuya");
+        memset(&config_values.tuya, 0, sizeof(config_values.tuya));
+    }
+    config_write();
+    config_read();
+    if (config_values.initialized)
+    {
+        ESP_LOGI(TAG, "Config OK");
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Config not OK !");
+    }
 
     if (config_values.refreshRate <= 30)
     {
@@ -259,7 +284,7 @@ int8_t config_read()
         }
         if (err == ESP_ERR_NVS_NOT_FOUND)
         {
-            ESP_LOGE(TAG, "Error reading %s: value not found.\n", config_items[i].name);
+            ESP_LOGE(TAG, "Error reading %s: value not found.", config_items[i].name);
             continue;
         }
         else if (err != ESP_OK)
@@ -316,7 +341,7 @@ int8_t config_write()
         }
         if (err == ESP_ERR_NVS_READ_ONLY)
         {
-            ESP_LOGE(TAG, "Error writing %s: read-only partition (enable write with 'rw' command)\n", config_items[i].name);
+            ESP_LOGE(TAG, "Error writing %s: read-only partition (enable write with 'rw' command)", config_items[i].name);
             continue;
         }
         if (err == ESP_ERR_NVS_NOT_ENOUGH_SPACE)
@@ -324,14 +349,14 @@ int8_t config_write()
         }
         else if (err != ESP_OK)
         {
-            ESP_LOGE(TAG, "Error (0x%x %s) writing %s\n", err, esp_err_to_name(err), config_items[i].name);
+            ESP_LOGE(TAG, "Error (0x%x %s) writing %s", err, esp_err_to_name(err), config_items[i].name);
             continue;
         }
 
         err = nvs_commit(*config_items[i].handle);
         if (err != ESP_OK)
         {
-            ESP_LOGE(TAG, "Error (%s) committing %s\n", esp_err_to_name(err), config_items[i].name);
+            ESP_LOGE(TAG, "Error (%s) committing %s", esp_err_to_name(err), config_items[i].name);
             continue;
         }
         totalBytesWritten += bytesWritten;
@@ -389,27 +414,16 @@ uint8_t config_verify()
         //     return 0;
         // }
         break;
+    case MODE_ZIGBEE:
+        if (config_values.zigbee.state == ZIGBEE_NOT_CONFIGURED)
+        {
+            // Zigbee not binded
+            return 1;
+        }
+        break;
     default:
         break;
     }
-    return 0;
-}
-
-uint8_t factory_reset()
-{
-
-    // clear nvs
-    esp_err_t err = nvs_flash_erase();
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Error (%s) erasing NVS!\n", esp_err_to_name(err));
-        return 1;
-    }
-    ESP_LOGI(TAG, "NVS erased");
-
-    config_erase();
-    config_write();
-    ESP_LOGI(TAG, "Config erased");
     return 0;
 }
 
@@ -429,15 +443,15 @@ uint8_t config_rw()
     }
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error (%s) initializing ro NVS!\n", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Error (%s) initializing ro NVS!", esp_err_to_name(err));
         return 1;
     }
     err = nvs_open_from_partition(RO_PARTITION, RO_NAMESPACE, NVS_READWRITE, &ro_config_handle);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error (%s) opening ro NVS handle!\n", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Error (%s) opening ro NVS handle!", esp_err_to_name(err));
     }
-    printf("Successfully opened in RW\n");
+    ESP_LOGI(TAG, "Successfully opened in RW");
     config_tuya_rw = 1;
     return 0;
 }
@@ -486,7 +500,7 @@ uint8_t config_efuse_read()
     err = esp_efuse_read_field_blob(ESP_EFUSE_MAC_FACTORY, mac, sizeof(mac) * 8);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error 0x%x reading mac!\n", err);
+        ESP_LOGE(TAG, "Error 0x%x reading mac!", err);
     }
     else
     {
@@ -497,7 +511,7 @@ uint8_t config_efuse_read()
     err = esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA_SERIALNUMBER, efuse_values.serialNumber, (sizeof(efuse_values.serialNumber) - 1) * 8);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error 0x%x reading serial number!\n", err);
+        ESP_LOGE(TAG, "Error 0x%x reading serial number!", err);
         return 1;
     }
 
@@ -515,7 +529,7 @@ uint8_t config_efuse_write(const char *serialnumber, uint8_t len)
     esp_err_t err = ESP_OK;
     if (len > sizeof(efuse_values.serialNumber) - 1)
     {
-        ESP_LOGE(TAG, "Serial number too long!\n");
+        ESP_LOGE(TAG, "Serial number too long!");
         return 1;
     }
     err = config_efuse_read();
@@ -536,7 +550,7 @@ uint8_t config_efuse_write(const char *serialnumber, uint8_t len)
     err = esp_efuse_write_field_blob(ESP_EFUSE_USER_DATA_SERIALNUMBER, serialnumber, len * 8);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error 0x%x writing serial number!\n", err);
+        ESP_LOGE(TAG, "Error 0x%x writing serial number!", err);
         return 1;
     }
     ESP_LOGI(TAG, "Serial number written");
@@ -544,9 +558,33 @@ uint8_t config_efuse_write(const char *serialnumber, uint8_t len)
     err = config_efuse_read();
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Error 0x%x rereading serial number!\n", err);
+        ESP_LOGE(TAG, "Error 0x%x rereading serial number!", err);
         return 1;
     }
 
+    return 0;
+}
+
+uint8_t config_factory_reset()
+{
+
+    esp_err_t err = nvs_flash_erase();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to erase NVS (%s 0x%x)", esp_err_to_name(err), err);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "NVS erased");
+    }
+
+    config_begin(); // ??
+    config_erase();
+    config_write();
+
+    zigbee_factory_reset();
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    hard_restart();
     return 0;
 }

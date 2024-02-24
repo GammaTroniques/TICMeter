@@ -17,11 +17,15 @@
 #include <time.h>
 #include <gpio.h>
 #include <wifi.h>
+#include "esp_random.h"
+#include "esp_pm.h"
+#include "led.h"
+
 /*==============================================================================
  Local Define
 ===============================================================================*/
 // clang-format off
-#define LINKY_BUFFER_SIZE 1024 // The size of the UART buffer
+#define LINKY_BUFFER_SIZE 2048 // The size of the UART buffer
 #define START_OF_FRAME  0x02 // The start of frame character
 #define END_OF_FRAME    0x03   // The end of frame character
 
@@ -29,17 +33,40 @@
 #define END_OF_GROUP    0x0D    // The end of group character
 
 
-#define RX_BUF_SIZE     1024 // The size of the UART buffer
+#define RX_BUF_SIZE     2048 // The size of the UART buffer
 #define FRAME_COUNT     5   // The max number of frame in buffer
 #define FRAME_SIZE      500   // The size of one frame buffer
 #define GROUP_COUNT     50
 
-#define TAG "Linky"
+#define TAG "LINKY"
 
 // clang-format on
 /*==============================================================================
  Local Macro
 ===============================================================================*/
+#define ZB_RP ESP_ZB_ZCL_ATTR_ACCESS_REPORTING
+#define ZB_RO ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY
+#define ZB_RW ESP_ZB_ZCL_ATTR_ACCESS_READ_WRITE
+#define ZB_NO 0
+
+#define ZB_OCTSTR ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING
+#define ZB_CHARSTR ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING
+#define ZB_UINT8 ESP_ZB_ZCL_ATTR_TYPE_U8
+#define ZB_UINT16 ESP_ZB_ZCL_ATTR_TYPE_U16
+#define ZB_UINT24 ESP_ZB_ZCL_ATTR_TYPE_U24
+#define ZB_UINT32 ESP_ZB_ZCL_ATTR_TYPE_U32
+#define ZB_UINT48 ESP_ZB_ZCL_ATTR_TYPE_U48
+#define ZB_UINT64 ESP_ZB_ZCL_ATTR_TYPE_U64
+#define ZB_INT8 ESP_ZB_ZCL_ATTR_TYPE_S8
+#define ZB_INT16 ESP_ZB_ZCL_ATTR_TYPE_S16
+#define ZB_INT24 ESP_ZB_ZCL_ATTR_TYPE_S24
+#define ZB_INT32 ESP_ZB_ZCL_ATTR_TYPE_S32
+#define ZB_INT48 ESP_ZB_ZCL_ATTR_TYPE_S48
+#define ZB_INT64 ESP_ZB_ZCL_ATTR_TYPE_S64
+#define ZB_BOOL ESP_ZB_ZCL_ATTR_TYPE_BOOL
+#define ZB_ENUM8 ESP_ZB_ZCL_ATTR_TYPE_8BIT_ENUM
+
+#define ZB_TICMETER TICMETER_CLUSTER_ID
 
 /*==============================================================================
  Local Type
@@ -48,10 +75,10 @@
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
-static void linky_read();                                        // Read the UART buffer
+static uint8_t linky_read();                                     // Read the UART buffer
 static char linky_decode();                                      // Decode the frame
 static char linky_checksum(char *label, char *data, char *time); // Check the checksum
-static void linky_create_debug_frame();
+static void linky_create_debug_frame(uint8_t mode_std);
 static time_t linky_decode_time(char *time); // Decode the time
 static void linky_clear_data();
 /*==============================================================================
@@ -64,155 +91,158 @@ uint64_t linky_uptime = 0;
 
 const LinkyGroup LinkyLabelList[] =
 {   
-    //     Name                          Label           DataPtr                             Type          MODE             UpdateType    Class          Icon                           ZB_CLUSTER_ID, ZB_ATTRIBUTE_ID
-    //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    // ID  Name                               Label         DataPtr                        Type        Size   MODE    Contract   Grid    UpdateType    HA Class      Icon                                CLUSTER ATTRIBUTE  ACCESS  ZB_TYPE
+    //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     //--------------------------- MODE HISTORIQUE --------------------------------
-    {101, "Identifiant",                     "ADCO",        &linky_data.hist.ADCO,         STRING,      12, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",          0x0702, 0x0308,  },
-    {102, "Option tarifaire",                "OPTARIF",     &linky_data.hist.OPTARIF,      STRING,       4, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:cash-multiple",                 0x0000, 0x0000,  },
-    {103, "Intensité souscrite",             "ISOUSC",      &linky_data.hist.ISOUSC,       UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0B01, 0x000D,  },
+    {101, "Identifiant",                     "ADCO",        &linky_data.hist.ADCO,         STRING,      12, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",            0x0702, 0x0308,  ZB_RO, ZB_OCTSTR,   },
+    {107, "Option tarifaire",                "OPTARIF",     &linky_data.hist.OPTARIF,      STRING,       4, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:cash-multiple",                   0xFF42, 0x0000,  ZB_RO, ZB_OCTSTR,   },  
+    {102, "Intensité souscrite",             "ISOUSC",      &linky_data.hist.ISOUSC,       UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0B01, 0x000D,  ZB_NO, ZB_INT24,    }, //TODO: zigbee: when  Meter Identification cluster
 
-    {104, "Index Base",                      "BASE",        &linky_data.hist.BASE,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0000,  },
-    {105, "Index Heures Creuses",            "HCHC",        &linky_data.hist.HCHC,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  },
-    {106, "Index Heures Pleines",            "HCHP",        &linky_data.hist.HCHP,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  },
-    {107, "Index Heures Normales",           "EJPHN",       &linky_data.hist.EJPHN,        UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  },
-    {108, "Index Heures de Pointe Mobile",   "EJPHPM",      &linky_data.hist.EJPHPM,       UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  },
-    {0,   "Préavis Début EJP",               "PEJP",        &linky_data.hist.PEJP,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  BOOL,        "mdi:clock",                         0x0000, 0x0000,  },
-    {109, "Heures Creuses Jours Bleus",      "BBRHCJB",     &linky_data.hist.BBRHCJB,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  },
-    {110, "Heures Pleines Jours Bleus",      "BBRHPJB",     &linky_data.hist.BBRHPJB,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  },
-    {111, "Heures Creuses Jours Blancs",     "BBRHCJW",     &linky_data.hist.BBRHCJW,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0104,  },
-    {112, "Heures Pleines Jours Blancs",     "BBRHPJW",     &linky_data.hist.BBRHPJW,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0106,  },
-    {113, "Heures Creuses Jours Rouges",     "BBRHCJR",     &linky_data.hist.BBRHCJR,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0108,  },
-    {114, "Heures Pleines Jours Rouges",     "BBRHPJR",     &linky_data.hist.BBRHPJR,      UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x010A,  },
+    {110, "Index Base",                      "BASE",        &linky_data.hist.BASE,         UINT64,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
+    {111, "Index Heures Creuses",            "HCHC",        &linky_data.hist.HCHC,         UINT64,       0, MODE_HIST, C_HCHP,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
+    {112, "Index Heures Pleines",            "HCHP",        &linky_data.hist.HCHP,         UINT64,       0, MODE_HIST, C_HCHP,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
+    {113, "Index Heures Normales",           "EJPHN",       &linky_data.hist.EJPHN,        UINT64,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
+    {114, "Index Heures de Pointe Mobile",   "EJPHPM",      &linky_data.hist.EJPHPM,       UINT64,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
+    {000, "Préavis Début EJP",               "PEJP",        &linky_data.hist.PEJP,         UINT64,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  BOOL,        "mdi:clock",                           0xFF42, 0x0001,  ZB_RP, ZB_UINT48,   },
+    {115, "Heures Creuses Jours Bleus",      "BBRHCJB",     &linky_data.hist.BBRHCJB,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
+    {116, "Heures Pleines Jours Bleus",      "BBRHPJB",     &linky_data.hist.BBRHPJB,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
+    {117, "Heures Creuses Jours Blancs",     "BBRHCJW",     &linky_data.hist.BBRHCJW,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0104,  ZB_RP, ZB_UINT48,   },
+    {118, "Heures Pleines Jours Blancs",     "BBRHPJW",     &linky_data.hist.BBRHPJW,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0106,  ZB_RP, ZB_UINT48,   },
+    {129, "Heures Creuses Jours Rouges",     "BBRHCJR",     &linky_data.hist.BBRHCJR,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0108,  ZB_RP, ZB_UINT48,   },
+    {120, "Heures Pleines Jours Rouges",     "BBRHPJR",     &linky_data.hist.BBRHPJR,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x010A,  ZB_RP, ZB_UINT48,   },
 
-    {115, "Période tarifaire en cours",      "PTEC",        &linky_data.hist.PTEC,         STRING,       4, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",                0x0000, 0x0000,  },
-    {116, "Couleur du lendemain",            "DEMAIN",      &linky_data.hist.DEMAIN,       STRING,       4, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
+    {108, "Période tarifaire en cours",      "PTEC",        &linky_data.hist.PTEC,         STRING,       4, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",                  0x0702, 0x0020,  ZB_RP, ZB_CHARSTR,  }, //0x0702, 0x0020
+    {109, "Couleur du lendemain",            "DEMAIN",      &linky_data.hist.DEMAIN,       STRING,       4, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0003,  ZB_RP, ZB_OCTSTR,   },
 
-    {117, "Intensité instantanée",           "IINST",       &linky_data.hist.IINST,        UINT16,       0, MODE_HISTORIQUE, REAL_TIME,     CURRENT,     "",                                    0x0B04, 0x0508,  },
-    {3,   "Intensité instantanée Phase 1",   "IINST1",      &linky_data.hist.IINST1,       UINT16,       0, MODE_HISTORIQUE, REAL_TIME,     CURRENT,     "",                                    0x0B04, 0x0508,  },
-    {4,   "Intensité instantanée Phase 2",   "IINST2",      &linky_data.hist.IINST2,       UINT16,       0, MODE_HISTORIQUE, REAL_TIME,     CURRENT,     "",                                    0x0B04, 0x0908,  },
-    {5,   "Intensité instantanée Phase 3",   "IINST3",      &linky_data.hist.IINST3,       UINT16,       0, MODE_HISTORIQUE, REAL_TIME,     CURRENT,     "",                                    0x0B04, 0x0A08,  },
-    {118, "Intensité maximale",              "IMAX",        &linky_data.hist.IMAX,         UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x050A,  },
-    {6,   "Intensité maximale Phase 1",      "IMAX1",       &linky_data.hist.IMAX1,        UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x050A,  },
-    {7,   "Intensité maximale Phase 2",      "IMAX2",       &linky_data.hist.IMAX2,        UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x090A,  },
-    {8,   "Intensité maximale Phase 3",      "IMAX3",       &linky_data.hist.IMAX3,        UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0A0A,  },
-    {119, "Dépassement Puissance",           "ADPS",        &linky_data.hist.ADPS,         UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0000, 0x0000,  },
-    {9,   "Dépassement Intensité Phase 1",   "ADIR1",       &linky_data.hist.ADIR1,        UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0000, 0x0000,  },
-    {10,  "Dépassement Intensité Phase 2",   "ADIR2",       &linky_data.hist.ADIR2,        UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0000, 0x0000,  },
-    {11,  "Dépassement Intensité Phase 3",   "ADIR3",       &linky_data.hist.ADIR3,        UINT16,       0, MODE_HISTORIQUE, STATIC_VALUE,  CURRENT,     "",                                    0x0000, 0x0000,  },
+    {126, "Intensité instantanée",           "IINST",       &linky_data.hist.IINST,        UINT16,       0, MODE_HIST, C_ANY,   G_MONO, REAL_TIME,     CURRENT,     "",                                    0x0B04, 0x0508,  ZB_RP, ZB_UINT16,   },
+    {127, "Intensité instantanée Phase 1",   "IINST1",      &linky_data.hist.IINST1,       UINT16,       0, MODE_HIST, C_ANY,   G_TRI,  REAL_TIME,     CURRENT,     "",                                    0x0B04, 0x0508,  ZB_RP, ZB_UINT16,   },
+    {128, "Intensité instantanée Phase 2",   "IINST2",      &linky_data.hist.IINST2,       UINT16,       0, MODE_HIST, C_ANY,   G_TRI,  REAL_TIME,     CURRENT,     "",                                    0x0B04, 0x0908,  ZB_RP, ZB_UINT16,   },
+    {129, "Intensité instantanée Phase 3",   "IINST3",      &linky_data.hist.IINST3,       UINT16,       0, MODE_HIST, C_ANY,   G_TRI,  REAL_TIME,     CURRENT,     "",                                    0x0B04, 0x0A08,  ZB_RP, ZB_UINT16,   },
+    {000, "Intensité maximale",              "IMAX",        &linky_data.hist.IMAX,         UINT16,       0, MODE_HIST, C_ANY,   G_MONO, STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x050A,  ZB_RO, ZB_UINT16,   },
+    {000, "Intensité maximale Phase 1",      "IMAX1",       &linky_data.hist.IMAX1,        UINT16,       0, MODE_HIST, C_ANY,   G_TRI,  STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x050A,  ZB_RO, ZB_UINT16,   },
+    {000, "Intensité maximale Phase 2",      "IMAX2",       &linky_data.hist.IMAX2,        UINT16,       0, MODE_HIST, C_ANY,   G_TRI,  STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x090A,  ZB_RO, ZB_UINT16,   },
+    {000, "Intensité maximale Phase 3",      "IMAX3",       &linky_data.hist.IMAX3,        UINT16,       0, MODE_HIST, C_ANY,   G_TRI,  STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0A0A,  ZB_RO, ZB_UINT16,   },
+    {000, "Dépassement Puissance",           "ADPS",        &linky_data.hist.ADPS,         UINT16,       0, MODE_HIST, C_ANY,   G_MONO, STATIC_VALUE,  CURRENT,     "",                                    0xFF42, 0x0004,  ZB_RP, ZB_UINT16,   },
+    {000, "Dépassement Intensité Phase 1",   "ADIR1",       &linky_data.hist.ADIR1,        UINT16,       0, MODE_HIST, C_ANY,   G_TRI,  STATIC_VALUE,  CURRENT,     "",                                    0xFF42, 0x0005,  ZB_RP, ZB_UINT16,   },
+    {000, "Dépassement Intensité Phase 2",   "ADIR2",       &linky_data.hist.ADIR2,        UINT16,       0, MODE_HIST, C_ANY,   G_TRI,  STATIC_VALUE,  CURRENT,     "",                                    0xFF42, 0x0006,  ZB_RP, ZB_UINT16,   },
+    {000, "Dépassement Intensité Phase 3",   "ADIR3",       &linky_data.hist.ADIR3,        UINT16,       0, MODE_HIST, C_ANY,   G_TRI,  STATIC_VALUE,  CURRENT,     "",                                    0xFF42, 0x0007,  ZB_RP, ZB_UINT16,   },
 
-    {120, "Puissance apparente",             "PAPP",        &linky_data.hist.PAPP,         UINT32,       0, MODE_HISTORIQUE, REAL_TIME,     POWER_VA,    "",                                    0x0B04, 0x050F,  },
-    {121, "Puissance maximale triphasée",    "PMAX",        &linky_data.hist.PMAX,         UINT32,       0, MODE_HISTORIQUE, STATIC_VALUE,  POWER_W,     "",                                    0x0B04, 0x050D   },
-    {12,  "Présence des potentiels",         "PPOT",        &linky_data.hist.PPOT,         UINT32,       0, MODE_HISTORIQUE, REAL_TIME,     NONE_CLASS,  "",                                    0x0000, 0x0000   },
+    {122, "Puissance apparente",             "PAPP",        &linky_data.hist.PAPP,         UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  REAL_TIME,     POWER_VA,    "",                                    0x0B04, 0x050F,  ZB_RP, ZB_UINT16,   },
+    {135, "Puissance maximale triphasée",    "PMAX",        &linky_data.hist.PMAX,         UINT32,       0, MODE_HIST, C_ANY,   G_TRI,  STATIC_VALUE,  POWER_W,     "",                                    0x0B04, 0x050D,  ZB_RP, ZB_INT16,    },
+    {000, "Présence des potentiels",         "PPOT",        &linky_data.hist.PPOT,         UINT32,       0, MODE_HIST, C_ANY,   G_TRI,  REAL_TIME,     NONE_CLASS,  "",                                    0xFF42, 0x0008,  ZB_RP, ZB_UINT32,   }, //TODO: check
 
-    {122, "Horaire Heures Creuses",          "HHPHC",       &linky_data.hist.HHPHC,        STRING,       3, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:home-clock",                    0x0000, 0x0000,  },
-    {123,  "Mot d'état du compteur",         "MOTDETAT",    &linky_data.hist.MOTDETAT,     STRING,       6, MODE_HISTORIQUE, STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                 0x0000, 0x0000,  },
+    {000, "Horaire Heures Creuses",          "HHPHC",       &linky_data.hist.HHPHC,        STRING,       3, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:home-clock",                      0xFF42, 0x0009,  ZB_RP, ZB_OCTSTR,   },
+    {000, "Mot d'état du compteur",          "MOTDETAT",    &linky_data.hist.MOTDETAT,     STRING,       6, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x000A,  ZB_RP, ZB_OCTSTR,   },
 
-    //------------------------ MODE STANDARD -----------------------
-    {101, "Identifiant",                     "ADSC",        &linky_data.std.ADSC,          STRING,      12, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",          0x0000, 0x0000,  },
-    {1,   "Version de la TIC",               "VTIC",        &linky_data.std.VTIC,          STRING,       2, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:tag",                           0x0000, 0x0000,  },
-    {3,   "Date et heure courante",          "DATE",        &linky_data.std.DATE,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:clipboard-text-clock",          0x0000, 0x0000,  },
-    {102, "Nom du calendrier tarifaire",     "NGTF",        &linky_data.std.NGTF,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",                0x0000, 0x0000,  },
-    {115, "Libellé tarif en cours",          "LTARF",       &linky_data.std.LTARF,         STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:tag-text",                      0x0000, 0x0000,  },
+    //------------------------ MODE STANDARD ----------------------- 
+    {101, "Identifiant",                     "ADSC",        &linky_data.std.ADSC,          STRING,      12, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",            0x0702, 0x0308,  ZB_RP, ZB_OCTSTR,   },
+    {000, "Version de la TIC",               "VTIC",        &linky_data.std.VTIC,          STRING,       2, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:tag",                             0x0B01, 0x000A,  ZB_NO, ZB_OCTSTR,   }, //TODO: zigbee: when  Meter Identification cluster
+    {000, "Date et heure courante",          "DATE",        &linky_data.std.DATE,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:clipboard-text-clock",            0xFF42, 0x000B,  ZB_RP, ZB_OCTSTR,   },
+    {107, "Nom du calendrier tarifaire",     "NGTF",        &linky_data.std.NGTF,          STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",                  0xFF42, 0x000C,  ZB_NO, ZB_OCTSTR,   },
+    {108, "Libellé tarif en cours",          "LTARF",       &linky_data.std.LTARF,         STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:tag-text",                        0xFF42, 0x000D,  ZB_NO, ZB_OCTSTR,   },
 
-    {104, "Index Total Energie soutirée",    "EAST",        &linky_data.std.EAST,          UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
-    {105, "Index 1 Energie soutirée",        "EASF01",      &linky_data.std.EASF01,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
-    {106, "Index 2 Energie soutirée",        "EASF02",      &linky_data.std.EASF02,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
-    {107, "Index 3 Energie soutirée",        "EASF03",      &linky_data.std.EASF03,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
-    {108, "Index 4 Energie soutirée",        "EASF04",      &linky_data.std.EASF04,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
-    {109, "Index 5 Energie soutirée",        "EASF05",      &linky_data.std.EASF05,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
-    {110, "Index 6 Energie soutirée",        "EASF06",      &linky_data.std.EASF06,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
-    {111, "Index 7 Energie soutirée",        "EASF07",      &linky_data.std.EASF07,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
-    {112, "Index 8 Energie soutirée",        "EASF08",      &linky_data.std.EASF08,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
-    {113, "Index 9 Energie soutirée",        "EASF09",      &linky_data.std.EASF09,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
-    {114, "Index 10 Energie soutirée",       "EASF10",      &linky_data.std.EASF10,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000   },
+    {000, "Index Total Energie soutirée",    "EAST",        &linky_data.std.EAST,          UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0000,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 1 Energie soutirée",        "EASF01",      &linky_data.std.EASF01,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 2 Energie soutirée",        "EASF02",      &linky_data.std.EASF02,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 3 Energie soutirée",        "EASF03",      &linky_data.std.EASF03,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0104,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 4 Energie soutirée",        "EASF04",      &linky_data.std.EASF04,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0106,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 5 Energie soutirée",        "EASF05",      &linky_data.std.EASF05,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0108,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 6 Energie soutirée",        "EASF06",      &linky_data.std.EASF06,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x010A,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 7 Energie soutirée",        "EASF07",      &linky_data.std.EASF07,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x010C,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 8 Energie soutirée",        "EASF08",      &linky_data.std.EASF08,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x010E,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 9 Energie soutirée",        "EASF09",      &linky_data.std.EASF09,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0110,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 10 Energie soutirée",       "EASF10",      &linky_data.std.EASF10,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0112,  ZB_RP, ZB_UINT48,   },
 
-    {0,   "Index 1 Energie soutirée Distr",  "EASD01",      &linky_data.std.EASD01,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {0,   "Index 2 Energie soutirée Distr",  "EASD02",      &linky_data.std.EASD02,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {0,   "Index 3 Energie soutirée Distr",  "EASD03",      &linky_data.std.EASD03,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
-    {0,   "Index 4 Energie soutirée Distr",  "EASD04",      &linky_data.std.EASD04,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "",                                    0x0000, 0x0000,  },
+    {000, "Index 1 Energie soutirée Distr",  "EASD01",      &linky_data.std.EASD01,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0xFF42, 0x000E,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 2 Energie soutirée Distr",  "EASD02",      &linky_data.std.EASD02,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0xFF42, 0x000F,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 3 Energie soutirée Distr",  "EASD03",      &linky_data.std.EASD03,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0xFF42, 0x0010,  ZB_RP, ZB_UINT48,   },
+    {000, "Index 4 Energie soutirée Distr",  "EASD04",      &linky_data.std.EASD04,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0xFF42, 0x0011,  ZB_RP, ZB_UINT48,   },
 
-    {124, "Energie injectée totale",         "EAIT",        &linky_data.std.EAIT,          UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY,      "mdi:transmission-tower-export",     0x0000, 0x0000   },
+    {000, "Energie injectée totale",         "EAIT",        &linky_data.std.EAIT,          UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "mdi:transmission-tower-export",       0x0702, 0x0001,  ZB_RP, ZB_UINT48,   },
 
-    {4,   "Energie réactive Q1 totale",      "ERQ1",        &linky_data.std.ERQ1,          UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x0305,  },
-    {5,   "Energie réactive Q2 totale",      "ERQ2",        &linky_data.std.ERQ2,          UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x050E,  },
-    {6,   "Energie réactive Q3 totale",      "ERQ3",        &linky_data.std.ERQ3,          UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x090E,  },
-    {7,   "Energie réactive Q4 totale",      "ERQ4",        &linky_data.std.ERQ4,          UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x0A0E,  },
+    {000, "Energie réactive Q1 totale",      "ERQ1",        &linky_data.std.ERQ1,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x0305,  ZB_RP, ZB_INT16,    },
+    {000, "Energie réactive Q2 totale",      "ERQ2",        &linky_data.std.ERQ2,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x050E,  ZB_RP, ZB_INT16,    },
+    {000, "Energie réactive Q3 totale",      "ERQ3",        &linky_data.std.ERQ3,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x090E,  ZB_RP, ZB_INT16,    },
+    {000, "Energie réactive Q4 totale",      "ERQ4",        &linky_data.std.ERQ4,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x0A0E,  ZB_RP, ZB_INT16,    },
 
-    {117, "Courant efficace Phase 1",        "IRMS1",       &linky_data.std.IRMS1,         UINT16,       0, MODE_STANDARD,   STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0508,  },
-    {0,   "Courant efficace Phase 2",        "IRMS2",       &linky_data.std.IRMS2,         UINT16,       0, MODE_STANDARD,   STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0908,  },
-    {0,   "Courant efficace Phase 3",        "IRMS3",       &linky_data.std.IRMS3,         UINT16,       0, MODE_STANDARD,   STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0A08,  },
+    {000, "Courant efficace Phase 1",        "IRMS1",       &linky_data.std.IRMS1,         UINT16,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0508,  ZB_RP, ZB_UINT16,   },
+    {000, "Courant efficace Phase 2",        "IRMS2",       &linky_data.std.IRMS2,         UINT16,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0908,  ZB_RP, ZB_UINT16,   },
+    {000, "Courant efficace Phase 3",        "IRMS3",       &linky_data.std.IRMS3,         UINT16,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0A08,  ZB_RP, ZB_UINT16,   },
 
-    {125, "Tension efficace Phase 1",        "URMS1",       &linky_data.std.URMS1,         UINT16,       0, MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0505,  },
-    {0,   "Tension efficace Phase 2",        "URMS2",       &linky_data.std.URMS2,         UINT16,       0, MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0905,  },
-    {0,   "Tension efficace Phase 3",        "URMS3",       &linky_data.std.URMS3,         UINT16,       0, MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0A05,  },
+    {000, "Tension efficace Phase 1",        "URMS1",       &linky_data.std.URMS1,         UINT16,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0505,  ZB_RP, ZB_UINT16,   },
+    {000, "Tension efficace Phase 2",        "URMS2",       &linky_data.std.URMS2,         UINT16,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0905,  ZB_RP, ZB_UINT16,   },
+    {000, "Tension efficace Phase 3",        "URMS3",       &linky_data.std.URMS3,         UINT16,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0A05,  ZB_RP, ZB_UINT16,   },
 
-    {126, "Puissance app. de référence",     "PREF",        &linky_data.std.PREF,          UINT8,        0, MODE_STANDARD,   STATIC_VALUE,  POWER_kVA,   "",                                    0x0000, 0x0000,  },
-    {127, "Puissance app. de coupure",       "PCOUP",       &linky_data.std.PCOUP,         UINT8,        0, MODE_STANDARD,   STATIC_VALUE,  POWER_kVA,   "",                                    0x0000, 0x0000,  },
+    {000, "Puissance app. de référence",     "PREF",        &linky_data.std.PREF,          UINT8,        0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_kVA,   "",                                    0x0B01, 0x000D,  ZB_NO, ZB_UINT16,   }, //TODO: zigbee: when  Meter Identification cluster
+    {000, "Puissance app. de coupure",       "PCOUP",       &linky_data.std.PCOUP,         UINT8,        0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_kVA,   "",                                    0x0B01, 0x000E,  ZB_NO, ZB_UINT8,    }, //TODO: zigbee: when  Meter Identification cluster
 
-    {120, "Puissance soutirée",              "SINSTS",      &linky_data.std.SINSTS,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0306,  }, //0x050F (mono) et 0x0306 tri
-    {0,   "Puissance soutirée Phase 1",      "SINSTS1",     &linky_data.std.SINSTS1,       UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050F,  },
-    {0,   "Puissance soutirée Phase 2",      "SINSTS2",     &linky_data.std.SINSTS2,       UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090F,  },
-    {0,   "Puissance soutirée Phase 3",      "SINSTS3",     &linky_data.std.SINSTS3,       UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0F,  },
+    {000, "Puissance soutirée",              "SINSTS",      &linky_data.std.SINSTS,        UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0306,  ZB_RP, ZB_INT16,    }, //0x050F (mono) et 0x0306 tri
+    {000, "Puissance soutirée Phase 1",      "SINSTS1",     &linky_data.std.SINSTS1,       UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050F,  ZB_RP, ZB_INT16,    },
+    {000, "Puissance soutirée Phase 2",      "SINSTS2",     &linky_data.std.SINSTS2,       UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090F,  ZB_RP, ZB_INT16,    },
+    {000, "Puissance soutirée Phase 3",      "SINSTS3",     &linky_data.std.SINSTS3,       UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0F,  ZB_RP, ZB_INT16,    },
 
-    {121, "Puissance max soutirée Auj.",     "SMAXSN",      &linky_data.std.SMAXSN,        UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0304,  }, //0x0304 tri et 0x050D mono
-    {0,   "Puissance max soutirée Auj. 1",   "SMAXSN1",     &linky_data.std.SMAXSN1,       UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050D,  },
-    {0,   "Puissance max soutirée Auj. 2",   "SMAXSN2",     &linky_data.std.SMAXSN2,       UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090D,  },
-    {0,   "Puissance max soutirée Auj. 3",   "SMAXSN3",     &linky_data.std.SMAXSN3,       UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0D,  },
+    {000, "Puissance max soutirée Auj.",     "SMAXSN",      &linky_data.std.SMAXSN,        UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0304,  ZB_NO, ZB_INT32,    }, //0x0304 tri et 0x050D mono
+    {000, "Puissance max soutirée Auj. 1",   "SMAXSN1",     &linky_data.std.SMAXSN1,       UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050D,  ZB_NO, ZB_INT16,    },
+    {000, "Puissance max soutirée Auj. 2",   "SMAXSN2",     &linky_data.std.SMAXSN2,       UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090D,  ZB_NO, ZB_INT16,    },
+    {000, "Puissance max soutirée Auj. 3",   "SMAXSN3",     &linky_data.std.SMAXSN3,       UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0D,  ZB_NO, ZB_INT16,    },
 
-    {0,   "Puissance max soutirée Hier",     "SMAXSN-1",    &linky_data.std.SMAXSN_1,      UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
-    {0,   "Puissance max soutirée Hier 1",   "SMAXSN1-1",   &linky_data.std.SMAXSN1_1,     UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
-    {0,   "Puissance max soutirée Hier 2",   "SMAXSN2-1",   &linky_data.std.SMAXSN2_1,     UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
-    {0,   "Puissance max soutirée Hier 3",   "SMAXSN3-1",   &linky_data.std.SMAXSN3_1,     UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
+    {000, "Puissance max soutirée Hier",     "SMAXSN-1",    &linky_data.std.SMAXSN_1,      UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0012,  ZB_NO, ZB_INT16,    },
+    {000, "Puissance max soutirée Hier 1",   "SMAXSN1-1",   &linky_data.std.SMAXSN1_1,     UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0013,  ZB_NO, ZB_INT16,    },
+    {000, "Puissance max soutirée Hier 2",   "SMAXSN2-1",   &linky_data.std.SMAXSN2_1,     UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0014,  ZB_NO, ZB_INT16,    },
+    {000, "Puissance max soutirée Hier 3",   "SMAXSN3-1",   &linky_data.std.SMAXSN3_1,     UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0015,  ZB_NO, ZB_INT16,    },
 
-    {128, "Puissance injectée",              "SINSTI",      &linky_data.std.SINSTI,        UINT32,       0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "mdi:transmission-tower-export",     0x0000, 0x0000,  },
-    {129, "Puissance max injectée Auj.",     "SMAXIN",      &linky_data.std.SMAXIN,        UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
-    {130, "Puissance max injectée Hier",     "SMAXIN-1",    &linky_data.std.SMAXIN_1,      UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  POWER_VA,    "",                                    0x0000, 0x0000,  },
+    {000, "Puissance injectée",              "SINSTI",      &linky_data.std.SINSTI,        UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "mdi:transmission-tower-export",       0xFF42, 0x0016,  ZB_RP, ZB_UINT32,   },
+    {000, "Puissance max injectée Auj.",     "SMAXIN",      &linky_data.std.SMAXIN,        UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0017,  ZB_RP, ZB_UINT32,   },
+    {000, "Puissance max injectée Hier",     "SMAXIN-1",    &linky_data.std.SMAXIN_1,      UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0018,  ZB_RP, ZB_UINT32,   },
 
-    {8,   "Point n courbe soutirée",         "CCASN",       &linky_data.std.CCASN,         UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0B04, 0x050B,  },
-    {9,   "Point n-1 courbe soutirée",       "CCASN-1",     &linky_data.std.CCASN_1,       UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0B04, 0x090B,  },
-    {10,  "Point n courbe injectée",         "CCAIN",       &linky_data.std.CCAIN,         UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {11,  "Point n-1 courbe injectée",       "CCAIN-1",     &linky_data.std.CCAIN_1,       UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
+    {000, "Point n courbe soutirée",         "CCASN",       &linky_data.std.CCASN,         UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0B04, 0x050B,  ZB_NO, ZB_INT16,    },
+    {000, "Point n-1 courbe soutirée",       "CCASN-1",     &linky_data.std.CCASN_1,       UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0B04, 0x090B,  ZB_NO, ZB_INT16,    },
+    {000, "Point n courbe injectée",         "CCAIN",       &linky_data.std.CCAIN,         UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0019,  ZB_NO, ZB_INT16,    },
+    {000, "Point n-1 courbe injectée",       "CCAIN-1",     &linky_data.std.CCAIN_1,       UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x001a,  ZB_NO, ZB_INT16,    },
+ 
+    {000, "Tension moyenne Phase 1",         "UMOY1",       &linky_data.std.UMOY1,         UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0511,  ZB_NO, ZB_UINT16,   },
+    {000, "Tension moyenne Phase 2",         "UMOY2",       &linky_data.std.UMOY2,         UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0911,  ZB_NO, ZB_UINT16,   },
+    {000, "Tension moyenne Phase 3",         "UMOY3",       &linky_data.std.UMOY3,         UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0A11,  ZB_NO, ZB_UINT16,   },
 
-    {12,  "Tension moyenne Phase 1",         "UMOY1",       &linky_data.std.UMOY1,         UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0511,  },
-    {13,  "Tension moyenne Phase 2",         "UMOY2",       &linky_data.std.UMOY2,         UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0911,  },
-    {14,  "Tension moyenne Phase 3",         "UMOY3",       &linky_data.std.UMOY3,         UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0A11,  },
+    {109, "Registre de Statuts",             "STGE",        &linky_data.std.STGE,          STRING,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x001b,  ZB_NO, ZB_OCTSTR,   }, // TODO: Enedis-NOI-CPT_54E p25 Couleur du lendemain --> tuya 116
 
-    {15,  "Registre de Statuts",             "STGE",        &linky_data.std.STGE,          STRING,       0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                 0x0000, 0x0000,  },
+    {000, "Début Pointe Mobile 1",           "DPM1",        &linky_data.std.DPM1,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x001c,  ZB_NO, ZB_UINT8,    },
+    {000, "Fin Pointe Mobile 1",             "FPM1",        &linky_data.std.FPM1,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x001d,  ZB_NO, ZB_UINT8,    },
+    {000, "Début Pointe Mobile 2",           "DPM2",        &linky_data.std.DPM2,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x001e,  ZB_NO, ZB_UINT8,    },
+    {000, "Fin Pointe Mobile 2",             "FPM2",        &linky_data.std.FPM2,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x001f,  ZB_NO, ZB_UINT8,    },
+    {000, "Début Pointe Mobile 3",           "DPM3",        &linky_data.std.DPM3,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0020,  ZB_NO, ZB_UINT8,    },
+    {000, "Fin Pointe Mobile 3",             "FPM3",        &linky_data.std.FPM3,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0021,  ZB_NO, ZB_UINT8,    },
 
-    {16,  "Début Pointe Mobile 1",           "DPM1",        &linky_data.std.DPM1,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {17,  "Fin Pointe Mobile 1",             "FPM1",        &linky_data.std.FPM1,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {18,  "Début Pointe Mobile 2",           "DPM2",        &linky_data.std.DPM2,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {19,  "Fin Pointe Mobile 2",             "FPM2",        &linky_data.std.FPM2,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {20,  "Début Pointe Mobile 3",           "DPM3",        &linky_data.std.DPM3,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {21,  "Fin Pointe Mobile 3",             "FPM3",        &linky_data.std.FPM3,          UINT32_TIME,  0, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-
-    {22,  "Message court",                   "MSG1",        &linky_data.std.MSG1,          STRING,      32, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:message-text-outline",          0x0000, 0x0000,  },
-    {123, "Message Ultra court",             "MSG2",        &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:message-outline",               0x0000, 0x0000,  },
-    {23,  "PRM",                             "PRM",         &linky_data.std.PRM,           STRING,      14, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {143, "Relais",                          "RELAIS",      &linky_data.std.RELAIS,        STRING,       3, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:toggle-switch-outline",         0x0000, 0x0000,  },
-    {144, "Index tarifaire en cours",        "NTARF",       &linky_data.std.NTARF,         STRING,       2, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {24,  "N° jours en cours fournisseur",   "NJOURF",      &linky_data.std.NJOURF,        STRING,       2, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {25,  "N° prochain jour fournisseur",    "NJOURF+1",    &linky_data.std.NJOURF_1,      STRING,       2, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {26,  "Profil du prochain jour",         "PJOURF+1",    &linky_data.std.MSG2,          STRING,      16, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                     0x0000, 0x0000,  },
-    {27,  "Profil du prochain jour pointe",  "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      98, MODE_STANDARD,   STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                     0x0000, 0x0000,  },
+    {000, "Message court",                   "MSG1",        &linky_data.std.MSG1,          STRING,      32, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:message-text-outline",            0xFF42, 0x0022,  ZB_RP, ZB_CHARSTR,  },
+    {000, "Message Ultra court",             "MSG2",        &linky_data.std.MSG2,          STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:message-outline",                 0xFF42, 0x0023,  ZB_RP, ZB_CHARSTR,  },
+    {000, "PRM",                             "PRM",         &linky_data.std.PRM,           STRING,      14, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0702, 0x0307,  ZB_RP, ZB_CHARSTR,  },
+    {000, "Relais",                          "RELAIS",      &linky_data.std.RELAIS,        STRING,       3, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:toggle-switch-outline",           0xFF42, 0x0024,  ZB_RP, ZB_UINT16,   },
+    {000, "Index tarifaire en cours",        "NTARF",       &linky_data.std.NTARF,         STRING,       2, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0025,  ZB_NO, ZB_UINT8,    },
+    {000, "N° jours en cours fournisseur",   "NJOURF",      &linky_data.std.NJOURF,        STRING,       2, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0026,  ZB_NO, ZB_UINT8     },
+    {000, "N° prochain jour fournisseur",    "NJOURF+1",    &linky_data.std.NJOURF_1,      STRING,       2, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0027,  ZB_NO, ZB_UINT8     },
+    {000, "Profil du prochain jour",         "PJOURF+1",    &linky_data.std.PJOURF_1,      STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0x0000, 0x0000,  ZB_NO, ZB_CHARSTR   },
+    {000, "Profil du prochain jour pointe",  "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      98, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0x0000, 0x0000,  ZB_NO, ZB_CHARSTR   },
     //---------------------------Home Assistant Specific ------------------------------------------------
-    {131, "Temps d'actualisation",          "now-refresh",  &config_values.refreshRate,    UINT16,        0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
-    {0,   "Temps d'actualisation",          "set-refresh",  &config_values.refreshRate,    HA_NUMBER,     0,          ANY,   STATIC_VALUE,  TIME,        "mdi:refresh",                       0x0000, 0x0000,  },
- // {132, "Mode TIC",                       "mode-tic",    &mode,                          UINT16,        0,          ANY,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
- // {133, "Mode Elec",                      "mode-tri",    &linky_tree_phase,              UINT16,        0,          ANY,   STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  },
-    {0,   "Dernière actualisation",         "timestamp",   &linky_data.timestamp,          UINT64,        0,          ANY,   STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  },
-    {134, "Temps de fonctionnement",        "uptime",      &linky_uptime,                  UINT64,        0,          ANY,      REAL_TIME,  TIME,        "mdi:clock-time-eight-outline",      0x0000, 0x0000,  },
-    {0,   "Free RAM",                       "free-ram",    &linky_free_heap_size,          UINT32,        0,          ANY,      REAL_TIME,  BYTES,       "",                                    0x0000, 0x0000,  },
+    {103, "Temps d'actualisation",           "now-refresh", &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0xFF42, 0x0002,  ZB_RP, ZB_UINT16    },
+    {000, "Temps d'actualisation",           "set-refresh", &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {105, "Mode TIC",                        "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0029,  ZB_RP, ZB_UINT8     },
+    {106, "Mode Electrique",                 "mode-elec",   &linky_tree_phase,             UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x002a,  ZB_RP, ZB_UINT8     },
+    {000, "Dernière actualisation",          "timestamp",   &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {104, "Temps de fonctionnement",         "uptime",      &linky_uptime,                 UINT64,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     TIME,        "mdi:clock-time-eight-outline",        0xFF42, 0x0028,  ZB_RP, ZB_UINT48    },
+    {000, "Free RAM",                        "free-ram",    &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     BYTES,       "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
 // clang-format on
 
-LinkyData linky_data; // The data
-linky_mode_t linky_mode = MODE_HISTORIQUE;
+linky_data_t linky_data; // The data
+linky_mode_t linky_mode = MODE_HIST;
+linky_contract_t linky_contract = C_ANY;
+
 uint8_t linky_tree_phase = 0;
 uint8_t linky_reading = 0;
 uint8_t linky_want_debug_frame = 0;
+
 char linky_buffer[LINKY_BUFFER_SIZE] = {0}; // The UART buffer
 
 const char *const HADeviceClassStr[] = {
@@ -259,15 +289,48 @@ const char *const ha_sensors_str[] = {
     [HA_NUMBER] = "number",
 };
 
+const char *const linky_str_contract[] = {
+    [C_ANY] = "ANY",
+    [C_BASE] = "BASE",
+    [C_HCHP] = "HCHP",
+    [C_EJP] = "EJP",
+    [C_TEMPO] = "TEMPO",
+};
+
+const char *const linky_str_tarif[] = {
+    [T_ANY] = "ANY",
+    [T_BASE] = "BASE",
+    [T_HC] = "HC",
+    [T_HP] = "HP",
+    [T_HN] = "HN",
+    [T_PM] = "PM",
+    [T_HCJB] = "HCJB",
+    [T_HPJB] = "HPJB",
+    [T_HCJW] = "HCJW",
+    [T_HPJW] = "HPJW",
+    [T_HCJR] = "HCJR",
+    [T_HPJR] = "HPJR",
+};
+
+const char *const linky_str_mode[] = {
+    [MODE_STD] = "STD",
+    [MODE_HIST] = "HIST",
+    [AUTO] = "AUTO",
+    [NONE] = "NONE",
+};
+
 /*==============================================================================
  Local Variable
 ===============================================================================*/
-static char linky_uart_rx = 0;               // The RX pin of the linky
-static char *linky_frame = NULL;             // The received frame from the linky
+static char linky_uart_rx = 0; // The RX pin of the linky
+// static char *linky_frame = NULL;             // The received frame from the linky
 static uint8_t linky_group_separator = 0x20; // The group separator character (changes depending on the mode) (0x20 in historique mode, 0x09 in standard mode)
 static uint16_t linky_frame_size = 0;        // The size of the frame
 static uint32_t linky_rx_bytes = 0;          // store the number of bytes read
+static char linky_frame[LINKY_BUFFER_SIZE] = {0};
+static const char linky_std_debug_buffer[] = {0x2, 0xa, 0x41, 0x44, 0x53, 0x43, 0x9, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x58, 0x9, 0x2d, 0xd, 0xa, 0x56, 0x54, 0x49, 0x43, 0x9, 0x30, 0x32, 0x9, 0x4a, 0xd, 0xa, 0x44, 0x41, 0x54, 0x45, 0x9, 0x48, 0x32, 0x34, 0x30, 0x31, 0x30, 0x37, 0x31, 0x37, 0x35, 0x38, 0x31, 0x30, 0x9, 0x9, 0x45, 0xd, 0xa, 0x4e, 0x47, 0x54, 0x46, 0x9, 0x20, 0x20, 0x20, 0x20, 0x20, 0x54, 0x45, 0x4d, 0x50, 0x4f, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x9, 0x46, 0xd, 0xa, 0x4c, 0x54, 0x41, 0x52, 0x46, 0x9, 0x20, 0x20, 0x20, 0x20, 0x48, 0x50, 0x20, 0x20, 0x42, 0x4c, 0x45, 0x55, 0x20, 0x20, 0x20, 0x20, 0x9, 0x2b, 0xd, 0xa, 0x45, 0x41, 0x53, 0x54, 0x9, 0x30, 0x35, 0x30, 0x30, 0x31, 0x39, 0x32, 0x32, 0x36, 0x9, 0x28, 0xd, 0xa, 0x45, 0x41, 0x53, 0x46, 0x30, 0x31, 0x9, 0x30, 0x32, 0x32, 0x32, 0x33, 0x35, 0x33, 0x34, 0x30, 0x9, 0x37, 0xd, 0xa, 0x45, 0x41, 0x53, 0x46, 0x30, 0x32, 0x9, 0x30, 0x32, 0x36, 0x35, 0x38, 0x37, 0x32, 0x37, 0x30, 0x9, 0x48, 0xd, 0xa, 0x45, 0x41, 0x53, 0x46, 0x30, 0x33, 0x9, 0x30, 0x30, 0x30, 0x34, 0x32, 0x35, 0x36, 0x39, 0x36, 0x9, 0x44, 0xd, 0xa, 0x45, 0x41, 0x53, 0x46, 0x30, 0x34, 0x9, 0x30, 0x30, 0x30, 0x34, 0x39, 0x34, 0x36, 0x31, 0x34, 0x9, 0x41, 0xd, 0xa, 0x45, 0x41, 0x53, 0x46, 0x30, 0x35, 0x9, 0x30, 0x30, 0x30, 0x31, 0x31, 0x35, 0x30, 0x34, 0x35, 0x9, 0x36, 0xd, 0xa, 0x45, 0x41, 0x53, 0x46, 0x30, 0x36, 0x9, 0x30, 0x30, 0x30, 0x31, 0x36, 0x31, 0x32, 0x36, 0x31, 0x9, 0x38, 0xd, 0xa, 0x45, 0x41, 0x53, 0x46, 0x30, 0x37, 0x9, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x9, 0x28, 0xd, 0xa, 0x45, 0x41, 0x53, 0x46, 0x30, 0x38, 0x9, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x9, 0x29, 0xd, 0xa, 0x45, 0x41, 0x53, 0x46, 0x30, 0x39, 0x9, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x9, 0x2a, 0xd, 0xa, 0x45, 0x41, 0x53, 0x46, 0x31, 0x30, 0x9, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x9, 0x22, 0xd, 0xa, 0x45, 0x41, 0x53, 0x44, 0x30, 0x31, 0x9, 0x30, 0x32, 0x30, 0x39, 0x37, 0x36, 0x37, 0x33, 0x38, 0x9, 0x4a, 0xd, 0xa, 0x45, 0x41, 0x53, 0x44, 0x30, 0x32, 0x9, 0x30, 0x32, 0x35, 0x30, 0x33, 0x33, 0x37, 0x33, 0x35, 0x9, 0x3d, 0xd, 0xa, 0x45, 0x41, 0x53, 0x44, 0x30, 0x33, 0x9, 0x30, 0x30, 0x31, 0x37, 0x39, 0x39, 0x33, 0x34, 0x33, 0x9, 0x46, 0xd, 0xa, 0x45, 0x41, 0x53, 0x44, 0x30, 0x34, 0x9, 0x30, 0x30, 0x32, 0x32, 0x30, 0x39, 0x34, 0x31, 0x30, 0x9, 0x35, 0xd, 0xa, 0x49, 0x52, 0x4d, 0x53, 0x31, 0x9, 0x30, 0x31, 0x37, 0x9, 0x36, 0xd, 0xa, 0x55, 0x52, 0x4d, 0x53, 0x31, 0x9, 0x32, 0x32, 0x37, 0x9, 0x45, 0xd, 0xa, 0x50, 0x52, 0x45, 0x46, 0x9, 0x31, 0x32, 0x9, 0x42, 0xd, 0xa, 0x50, 0x43, 0x4f, 0x55, 0x50, 0x9, 0x31, 0x32, 0x9, 0x5c, 0xd, 0xa, 0x53, 0x49, 0x4e, 0x53, 0x54, 0x53, 0x9, 0x30, 0x33, 0x39, 0x30, 0x30, 0x9, 0x52, 0xd, 0xa, 0x53, 0x4d, 0x41, 0x58, 0x53, 0x4e, 0x9, 0x48, 0x32, 0x34, 0x30, 0x31, 0x30, 0x37, 0x30, 0x32, 0x34, 0x37, 0x32, 0x33, 0x9, 0x30, 0x38, 0x36, 0x31, 0x31, 0x9, 0x3d, 0xd, 0xa, 0x53, 0x4d, 0x41, 0x58, 0x53, 0x4e, 0x2d, 0x31, 0x9, 0x48, 0x32, 0x34, 0x30, 0x31, 0x30, 0x36, 0x30, 0x33, 0x33, 0x37, 0x32, 0x35, 0x9, 0x30, 0x39, 0x39, 0x34, 0x31, 0x9, 0x23, 0xd, 0xa, 0x43, 0x43, 0x41, 0x53, 0x4e, 0x9, 0x48, 0x32, 0x34, 0x30, 0x31, 0x30, 0x37, 0x31, 0x37, 0x33, 0x30, 0x30, 0x30, 0x9, 0x30, 0x33, 0x35, 0x39, 0x34, 0x9, 0x49, 0xd, 0xa, 0x43, 0x43, 0x41, 0x53, 0x4e, 0x2d, 0x31, 0x9, 0x48, 0x32, 0x34, 0x30, 0x31, 0x30, 0x37, 0x31, 0x37, 0x30, 0x30, 0x30, 0x30, 0x9, 0x30, 0x33, 0x36, 0x36, 0x38, 0x9, 0x26, 0xd, 0xa, 0x55, 0x4d, 0x4f, 0x59, 0x31, 0x9, 0x48, 0x32, 0x34, 0x30, 0x31, 0x30, 0x37, 0x31, 0x37, 0x35, 0x30, 0x30, 0x30, 0x9, 0x32, 0x32, 0x35, 0x9, 0x32, 0xd, 0xa, 0x53, 0x54, 0x47, 0x45, 0x9, 0x30, 0x31, 0x33, 0x41, 0x43, 0x34, 0x30, 0x31, 0x9, 0x52, 0xd, 0xa, 0x44, 0x50, 0x4d, 0x32, 0x9, 0x20, 0x32, 0x34, 0x30, 0x31, 0x30, 0x38, 0x30, 0x36, 0x30, 0x30, 0x30, 0x30, 0x9, 0x30, 0x30, 0x9, 0x23, 0xd, 0xa, 0x46, 0x50, 0x4d, 0x32, 0x9, 0x20, 0x32, 0x34, 0x30, 0x31, 0x30, 0x39, 0x30, 0x36, 0x30, 0x30, 0x30, 0x30, 0x9, 0x30, 0x30, 0x9, 0x26, 0xd, 0xa, 0x4d, 0x53, 0x47, 0x31, 0x9, 0x50, 0x41, 0x53, 0x20, 0x44, 0x45, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x4d, 0x45, 0x53, 0x53, 0x41, 0x47, 0x45, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x9, 0x3c, 0xd, 0xa, 0x50, 0x52, 0x4d, 0x9, 0x30, 0x39, 0x33, 0x31, 0x32, 0x33, 0x30, 0x30, 0x39, 0x32, 0x36, 0x36, 0x39, 0x35, 0x9, 0x38, 0xd, 0xa, 0x52, 0x45, 0x4c, 0x41, 0x49, 0x53, 0x9, 0x30, 0x30, 0x30, 0x9, 0x42, 0xd, 0xa, 0x4e, 0x54, 0x41, 0x52, 0x46, 0x9, 0x30, 0x32, 0x9, 0x4f, 0xd, 0xa, 0x4e, 0x4a, 0x4f, 0x55, 0x52, 0x46, 0x9, 0x30, 0x30, 0x9, 0x26, 0xd, 0xa, 0x4e, 0x4a, 0x4f, 0x55, 0x52, 0x46, 0x2b, 0x31, 0x9, 0x30, 0x30, 0x9, 0x42, 0xd, 0xa, 0x50, 0x4a, 0x4f, 0x55, 0x52, 0x46, 0x2b, 0x31, 0x9, 0x30, 0x30, 0x30, 0x30, 0x34, 0x30, 0x30, 0x31, 0x20, 0x30, 0x36, 0x30, 0x30, 0x34, 0x30, 0x30, 0x32, 0x20, 0x32, 0x32, 0x30, 0x30, 0x34, 0x30, 0x30, 0x31, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x9, 0x2e, 0xd, 0xa, 0x50, 0x50, 0x4f, 0x49, 0x4e, 0x54, 0x45, 0x9, 0x30, 0x30, 0x30, 0x30, 0x34, 0x30, 0x30, 0x35, 0x20, 0x30, 0x36, 0x30, 0x30, 0x34, 0x30, 0x30, 0x36, 0x20, 0x32, 0x32, 0x30, 0x30, 0x34, 0x30, 0x30, 0x35, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x20, 0x4e, 0x4f, 0x4e, 0x55, 0x54, 0x49, 0x4c, 0x45, 0x9, 0x27, 0xd, 0x3};
 
+static esp_pm_lock_handle_t linky_pm_lock = NULL;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -284,47 +347,66 @@ void linky_init(linky_mode_t mode, int RX)
     linky_uart_rx = RX;
     // mode Historique: 0x20
     // mode Standard: 0x09
-    linky_group_separator = (mode == MODE_HISTORIQUE) ? 0x20 : 0x09;
-    esp_log_level_set(TAG, ESP_LOG_INFO);
+    linky_group_separator = (mode == MODE_HIST) ? 0x20 : 0x09;
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
 
     switch (config_values.linkyMode)
     {
     case AUTO:
-        ESP_LOGI(TAG, "Trying to autodetect Linky mode, testing last known mode: %s", (linky_mode == MODE_HISTORIQUE) ? "MODE_HISTORIQUE" : "MODE_STANDARD");
-        linky_set_mode(config_values.linkyMode);
+        ESP_LOGI(TAG, "Trying to autodetect Linky mode, testing last known mode: %s", linky_str_mode[config_values.last_linky_mode]);
+        if (config_values.last_linky_mode == NONE)
+        {
+            linky_set_mode(MODE_STD); // we don't know the last mode, we start with historique
+        }
+        else
+        {
+            linky_set_mode(config_values.last_linky_mode);
+        }
         break;
-    case MODE_HISTORIQUE:
-        linky_set_mode(MODE_HISTORIQUE);
+    case MODE_HIST:
+        linky_set_mode(MODE_HIST);
         break;
-    case MODE_STANDARD:
-        linky_set_mode(MODE_STANDARD);
+    case MODE_STD:
+        linky_set_mode(MODE_STD);
         break;
     default:
         break;
     }
 
+    if (linky_pm_lock == NULL)
+    {
+        esp_err_t err = esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "linky", &linky_pm_lock);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Failed to create PM lock: 0x%x", err);
+        }
+    }
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
 }
 
 void linky_set_mode(linky_mode_t newMode)
 {
-    LinkyData empty;
+    linky_data_t empty;
     memset(&empty, 0, sizeof empty);
 
     linky_mode = newMode;
     switch (newMode)
     {
-    case MODE_HISTORIQUE:
+    case MODE_HIST:
         linky_data.hist = empty.hist;
         break;
-    case MODE_STANDARD:
+    case MODE_STD:
         linky_data.std = empty.std;
         break;
     default:
         break;
     }
-    ESP_LOGI(TAG, "Changed mode to %s", (newMode == MODE_HISTORIQUE) ? "MODE_HISTORIQUE" : "MODE_STANDARD");
-    uart_driver_delete(UART_NUM_1);
+    ESP_LOGI(TAG, "Changed mode to %s", linky_str_mode[linky_mode]);
+
+    if (uart_is_driver_installed(UART_NUM_1))
+    {
+        uart_driver_delete(UART_NUM_1);
+    }
     uart_config_t uart_config = {
         .baud_rate = 1200,
         .data_bits = UART_DATA_7_BITS,
@@ -337,17 +419,17 @@ void linky_set_mode(linky_mode_t newMode)
     };
     switch (linky_mode)
     {
-    case MODE_STANDARD:
+    case MODE_STD:
         // start the serial communication at 9600 bauds, 7E1
         uart_config.baud_rate = 9600;
-        linky_mode = MODE_STANDARD;
+        linky_mode = MODE_STD;
         linky_group_separator = 0x09;
         break;
-    case MODE_HISTORIQUE:
+    case MODE_HIST:
     default:
         // start the serial communication at 1200 bauds, 7E1
         uart_config.baud_rate = 1200;
-        linky_mode = MODE_HISTORIQUE;
+        linky_mode = MODE_HIST;
         linky_group_separator = 0x20;
         break;
     }
@@ -377,7 +459,7 @@ void linky_set_mode(linky_mode_t newMode)
  * @brief Read the data from the UART and store it in the buffer
  *
  */
-static void linky_read()
+static uint8_t linky_read()
 {
     uint32_t timeout = (xTaskGetTickCount() * portTICK_PERIOD_MS) + 5000; // 5 seconds timeout
     memset(linky_buffer, 0, sizeof linky_buffer);                         // clear the buffer
@@ -387,9 +469,9 @@ static void linky_read()
     uint32_t startOfFrame = UINT_MAX; // store the index of the start frame
     uint32_t endOfFrame = UINT_MAX;   // store the index of the end frame
 
-    if (linky_want_debug_frame)
+    if (linky_want_debug_frame != 0)
     {
-        linky_create_debug_frame();
+        linky_create_debug_frame(linky_want_debug_frame - 1);
     }
     bool hasFrame = false;
     do
@@ -427,24 +509,24 @@ static void linky_read()
         vTaskDelay(100 / portTICK_PERIOD_MS);
         hasFrame = (endOfFrame != UINT_MAX && startOfFrame != UINT_MAX && (startOfFrame < endOfFrame));
     } while (!hasFrame && (MILLIS < timeout) && linky_rx_bytes < RX_BUF_SIZE - 1);
+    // ESP_LOG_BUFFER_HEXDUMP(TAG, linky_buffer, linky_rx_bytes, ESP_LOG_WARN);
 
     if (endOfFrame == UINT_MAX || startOfFrame == UINT_MAX || (startOfFrame > endOfFrame)) // if a start of frame and an end of frame has been found
     {
         ESP_LOGE(TAG, "Error: Frame not found");
         linky_frame_size = 0;
-        linky_frame = NULL;
-        return;
+        linky_frame[0] = 0;
+        return 0;
     }
-    else
-    {
-        ESP_LOGD(TAG, "Start of frame: %lu", startOfFrame);
-        ESP_LOGD(TAG, "End of frame: %lu", endOfFrame);
-        linky_frame_size = endOfFrame - startOfFrame;
-        linky_frame = linky_buffer + startOfFrame;
-    }
-    ESP_LOG_BUFFER_HEXDUMP(TAG, linky_buffer, linky_rx_bytes, ESP_LOG_DEBUG);
-    ESP_LOGD(TAG, "-------------------");
-    ESP_LOGD(TAG, "Buffer: %s", linky_buffer);
+
+    ESP_LOGD(TAG, "Start of frame: %lu", startOfFrame);
+    ESP_LOGD(TAG, "End of frame: %lu", endOfFrame);
+    linky_frame_size = endOfFrame - startOfFrame;
+    memcpy(linky_frame, linky_buffer + startOfFrame, linky_frame_size);
+    linky_frame[linky_frame_size] = 0;
+    return 1;
+    // ESP_LOGW(TAG, "-------------------");
+    // ESP_LOGW(TAG, "Buffer: %s", linky_buffer);
 }
 
 /**
@@ -458,45 +540,55 @@ static char linky_decode()
     // Clear the previous data
     //----------------------------------------------------------
     linky_clear_data();
-    if (!linky_frame)
+    if (linky_frame[0] == 0) // if no frame found
     {
         if (config_values.linkyMode == AUTO)
         {
             switch (linky_mode)
             {
-            case MODE_HISTORIQUE:
+            case MODE_HIST:
                 if (strlen(linky_data.hist.ADCO) > 0)
                 {
                     ESP_LOGI(TAG, "Auto mode: Mode Historique Found!");
-                    config_values.linkyMode = MODE_HISTORIQUE;
+                    config_values.linkyMode = MODE_HIST;
                     config_write();
                 }
                 else
                 {
                     ESP_LOGI(TAG, "Auto mode: Mode Historique Not Found! Try Mode Standard");
-                    linky_set_mode(MODE_STANDARD);
+                    linky_set_mode(MODE_STD);
+                    return 2;
                 }
                 break;
-            case MODE_STANDARD:
+            case MODE_STD:
                 if (strlen(linky_data.std.ADSC) > 0)
                 {
                     ESP_LOGI(TAG, "Auto mode: Mode Standard Found!");
-                    config_values.linkyMode = MODE_STANDARD;
+                    config_values.linkyMode = MODE_STD;
                     config_write();
                 }
                 else
                 {
                     ESP_LOGI(TAG, "Auto mode: Mode Standard Not Found! Try Mode Historique");
-                    linky_set_mode(MODE_HISTORIQUE);
+                    linky_set_mode(MODE_HIST);
+                    return 2;
                 }
                 break;
             default:
                 break;
             }
         }
-
         return 0;
     }
+
+    // if we have a valid frame, with mode auto and its a new value mode, we save it.
+    if (config_values.linkyMode == AUTO && linky_mode != config_values.last_linky_mode)
+    {
+        ESP_LOGI(TAG, "Auto mode: New mode found: %s", linky_str_mode[linky_mode]);
+        config_values.last_linky_mode = linky_mode;
+        config_write();
+    }
+
     // ESP_LOG_BUFFER_HEXDUMP(TAG, frame, endOfFrame - startOfFrame, ESP_LOG_INFO);
     //-------------------------------------
     // Second step: Find goups of data in the frame
@@ -505,7 +597,8 @@ static char linky_decode()
     unsigned int endOfGroup[GROUP_COUNT] = {UINT_MAX};   // store ends index of each group
     unsigned int startOfGroupIndex = 0;                  // store the current index of starts of group array
     unsigned int endOfGroupIndex = 0;                    // store the current index of ends of group array
-    for (unsigned int i = 0; i < linky_frame_size; i++)  // for each character in the frame
+
+    for (unsigned int i = 0; i < linky_frame_size + 1; i++) // for each character in the frame
     {
         switch (linky_frame[i])
         {
@@ -555,21 +648,22 @@ static char linky_decode()
             }
         }
 
-        char label[10] = {0};   // store the label as a string
+        char label[20] = {0};   // store the label as a string
         char value[100] = {0};  // store the data as a string
-        char time[15] = {0};    // store the time as a string (H081225223518)
+        char time[20] = {0};    // store the time as a string (H081225223518)
         char checksum[5] = {0}; // store the checksum as a string
 
         //-----------------------------------------------------------------------------------------------------------------replace to MEMCOPY
         memcpy(label, linky_frame + startOfGroup[i] + 1, separators[0] - startOfGroup[i] - 1); // copy the label from the group
-        memcpy(value, linky_frame + separators[0] + 1, separators[1] - separators[0] - 1);     // copy the data from the group
-        if (linky_mode == MODE_STANDARD && separatorIndex == 3)                                // if the mode is standard and the number of separators is 3
+        if (linky_mode == MODE_STD && separatorIndex == 3)                                     // if the mode is standard and the number of separators is 3
         {
-            memcpy(time, linky_frame + separators[1] + 1, separators[2] - separators[1] - 1);     // copy the time from the group
+            memcpy(time, linky_frame + separators[0] + 1, separators[1] - separators[0] - 1);     // copy the time from the group
+            memcpy(value, linky_frame + separators[1] + 1, separators[2] - separators[1] - 1);    // copy the data from the group
             memcpy(checksum, linky_frame + separators[2] + 1, endOfGroup[i] - separators[2] - 1); // copy the checksum from the group
         }
         else
         {
+            memcpy(value, linky_frame + separators[0] + 1, separators[1] - separators[0] - 1);    // copy the data from the group
             memcpy(checksum, linky_frame + separators[1] + 1, endOfGroup[i] - separators[1] - 1); // copy the checksum from the group
         }
         // ESP_LOGI(TAG, "label: %s value: %s checksum: %s", label, value, checksum);
@@ -577,7 +671,7 @@ static char linky_decode()
         if (linky_checksum(label, value, time) != checksum[0]) // check the checksum with the label, data and time
         {
             // error: checksum is not correct, skip the field
-            ESP_LOGE(TAG, "%s checksum is not correct (%c != %c)", label, linky_checksum(label, value, time), checksum[0]);
+            ESP_LOGE(TAG, "%s = %s: checksum is not correct: %s, expected: %c", label, value, checksum, linky_checksum(label, value, time));
             continue;
         }
         else
@@ -594,8 +688,17 @@ static char linky_decode()
                     switch (LinkyLabelList[j].type)
                     {
                     case STRING:
-                        strncpy((char *)LinkyLabelList[j].data, value, LinkyLabelList[j].size);
+                    {
+                        uint32_t size = strlen(value);
+                        if (size > LinkyLabelList[j].size)
+                        {
+                            size = LinkyLabelList[j].size;
+                        }
+                        strncpy((char *)LinkyLabelList[j].data, value, size);
+                        ((char *)LinkyLabelList[j].data)[size] = 0;
                         break;
+                    }
+
                     case UINT8:
                         *(uint8_t *)LinkyLabelList[j].data = strtoul(value, NULL, 10);
                         break;
@@ -634,16 +737,55 @@ static char linky_decode()
  */
 char linky_update()
 {
+    uint8_t ret;
+
+    esp_pm_lock_acquire(linky_pm_lock);
     linky_reading = 1;
-    xTaskCreate(gpio_led_task_linky_reading, "gpio_led_task_linky_reading", 2048, NULL, 10, NULL);
-    linky_read();       // read the UART
-    if (linky_decode()) // decode the frame
+    if (linky_mode > MODE_STD)
     {
-        linky_reading = 0;
-        return 1;
+        ESP_LOGE(TAG, "Error: Unknown mode: %d", linky_mode);
+        return 0;
     }
+
+    led_start_pattern(LED_LINKY_READING);
+
+    uint32_t try = 0;
+    do
+    {
+        ret = linky_read(); // read the data
+        if (ret == 0)
+        {
+            ESP_LOGE(TAG, "Error: no frame found");
+            // we continue to decode the frame and test the auto mode
+        }
+
+        ret = linky_decode(); // decode the frame
+        try++;
+
+    } while (ret == 2 && try < 2); // if the mode is auto, we try the other mode if the first one failed
     linky_reading = 0;
-    return 0;
+
+    led_stop_pattern(LED_LINKY_READING);
+
+    esp_pm_lock_release(linky_pm_lock);
+    switch (ret)
+    {
+    case 0:
+        linky_clear_data();
+        ESP_LOGE(TAG, "Error: Decode failed");
+        led_start_pattern(LED_LINKY_FAILED);
+        return 0;
+        break;
+
+    case 2:
+        ESP_LOGE(TAG, "Auto mode: Unable to find mode automatically");
+        return 0;
+        break;
+
+    default:
+        return 1;
+        break;
+    }
 }
 
 /**
@@ -658,42 +800,54 @@ void linky_print()
 
         if (linky_mode != LinkyLabelList[i].mode)
             continue;
+
+        char str_value[100] = {0};
         switch (LinkyLabelList[i].type)
         {
         case STRING:
             if (strlen((char *)LinkyLabelList[i].data) > 0) // print only if we have a value
-                ESP_LOGI(TAG, "%s: %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
+                // ESP_LOGI(TAG, "%s: %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
+                strncpy(str_value, (char *)LinkyLabelList[i].data, strlen((char *)LinkyLabelList[i].data));
             break;
         case UINT8:
             if (*(uint8_t *)LinkyLabelList[i].data != UINT8_MAX) // print only if we have a value
-                ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
+                // ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
+                sprintf(str_value, "%u", *(uint8_t *)LinkyLabelList[i].data);
             break;
         case UINT16:
             if (*(uint16_t *)LinkyLabelList[i].data != UINT16_MAX) // print only if we have a value
-                ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+                // ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+                sprintf(str_value, "%u", *(uint16_t *)LinkyLabelList[i].data);
             break;
         case UINT32:
             if (*(uint32_t *)LinkyLabelList[i].data != UINT32_MAX) // print only if we have a value
-                ESP_LOGI(TAG, "%s: %lu", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
+                // ESP_LOGI(TAG, "%s: %lu", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
+                sprintf(str_value, "%lu", *(uint32_t *)LinkyLabelList[i].data);
             break;
         case UINT64:
             if (*(uint64_t *)LinkyLabelList[i].data != UINT64_MAX) // print only if we have a value
-                ESP_LOGI(TAG, "%s: %llu", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
+                // ESP_LOGI(TAG, "%s: %llu", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
+                sprintf(str_value, "%llu", *(uint64_t *)LinkyLabelList[i].data);
             break;
         case UINT32_TIME:
         {
             TimeLabel timeLabel = *(TimeLabel *)LinkyLabelList[i].data;
-            if (timeLabel.value != 0) // print only if we have a value
+            if (timeLabel.value != UINT32_MAX) // print only if we have a value
             {
                 struct tm *timeinfo = localtime(&timeLabel.timestamp);
                 char timeString[20];
                 strftime(timeString, sizeof(timeString), "%d/%m/%Y %H:%M:%S", timeinfo);
-                ESP_LOGI(TAG, "%s: %s %lu", LinkyLabelList[i].label, timeString, timeLabel.value);
+                // ESP_LOGI(TAG, "%s: %s %lu", LinkyLabelList[i].label, timeString, timeLabel.value);
+                sprintf(str_value, "%s - %lu", timeString, timeLabel.value);
             }
             break;
         }
         default:
             break;
+        }
+        if (strlen(str_value) > 0)
+        {
+            ESP_LOGI(TAG, "%s (%s): %s %s", LinkyLabelList[i].name, LinkyLabelList[i].label, str_value, HAUnitsStr[LinkyLabelList[i].device_class]);
         }
     }
     ESP_LOGI(TAG, "-------------------");
@@ -718,7 +872,7 @@ static char linky_checksum(char *label, char *data, char *time)
     {                                              //
         S1 += data[i];                             // add the ASCII code of the data character to the sum
     }                                              //
-    if (linky_mode == MODE_STANDARD)               // if the mode is standard
+    if (linky_mode == MODE_STD)                    // if the mode is standard
     {                                              //
         S1 += linky_group_separator;               // add the ASCII code of the separator to the sum
         if (time != NULL && strlen(time) != 0)     //
@@ -765,13 +919,13 @@ uint8_t linky_presence()
 {
     switch (linky_mode)
     {
-    case MODE_HISTORIQUE:
+    case MODE_HIST:
         if (strlen(linky_data.hist.ADCO) > 0)
             return 1;
         else
             return 0;
         break;
-    case MODE_STANDARD:
+    case MODE_STD:
         if (strlen(linky_data.std.ADSC) > 0)
             return 1;
         else
@@ -783,10 +937,10 @@ uint8_t linky_presence()
     return 0;
 }
 
-static void linky_create_debug_frame()
+static void linky_create_debug_frame(uint8_t mode_std)
 {
     // debug frame:
-    //     ADCO 031976306475 J
+    // ADCO 031976306475 J
     // OPTARIF BASE 0
     // ISOUSC 30 9
     // BASE 062105110 [
@@ -802,13 +956,13 @@ static void linky_create_debug_frame()
     // HHPHC A ,
     // MOTDETAT 000000 B
     // OT 00 #
-    struct debugGroup
+    struct debug_group_t
     {
-        char name[10];
-        char value[20];
+        char name[50];
+        char value[100];
         char checksum;
     };
-    struct debugGroup debugGroups[16] = {
+    struct debug_group_t debug_hist[16] = {
         {"ADCO", "031976306475", 'J'},
         {"OPTARIF", "BASE", '0'},
         {"ISOUSC", "30", '9'},
@@ -826,29 +980,42 @@ static void linky_create_debug_frame()
         {"MOTDETAT", "000000", 'B'},
         {"OT", "00", '#'},
     };
-    snprintf(debugGroups[3].value, sizeof(debugGroups[3].value), "%lld", wifi_get_timestamp());
-    debugGroups[3].checksum = linky_checksum(debugGroups[3].name, debugGroups[3].value, NULL);
-    const uint16_t debugGroupCount = sizeof(debugGroups) / sizeof(debugGroups[0]);
+
+    if (mode_std)
+    {
+        ESP_LOGI(TAG, "Debug frame: Mode Standard");
+        linky_set_mode(MODE_STD);
+        linky_rx_bytes = 0;
+        memcpy(linky_buffer, linky_std_debug_buffer, sizeof(linky_std_debug_buffer));
+        linky_rx_bytes = sizeof(linky_std_debug_buffer);
+        return;
+    }
+
+    // random base value
+    snprintf(debug_hist[3].value, sizeof(debug_hist[3].value), "%ld", esp_random() % 1000000);
+    debug_hist[3].checksum = linky_checksum(debug_hist[3].name, debug_hist[3].value, NULL);
+
+    const uint16_t debugGroupCount = sizeof(debug_hist) / sizeof(debug_hist[0]);
     linky_rx_bytes = 0;
     linky_buffer[linky_rx_bytes++] = START_OF_FRAME;
-    for (uint16_t i = 0; i < debugGroupCount; i++)
+    for (uint16_t i = 0; i < debugGroupCount - 1; i++)
     {
         linky_buffer[linky_rx_bytes++] = START_OF_GROUP;
-        for (uint16_t j = 0; j < strlen(debugGroups[i].name); j++)
+        for (uint16_t j = 0; j < strlen(debug_hist[i].name); j++)
         {
-            linky_buffer[linky_rx_bytes++] = debugGroups[i].name[j];
+            linky_buffer[linky_rx_bytes++] = debug_hist[i].name[j];
         }
         linky_buffer[linky_rx_bytes++] = linky_group_separator;
-        for (uint16_t j = 0; j < strlen(debugGroups[i].value); j++)
+        for (uint16_t j = 0; j < strlen(debug_hist[i].value); j++)
         {
-            linky_buffer[linky_rx_bytes++] = debugGroups[i].value[j];
+            linky_buffer[linky_rx_bytes++] = debug_hist[i].value[j];
         }
         linky_buffer[linky_rx_bytes++] = linky_group_separator;
-        linky_buffer[linky_rx_bytes++] = debugGroups[i].checksum;
+        linky_buffer[linky_rx_bytes++] = debug_hist[i].checksum;
         linky_buffer[linky_rx_bytes++] = END_OF_GROUP;
     }
     linky_buffer[linky_rx_bytes++] = END_OF_FRAME;
-    // ESP_LOG_BUFFER_HEXDUMP(TAG, buffer, linky_rx_bytes + 1, ESP_LOG_INFO);
+    // ESP_LOG_BUFFER_HEXDUMP(TAG, linky_buffer, linky_rx_bytes + 1, ESP_LOG_INFO);
 }
 
 static void linky_clear_data()
@@ -856,9 +1023,21 @@ static void linky_clear_data()
     for (uint32_t i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].data == NULL)
+        {
             continue;
-        if (linky_mode != LinkyLabelList[i].mode)
+        }
+        if (LinkyLabelList[i].data == &config_values.refreshRate)
+        {
             continue;
+        }
+        if (LinkyLabelList[i].data == &linky_mode)
+        {
+            continue;
+        }
+        if (LinkyLabelList[i].data == &linky_uptime)
+        {
+            continue;
+        }
 
         switch (LinkyLabelList[i].type)
         {
@@ -879,12 +1058,63 @@ static void linky_clear_data()
             break;
         case UINT32_TIME:
         {
-            TimeLabel timeLabel = {0};
-            *(TimeLabel *)LinkyLabelList[i].data = timeLabel;
+            memset((char *)LinkyLabelList[i].data, 0xFF, sizeof(TimeLabel));
             break;
         }
         default:
             break;
         }
     }
+}
+
+void linky_print_debug_frame()
+{
+    printf("\n");
+    for (int i = 0; i < linky_frame_size + 2; i++)
+    {
+        if (linky_frame[i] <= 0x20)
+        {
+            printf("[%d]", linky_frame[i]);
+        }
+        else
+        {
+            printf("%c", linky_frame[i]);
+        }
+        if (linky_frame[i] == 13)
+        {
+            printf("\n");
+        }
+    }
+    printf("\n");
+}
+
+linky_contract_t linky_get_contract(linky_data_t *data)
+{
+    assert(data != NULL);
+    linky_contract_t contract = C_ANY;
+    char raw[20] = {0};
+    switch (linky_mode)
+    {
+    case MODE_HIST:
+        strncpy(raw, data->hist.OPTARIF, MIN(sizeof(data->hist.OPTARIF), sizeof(raw)));
+        break;
+    case MODE_STD:
+        strncpy(raw, data->std.NGTF, MIN(sizeof(data->std.NGTF), sizeof(raw)));
+        break;
+    default:
+        ESP_LOGE(TAG, "linky_get_contract: Unknown mode");
+        return C_ANY;
+        break;
+    }
+
+    for (int i = 0; i < sizeof(linky_str_contract) / sizeof(linky_str_contract[0]); i++)
+    {
+        if (strncmp(linky_str_contract[i], raw, sizeof(raw)) == 0)
+        {
+            contract = i;
+            break;
+        }
+    }
+
+    return contract;
 }
