@@ -28,8 +28,10 @@
 
 typedef enum
 {
+    LED_COLOR_WHEEL,
     LED_BOOT,
     LED_NO_CONFIG,
+    LED_FACTORY_RESET_ADVERT,
     LED_FACTORY_RESET,
 
     LED_LINKY_READING,
@@ -56,7 +58,7 @@ typedef enum
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
-
+extern const uint32_t led_color_mode[];
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
@@ -66,6 +68,8 @@ uint32_t led_init();
 void led_start_pattern(led_pattern_t pattern);
 
 void led_stop_pattern(led_pattern_t pattern);
+
+void led_set_color(uint32_t color);
 
 void led_usb_event(bool connected);
 

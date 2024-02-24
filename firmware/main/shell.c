@@ -197,6 +197,8 @@ Function Implementation
 void null_printf(const char *fmt, ...)
 {
 }
+esp_console_repl_t *shell_repl = NULL;
+
 void shell_init()
 {
   esp_log_level_set("wifi", ESP_LOG_ERROR);
@@ -214,7 +216,6 @@ void shell_init()
   esp_log_level_set("adc_hal", ESP_LOG_ERROR);
   // esp_log_level_set("*", ESP_LOG_WARN);
 
-  esp_console_repl_t *repl = NULL;
   esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
 
   repl_config.prompt = ">";
@@ -253,26 +254,38 @@ void shell_init()
     defined(CONFIG_ESP_CONSOLE_UART_CUSTOM)
   esp_console_dev_uart_config_t hw_config =
       ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-  ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
+  ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &shell_repl));
 #elif defined(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG)
   esp_console_dev_usb_serial_jtag_config_t hw_config =
       ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(
-      esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &repl));
+      esp_console_new_repl_usb_serial_jtag(&hw_config, &repl_config, &shell_repl));
 #endif
 
   // FILE *before = freopen("/dev/null", "w", stdout);
   // int fd = dup(fileno(stdout));
-  ESP_ERROR_CHECK(esp_console_start_repl(repl));
+  ESP_ERROR_CHECK(esp_console_start_repl(shell_repl));
   // vTaskDelay(1000 / portTICK_PERIOD_MS);
   // dup2(fd, fileno(stdout));
   // close(fd);
 }
 
+void shell_deinit()
+{
+  ESP_LOGI(TAG, "Deinit shell");
+  shell_repl->del(shell_repl);
+}
+
+void shell_reinit()
+{
+  ESP_LOGI(TAG, "Reinit shell");
+  esp_console_start_repl(shell_repl);
+}
+
 static int esp_reset_command(int argc, char **argv)
 {
   ESP_LOGI(TAG, "Resetting the device");
-  hard_reset();
+  hard_restart();
   return 0;
 }
 
@@ -613,7 +626,7 @@ static int get_voltages(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("VCondo: %f\n", gpio_get_vcondo());
-  printf("VUSB: %f : %d\n", gpio_get_vusb(), gpio_vusb_connected());
+  printf("VUSB: %d\n", gpio_vusb_connected());
   return 0;
 }
 
@@ -674,7 +687,7 @@ static int ota_start(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
 
-  suspendTask(fetchLinkyDataTaskHandle);
+  suspendTask(main_task_handle);
   const esp_partition_t *configured = esp_ota_get_boot_partition();
   const esp_partition_t *running = esp_ota_get_running_partition();
   const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
@@ -838,7 +851,7 @@ static int start_test_command(int argc, char **argv)
   char *test_name = argv[1];
   for (int i = 0; i < tests_count; i++)
   {
-    if (strcmp(test_name, tests_available_tests[i]) == 0)
+    if (strcmp(test_name, tests_str_available_tests[i]) == 0)
     {
       start_test((tests_t)i);
       return 0;

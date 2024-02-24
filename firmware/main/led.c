@@ -38,6 +38,7 @@ typedef enum
     LED_FLASH,
     LED_FLASH_MODE,
     LED_WAVE,
+    LED_MANUAL,
 } led_type_t;
 
 typedef struct led_timing_t
@@ -56,7 +57,6 @@ typedef struct led_timing_t
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
-static void led_set_color(uint32_t color);
 static void led_pattern_task(void *pattern_ptr);
 static void led_task(void *pvParameters);
 static void led_set_rgb(uint32_t color, uint32_t brightness);
@@ -66,10 +66,7 @@ static void led_start_next_pattern();
 Public Variable
 ===============================================================================*/
 
-/*==============================================================================
- Local Variable
-===============================================================================*/
-const uint32_t color_mode[] = {
+const uint32_t led_color_mode[] = {
     [MODE_NONE] = 0x000000,
     [MODE_WEB] = 0x0008FF,
     [MODE_MQTT] = 0x8803FC,
@@ -78,27 +75,34 @@ const uint32_t color_mode[] = {
     [MODE_MATTER] = 0xFFFFFF,
     [MODE_TUYA] = 0xFA650F,
 };
+/*==============================================================================
+ Local Variable
+===============================================================================*/
 
 // clang-format off
 static led_timing_t led_timing[] = {
-    {LED_BOOT,              100,    LED_FLASH_MODE, 0x000000,                       100,    0,      1,       0, 0,},
-    {LED_NO_CONFIG,         99,     LED_FLASH,      0xFF0000,                       50,     100,    2,       0, 0,},
-    {LED_FACTORY_RESET,     101,    LED_FLASH,      0x00F0FF,                       100,    100,    FOREVER, 0, 0,},
-    
-    {LED_LINKY_READING,     50,     LED_FLASH,      0xFF8000,                       100,    900,    FOREVER, 0, 0,},
-    {LED_LINKY_FAILED,      51,     LED_FLASH,      0xFF0000,                       50,     100,    3,       0, 0,},
-    
-    {LED_CONNECTING,        60,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
-    {LED_CONNECTING_FAILED, 61,     LED_FLASH,      0xFF0000,                       50,     100,    4,       0, 0,},
-    
-    {LED_SENDING,           70,     LED_FLASH,      0x00F0FF,                       100,    1000,   FOREVER, 0, 0,},
-    {LED_SEND_OK,           71,     LED_FLASH,      0x00FF00,                       300,    0,      1,       0, 0,},
-    {LED_SEND_FAILED,       72,     LED_FLASH,      0xFF0000,                       50,     100,    5,       0, 0,},
-    
-    {LED_PAIRING,           11,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
+    {LED_COLOR_WHEEL,           102,    LED_MANUAL,     0x000000,                         0,    0,      FOREVER, 0, 0,},
 
-    {LED_OTA_AVAILABLE,     10,     LED_WAVE,       0x0000FF,                       0,      1000,   FOREVER, 1, 0,},
-    {LED_OTA_IN_PROGRESS,   11,     LED_WAVE,       0xFFFF00,                       0,      1000,   FOREVER, 1, 0,},
+    {LED_BOOT,                  100,    LED_FLASH_MODE, 0x000000,                       100,    0,      1,       0, 0,},
+    {LED_NO_CONFIG,             99,     LED_FLASH,      0xFF0000,                       50,     100,    2,       0, 0,},
+    {LED_FACTORY_RESET,         102,    LED_FLASH,      0x00F0FF,                      2000,    100,    FOREVER, 0, 0,},
+    {LED_FACTORY_RESET_ADVERT,  101,    LED_FLASH,      0x00F0FF,                       100,    100,    FOREVER, 0, 0,},
+    
+    {LED_PAIRING,               98,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
+    
+    {LED_LINKY_READING,         50,     LED_FLASH,      0xFF8000,                       100,    900,    FOREVER, 0, 0,},
+    {LED_LINKY_FAILED,          51,     LED_FLASH,      0xFF0000,                       50,     100,    3,       0, 0,},
+    
+    {LED_CONNECTING,            60,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
+    {LED_CONNECTING_FAILED,     61,     LED_FLASH,      0xFF0000,                       50,     100,    4,       0, 0,},
+    
+    {LED_SENDING,               70,     LED_FLASH,      0x00F0FF,                       100,    1000,   FOREVER, 0, 0,},
+    {LED_SEND_OK,               71,     LED_FLASH,      0x00FF00,                       300,    0,      1,       0, 0,},
+    {LED_SEND_FAILED,           72,     LED_FLASH,      0xFF0000,                       50,     100,    5,       0, 0,},
+    
+
+    {LED_OTA_AVAILABLE,         10,     LED_WAVE,       0x0000FF,                       0,      1000,   FOREVER, 1, 0,},
+    {LED_OTA_IN_PROGRESS,       11,     LED_WAVE,       0xFFFF00,                       0,      1000,   FOREVER, 1, 0,},
 
 };
 
@@ -202,7 +206,7 @@ static void led_set_rgb(uint32_t color, uint32_t brightness)
     led_strip_refresh(led);
 }
 
-static void led_set_color(uint32_t color)
+void led_set_color(uint32_t color)
 {
     led_set_rgb(color, 50); // 5% brightness
     // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
@@ -265,7 +269,7 @@ static void led_task(void *pvParameters)
         timing->in_progress = 1;
         led_current_pattern = timing;
         xTaskCreate(led_pattern_task, "led_pattern_task", 4 * 1024, timing, PRIORITY_LED_PATTERN, &led_pattern_task_handle);
-        ESP_LOGI(TAG, "Pattern %d started", pattern);
+        ESP_LOGD(TAG, "Pattern %d started", pattern);
     }
 }
 
@@ -277,7 +281,7 @@ static void led_pattern_task(void *pattern_ptr)
         ESP_LOGE(TAG, "Pattern is NULL");
         vTaskDelete(NULL);
     }
-    ESP_LOGW(TAG, "Pattern %ld, type: %d, color: %ld, tOn: %ld, tOff: %ld, repeat: %ld", pattern->id, pattern->type, pattern->color, pattern->tOn, pattern->tOff, pattern->repeat);
+    ESP_LOGD(TAG, "Pattern %ld, type: %d, color: %ld, tOn: %ld, tOff: %ld, repeat: %ld", pattern->id, pattern->type, pattern->color, pattern->tOn, pattern->tOff, pattern->repeat);
     uint32_t repeat = pattern->repeat;
     while (repeat == FOREVER || repeat > 0)
     {
@@ -294,7 +298,7 @@ static void led_pattern_task(void *pattern_ptr)
             }
             break;
         case LED_FLASH_MODE:
-            led_set_color(color_mode[config_values.mode]);
+            led_set_color(led_color_mode[config_values.mode]);
             vTaskDelay(pattern->tOn / portTICK_PERIOD_MS);
             led_set_color(0);
             vTaskDelay(pattern->tOff / portTICK_PERIOD_MS);
@@ -323,6 +327,9 @@ static void led_pattern_task(void *pattern_ptr)
             {
                 repeat--;
             }
+            break;
+        case LED_MANUAL:
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
             break;
         default:
             ESP_LOGE(TAG, "Unknown pattern type");

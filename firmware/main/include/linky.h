@@ -92,7 +92,7 @@ typedef struct
     char HHPHC[5];       //     1                     Horaire Heures Pleines Heures Creuses
     char MOTDETAT[8];    //     6                     Mot d'état du compteur                            
 
-} LinkyDataHist;
+} linky_data_hist;
 
 
 typedef struct
@@ -188,7 +188,7 @@ typedef struct
     char PJOURF_1[100];  //      98        -          Profil du prochain jour calendrier fournisseur 
     char PPOINTE[100];   //      98        -          Profil du prochain jour de pointe
 
-}LinkyDataStd;
+}linky_data_std;
 
 // clang-format on
 typedef enum
@@ -201,7 +201,7 @@ typedef enum
     UINT32_TIME = 12,
     HA_NUMBER = 13,
     BLOB = 14,
-} LinkyLabelType;
+} linky_label_type_t;
 
 typedef enum
 {
@@ -274,7 +274,7 @@ typedef struct
     const char *name;
     const char *label;
     void *data;
-    const LinkyLabelType type;
+    const linky_label_type_t type;
     const uint8_t size;
     const linky_mode_t mode;
     const linky_contract_t contract;
@@ -290,8 +290,8 @@ typedef struct
 
 typedef struct
 {
-    LinkyDataHist hist;
-    LinkyDataStd std;
+    linky_data_hist hist;
+    linky_data_std std;
     time_t timestamp;
 } linky_data_t;
 

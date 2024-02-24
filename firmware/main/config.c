@@ -38,7 +38,7 @@
 struct config_item_t
 {
     const char *name;
-    const LinkyLabelType type;
+    const linky_label_type_t type;
     void *value;
     size_t size;
     nvs_handle_t *handle;
@@ -118,6 +118,7 @@ int8_t config_erase()
         .zigbee.state = ZIGBEE_NOT_CONFIGURED,
         .index_offset = {0},
     };
+
     snprintf(blank_config.mqtt.topic, sizeof(blank_config.mqtt.topic), "TICMeter/%s", efuse_values.macAddress + 6);
     config_values = blank_config;
     return 0;
@@ -584,6 +585,6 @@ uint8_t config_factory_reset()
     zigbee_factory_reset();
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
-    hard_reset();
+    hard_restart();
     return 0;
 }

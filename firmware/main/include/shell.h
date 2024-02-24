@@ -46,7 +46,14 @@
 ==============================================================================*/
 
 extern void shell_init();
+
+extern esp_console_repl_t *shell_repl;
+
 uint8_t tuya_stop();
 uint8_t tuya_restart();
+
+void shell_deinit();
+void shell_reinit();
+
 extern void shell_wake_reason();
 #endif /* SHELL_H */

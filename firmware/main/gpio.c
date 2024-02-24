@@ -34,6 +34,7 @@
 #include "ota.h"
 #include "power.h"
 #include "led.h"
+#include "shell.h"
 
 /*==============================================================================
  Local Define
@@ -57,6 +58,7 @@ static void gpio_init_adc_cali(adc_oneshot_unit_handle_t adc_handle, adc_channel
 static void gpio_pairing_isr_cb(void *arg);
 static void gpio_vusb_isr_cb(void *arg);
 static void gpio_vusb_task(void *pvParameter);
+static void gpio_init_vusb();
 
 /*==============================================================================
 Public Variable
@@ -91,7 +93,9 @@ void gpio_init_pins()
     gpio_init_adc_cali(adc1_handle, V_CONDO_PIN, &adc_capa_cali_handle, "VCondo");
 
     esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "gpio_pairing_lock", &gpio_pairing_lock);
-    esp_pm_lock_create(ESP_PM_NO_LIGHT_SLEEP, 0, "gpio_vusb_lock", &gpio_vusb_lock);
+    esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "gpio_vusb_lock", &gpio_vusb_lock);
+    gpio_pairing_button_isr_queue = xQueueCreate(10, sizeof(uint32_t));
+    power_vusb_isr_queue = xQueueCreate(1, sizeof(uint32_t));
 
     gpio_config_t pairing_conf = {
         .pin_bit_mask = (1ULL << PAIRING_PIN),
@@ -101,7 +105,33 @@ void gpio_init_pins()
         .intr_type = GPIO_INTR_LOW_LEVEL, // light sleep dont support edges
     };
     gpio_config(&pairing_conf);
+    if (gpio_get_level(PAIRING_PIN) == 0)
+    {
+        ESP_LOGI(TAG, "Pairing button pushed at boot");
+        gpio_intr_disable(PAIRING_PIN);
+        uint32_t pin = PAIRING_PIN;
+        xQueueSend(gpio_pairing_button_isr_queue, &pin, 0);
+    }
 
+    gpio_init_vusb();
+
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add(PAIRING_PIN, gpio_pairing_isr_cb, (void *)PAIRING_PIN);
+    gpio_isr_handler_add(V_USB_PIN, gpio_vusb_isr_cb, (void *)V_USB_PIN);
+
+    // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
+    ESP_LOGI(TAG, "VCondo: %fV", gpio_get_vcondo());
+
+    gpio_wakeup_enable(PAIRING_PIN, GPIO_INTR_LOW_LEVEL);
+    gpio_wakeup_enable(V_USB_PIN, vusb_level ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
+    esp_sleep_enable_gpio_wakeup();
+
+    xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
+    xTaskCreate(gpio_vusb_task, "gpio_vusb_task", 4 * 1024, NULL, PRIORITY_PAIRING, NULL);                 // start push button task
+}
+
+static void gpio_init_vusb()
+{
     gpio_config_t vusb_conf = {
         .pin_bit_mask = (1ULL << V_USB_PIN),
         .mode = GPIO_MODE_INPUT,
@@ -114,29 +144,12 @@ void gpio_init_pins()
     if (vusb_level)
     {
         ESP_LOGI(TAG, "USB already connected");
+        esp_pm_lock_release(gpio_vusb_lock);
         esp_pm_lock_acquire(gpio_vusb_lock);
     }
     ESP_LOGI(TAG, "VUSB level: %d", vusb_level);
     vusb_conf.intr_type = vusb_level ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL;
     gpio_config(&vusb_conf);
-
-    gpio_install_isr_service(0);
-    gpio_isr_handler_add(PAIRING_PIN, gpio_pairing_isr_cb, (void *)PAIRING_PIN);
-    gpio_isr_handler_add(V_USB_PIN, gpio_vusb_isr_cb, (void *)V_USB_PIN);
-
-    gpio_pairing_button_isr_queue = xQueueCreate(10, sizeof(uint32_t));
-    power_vusb_isr_queue = xQueueCreate(1, sizeof(uint32_t));
-
-    // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
-    ESP_LOGI(TAG, "VCondo: %fV", gpio_get_vcondo());
-    ESP_LOGI(TAG, "VUSB: %fV", gpio_get_vusb());
-
-    gpio_wakeup_enable(PAIRING_PIN, GPIO_INTR_LOW_LEVEL);
-    gpio_wakeup_enable(V_USB_PIN, vusb_level ? GPIO_INTR_LOW_LEVEL : GPIO_INTR_HIGH_LEVEL);
-    esp_sleep_enable_gpio_wakeup();
-
-    xTaskCreate(gpio_pairing_button_task, "gpio_pairing_button_task", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
-    xTaskCreate(gpio_vusb_task, "gpio_vusb_task", 4 * 1024, NULL, PRIORITY_PAIRING, NULL);                 // start push button task
 }
 
 static void IRAM_ATTR gpio_pairing_isr_cb(void *arg)
@@ -156,7 +169,7 @@ static void IRAM_ATTR gpio_vusb_isr_cb(void *arg)
 {
     uint32_t gpio_num = (uint32_t)arg;
     uint32_t level = gpio_get_level(gpio_num);
-    // esp_rom_printf("IT USB %ld lvl: %ld\n", gpio_num, level);
+    esp_rom_printf("IT USB %ld lvl: %ld\n", gpio_num, level);
     gpio_wakeup_disable(gpio_num);
     gpio_intr_disable(gpio_num);
     if (level == 0)
@@ -200,6 +213,11 @@ static void gpio_vusb_task(void *pvParameter)
                 if (config_values.mode == MODE_ZIGBEE)
                 {
                     esp_zb_sleep_enable(true);
+                    if (shell_repl != NULL)
+                    {
+                        ESP_LOGI(TAG, "USB unplugged, removing Shell...");
+                        esp_restart();
+                    }
                 }
             }
             led_usb_event(level);
@@ -212,7 +230,7 @@ static void gpio_init_adc(adc_unit_t adc_unit, adc_oneshot_unit_handle_t *out_ha
 {
     esp_err_t ret = ESP_OK;
 
-    if (out_handle != NULL)
+    if (out_handle != NULL && *out_handle != NULL)
     {
         adc_oneshot_del_unit(*out_handle);
     }
@@ -258,7 +276,7 @@ static bool gpio_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, ad
 #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
     if (!calibrated)
     {
-        if (out_handle != NULL)
+        if (out_handle != NULL && *out_handle != NULL)
         {
             adc_cali_delete_scheme_curve_fitting(*out_handle);
         }
@@ -372,6 +390,7 @@ float gpio_get_vusb()
 
 uint8_t gpio_vusb_connected()
 {
+    // gpio_init_vusb();
     return gpio_get_level(V_USB_PIN);
 }
 
@@ -416,7 +435,14 @@ void gpio_pairing_button_task(void *pvParameters)
             {
                 // Color Wheel
                 ESP_LOGI(TAG, "pushTime: %lu, %%: %lu", pushTime, pushTime % 1000);
-                if (pushTime % 1000 < 100)
+                if (push_from_boot)
+                {
+                    // factory reset
+                    ESP_LOGI(TAG, "Factory reset");
+                    led_start_pattern(LED_FACTORY_RESET);
+                    config_factory_reset();
+                }
+                else if (pushTime % 1000 < 100)
                 {
                     ESP_LOGI(TAG, "------------------------LED state before compute: %d", current_mode_led);
                     current_mode_led++;
@@ -430,7 +456,8 @@ void gpio_pairing_button_task(void *pvParameters)
                         current_mode_led = MODE_WEB;
                     }
                     ESP_LOGI(TAG, "------------------------LED state: %d", current_mode_led);
-                    // gpio_set_led_color(color_mode[current_mode_led]); //TODO:
+                    led_start_pattern(LED_COLOR_WHEEL);
+                    led_set_color(led_color_mode[current_mode_led]);
                 }
             }
             else if (pushTime > 2000)
@@ -438,10 +465,9 @@ void gpio_pairing_button_task(void *pvParameters)
                 // Announce pairing mode
                 if (push_from_boot)
                 {
-                    // factory reset
-                    ESP_LOGI(TAG, "Factory reset");
-                    led_start_pattern(LED_FACTORY_RESET);
-                    config_factory_reset();
+                    // factory reset advert
+                    ESP_LOGI(TAG, "Factory reset advert");
+                    led_start_pattern(LED_FACTORY_RESET_ADVERT);
                 }
                 if (current_mode_led == MODE_NONE)
                 {
@@ -459,10 +485,20 @@ void gpio_pairing_button_task(void *pvParameters)
         {
             if (lastState == 0) // button was released
             {
-                push_from_boot = 0;
+                if (push_from_boot)
+                {
+                    led_stop_pattern(LED_FACTORY_RESET_ADVERT);
+                    led_stop_pattern(LED_FACTORY_RESET);
+                    push_from_boot = 0;
+                    lastState = 1;
+                    current_mode_led = MODE_NONE;
+                    continue;
+                }
+
                 ESP_LOGI(TAG, "Button pushed for %lu ms", pushTime);
                 if (pushTime > 5000)
                 {
+                    led_stop_pattern(LED_COLOR_WHEEL);
                     ESP_LOGI(TAG, "Changing mode");
                     config_values.mode = current_mode_led;
                     config_write();
@@ -486,7 +522,7 @@ void gpio_pairing_button_task(void *pvParameters)
                     if (ota_state == OTA_AVAILABLE && gpio_vusb_connected())
                     {
                         ESP_LOGI(TAG, "OTA available, starting update");
-                        suspendTask(fetchLinkyDataTaskHandle);
+                        suspendTask(main_task_handle);
                         resumeTask(tuyaTaskHandle);
                         ota_state = OTA_INSTALLING;
                         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for led task to update
@@ -495,7 +531,15 @@ void gpio_pairing_button_task(void *pvParameters)
                     else
                     {
                         led_start_pattern(LED_BOOT);
-                        ESP_LOGI(TAG, "No action");
+                        if (config_values.mode == MODE_ZIGBEE)
+                        {
+                            ESP_LOGI(TAG, "Zigbee send value");
+                            main_sleep_time = 1;
+                        }
+                        else
+                        {
+                            ESP_LOGI(TAG, "No action");
+                        }
                         vTaskDelay(500 / portTICK_PERIOD_MS);
                         resumeTask(tuyaTaskHandle);
                     }
@@ -517,7 +561,7 @@ void gpio_start_pariring()
     case MODE_MQTT:
     case MODE_MQTT_HA:
         ESP_LOGI(TAG, "Web pairing");
-        suspendTask(fetchLinkyDataTaskHandle);
+        suspendTask(main_task_handle);
         if (wifi_state == WIFI_CONNECTED)
         {
             wifi_disconnect();
@@ -536,6 +580,7 @@ void gpio_start_pariring()
         ESP_LOGI(TAG, "Already paired, resetting");
         config_values.zigbee.state = ZIGBEE_WANT_PAIRING;
         config_write();
+        hard_restart();
         // esp_zb_factory_reset();
         // if (config_values.zigbee.state == ZIGBEE_PAIRED)
         // {
@@ -558,7 +603,7 @@ void gpio_start_pariring()
 void gpio_peripheral_reinit()
 {
     gpio_init_adc(ADC_UNIT_1, &adc1_handle);
-    gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
+    // gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
     gpio_init_adc_cali(adc1_handle, V_CONDO_PIN, &adc_capa_cali_handle, "VCondo");
     led_init();
     linky_init(MODE_HIST, RX_LINKY);
