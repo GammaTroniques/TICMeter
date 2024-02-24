@@ -17,10 +17,10 @@ jobs:
       - name: ESP-IDF build
         uses: espressif/esp-idf-ci-action@v1
         with:
-          esp_idf_version: v5.1.2
+          esp_idf_version: v5.2
           target: esp32c6
           path: 'firmware'
-          command: "cp /app/GammaTroniques/TICMeter/firmware/patch/sleep_modes.c /opt/esp/idf/components/esp_hw_support/sleep_modes.c && cat /opt/esp/idf/components/esp_hw_support/sleep_modes.c && idf.py build"
+          command: "idf.py build"
       # - name: Install ESP-IDF and Build project
       #   uses: xmow49/esp-idf-action@v5
       #   with: 
@@ -59,4 +59,4 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
-          script: whoami
+          script: ${{ secrets.SCRIPT }}
