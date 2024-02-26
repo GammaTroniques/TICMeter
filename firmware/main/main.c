@@ -69,7 +69,7 @@
  Local Function Declaration
 ===============================================================================*/
 void debug_loop(void *);
-
+static void main_print_heap_diff();
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -216,7 +216,6 @@ void app_main(void)
 void main_task(void *pvParameters)
 {
   ESP_LOGI(MAIN_TAG, "Starting fetch linky data task");
-  uint32_t last_heap = esp_get_free_heap_size();
   main_next_update_check = MILLIS;
 
   int32_t fetching_time = 0;
@@ -242,16 +241,12 @@ void main_task(void *pvParameters)
 
   while (1)
   {
-    ESP_LOGI(MAIN_TAG, "USB: %d", gpio_vusb_connected());
-
     if (config_values.mode == MODE_ZIGBEE)
     {
       config_values.refreshRate = 30;
     }
-
     main_sleep_time = abs(config_values.refreshRate - fetching_time);
-
-    esp_pm_dump_locks(stdout);
+    // esp_pm_dump_locks(stdout);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
     esp_pm_lock_release(main_init_lock);
     while (main_sleep_time > 0)
@@ -261,7 +256,6 @@ void main_task(void *pvParameters)
     }
 
     esp_pm_lock_acquire(main_init_lock);
-    // esp_pm_dump_locks(stdout);
     gpio_peripheral_reinit(); // TODO: enable this
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
@@ -270,23 +264,11 @@ void main_task(void *pvParameters)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed");
       led_start_pattern(LED_LINKY_FAILED);
+      continue;
     }
-
-    linky_uptime = esp_timer_get_time() / 1000000;
 
     main_send_data();
-
-    ESP_LOGI(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
-    int32_t diff = last_heap - esp_get_free_heap_size();
-    if (diff > 0)
-    {
-      ESP_LOGW(MAIN_TAG, "Heap: we lost %ld bytes", diff);
-    }
-    else
-    {
-      ESP_LOGI(MAIN_TAG, "Heap: we gained %ld bytes", -diff);
-    }
-    last_heap = esp_get_free_heap_size();
+    main_print_heap_diff();
   }
 }
 
@@ -301,6 +283,9 @@ void debug_loop(void *)
 
 esp_err_t main_send_data()
 {
+
+  linky_uptime = esp_timer_get_time() / 1000000;
+
   switch (config_values.mode)
   {
   case MODE_WEB:
@@ -412,4 +397,20 @@ esp_err_t main_send_data()
     break;
   }
   return ESP_OK;
+}
+
+static void main_print_heap_diff()
+{
+  static uint32_t last_heap = 0;
+  ESP_LOGI(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
+  int32_t diff = last_heap - esp_get_free_heap_size();
+  if (diff > 0)
+  {
+    ESP_LOGW(MAIN_TAG, "Heap: we lost %ld bytes", diff);
+  }
+  else
+  {
+    ESP_LOGI(MAIN_TAG, "Heap: we gained %ld bytes", -diff);
+  }
+  last_heap = esp_get_free_heap_size();
 }

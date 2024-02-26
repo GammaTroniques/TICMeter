@@ -183,6 +183,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     case POWER_VA:
     case POWER_Q:
     case POWER_W:
+    case POWER_kW:
     case CURRENT:
     case TENSION:
         cJSON_AddStringToObject(sensorConfig, "stat_cla", "measurement");
