@@ -50,6 +50,7 @@ typedef struct
     char ADCO[14];       //    12                     Adresse du compteur 
     char OPTARIF[6];     //     4                     Option tarifaire choisie
     uint32_t ISOUSC;     //     2         A           Intensité souscrite 
+    uint32_t PREF;       //     2         kVA         Puissance max contrat --> Value computes with ISOUSC (ISOUSC * 200) 
 
     uint64_t BASE;       //     9         Wh          Index option Base 
     //----------------------Index option Heures Creuses ----------------------
@@ -219,6 +220,7 @@ typedef enum
     C_HCHP,
     C_EJP,
     C_TEMPO,
+    C_PRODUCER,
 } linky_contract_t;
 
 typedef enum
@@ -257,6 +259,7 @@ typedef enum
     POWER_VA,
     POWER_kVA,
     POWER_W,
+    POWER_kW,
     POWER_Q,
     ENERGY,
     ENERGY_Q,
@@ -312,7 +315,7 @@ extern linky_data_t linky_data;
 extern linky_mode_t linky_mode;
 extern linky_contract_t linky_contract;
 
-extern uint8_t linky_tree_phase;
+extern uint8_t linky_three_phase;
 extern uint8_t linky_reading;
 extern uint8_t linky_want_debug_frame;
 extern uint32_t linky_free_heap_size;

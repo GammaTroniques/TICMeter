@@ -96,7 +96,8 @@ const LinkyGroup LinkyLabelList[] =
     //--------------------------- MODE HISTORIQUE --------------------------------
     {101, "Identifiant",                     "ADCO",        &linky_data.hist.ADCO,         STRING,      12, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",            0x0702, 0x0308,  ZB_RO, ZB_OCTSTR,   },
     {107, "Option tarifaire",                "OPTARIF",     &linky_data.hist.OPTARIF,      STRING,       4, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:cash-multiple",                   0xFF42, 0x0000,  ZB_RO, ZB_OCTSTR,   },  
-    {102, "Intensité souscrite",             "ISOUSC",      &linky_data.hist.ISOUSC,       UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0B01, 0x000D,  ZB_NO, ZB_INT24,    }, //TODO: zigbee: when  Meter Identification cluster
+    {000, "Intensité souscrite",             "ISOUSC",      &linky_data.hist.ISOUSC,       UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO,       }, //TODO: zigbee: when  Meter Identification cluster
+    {102, "Puissance Max contrat",           "pref",        &linky_data.hist.PREF ,        UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  POWER_kVA,   "",                                    0x0B01, 0x000D,  ZB_NO, ZB_INT24,    }, //TODO: zigbee: when  Meter Identification cluster
 
     {110, "Index Base",                      "BASE",        &linky_data.hist.BASE,         UINT64,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
     {111, "Index Heures Creuses",            "HCHC",        &linky_data.hist.HCHC,         UINT64,       0, MODE_HIST, C_HCHP,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
@@ -226,7 +227,7 @@ const LinkyGroup LinkyLabelList[] =
     {103, "Temps d'actualisation",           "now-refresh", &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0xFF42, 0x0002,  ZB_RP, ZB_UINT16    },
     {000, "Temps d'actualisation",           "set-refresh", &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
     {105, "Mode TIC",                        "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0029,  ZB_RP, ZB_UINT8     },
-    {106, "Mode Electrique",                 "mode-elec",   &linky_tree_phase,             UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x002a,  ZB_RP, ZB_UINT8     },
+    {106, "Mode Electrique",                 "mode-elec",   &linky_three_phase,            UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x002a,  ZB_RP, ZB_UINT8     },
     {000, "Dernière actualisation",          "timestamp",   &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
     {104, "Temps de fonctionnement",         "uptime",      &linky_uptime,                 UINT64,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     TIME,        "mdi:clock-time-eight-outline",        0xFF42, 0x0028,  ZB_RP, ZB_UINT48    },
     {000, "Free RAM",                        "free-ram",    &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     BYTES,       "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
@@ -239,7 +240,7 @@ linky_data_t linky_data; // The data
 linky_mode_t linky_mode = MODE_HIST;
 linky_contract_t linky_contract = C_ANY;
 
-uint8_t linky_tree_phase = 0;
+uint8_t linky_three_phase = 0;
 uint8_t linky_reading = 0;
 uint8_t linky_want_debug_frame = 0;
 
@@ -295,6 +296,7 @@ const char *const linky_str_contract[] = {
     [C_HCHP] = "HCHP",
     [C_EJP] = "EJP",
     [C_TEMPO] = "TEMPO",
+    [C_PRODUCER] = "PRODUCTEUR",
 };
 
 const char *const linky_str_tarif[] = {
@@ -388,6 +390,11 @@ void linky_set_mode(linky_mode_t newMode)
 {
     linky_data_t empty;
     memset(&empty, 0, sizeof empty);
+    if (newMode > MODE_STD)
+    {
+        newMode = MODE_HIST;
+        ESP_LOGW(TAG, "Invalid mode, switching to historique mode");
+    }
 
     linky_mode = newMode;
     switch (newMode)
@@ -584,6 +591,7 @@ static char linky_decode()
     // if we have a valid frame, with mode auto and its a new value mode, we save it.
     if (config_values.linkyMode == AUTO && linky_mode != config_values.last_linky_mode)
     {
+        ESP_LOGI(TAG, "Linky mode: %d", linky_mode);
         ESP_LOGI(TAG, "Auto mode: New mode found: %s", linky_str_mode[linky_mode]);
         config_values.last_linky_mode = linky_mode;
         config_write();
@@ -726,6 +734,38 @@ static char linky_decode()
             }
         }
     }
+    linky_contract = linky_get_contract(&linky_data);
+
+    switch (linky_mode)
+    {
+    case MODE_HIST:
+        if (linky_data.hist.PMAX != UINT32_MAX)
+        {
+            linky_three_phase = 1;
+        }
+        else
+        {
+            linky_three_phase = 0;
+        }
+
+        // Compute values
+        linky_data.hist.PREF = linky_data.hist.ISOUSC * 200;
+
+        break;
+    case MODE_STD:
+        if (linky_data.std.IRMS2 != UINT16_MAX || linky_data.std.URMS3 != UINT16_MAX || linky_data.std.SINSTS1 != UINT32_MAX)
+        {
+            linky_three_phase = 1;
+        }
+        else
+        {
+            linky_three_phase = 0;
+        }
+        break;
+    default:
+        break;
+    }
+
     return 1;
 }
 
@@ -741,6 +781,7 @@ char linky_update()
 
     esp_pm_lock_acquire(linky_pm_lock);
     linky_reading = 1;
+    ESP_LOGI(TAG, "liinky mode: %d", linky_mode);
     if (linky_mode > MODE_STD)
     {
         ESP_LOGE(TAG, "Error: Unknown mode: %d", linky_mode);
@@ -850,6 +891,10 @@ void linky_print()
             ESP_LOGI(TAG, "%s (%s): %s %s", LinkyLabelList[i].name, LinkyLabelList[i].label, str_value, HAUnitsStr[LinkyLabelList[i].device_class]);
         }
     }
+    ESP_LOGI(TAG, "Contract: %s", linky_str_contract[linky_contract]);
+    ESP_LOGI(TAG, "Mode: %s", linky_str_mode[linky_mode]);
+    ESP_LOGI(TAG, "Three phases: %s", linky_three_phase ? "Yes" : "No");
+
     ESP_LOGI(TAG, "-------------------");
 }
 
@@ -1026,15 +1071,18 @@ static void linky_clear_data()
         {
             continue;
         }
-        if (LinkyLabelList[i].data == &config_values.refreshRate)
+        void *protected_data[] = {&config_values.refreshRate, &linky_mode, &linky_three_phase, &linky_uptime};
+        uint8_t found = 0;
+        for (uint32_t j = 0; j < sizeof(protected_data) / sizeof(protected_data[0]); j++)
         {
-            continue;
+            if (LinkyLabelList[i].data == protected_data[j])
+            {
+                ESP_LOGI(TAG, "Protected data: %s", LinkyLabelList[i].label);
+                found = 1;
+                continue;
+            }
         }
-        if (LinkyLabelList[i].data == &linky_mode)
-        {
-            continue;
-        }
-        if (LinkyLabelList[i].data == &linky_uptime)
+        if (found)
         {
             continue;
         }
@@ -1106,6 +1154,8 @@ linky_contract_t linky_get_contract(linky_data_t *data)
         return C_ANY;
         break;
     }
+
+    remove_char(raw, ' ');
 
     for (int i = 0; i < sizeof(linky_str_contract) / sizeof(linky_str_contract[0]); i++)
     {
