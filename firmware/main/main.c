@@ -122,6 +122,8 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
+  linky_want_debug_frame = 2;
+
   if (!linky_update())
   {
     ESP_LOGE(MAIN_TAG, "Cant find Linky");

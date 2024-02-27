@@ -138,7 +138,7 @@ const LinkyGroup LinkyLabelList[] =
     //------------------------ MODE STANDARD ----------------------- 
     {101, "Identifiant",                     "ADSC",        &linky_data.std.ADSC,          STRING,      12, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",            0x0702, 0x0308,  ZB_RP, ZB_OCTSTR,   },
     {000, "Version de la TIC",               "VTIC",        &linky_data.std.VTIC,          STRING,       2, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:tag",                             0x0B01, 0x000A,  ZB_NO, ZB_OCTSTR,   }, //TODO: zigbee: when  Meter Identification cluster
-    {000, "Date et heure courante",          "DATE",        &linky_data.std.DATE,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:clipboard-text-clock",            0xFF42, 0x000B,  ZB_RP, ZB_OCTSTR,   },
+    //{000, "Date et heure courante",          "DATE",        &linky_data.std.DATE,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:clipboard-text-clock",            0xFF42, 0x000B,  ZB_NO, ZB_OCTSTR,   },
     {107, "Nom du calendrier tarifaire",     "NGTF",        &linky_data.std.NGTF,          STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",                  0xFF42, 0x000C,  ZB_NO, ZB_OCTSTR,   },
     {108, "Libellé tarif en cours",          "LTARF",       &linky_data.std.LTARF,         STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:tag-text",                        0xFF42, 0x000D,  ZB_NO, ZB_OCTSTR,   },
 
@@ -1077,7 +1077,6 @@ static void linky_clear_data()
         {
             if (LinkyLabelList[i].data == protected_data[j])
             {
-                ESP_LOGI(TAG, "Protected data: %s", LinkyLabelList[i].label);
                 found = 1;
                 continue;
             }

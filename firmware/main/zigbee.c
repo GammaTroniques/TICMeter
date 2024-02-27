@@ -258,8 +258,15 @@ static void zigbee_task(void *pvParameters)
         .nwk_cfg.zed_cfg.keep_alive = 4000, // in seconds
     };
 
-    ESP_LOGW(TAG, "Enable sleep");
-    esp_zb_sleep_enable(true);
+    if (!gpio_vusb_connected())
+    {
+        ESP_LOGW(TAG, "Enable sleep");
+        esp_zb_sleep_enable(true);
+    }
+    else
+    {
+        ESP_LOGW(TAG, "Disable sleep: VUSB connected");
+    }
     esp_zb_init(&zigbee_cfg);
 
     ESP_LOGI(TAG, "Zigbee stack initialized");
@@ -444,6 +451,9 @@ static void zigbee_task(void *pvParameters)
         case UINT64:
             sprintf(str_value, "%llu", *(uint64_t *)LinkyLabelList[i].data);
             break;
+        case UINT32_TIME:
+            sprintf(str_value, "%lu", ((TimeLabel *)LinkyLabelList[i].data)->value);
+            break;
         case STRING:
             sprintf(str_value, "%s", (char *)LinkyLabelList[i].data);
             char *str = (char *)LinkyLabelList[i].data;
@@ -574,7 +584,7 @@ uint8_t zigbee_send(linky_data_t *data)
             continue;
         }
 
-        if (LinkyLabelList[i].clusterID == TICMETER_CLUSTER_ID && LinkyLabelList[i].mode == MODE_STD) // TODO:
+        if (LinkyLabelList[i].clusterID == TICMETER_CLUSTER_ID) // TODO:
         {
             ESP_LOGW(TAG, "Skip %s cluster", LinkyLabelList[i].label);
             continue;
