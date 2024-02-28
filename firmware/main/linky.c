@@ -1035,6 +1035,7 @@ static void linky_create_debug_frame(uint8_t mode_std)
         linky_rx_bytes = sizeof(linky_std_debug_buffer);
         return;
     }
+    linky_set_mode(MODE_HIST);
 
     // random base value
     snprintf(debug_hist[3].value, sizeof(debug_hist[3].value), "%ld", esp_random() % 1000000);
