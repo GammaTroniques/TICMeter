@@ -584,11 +584,11 @@ uint8_t zigbee_send(linky_data_t *data)
             continue;
         }
 
-        if (LinkyLabelList[i].clusterID == TICMETER_CLUSTER_ID) // TODO:
-        {
-            ESP_LOGW(TAG, "Skip %s cluster", LinkyLabelList[i].label);
-            continue;
-        }
+        // if (LinkyLabelList[i].clusterID == TICMETER_CLUSTER_ID) // TODO:
+        // {
+        //     ESP_LOGW(TAG, "Skip %s cluster", LinkyLabelList[i].label);
+        //     continue;
+        // }
 
         switch (LinkyLabelList[i].type)
         {
