@@ -208,6 +208,10 @@ static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback
     case ESP_ZB_CORE_OTA_UPGRADE_VALUE_CB_ID:
         ret = zigbee_ota_upgrade_status_handler(*(esp_zb_zcl_ota_upgrade_value_message_t *)message);
         break;
+    case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
+        esp_zb_zcl_cmd_default_resp_message_t *resp = (esp_zb_zcl_cmd_default_resp_message_t *)(message);
+        ESP_LOGI(TAG, "Received default response cluster: %x", resp->info.cluster);
+        break;
     default:
         ESP_LOGW(TAG, "Receive Zigbee action(0x%x) callback, message: %s", callback_id, (char *)message);
         break;
