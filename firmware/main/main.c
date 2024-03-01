@@ -122,7 +122,7 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
-  linky_want_debug_frame = 1;
+  linky_want_debug_frame = 2;
 
   if (!linky_update())
   {
