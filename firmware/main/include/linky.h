@@ -138,7 +138,7 @@ typedef struct
     uint16_t URMS2;      //      3         V          Tension efficace, phase 2
     uint16_t URMS3;      //      3         V          Tension efficace, phase 3
 
-    uint8_t PREF;        //      2         kVA        Puissance app. de référence (PREF) 
+    uint16_t PREF;        //      2         kVA        Puissance app. de référence (PREF) 
     uint8_t PCOUP;       //      2         kVA        Puissance app. de coupure (PCOUP)
 
     uint32_t SINSTS;     //      5         VA         Puissance apparente soutirée instantanée
@@ -171,6 +171,7 @@ typedef struct
     TimeLabel UMOY3;     //      3         V          Tension moyenne, phase 3
 
     char STGE[10];        //      8         -          Registre de Statuts
+    char DEMAIN[6];      //      4         -          Couleur du lendemain
 
     TimeLabel DPM1;      //      2         -          Début Pointe Mobile 1
     TimeLabel FPM1;      //      2         -          Fin Pointe Mobile 1

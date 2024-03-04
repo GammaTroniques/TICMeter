@@ -131,6 +131,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         {
             /* commissioning failed */
             ESP_LOGW(TAG, "Commissioning failed (status: %d)", err_status);
+            led_start_pattern(LED_CONNECTING_FAILED);
         }
         break;
 
@@ -436,31 +437,46 @@ static void zigbee_task(void *pvParameters)
             }
             break;
         }
+        case UINT32_TIME:
+        {
+            if (((TimeLabel *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            {
+                continue;
+            }
+            break;
+        }
         default:
             break;
         };
 
         char str_value[100];
+        void *ptr_value = LinkyLabelList[i].data;
+
+        if (LinkyLabelList[i].type == UINT32_TIME)
+        {
+            ptr_value = &((TimeLabel *)LinkyLabelList[i].data)->value;
+        }
+
         switch (LinkyLabelList[i].type)
         {
         case UINT8:
-            sprintf(str_value, "%u", *(uint8_t *)LinkyLabelList[i].data);
+            sprintf(str_value, "%u", *(uint8_t *)ptr_value);
             break;
         case UINT16:
-            sprintf(str_value, "%u", *(uint16_t *)LinkyLabelList[i].data);
+            sprintf(str_value, "%u", *(uint16_t *)ptr_value);
             break;
         case UINT32:
-            sprintf(str_value, "%lu", *(uint32_t *)LinkyLabelList[i].data);
+            sprintf(str_value, "%lu", *(uint32_t *)ptr_value);
             break;
         case UINT64:
-            sprintf(str_value, "%llu", *(uint64_t *)LinkyLabelList[i].data);
+            sprintf(str_value, "%llu", *(uint64_t *)ptr_value);
             break;
         case UINT32_TIME:
-            sprintf(str_value, "%lu", ((TimeLabel *)LinkyLabelList[i].data)->value);
+            sprintf(str_value, "%lu", *(uint32_t *)ptr_value);
             break;
         case STRING:
-            sprintf(str_value, "%s", (char *)LinkyLabelList[i].data);
-            char *str = (char *)LinkyLabelList[i].data;
+            sprintf(str_value, "%s", (char *)ptr_value);
+            char *str = (char *)ptr_value;
             char temp[100];
             memcpy(temp + 1, str, LinkyLabelList[i].size + 1);
             temp[0] = strlen(temp + 1);
@@ -484,17 +500,17 @@ static void zigbee_task(void *pvParameters)
         {
         case ESP_ZB_ZCL_CLUSTER_ID_ELECTRICAL_MEASUREMENT:
         {
-            esp_zb_electrical_meas_cluster_add_attr(esp_zb_electrical_meas_cluster, LinkyLabelList[i].attributeID, LinkyLabelList[i].data);
+            esp_zb_electrical_meas_cluster_add_attr(esp_zb_electrical_meas_cluster, LinkyLabelList[i].attributeID, ptr_value);
             break;
         }
         case ESP_ZB_ZCL_CLUSTER_ID_METERING:
         {
-            esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, LinkyLabelList[i].zb_access, LinkyLabelList[i].data);
+            esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, LinkyLabelList[i].zb_access, ptr_value);
             break;
         }
         case TICMETER_CLUSTER_ID:
         {
-            esp_zb_custom_cluster_add_custom_attr(esp_zb_ticmeter_cluster, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, LinkyLabelList[i].zb_access, LinkyLabelList[i].data);
+            esp_zb_custom_cluster_add_custom_attr(esp_zb_ticmeter_cluster, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, LinkyLabelList[i].zb_access, ptr_value);
             break;
         }
         default:
@@ -651,6 +667,14 @@ uint8_t zigbee_send(linky_data_t *data)
             // ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
             break;
         }
+        case UINT32_TIME:
+        {
+            if (((TimeLabel *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            {
+                continue;
+            }
+            break;
+        }
         default:
             break;
         };
@@ -664,6 +688,13 @@ uint8_t zigbee_send(linky_data_t *data)
 
         esp_zb_zcl_status_t status = ESP_ZB_ZCL_STATUS_SUCCESS;
         char str_value[102];
+        void *ptr_value = LinkyLabelList[i].data;
+
+        if (LinkyLabelList[i].type == UINT32_TIME)
+        {
+            ptr_value = &((TimeLabel *)LinkyLabelList[i].data)->value;
+        }
+
         if (LinkyLabelList[i].zb_access == ESP_ZB_ZCL_ATTR_ACCESS_REPORTING)
         {
             zigbee_print_value(str_value, LinkyLabelList[i].data, LinkyLabelList[i].type);
@@ -707,12 +738,12 @@ uint8_t zigbee_send(linky_data_t *data)
                 continue;
                 break;
             }
-            zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, size);
+            zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, ptr_value, size);
         }
         else
         {
-            ESP_LOGI(TAG, "Set attribute cluster: Status: 0x%X 0x%x, attribute: 0x%x, name: %s, value: %lu", status, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
-            status = esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, false);
+            ESP_LOGI(TAG, "Set attribute cluster: Status: 0x%X 0x%x, attribute: 0x%x, name: %s, value: %lu", status, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint32_t *)ptr_value);
+            status = esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, ptr_value, false);
         }
     }
 
