@@ -243,10 +243,6 @@ void main_task(void *pvParameters)
 
   while (1)
   {
-    if (config_values.mode == MODE_ZIGBEE)
-    {
-      config_values.refreshRate = 30;
-    }
     main_sleep_time = abs(config_values.refreshRate - fetching_time);
     // esp_pm_dump_locks(stdout);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
