@@ -184,9 +184,9 @@ typedef struct
     char MSG2[18];       //      16        -          Message Ultra court 
     char PRM[16];        //      14        -          PRM En mode standard la TIC retransmet le PRM.
     char RELAIS[5];      //      3         -          Etat des relais: Les données transmises correspondent à l’état des 8 relais dont 1 réel et 7 virtuels.
-    char NTARF[4];       //      2         -          Numéro de l’index tarifaire en cours
-    char NJOURF[4];      //      2         -          Numéro du jour en cours calendrier fournisseur
-    char NJOURF_1[4];    //      2         -          Numéro du prochain jour calendrier fournisseur
+    uint16_t NTARF;      //      2         -          Numéro de l’index tarifaire en cours
+    uint16_t NJOURF;     //      2         -          Numéro du jour en cours calendrier fournisseur
+    uint16_t NJOURF_1;   //      2         -          Numéro du prochain jour calendrier fournisseur
     char PJOURF_1[100];  //      98        -          Profil du prochain jour calendrier fournisseur 
     char PPOINTE[100];   //      98        -          Profil du prochain jour de pointe
 
