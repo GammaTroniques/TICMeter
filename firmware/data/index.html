@@ -20,7 +20,16 @@
             <div class="wifi">
                 <div class="input-field">
                     <h2>SSID</h2>
-                    <input type="text" name="wifi-ssid" placeholder="Livebox ..." maxlength="32" />
+                    <button type="button" onclick="wifi_scan()">Scanner les réseaux WiFi</button>
+
+                    <!-- <input type="text" name="wifi-ssid" placeholder="Livebox ..." maxlength="32" /> -->
+                </div>
+                <div class="wifi-list">
+                    <label>
+                        <input type="radio" name="wifi-ssid">
+                        <img src="wifi-2.svg" alt="wifi" />
+                    </label>
+
                 </div>
                 <div class="input-field">
                     <h2>PWD</h2>
@@ -52,13 +61,16 @@
 
             <div>
                 <label>
-                    <input type="radio" name="server-mode" value="0" checked>
+                    <input type="radio" name="server-mode" value="1" checked>
                     <img src="web.jpg" alt="WEB">
                 </label>
-
                 <label>
-                    <input type="radio" name="server-mode" value="1">
+                    <input type="radio" name="server-mode" value="2">
                     <img src="mqtt.png" alt="MQTT">
+                </label>
+                <label>
+                    <input type="radio" name="server-mode" value="4">
+                    <img src="zigbee.png" alt="Zigbee">
                 </label>
                 <label>
                     <input type="radio" name="server-mode" value="5">
@@ -121,6 +133,11 @@
                     <input type="text" name="tuya-device-auth" maxlength="49" />
                 </div>
             </div>
+            <div class="zigbee">
+                <p>Il n'y a pas de configuration supplémentaire.</p>
+                <p>Vous pouvez cliquer sur enregistrer et utiliser le
+                    bouton pour lancer l'appairage.</p>
+            </div>
         </div>
         <input type="submit" value="Engregistrer">
     </form>
@@ -130,28 +147,46 @@
 
 <script>
     const serverMode = document.getElementsByName("server-mode");
+    const web = document.querySelector(".web");
+    const mqtt = document.querySelector(".mqtt");
+    const tuya = document.querySelector(".tuya");
+    const zigbee = document.querySelector(".zigbee");
+    const radio = document.getElementsByName("server-mode");
+    web.style.display = "none";
+    mqtt.style.display = "none";
+    tuya.style.display = "none";
+    zigbee.style.display = "none";
+    for (let i = 0; i < radio.length; i++) {
+        radio[i].checked = false;
+    }
+
     serverMode.forEach((element) => {
         element.addEventListener("change", (event) => {
             console.log(event.target.value);
-            const web = document.querySelector(".web");
-            const mqtt = document.querySelector(".mqtt");
-            const tuya = document.querySelector(".tuya");
+
             web.style.display = "none";
             mqtt.style.display = "none";
             tuya.style.display = "none";
-            if (event.target.value == 0) {
-                web.style.display = "block";
-            } else if (event.target.value == 1) {
-                mqtt.style.display = "block";
-            } else if (event.target.value == 5) {
-                tuya.style.display = "block";
+            zigbee.style.display = "none";
+            switch (event.target.value) {
+                case "1":
+                    web.style.display = "block";
+                    break;
+                case "2":
+                    mqtt.style.display = "block";
+                    break;
+                case "3":
+                    mqtt.style.display = "block";
+                    break;
+                case "4":
+                    zigbee.style.display = "block";
+                    break;
+                case "5":
+                    tuya.style.display = "block";
+                    break;
             }
         });
     });
-    var tuya = {
-        productId: "",
-        uuid: "",
-    }
     //fetch config
     fetch("/config")
         .then((response) => response.json())
@@ -169,37 +204,36 @@
                 }
             }
             if ("server-mode" in data) {
-                const web = document.querySelector(".web");
-                const mqtt = document.querySelector(".mqtt");
-                const tuya = document.querySelector(".tuya");
-                const radio = document.getElementsByName("server-mode");
-                if (data["server-mode"] == 0) {
-                    web.style.display = "flex";
-                    mqtt.style.display = "none";
-                    tuya.style.display = "none";
-                    radio[0].checked = true;
-                    radio[1].checked = false;
-                    radio[2].checked = false;
+                web.style.display = "none";
+                mqtt.style.display = "none";
+                tuya.style.display = "none";
+                zigbee.style.display = "none";
+                for (let i = 0; i < radio.length; i++) {
+                    radio[i].checked = false;
                 }
-                else if (data["server-mode"] == 5) {
-                    web.style.display = "none";
-                    mqtt.style.display = "none";
-                    tuya.style.display = "block";
-                    radio[0].checked = false;
-                    radio[1].checked = false;
-                    radio[2].checked = true;
-                }
-                else {
-                    web.style.display = "none";
-                    mqtt.style.display = "flex";
-                    tuya.style.display = "none";
-                    radio[0].checked = false;
-                    radio[1].checked = true;
-                    radio[2].checked = false;
-                    if (data["server-mode"] == 2) { //mqtt + ha
-                        const mqttHaDiscovery = document.querySelector(`[name="mqtt-ha-discovery"]`);
-                        mqttHaDiscovery.checked = 1;
-                    }
+
+                switch (data["server-mode"]) {
+                    case 1:
+                        web.style.display = "flex";
+                        radio[0].checked = true;
+                        break;
+                    case 2:
+                    case 3:
+                        mqtt.style.display = "flex";
+                        radio[1].checked = true;
+                        if (data["server-mode"] == 2) { //mqtt + ha
+                            const mqttHaDiscovery = document.querySelector(`[name="mqtt-ha-discovery"]`);
+                            mqttHaDiscovery.checked = 1;
+                        }
+                        break;
+                    case 4:
+                        zigbee.style.display = "block";
+                        radio[2].checked = true;
+                        break;
+                    case 5:
+                        tuya.style.display = "block";
+                        radio[3].checked = true;
+                        break;
                 }
             }
 
@@ -218,6 +252,31 @@
             }
         });
 
+
+    function wifi_scan() {
+        fetch("/wifi-scan")
+            .then((response) => response.json())
+            .then((data) => {
+                console.log(data);
+                const wifiList = document.querySelector(".wifi-list");
+                wifiList.innerHTML = "";
+                const ap = data["ap"];
+                for (let i = 0; i < ap.length; i++) {
+                    const element = ap[i];
+                    console.log(element);
+                    const label = document.createElement("label");
+                    const input = document.createElement("input");
+                    input.type = "radio";
+                    input.name = "wifi-ssid";
+                    input.value = element.ssid;
+                    label.appendChild(input);
+                    const img = document.createElement("img");
+                    img.src = "wifi-2.svg";
+                    label.appendChild(img);
+                    wifiList.appendChild(label);
+                }
+            });
+    }
 </script>
 
 </html>

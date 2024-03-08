@@ -72,6 +72,7 @@ typedef enum
     MODE_ZIGBEE,
     MODE_TUYA,
     MODE_LAST,
+    // later
     MODE_MATTER,
 } connectivity_t;
 

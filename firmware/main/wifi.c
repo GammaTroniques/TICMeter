@@ -59,7 +59,7 @@ Public Variable
 ===============================================================================*/
 wifi_state_t wifi_state = WIFI_DISCONNECTED;
 uint32_t wifi_timeout_counter = 0;
-
+wifi_ap_record_t wifi_ap_list[20];
 /*==============================================================================
  Local Variable
 ===============================================================================*/
@@ -397,6 +397,7 @@ static void wifi_init_softap(void)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+    wifi_state = WIFI_STARTED;
 
     // esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
     char ip_addr[16];
@@ -453,4 +454,60 @@ void wifi_start_captive_portal()
     setup_server();
     // Start the DNS server that will redirect all queries to the softAP IP
     start_dns_server();
+}
+
+void wifi_scan(uint16_t *ap_count)
+{
+    esp_err_t err;
+    err = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
+        return;
+    }
+    if (wifi_state == WIFI_DISCONNECTED)
+    {
+        err = esp_wifi_start();
+        wifi_state = WIFI_STARTED;
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "esp_wifi_start failed with 0x%X", err);
+            return;
+        }
+    }
+
+    wifi_scan_config_t scan_config = {
+        .ssid = 0,
+        .bssid = 0,
+        .channel = 0,
+        .show_hidden = true};
+
+    err = esp_wifi_scan_start(&scan_config, true);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_scan_start failed with 0x%X", err);
+        return;
+    }
+    ESP_LOGI(TAG, "Start scanning...");
+    uint16_t ap_num = 0;
+    esp_wifi_scan_get_ap_num(&ap_num);
+    if (ap_count != NULL)
+    {
+        *ap_count = ap_num;
+    }
+    if (ap_num == 0)
+    {
+        ESP_LOGI(TAG, "No AP found");
+        return;
+    }
+    err = esp_wifi_scan_get_ap_records(&ap_num, wifi_ap_list);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_scan_get_ap_records failed with 0x%X", err);
+        return;
+    }
+    for (int i = 0; i < ap_num; i++)
+    {
+        ESP_LOGI(TAG, "SSID: %s, RSSI: %d", wifi_ap_list[i].ssid, wifi_ap_list[i].rssi);
+    }
 }

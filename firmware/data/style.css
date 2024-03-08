@@ -122,7 +122,8 @@ p {
   margin: 10px;
 }
 
-input[type="submit"] {
+input[type="submit"],
+button {
   background-color: white;
   color: black;
   text-align: center;
@@ -132,6 +133,13 @@ input[type="submit"] {
   border-radius: 10px;
   margin: 10px;
   border: 1px solid black;
+  cursor: pointer;
+}
+button:hover {
+  background-color: #cccccc;
+}
+button:active {
+  background-color: #999999;
 }
 
 .server-selector {

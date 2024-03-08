@@ -119,6 +119,8 @@ static int skip_command(int argc, char **argv);
 
 static int start_pairing_command(int argc, char **argv);
 static int pm_stats_command(int argc, char **argv);
+static int wifi_scan_command(int argc, char **argv);
+
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -187,7 +189,9 @@ static const shell_cmd_t shell_cmds[] = {
     {"zigbee-reset",                "Clear Zigbee config",                      &zigbee_reset_command,              0, {}, {}},
     {"skip",                        "Skip refresh rate delay",                  &skip_command,                      0, {}, {}},
     {"pairing",                     "Start pairing",                            &start_pairing_command,             0, {}, {}},
-    {"pm-stats",                     "Power management stats",                  &pm_stats_command,                  0, {}, {}},
+    {"pm-stats",                    "Power management stats",                   &pm_stats_command,                  0, {}, {}},
+    {"wifi-scan",                   "Scan for wifi networks",                   &wifi_scan_command,                 0, {}, {}},
+
 };
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
 // clang-format on
@@ -944,5 +948,15 @@ static int pm_stats_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   esp_pm_dump_locks(stdout);
+  return 0;
+}
+
+static int wifi_scan_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  wifi_scan(NULL);
   return 0;
 }

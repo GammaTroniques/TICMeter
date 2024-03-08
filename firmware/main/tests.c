@@ -217,9 +217,9 @@ static esp_err_t test_linky_std(void *ptr)
         .MSG2 = "un test",
         .PRM = "25555555926695",
         .RELAIS = "00000",
-        .NTARF = "02",
-        .NJOURF = "00",
-        .NJOURF_1 = "00",
+        .NTARF = 2,
+        .NJOURF = 0,
+        .NJOURF_1 = 2,
         .PJOURF_1 = "00",
         .PPOINTE = "000000",
     };

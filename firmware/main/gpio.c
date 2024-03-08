@@ -555,6 +555,7 @@ void gpio_pairing_button_task(void *pvParameters)
 void gpio_start_pariring()
 {
     ESP_LOGI(TAG, "Starting pairing");
+    led_start_pattern(LED_PAIRING);
     switch (config_values.mode)
     {
     case MODE_WEB:
@@ -596,6 +597,7 @@ void gpio_start_pariring()
         break;
     default:
         ESP_LOGI(TAG, "No pairing mode");
+        led_stop_pattern(LED_PAIRING);
         break;
     }
 }

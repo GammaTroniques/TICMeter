@@ -81,26 +81,24 @@ const uint32_t led_color_mode[] = {
 
 // clang-format off
 static led_timing_t led_timing[] = {
+    {LED_FACTORY_RESET,         103,    LED_FLASH,      0x00F0FF,                      2000,    100,    FOREVER, 0, 0,},
     {LED_COLOR_WHEEL,           102,    LED_MANUAL,     0x000000,                         0,    0,      FOREVER, 0, 0,},
-
-    {LED_BOOT,                  100,    LED_FLASH_MODE, 0x000000,                       100,    0,      1,       0, 0,},
-    {LED_NO_CONFIG,             99,     LED_FLASH,      0xFF0000,                       50,     100,    2,       0, 0,},
-    {LED_FACTORY_RESET,         102,    LED_FLASH,      0x00F0FF,                      2000,    100,    FOREVER, 0, 0,},
     {LED_FACTORY_RESET_ADVERT,  101,    LED_FLASH,      0x00F0FF,                       100,    100,    FOREVER, 0, 0,},
-    
-    {LED_PAIRING,               98,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
-    
-    {LED_LINKY_READING,         50,     LED_FLASH,      0xFF8000,                       100,    900,    FOREVER, 0, 0,},
-    {LED_LINKY_FAILED,          51,     LED_FLASH,      0xFF0000,                       50,     100,    3,       0, 0,},
-    
+    {LED_BOOT,                  100,    LED_FLASH_MODE, 0x000000,                       100,    0,      1,       0, 0,},
+    {LED_PAIRING,               99,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
+
     {LED_CONNECTING,            60,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
     {LED_CONNECTING_FAILED,     61,     LED_FLASH,      0xFF0000,                       50,     100,    4,       0, 0,},
     
     {LED_SENDING,               70,     LED_FLASH,      0x00F0FF,                       100,    1000,   FOREVER, 0, 0,},
-    {LED_SEND_OK,               71,     LED_FLASH,      0x00FF00,                       300,    0,      1,       0, 0,},
     {LED_SEND_FAILED,           72,     LED_FLASH,      0xFF0000,                       50,     100,    5,       0, 0,},
-    
+    {LED_SEND_OK,               71,     LED_FLASH,      0x00FF00,                       300,    0,      1,       0, 0,},
 
+    {LED_LINKY_READING,         50,     LED_FLASH,      0xFF8000,                       100,    900,    FOREVER, 0, 0,},
+    {LED_LINKY_FAILED,          51,     LED_FLASH,      0xFF0000,                       50,     100,    3,       0, 0,},
+    
+    {LED_NO_CONFIG,             20,     LED_FLASH,      0xFF0000,                       50,     100,    2,       0, 0,},
+    
     {LED_OTA_AVAILABLE,         10,     LED_WAVE,       0x0000FF,                       0,      1000,   FOREVER, 1, 0,},
     {LED_OTA_IN_PROGRESS,       11,     LED_WAVE,       0xFFFF00,                       0,      1000,   FOREVER, 1, 0,},
 
