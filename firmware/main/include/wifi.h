@@ -47,6 +47,7 @@
 typedef enum
 {
     WIFI_DISCONNECTED,
+    WIFI_STARTED,
     WIFI_CONNECTING,
     WIFI_CONNECTED,
     WIFI_FAILED
@@ -56,6 +57,7 @@ typedef enum
  Public Variables Declaration
 ==============================================================================*/
 extern wifi_state_t wifi_state;
+extern wifi_ap_record_t wifi_ap_list[20];
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
@@ -102,5 +104,7 @@ extern void wifi_start_captive_portal();
  * @param config
  */
 extern void wifi_http_get_config_from_server();
+
+extern void wifi_scan(uint16_t *ap_count);
 
 #endif /* WIFI_H */

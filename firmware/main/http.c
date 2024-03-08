@@ -1,4 +1,5 @@
 #include "http.h"
+#include "wifi.h"
 #include "config.h"
 #include <ctype.h>
 #include <stdlib.h>
@@ -386,6 +387,30 @@ esp_err_t get_config_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+esp_err_t wifi_scan_handler(httpd_req_t *req)
+{
+    uint16_t ap_num = 0;
+    wifi_scan(&ap_num);
+    cJSON *jsonObject = cJSON_CreateObject();
+    cJSON *jsonArray = cJSON_CreateArray();
+    for (int i = 0; i < ap_num; i++)
+    {
+        cJSON *item = cJSON_CreateObject();
+        cJSON_AddStringToObject(item, "ssid", (const char *)wifi_ap_list[i].ssid);
+        cJSON_AddNumberToObject(item, "rssi", wifi_ap_list[i].rssi);
+        cJSON_AddNumberToObject(item, "channel", wifi_ap_list[i].primary);
+        cJSON_AddNumberToObject(item, "auth", wifi_ap_list[i].authmode);
+        cJSON_AddItemToArray(jsonArray, item);
+    }
+    cJSON_AddItemToObject(jsonObject, "ap", jsonArray);
+    char *jsonString = cJSON_PrintUnformatted(jsonObject);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, jsonString, strlen(jsonString));
+    free(jsonString);
+    cJSON_Delete(jsonObject);
+    return ESP_OK;
+}
+
 struct request_item_t
 {
     const char *uri;
@@ -399,6 +424,7 @@ struct request_item_t requests[] = {
     {"/generate_204",           HTTP_GET,   get_req_204_handler},
     {"/save-config",            HTTP_POST,  save_config_handler},
     {"/config",                 HTTP_GET,   get_config_handler},
+    {"/wifi-scan",              HTTP_GET,   wifi_scan_handler},
     {"/wpad.dat",               HTTP_GET,   get_req_404_handler},
     {"/chat",                   HTTP_GET,   get_req_404_handler},
     {"/connecttest.txt",        HTTP_GET,   get_req_logout_handler},
