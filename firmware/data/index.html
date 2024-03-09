@@ -11,35 +11,82 @@
 </head>
 
 <body>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-0" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7H0.36C4.24,11.83 8.13,16.66 12,21.5C15.89,16.66 19.77,11.83 23.64,7H23.65C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L12,18.3L3.27,7.44C5.9,5.85 8.92,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-1" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L15.61,13.81C14.5,13.28 13.25,13 12,13C10.75,13 9.5,13.28 8.39,13.8L3.27,7.44C5.91,5.85 8.93,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-2" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L17.5,11.43C16.26,10.74 14.37,10 12,10C9.62,10 7.74,10.75 6.5,11.43L3.27,7.44C5.91,5.85 8.93,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-3" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L18.77,9.88C17.26,9 14.88,8 12,8C9,8 6.68,9 5.21,9.84L3.27,7.44C5.91,5.85 8.93,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-4" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3Z" />
+        </symbol>
+    </svg>
+
     <form action="/save-config" method="POST" id="form">
         <div class="titre black-text">
             <h1>TICMeter</h1>
         </div>
         <div class="bloc">
-            <h2>Configuration Wifi</h2>
+            <h2>Configuration Wi-Fi</h2>
             <div class="wifi">
                 <div class="input-field">
-                    <h2>SSID</h2>
-                    <button type="button" onclick="wifi_scan()">Scanner les réseaux WiFi</button>
-
-                    <!-- <input type="text" name="wifi-ssid" placeholder="Livebox ..." maxlength="32" /> -->
+                    <h2>Nom du Wi-Fi</h2>
+                    <button type="button" onclick="wifi_scan()" id="wifi-scan">Scanner les réseaux Wi-Fi</button>
                 </div>
+                <p>Attention, le TICMeter fonctionne uniquement sur les réseaux 2.4GHz.</p>
                 <div class="wifi-list">
-                    <label>
-                        <input type="radio" name="wifi-ssid">
-                        <img src="wifi-2.svg" alt="wifi" />
-                    </label>
-
+                    <h3 class="black">Aucun réseau Wi-Fi trouvé.</h3>
                 </div>
                 <div class="input-field">
-                    <h2>PWD</h2>
-                    <input type="password" name="wifi-password" maxlength="64" />
+                    <h3>Utiliser un Wi-Fi caché</h3>
+                    <input type="checkbox" name="wifi-hidden" value="1" />
+                </div>
+                <div class="">
+                    <div class="input-field hide" id="wifi-ssid-field">
+                        <h2>SSID</h2>
+                        <input type="text" name="wifi-ssid" id="wifi-ssid" placeholder="Livebox ..." maxlength="32" />
+                    </div>
+
+                    <div class="input-field">
+                        <h2>Mot de passe</h2>
+                        <input type="password" name="wifi-password" maxlength="64" />
+                    </div>
                 </div>
             </div>
         </div>
         <div class="bloc">
             <h2>Configuration Linky</h2>
-            <p>Faites défiler les menus de votre compteur jusqu'à trouver l'option "MODE TIC"</p>
+            <p>Faites défiler les menus de votre compteur jusqu'à trouver l'option "MODE TIC".</p>
+            <label>
+                <input type="radio" name="linky-mode" value="2" checked>
+                <div class="linky-selector">
+                    <h3 class="black-text">Détection Automatique</h3>
+                </div>
+            </label>
             <label>
                 <input type="radio" name="linky-mode" value="0" checked>
                 <div class="linky-selector">
@@ -118,7 +165,7 @@
                     <h3>Topic</h3>
                     <input type="text" name="mqtt-topic" maxlength="101" />
                 </div>
-                <div class="input-field">
+                <div class="input-field" style="width: 100%;">
                     <h3>Home Assistant Discovery</h3>
                     <input type="checkbox" name="mqtt-ha-discovery" value="1" />
                 </div>
@@ -143,140 +190,6 @@
     </form>
 </body>
 
-<!-- <script src="index.js"></script> -->
-
-<script>
-    const serverMode = document.getElementsByName("server-mode");
-    const web = document.querySelector(".web");
-    const mqtt = document.querySelector(".mqtt");
-    const tuya = document.querySelector(".tuya");
-    const zigbee = document.querySelector(".zigbee");
-    const radio = document.getElementsByName("server-mode");
-    web.style.display = "none";
-    mqtt.style.display = "none";
-    tuya.style.display = "none";
-    zigbee.style.display = "none";
-    for (let i = 0; i < radio.length; i++) {
-        radio[i].checked = false;
-    }
-
-    serverMode.forEach((element) => {
-        element.addEventListener("change", (event) => {
-            console.log(event.target.value);
-
-            web.style.display = "none";
-            mqtt.style.display = "none";
-            tuya.style.display = "none";
-            zigbee.style.display = "none";
-            switch (event.target.value) {
-                case "1":
-                    web.style.display = "block";
-                    break;
-                case "2":
-                    mqtt.style.display = "block";
-                    break;
-                case "3":
-                    mqtt.style.display = "block";
-                    break;
-                case "4":
-                    zigbee.style.display = "block";
-                    break;
-                case "5":
-                    tuya.style.display = "block";
-                    break;
-            }
-        });
-    });
-    //fetch config
-    fetch("/config")
-        .then((response) => response.json())
-        .then((data) => {
-            for (const key in data) {
-                if (data.hasOwnProperty(key)) {
-                    const element = data[key];
-                    if (key == "server-mode") {
-                        continue;
-                    }
-                    const input = document.querySelector(`[name="${key}"]`);
-                    if (input) {
-                        input.value = element;
-                    }
-                }
-            }
-            if ("server-mode" in data) {
-                web.style.display = "none";
-                mqtt.style.display = "none";
-                tuya.style.display = "none";
-                zigbee.style.display = "none";
-                for (let i = 0; i < radio.length; i++) {
-                    radio[i].checked = false;
-                }
-
-                switch (data["server-mode"]) {
-                    case 1:
-                        web.style.display = "flex";
-                        radio[0].checked = true;
-                        break;
-                    case 2:
-                    case 3:
-                        mqtt.style.display = "flex";
-                        radio[1].checked = true;
-                        if (data["server-mode"] == 2) { //mqtt + ha
-                            const mqttHaDiscovery = document.querySelector(`[name="mqtt-ha-discovery"]`);
-                            mqttHaDiscovery.checked = 1;
-                        }
-                        break;
-                    case 4:
-                        zigbee.style.display = "block";
-                        radio[2].checked = true;
-                        break;
-                    case 5:
-                        tuya.style.display = "block";
-                        radio[3].checked = true;
-                        break;
-                }
-            }
-
-            if ("linky-mode" in data) {
-                const linkyMode = document.querySelector(`[name="linky-mode"][value="${data["linky-mode"]}"]`);
-                linkyMode.checked = true;
-            }
-
-            if ("tuya-device-uuid" in data) {
-                const tuyaUUID = document.getElementsByName("tuya-device-uuid");
-                tuyaUUID.value = data["tuya-device-uuid"];
-            }
-            if ("tuya-device-auth" in data) {
-                const tuyaAuth = document.getElementsByName("tuya-device-auth");
-                tuyaAuth.value = data["tuya-device-auth"];
-            }
-        });
-
-
-    function wifi_scan() {
-        fetch("/wifi-scan")
-            .then((response) => response.json())
-            .then((data) => {
-                console.log(data);
-                const wifiList = document.querySelector(".wifi-list");
-                wifiList.innerHTML = "";
-                const ap = data["ap"];
-                for (let i = 0; i < ap.length; i++) {
-                    const element = ap[i];
-                    console.log(element);
-                    const label = document.createElement("label");
-                    const input = document.createElement("input");
-                    input.type = "radio";
-                    input.name = "wifi-ssid";
-                    input.value = element.ssid;
-                    label.appendChild(input);
-                    const img = document.createElement("img");
-                    img.src = "wifi-2.svg";
-                    label.appendChild(img);
-                    wifiList.appendChild(label);
-                }
-            });
-    }
-</script>
+<script src="index.js"></script>
 
 </html>
