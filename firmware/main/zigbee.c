@@ -574,7 +574,6 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
 char string_buffer[100];
 
 uint64_t temp = 150;
-uint64_t zigbee_summation_delivered = 0;
 uint8_t zigbee_send(linky_data_t *data)
 {
     if (config_values.zigbee.state != ZIGBEE_PAIRED)
@@ -587,7 +586,6 @@ uint8_t zigbee_send(linky_data_t *data)
     //     ESP_LOGE(TAG, "Zigbee not connected");
     //     return 1;
     // }
-    zigbee_summation_delivered = 0;
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         ESP_LOGD(TAG, "check %s %d", LinkyLabelList[i].label, i);
@@ -679,11 +677,6 @@ uint8_t zigbee_send(linky_data_t *data)
             break;
         };
 
-        if (LinkyLabelList[i].device_class == ENERGY)
-        {
-            zigbee_summation_delivered += *(uint32_t *)LinkyLabelList[i].data;
-        }
-
         ESP_LOGD(TAG, "Send %s", LinkyLabelList[i].label);
 
         esp_zb_zcl_status_t status = ESP_ZB_ZCL_STATUS_SUCCESS;
@@ -745,11 +738,6 @@ uint8_t zigbee_send(linky_data_t *data)
             ESP_LOGI(TAG, "Set attribute cluster: Status: 0x%X 0x%x, attribute: 0x%x, name: %s, value: %lu", status, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint32_t *)ptr_value);
             status = esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, ptr_value, false);
         }
-    }
-
-    if (zigbee_summation_delivered != 0)
-    {
-        zigbee_report_attribute(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, sizeof(zigbee_summation_delivered));
     }
 
     led_start_pattern(LED_SEND_OK);

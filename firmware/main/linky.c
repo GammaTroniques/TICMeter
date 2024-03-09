@@ -20,6 +20,7 @@
 #include "esp_random.h"
 #include "esp_pm.h"
 #include "led.h"
+#include "tests.h"
 
 /*==============================================================================
  Local Define
@@ -99,6 +100,7 @@ const LinkyGroup LinkyLabelList[] =
     {000, "Intensité souscrite",             "ISOUSC",      &linky_data.hist.ISOUSC,       UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO,       }, //TODO: zigbee: when  Meter Identification cluster
     {102, "Puissance Max contrat",           "pref",        &linky_data.hist.PREF ,        UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  POWER_kVA,   "",                                    0xFF42, 0x002b,  ZB_RO, ZB_UINT16,    }, //TODO: zigbee: when  Meter Identification cluster  0x0B01, 0x000D, 
 
+    {000, "Index Total",                     "total",       &linky_data.hist.TOTAL,        UINT64,       0, MODE_HIST,  C_ANY,   G_ANY, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0000,  ZB_RP, ZB_UINT48,   },
     {110, "Index Base",                      "BASE",        &linky_data.hist.BASE,         UINT64,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
     {111, "Index Heures Creuses",            "HCHC",        &linky_data.hist.HCHC,         UINT64,       0, MODE_HIST, C_HCHP,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
     {112, "Index Heures Pleines",            "HCHP",        &linky_data.hist.HCHP,         UINT64,       0, MODE_HIST, C_HCHP,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
@@ -177,10 +179,10 @@ const LinkyGroup LinkyLabelList[] =
     {102, "Puissance app. de référence",     "PREF",        &linky_data.std.PREF,          UINT16,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_kVA,   "",                                    0xFF42, 0x002B,  ZB_RO, ZB_UINT16,   }, //TODO: zigbee: when  Meter Identification cluster 0x0B01, 0x000D
     {000, "Puissance app. de coupure",       "PCOUP",       &linky_data.std.PCOUP,         UINT8,        0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_kVA,   "",                                    0x0B01, 0x000E,  ZB_NO, ZB_UINT8,    }, //TODO: zigbee: when  Meter Identification cluster
 
-    {000, "Puissance soutirée",              "SINSTS",      &linky_data.std.SINSTS,        UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0306,  ZB_RP, ZB_INT16,    }, //0x050F (mono) et 0x0306 tri
-    {000, "Puissance soutirée Phase 1",      "SINSTS1",     &linky_data.std.SINSTS1,       UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050F,  ZB_RP, ZB_INT16,    },
-    {000, "Puissance soutirée Phase 2",      "SINSTS2",     &linky_data.std.SINSTS2,       UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090F,  ZB_RP, ZB_INT16,    },
-    {000, "Puissance soutirée Phase 3",      "SINSTS3",     &linky_data.std.SINSTS3,       UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0F,  ZB_RP, ZB_INT16,    },
+    {000, "Puissance soutirée",              "SINSTS",      &linky_data.std.SINSTS,        UINT32,       0, MODE_STD,  C_ANY,   G_MONO,  STATIC_VALUE,  POWER_VA,    "",                                   0x0B04, 0x050F,  ZB_RP, ZB_INT16,    },
+    {000, "Puissance soutirée Phase 1",      "SINSTS1",     &linky_data.std.SINSTS1,       UINT32,       0, MODE_STD,  C_ANY,   G_TRI,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050F,  ZB_RP, ZB_INT16,    },
+    {000, "Puissance soutirée Phase 2",      "SINSTS2",     &linky_data.std.SINSTS2,       UINT32,       0, MODE_STD,  C_ANY,   G_TRI,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090F,  ZB_RP, ZB_INT16,    },
+    {000, "Puissance soutirée Phase 3",      "SINSTS3",     &linky_data.std.SINSTS3,       UINT32,       0, MODE_STD,  C_ANY,   G_TRI,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0F,  ZB_RP, ZB_INT16,    },
 
     {000, "Puissance max soutirée Auj.",     "SMAXSN",      &linky_data.std.SMAXSN,        UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050D,  ZB_RO, ZB_INT16,    },
     {000, "Puissance max soutirée Auj. 1",   "SMAXSN1",     &linky_data.std.SMAXSN1,       UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050D,  ZB_RO, ZB_INT16,    },
@@ -736,6 +738,13 @@ static char linky_decode()
         }
     }
 
+    if (linky_want_debug_frame == 3)
+    {
+        ESP_LOGI(TAG, "Debug frame 3: STD ALL");
+        linky_set_mode(MODE_STD);
+        linky_data.std = tests_std_data;
+    }
+
     // remove spaces from contract name
     remove_char(linky_data.hist.OPTARIF, ' ');
     remove_char(linky_data.std.NGTF, ' ');
@@ -764,7 +773,27 @@ static char linky_decode()
             linky_data.hist.PREF = UINT32_MAX;
         }
 
-        break;
+        if (linky_data.hist.BASE != UINT32_MAX)
+        {
+            linky_data.hist.TOTAL = linky_data.hist.BASE;
+        }
+        else if (linky_data.hist.HCHC != UINT32_MAX && linky_data.hist.HCHP != UINT32_MAX)
+        {
+            linky_data.hist.TOTAL = linky_data.hist.HCHC + linky_data.hist.HCHP;
+        }
+        else if (linky_data.hist.EJPHN != UINT32_MAX && linky_data.hist.EJPHPM != UINT32_MAX)
+        {
+            linky_data.hist.TOTAL = linky_data.hist.EJPHN + linky_data.hist.EJPHPM;
+        }
+        else if (linky_data.hist.BBRHCJB != UINT32_MAX && linky_data.hist.BBRHPJB != UINT32_MAX && linky_data.hist.BBRHCJW != UINT32_MAX && linky_data.hist.BBRHPJW != UINT32_MAX && linky_data.hist.BBRHCJR != UINT32_MAX && linky_data.hist.BBRHPJR != UINT32_MAX)
+        {
+            linky_data.hist.TOTAL = linky_data.hist.BBRHCJB + linky_data.hist.BBRHPJB + linky_data.hist.BBRHCJW + linky_data.hist.BBRHPJW + linky_data.hist.BBRHCJR + linky_data.hist.BBRHPJR;
+        }
+        else
+        {
+            linky_data.hist.TOTAL = UINT32_MAX;
+        }
+
     case MODE_STD:
         if (linky_data.std.IRMS2 != UINT16_MAX || linky_data.std.URMS3 != UINT16_MAX || linky_data.std.SINSTS1 != UINT32_MAX)
         {

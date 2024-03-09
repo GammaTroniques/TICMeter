@@ -52,6 +52,7 @@ typedef struct
     uint32_t ISOUSC;     //     2         A           Intensité souscrite 
     uint32_t PREF;       //     2         kVA         Puissance max contrat --> Value computes with ISOUSC (ISOUSC * 200) 
 
+    uint64_t TOTAL;      //     9         Wh          Index total
     uint64_t BASE;       //     9         Wh          Index option Base 
     //----------------------Index option Heures Creuses ----------------------
     uint64_t HCHC;       //     9         Wh          Index option Heures Creuses: Heures Creuses
