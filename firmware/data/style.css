@@ -12,8 +12,15 @@ body {
   font-size: 20px;
 }
 
+p {
+  margin: 0;
+}
+
 .black-text {
   background-color: white;
+  color: black;
+}
+.black {
   color: black;
 }
 
@@ -109,6 +116,10 @@ form {
   display: none;
 }
 
+.hide {
+  display: none;
+}
+
 p {
   text-align: left;
   font-size: 15px;
@@ -158,4 +169,55 @@ input::placeholder {
 
 h3 {
   font-size: 15px;
+}
+
+.wifi-list {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  margin: 10px;
+  background-color: white;
+  border-radius: 5px;
+  padding: 10px;
+  min-width: 50vw;
+}
+
+.wifi-item {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 0px 2px;
+  width: 100%;
+  /* border: 1px solid white;
+  border-radius: 5px;
+  */
+}
+
+.wifi-level {
+  margin: 5px;
+  width: 40px;
+}
+
+.wifi-item-container {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 0px 20px;
+}
+
+[type="radio"] + .wifi-item {
+  cursor: pointer;
+  border-radius: 5px;
+  height: 6vh;
+  opacity: 0.8;
+}
+
+[type="radio"]:checked + .wifi-item {
+  opacity: 1;
+  background-color: #cccccc;
 }
