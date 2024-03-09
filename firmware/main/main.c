@@ -48,6 +48,7 @@
 #include "ota.h"
 #include "power.h"
 #include "led.h"
+#include "tests.h"
 
 #include "esp_heap_trace.h"
 #include "esp_err.h"
@@ -122,7 +123,7 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
-  linky_want_debug_frame = 2;
+  linky_want_debug_frame = 3;
 
   if (!linky_update())
   {
@@ -133,7 +134,8 @@ void app_main(void)
     ESP_LOGI(MAIN_TAG, "Linky found");
   }
 
-  esp_pm_dump_locks(stdout);
+  // start_test(TEST_LINKY_STD);
+  // esp_pm_dump_locks(stdout);
 
   if (config_verify())
   {
