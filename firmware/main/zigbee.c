@@ -588,6 +588,8 @@ uint8_t zigbee_send(linky_data_t *data)
     // }
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
+        char str_value[102];
+        void *ptr_value = LinkyLabelList[i].data;
         ESP_LOGD(TAG, "check %s %d", LinkyLabelList[i].label, i);
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
         {
@@ -671,6 +673,12 @@ uint8_t zigbee_send(linky_data_t *data)
             {
                 continue;
             }
+            ptr_value = &((TimeLabel *)LinkyLabelList[i].data)->value;
+            if (LinkyLabelList[i].zb_type == ESP_ZB_ZCL_ATTR_TYPE_U64)
+            {
+                // pass only timestamp as uint64_t
+                ptr_value = &((TimeLabel *)LinkyLabelList[i].data)->timestamp;
+            }
             break;
         }
         default:
@@ -680,13 +688,6 @@ uint8_t zigbee_send(linky_data_t *data)
         ESP_LOGD(TAG, "Send %s", LinkyLabelList[i].label);
 
         esp_zb_zcl_status_t status = ESP_ZB_ZCL_STATUS_SUCCESS;
-        char str_value[102];
-        void *ptr_value = LinkyLabelList[i].data;
-
-        if (LinkyLabelList[i].type == UINT32_TIME)
-        {
-            ptr_value = &((TimeLabel *)LinkyLabelList[i].data)->value;
-        }
 
         if (LinkyLabelList[i].zb_access == ESP_ZB_ZCL_ATTR_ACCESS_REPORTING)
         {
