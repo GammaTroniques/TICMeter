@@ -61,7 +61,7 @@ typedef struct
     //---------------------- Index option EJP  (Effacement des Jours de Pointe) --> 22 jours par an prix du kWh plus cher
     uint64_t EJPHN;      //     9         Wh          Heures Normales
     uint64_t EJPHPM;     //     9         Wh          Heures de Pointe Mobile
-    uint64_t PEJP;       //     2         minutes     Préavis Début EJP (30 min)
+    uint16_t PEJP;       //     2         minutes     Préavis Début EJP (30 min)
 
     //---------------------- Index option Tempo ----------------------
     uint64_t BBRHCJB;    //     9         Wh          Heures Creuses Jours Bleus
