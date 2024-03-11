@@ -320,7 +320,8 @@ static int set_wifi_command(int argc, char **argv)
 static int connect_wifi_command(int argc, char **argv)
 {
   printf("Connecting to wifi\n");
-  wifi_connect();
+  esp_err_t err = wifi_connect();
+  ESP_LOGI(TAG, "Wifi connect: %d", err);
   return 0;
 }
 static int reconnect_wifi_command(int argc, char **argv)

@@ -36,7 +36,7 @@
 /*==============================================================================
  Public Defines
 ==============================================================================*/
-#define WIFI_CONNECT_TIMEOUT 10000
+#define WIFI_CONNECT_TIMEOUT 15000
 /*==============================================================================
  Public Macro
 ==============================================================================*/
@@ -50,7 +50,7 @@ typedef enum
     WIFI_STARTED,
     WIFI_CONNECTING,
     WIFI_CONNECTED,
-    WIFI_FAILED
+    WIFI_FAILED,
 } wifi_state_t;
 
 /*==============================================================================
@@ -67,9 +67,9 @@ extern uint8_t wifi_init();
 /**
  * @brief connect to wifi
  *
- * @return 1 if connected, 0 if not
+ * @return 0 if success, else esp_err_t
  */
-extern uint8_t wifi_connect();
+extern esp_err_t wifi_connect();
 
 /**
  * @brief disconnect from wifi
