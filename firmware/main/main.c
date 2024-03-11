@@ -91,6 +91,8 @@ Function Implementation
 ===============================================================================*/
 void app_main(void)
 {
+  esp_err_t err;
+
   ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
   // xTaskCreate(debug_loop, "debug_loop", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
   power_init();
@@ -161,7 +163,8 @@ void app_main(void)
   {
   case MODE_WEB:
     // connect to wifi
-    if (wifi_connect())
+    err = wifi_connect();
+    if (err == 0)
     {
       wifi_get_timestamp();               // get timestamp from ntp server
       wifi_http_get_config_from_server(); // get config from server
@@ -178,7 +181,8 @@ void app_main(void)
   case MODE_MQTT_HA:
     ESP_LOGI(MAIN_TAG, "MQTT init...");
     // connect to wifi
-    if (wifi_connect())
+    err = wifi_connect();
+    if (err == 0)
     {
       mqtt_init();          // init mqtt
       wifi_get_timestamp(); // get timestamp from ntp server
@@ -202,7 +206,8 @@ void app_main(void)
       ESP_LOGW(MAIN_TAG, "Tuya not paired.");
       break;
     }
-    if (wifi_connect())
+    err = wifi_connect();
+    if (err == 0)
     {
       tuya_init();
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -283,7 +288,7 @@ void debug_loop(void *)
 
 esp_err_t main_send_data()
 {
-
+  esp_err_t err;
   linky_uptime = esp_timer_get_time() / 1000000;
 
   switch (config_values.mode)
@@ -303,7 +308,8 @@ esp_err_t main_send_data()
       char json[1024] = {0};
       web_preapare_json_data(main_data_array, main_data_index, json, sizeof(json));
       ESP_LOGI(MAIN_TAG, "Sending data to server");
-      if (wifi_connect())
+      err = wifi_connect();
+      if (err == 0)
       {
         ESP_LOGI(MAIN_TAG, "POST: %s", json);
         wifi_send_to_server(json);
@@ -358,7 +364,8 @@ esp_err_t main_send_data()
     break;
   }
   case MODE_TUYA:
-    if (wifi_connect())
+    err = wifi_connect();
+    if (err == 0)
     {
       ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
       resumeTask(tuyaTaskHandle); // resume tuya task

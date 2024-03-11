@@ -369,7 +369,7 @@ void led_stop_pattern(led_pattern_t pattern)
             return;
         }
     }
-    ESP_LOGW(TAG, "Pattern %d not found", pattern);
+    ESP_LOGW(TAG, "Can't stop pattern %d, not in progress", pattern);
 }
 
 void led_usb_event(bool connected)

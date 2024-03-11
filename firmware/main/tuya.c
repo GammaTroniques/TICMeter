@@ -562,8 +562,8 @@ void ble_token_get_cb(wifi_info_t wifi_info)
         vTaskDelete(gpio_led_pairing_task_handle);
         gpio_led_pairing_task_handle = NULL;
     }
-
-    if (!wifi_connect())
+    esp_err_t err = wifi_connect();
+    if (err != 0)
     {
         ESP_LOGE(TAG, "Tuya pairing failed: no wifi");
         return;

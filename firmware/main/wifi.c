@@ -36,6 +36,9 @@
 #define WIFI_CONNECT_FAIL_COUNT_BEFORE_RESET 10
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT BIT1
+#define WIFI_AUTHFAIL_BIT BIT2
+#define WIFI_NO_AP_FOUND_BIT BIT3
+
 /*==============================================================================
  Local Macro
 ===============================================================================*/
@@ -120,23 +123,23 @@ uint8_t wifi_init()
     return 1;
 }
 
-uint8_t wifi_connect()
+esp_err_t wifi_connect()
 {
     esp_err_t err = ESP_OK;
     if (wifi_state == WIFI_CONNECTED) // already connected
-        return 1;
+        return err;
 
     if (strlen(config_values.ssid) == 0 || strlen(config_values.password) == 0)
     {
         ESP_LOGI(TAG, "No Wifi SSID or password");
-        return 0;
+        return ESP_ERR_WIFI_MODE;
     }
     if (wifi_timeout_counter > WIFI_CONNECT_FAIL_COUNT_BEFORE_RESET)
     {
         ESP_LOGE(TAG, "Too many wifi timeout (%ld): Hard reset", wifi_timeout_counter);
         gpio_set_direction(GPIO_NUM_15, GPIO_MODE_OUTPUT);
         gpio_set_level(GPIO_NUM_15, 0);
-        return 0;
+        return ESP_ERR_WIFI_STATE;
     }
 
     wifi_state = WIFI_CONNECTING;
@@ -169,7 +172,7 @@ uint8_t wifi_connect()
         ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
         wifi_state = WIFI_FAILED;
         wifi_disconnect();
-        return 0;
+        return err;
     }
     err = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     if (err != ESP_OK)
@@ -177,7 +180,7 @@ uint8_t wifi_connect()
         ESP_LOGE(TAG, "esp_wifi_set_config failed with 0x%X", err);
         wifi_state = WIFI_FAILED;
         wifi_disconnect();
-        return 0;
+        return err;
     }
 
     err = esp_wifi_start();
@@ -186,7 +189,7 @@ uint8_t wifi_connect()
         ESP_LOGE(TAG, "esp_wifi_start failed with 0x%X", err);
         wifi_state = WIFI_FAILED;
         wifi_disconnect();
-        return 0;
+        return err;
     }
 
     ESP_LOGI(TAG, "Connecting to %s", (char *)wifi_config.sta.ssid);
@@ -206,15 +209,34 @@ uint8_t wifi_connect()
     {
         ESP_LOGI(TAG, "Connected to ap SSID:%s", (char *)wifi_config.sta.ssid);
         wifi_timeout_counter = 0;
-        return 1;
+        return ESP_OK;
     }
     else if (bits & WIFI_FAIL_BIT)
     {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
         wifi_disconnect();
         led_start_pattern(LED_CONNECTING_FAILED);
-        return 0;
+        return ESP_FAIL;
     }
+    else if (bits & WIFI_AUTHFAIL_BIT)
+    {
+        ESP_LOGE(TAG, "Failed to connect to SSID:%s Auth fail", (char *)wifi_config.sta.ssid);
+        wifi_timeout_counter++;
+        wifi_state = WIFI_FAILED;
+        led_start_pattern(LED_CONNECTING_FAILED);
+        wifi_disconnect();
+        return ESP_ERR_WIFI_SSID;
+    }
+    else if (bits & WIFI_NO_AP_FOUND_BIT)
+    {
+        ESP_LOGE(TAG, "Failed to connect to SSID:%s No AP found", (char *)wifi_config.sta.ssid);
+        wifi_timeout_counter++;
+        wifi_state = WIFI_FAILED;
+        led_start_pattern(LED_CONNECTING_FAILED);
+        wifi_disconnect();
+        return ESP_ERR_WIFI_SSID;
+    }
+
     else
     {
         ESP_LOGE(TAG, "Failed to connect to SSID:%s Timeout", (char *)wifi_config.sta.ssid);
@@ -222,7 +244,7 @@ uint8_t wifi_connect()
         wifi_state = WIFI_FAILED;
         led_start_pattern(LED_CONNECTING_FAILED);
         wifi_disconnect();
-        return 0;
+        return ESP_FAIL;
     }
 }
 
@@ -259,6 +281,8 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED && wifi_state != WIFI_DISCONNECTED)
     {
+        wifi_event_sta_disconnected_t *event = (wifi_event_sta_disconnected_t *)event_data;
+        ESP_LOGI(TAG, "Disconnected from SSID:%s, reason:%u, rssi%d", (char *)event->ssid, event->reason, event->rssi);
         if (s_retry_num < ESP_MAXIMUM_RETRY)
         {
             wifi_state = WIFI_CONNECTING;
@@ -268,10 +292,24 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         }
         else
         {
-            xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
-            ESP_LOGE(TAG, "Connect to the AP fail");
-            led_start_pattern(LED_CONNECTING_FAILED);
+            switch (event->reason)
+            {
+            case WIFI_REASON_AUTH_FAIL:
+            case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
+                ESP_LOGE(TAG, "Auth fail");
+                xEventGroupSetBits(s_wifi_event_group, WIFI_AUTHFAIL_BIT);
+                break;
+            case WIFI_REASON_NO_AP_FOUND:
+                ESP_LOGE(TAG, "No AP found");
+                xEventGroupSetBits(s_wifi_event_group, WIFI_NO_AP_FOUND_BIT);
+                break;
+            default:
+                ESP_LOGE(TAG, "Connect to the AP fail");
+                xEventGroupSetBits(s_wifi_event_group, WIFI_FAIL_BIT);
+                break;
+            }
             wifi_state = WIFI_FAILED;
+            led_start_pattern(LED_CONNECTING_FAILED);
         }
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_CONNECTED)
@@ -301,6 +339,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     }
     else
     {
+        // ESP_LOGE(TAG, "Unknown event: event_base: %s, event_id: %ld", event_base, event_id);
     }
 }
 
@@ -362,6 +401,7 @@ time_t wifi_get_timestamp()
 
 static void wifi_init_softap(void)
 {
+    esp_err_t err;
     // Initialize Wi-Fi including netif with default config
     esp_netif_t *wifiAP = esp_netif_create_default_wifi_ap();
     esp_netif_ip_info_t ip_info;
@@ -394,9 +434,24 @@ static void wifi_init_softap(void)
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_AP, &wifi_config));
-    ESP_ERROR_CHECK(esp_wifi_start());
+    err = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
+        return;
+    }
+    err = esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_AP, &wifi_config);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_config failed with 0x%X", err);
+        return;
+    }
+    err = esp_wifi_start();
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_start failed with 0x%X", err);
+        return;
+    }
     wifi_state = WIFI_STARTED;
 
     // esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
@@ -438,14 +493,6 @@ void wifi_start_captive_portal()
 {
     ESP_LOGI(TAG, "Start captive portal");
     xTaskCreate(&stop_captive_portal_task, "stop_captive_portal_task", 2048, NULL, PRIORITY_STOP_CAPTIVE_PORTAL, NULL);
-    // // Initialize networking stack
-    // ESP_ERROR_CHECK(esp_netif_init());
-
-    // // Create default event loop needed by the  main app
-    // ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    // // Initialize NVS needed by Wi-Fi
-    // ESP_ERROR_CHECK(nvs_flash_init());
 
     // Initialise ESP32 in SoftAP mode
     wifi_init_softap();

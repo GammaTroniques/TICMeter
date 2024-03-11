@@ -439,7 +439,7 @@ static void zigbee_task(void *pvParameters)
         }
         case UINT32_TIME:
         {
-            if (((TimeLabel *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX)
             {
                 continue;
             }
@@ -454,7 +454,7 @@ static void zigbee_task(void *pvParameters)
 
         if (LinkyLabelList[i].type == UINT32_TIME)
         {
-            ptr_value = &((TimeLabel *)LinkyLabelList[i].data)->value;
+            ptr_value = &((time_label_t *)LinkyLabelList[i].data)->value;
         }
 
         switch (LinkyLabelList[i].type)
@@ -669,15 +669,15 @@ uint8_t zigbee_send(linky_data_t *data)
         }
         case UINT32_TIME:
         {
-            if (((TimeLabel *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX)
             {
                 continue;
             }
-            ptr_value = &((TimeLabel *)LinkyLabelList[i].data)->value;
+            ptr_value = &((time_label_t *)LinkyLabelList[i].data)->value;
             if (LinkyLabelList[i].zb_type == ESP_ZB_ZCL_ATTR_TYPE_U64)
             {
                 // pass only timestamp as uint64_t
-                ptr_value = &((TimeLabel *)LinkyLabelList[i].data)->timestamp;
+                ptr_value = &((time_label_t *)LinkyLabelList[i].data)->time;
             }
             break;
         }

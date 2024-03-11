@@ -283,7 +283,7 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         case UINT32_TIME:
         {
 
-            TimeLabel *timeLabel = (TimeLabel *)LinkyLabelList[i].data;
+            time_label_t *timeLabel = (time_label_t *)LinkyLabelList[i].data;
             if (timeLabel->value == UINT32_MAX)
                 continue;
             snprintf(strValue, sizeof(strValue), "%lu", timeLabel->value);
@@ -376,9 +376,9 @@ void mqtt_setup_ha_discovery()
             ESP_LOGD(TAG, "Adding %s: value = %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
             break;
         case UINT32_TIME:
-            if (((TimeLabel *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX)
                 continue;
-            ESP_LOGD(TAG, "Adding %s: value = %lu", LinkyLabelList[i].label, ((TimeLabel *)LinkyLabelList[i].data)->value);
+            ESP_LOGD(TAG, "Adding %s: value = %lu", LinkyLabelList[i].label, ((time_label_t *)LinkyLabelList[i].data)->value);
             break;
         case HA_NUMBER:
             break;
@@ -501,7 +501,7 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
                     strncpy((char *)LinkyLabelList[i].data, strValue, LinkyLabelList[i].size);
                     break;
                 case UINT32_TIME:
-                    ((TimeLabel *)LinkyLabelList[i].data)->value = atol(strValue);
+                    ((time_label_t *)LinkyLabelList[i].data)->value = atol(strValue);
                     break;
                 case HA_NUMBER:
                     uint16_t value = atoi(strValue);

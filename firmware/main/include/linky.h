@@ -39,8 +39,8 @@
 typedef struct
 {
     uint32_t value;
-    time_t timestamp;
-} TimeLabel;
+    time_t time;
+} time_label_t;
 
 // clang-format off
 typedef struct
@@ -103,7 +103,7 @@ typedef struct
     //--------------------------------------------------------------------------------------
     char ADSC[14];       //     12                   Adresse Secondaire du Compteur
     char VTIC[4];        //     2                    Version de la TIC
-    TimeLabel DATE;      //     0                    Date du jour
+    time_label_t DATE;      //     0                    Date du jour
     char NGTF[18];       //     16                   Nom du calendrier tarifaire fournisseur
     char LTARF[18];      //     16                   Libellé du calendrier tarifaire
     
@@ -147,39 +147,39 @@ typedef struct
     uint32_t SINSTS2;    //      5         VA         Puissance apparente soutirée instantanée, phase 2
     uint32_t SINSTS3;    //      5         VA         Puissance apparente soutirée instantanée, phase 3
 
-    TimeLabel SMAXSN;    //      5         VA         Puissance app. max. soutirée n avec date et heure
-    TimeLabel SMAXSN1;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 1
-    TimeLabel SMAXSN2;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 2
-    TimeLabel SMAXSN3;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 3
+    time_label_t SMAXSN;    //      5         VA         Puissance app. max. soutirée n avec date et heure
+    time_label_t SMAXSN1;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 1
+    time_label_t SMAXSN2;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 2
+    time_label_t SMAXSN3;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 3
 
-    TimeLabel SMAXSN_1;  //      5         VA         Puissance app max. soutirée n-1 
-    TimeLabel SMAXSN1_1; //      5         VA         Puissance app max. soutirée n-1, phase 1
-    TimeLabel SMAXSN2_1; //      5         VA         Puissance app max. soutirée n-1, phase 2
-    TimeLabel SMAXSN3_1; //      5         VA         Puissance app max. soutirée n-1, phase 3
+    time_label_t SMAXSN_1;  //      5         VA         Puissance app max. soutirée n-1 
+    time_label_t SMAXSN1_1; //      5         VA         Puissance app max. soutirée n-1, phase 1
+    time_label_t SMAXSN2_1; //      5         VA         Puissance app max. soutirée n-1, phase 2
+    time_label_t SMAXSN3_1; //      5         VA         Puissance app max. soutirée n-1, phase 3
 
     uint32_t SINSTI;     //      5         VA         Puissance app. Instantanée injectée
     
-    TimeLabel SMAXIN;    //      5         VA         Puissance app. max. injectée n avec date et heure
-    TimeLabel SMAXIN_1;  //      5         VA         Puissance app. max. injectée n-1 avec date et heure
+    time_label_t SMAXIN;    //      5         VA         Puissance app. max. injectée n avec date et heure
+    time_label_t SMAXIN_1;  //      5         VA         Puissance app. max. injectée n-1 avec date et heure
 
-    TimeLabel CCASN;     //      5         VA         Point n de la courbe de charge active soutirée
-    TimeLabel CCASN_1;   //      5         VA         Point n-1 de la courbe de charge active soutirée
-    TimeLabel CCAIN;     //      5         VA         Point n de la courbe de charge active injectée
-    TimeLabel CCAIN_1;   //      5         VA         Point n-1 de la courbe de charge active injectée
+    time_label_t CCASN;     //      5         VA         Point n de la courbe de charge active soutirée
+    time_label_t CCASN_1;   //      5         VA         Point n-1 de la courbe de charge active soutirée
+    time_label_t CCAIN;     //      5         VA         Point n de la courbe de charge active injectée
+    time_label_t CCAIN_1;   //      5         VA         Point n-1 de la courbe de charge active injectée
 
-    TimeLabel UMOY1;     //      3         V          Tension moyenne, phase 1
-    TimeLabel UMOY2;     //      3         V          Tension moyenne, phase 2
-    TimeLabel UMOY3;     //      3         V          Tension moyenne, phase 3
+    time_label_t UMOY1;     //      3         V          Tension moyenne, phase 1
+    time_label_t UMOY2;     //      3         V          Tension moyenne, phase 2
+    time_label_t UMOY3;     //      3         V          Tension moyenne, phase 3
 
     char STGE[10];        //      8         -          Registre de Statuts
     char DEMAIN[6];      //      4         -          Couleur du lendemain
 
-    TimeLabel DPM1;      //      2         -          Début Pointe Mobile 1
-    TimeLabel FPM1;      //      2         -          Fin Pointe Mobile 1
-    TimeLabel DPM2;      //      2         -          Début Pointe Mobile 2
-    TimeLabel FPM2;      //      2         -          Fin Pointe Mobile 2
-    TimeLabel DPM3;      //      2         -          Début Pointe Mobile 3
-    TimeLabel FPM3;      //      2         -          Fin Pointe Mobile 3
+    time_label_t DPM1;      //      2         -          Début Pointe Mobile 1
+    time_label_t FPM1;      //      2         -          Fin Pointe Mobile 1
+    time_label_t DPM2;      //      2         -          Début Pointe Mobile 2
+    time_label_t FPM2;      //      2         -          Fin Pointe Mobile 2
+    time_label_t DPM3;      //      2         -          Début Pointe Mobile 3
+    time_label_t FPM3;      //      2         -          Fin Pointe Mobile 3
 
     char MSG1[34];       //      32        -          Message court
     char MSG2[18];       //      16        -          Message Ultra court 
