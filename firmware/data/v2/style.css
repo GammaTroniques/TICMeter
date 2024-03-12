@@ -1,0 +1,169 @@
+h1 {
+  margin: 0;
+}
+
+h2 {
+}
+
+h3 {
+  padding: 0;
+  margin: 0;
+  color: #666;
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+  padding-left: 5px;
+}
+
+h6 {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background-color: #f9fafb;
+  color: #000000;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  font-size: 20px;
+}
+form {
+  width: 100%;
+  height: 100%;
+  max-width: 500px;
+}
+
+input {
+  border-radius: 8px;
+  border: 2px solid #d8d8d8;
+  background: #fff;
+  padding: 10px;
+}
+
+.hide {
+  display: none;
+}
+
+.title {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.flex-v-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.flex-h-center {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+.w100 {
+  width: 100%;
+}
+
+button {
+  color: #fff;
+  border-radius: 8px;
+  font-size: 20px;
+  padding: 10px 20px;
+  border: 2px solid #0042e3;
+  background: #235ee7;
+  cursor: pointer;
+}
+
+button.auto {
+  padding: 0;
+  /* w */
+}
+
+button:disabled {
+  background: #cecece;
+  border: 1px solid #cecece;
+}
+
+.main-frame {
+  border-radius: 8px;
+  border: 2px solid #d8d8d8;
+  background: #fff;
+}
+
+.main-title {
+  border-bottom: 3px solid #d8d8d8;
+  padding-left: 20px;
+}
+
+.section-container {
+  padding: 20px;
+}
+
+.section-header {
+  border-bottom: 2px solid #d8d8d8;
+  display: flex;
+  align-items: center;
+}
+
+[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.server-mode-selector {
+  border-radius: 8px;
+  color: #fff;
+  padding: 5px 20px;
+  margin: 10px;
+}
+
+.mode-http {
+  border: 2px solid rgba(0, 58, 146);
+  background: rgba(0, 80, 201);
+}
+
+.mode-mqtt {
+  border: 2px solid #490049;
+  background: #606;
+}
+
+.mode-zigbee {
+  border-radius: 8px;
+  border: 2px solid rgba(174, 9, 37);
+  background: rgba(242, 37, 71);
+}
+
+.mode-tuya {
+  border: 2px solid rgba(202, 57, 0);
+  background: rgba(255, 72, 0);
+}
+
+#server-mode-container {
+  display: flex;
+}
+
+[type="radio"] + .server-mode-selector {
+  cursor: pointer;
+  opacity: 0.3;
+}
+
+[type="radio"]:checked + .server-mode-selector {
+  opacity: 1;
+}
+
+.feild-name {
+  margin-left: 5px;
+}
