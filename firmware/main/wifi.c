@@ -26,6 +26,7 @@
 #include "esp_private/periph_ctrl.h"
 #include "soc/periph_defs.h"
 #include "esp_sleep.h"
+#include "ping/ping_sock.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -61,13 +62,19 @@ static void stop_captive_portal_task(void *pvParameter);
 Public Variable
 ===============================================================================*/
 wifi_state_t wifi_state = WIFI_DISCONNECTED;
+
 uint32_t wifi_timeout_counter = 0;
 wifi_ap_record_t wifi_ap_list[20];
+
+esp_netif_ip_info_t wifi_current_ip;
+
 /*==============================================================================
  Local Variable
 ===============================================================================*/
 static int s_retry_num = 0;
 static EventGroupHandle_t s_wifi_event_group;
+static EventGroupHandle_t ping_event_group;
+static uint8_t ap_started = 0;
 
 /*==============================================================================
 Function Implementation
@@ -120,6 +127,7 @@ uint8_t wifi_init()
         return 0;
     }
     s_wifi_event_group = xEventGroupCreate();
+    ping_event_group = xEventGroupCreate();
     return 1;
 }
 
@@ -127,7 +135,7 @@ esp_err_t wifi_connect()
 {
     esp_err_t err = ESP_OK;
     if (wifi_state == WIFI_CONNECTED) // already connected
-        return err;
+        return ESP_OK;
 
     if (strlen(config_values.ssid) == 0 || strlen(config_values.password) == 0)
     {
@@ -146,7 +154,7 @@ esp_err_t wifi_connect()
     led_start_pattern(LED_CONNECTING);
 
     s_retry_num = 0;
-    xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT);
+    xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT | WIFI_AUTHFAIL_BIT | WIFI_NO_AP_FOUND_BIT);
 
     wifi_config_t wifi_config = {
         .sta = {
@@ -166,7 +174,14 @@ esp_err_t wifi_connect()
     {
         ESP_LOGE(TAG, "esp_wifi_set_ps failed with 0x%X", err);
     }
-    err = esp_wifi_set_mode(WIFI_MODE_STA);
+
+    wifi_mode_t mode = WIFI_MODE_STA;
+    if (ap_started)
+    {
+        ESP_LOGI(TAG, "wifi_connect: APSTA mode");
+        mode = WIFI_MODE_APSTA;
+    }
+    err = esp_wifi_set_mode(mode);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
@@ -195,7 +210,7 @@ esp_err_t wifi_connect()
     ESP_LOGI(TAG, "Connecting to %s", (char *)wifi_config.sta.ssid);
 
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-                                           WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+                                           WIFI_CONNECTED_BIT | WIFI_FAIL_BIT | WIFI_AUTHFAIL_BIT | WIFI_NO_AP_FOUND_BIT,
                                            pdFALSE,
                                            pdFALSE,
                                            WIFI_CONNECT_TIMEOUT / portTICK_PERIOD_MS);
@@ -236,7 +251,6 @@ esp_err_t wifi_connect()
         wifi_disconnect();
         return ESP_ERR_WIFI_SSID;
     }
-
     else
     {
         ESP_LOGE(TAG, "Failed to connect to SSID:%s Timeout", (char *)wifi_config.sta.ssid);
@@ -274,7 +288,7 @@ void wifi_disconnect()
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
 
-    // ESP_LOGI(TAG, "GOT EVENT: event_base: %s, event_id: %ld", event_base, event_id);
+    ESP_LOGI(TAG, "GOT EVENT: event_base: %s, event_id: %ld", event_base, event_id);
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START && wifi_state != WIFI_DISCONNECTED)
     {
         esp_wifi_connect();
@@ -321,6 +335,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "IP:" IPSTR, IP2STR(&event->ip_info.ip));
+        wifi_current_ip = event->ip_info;
         s_retry_num = 0;
         wifi_state = WIFI_CONNECTED;
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
@@ -412,10 +427,9 @@ static void wifi_init_softap(void)
     esp_netif_set_ip_info(wifiAP, &ip_info);
     esp_netif_dhcps_start(wifiAP);
 
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
+    // wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    // ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    // ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
 
     wifi_config_t wifi_config = {};
     char ssid[32] = {0};
@@ -434,7 +448,13 @@ static void wifi_init_softap(void)
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
-    err = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    wifi_mode_t mode = WIFI_MODE_AP;
+    if (wifi_state != WIFI_DISCONNECTED)
+    {
+        ESP_LOGI(TAG, "wifi_init_softap: APSTA mode");
+        mode = WIFI_MODE_APSTA;
+    }
+    err = esp_wifi_set_mode(mode);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
@@ -452,7 +472,7 @@ static void wifi_init_softap(void)
         ESP_LOGE(TAG, "esp_wifi_start failed with 0x%X", err);
         return;
     }
-    wifi_state = WIFI_STARTED;
+    ap_started = 1;
 
     // esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
     char ip_addr[16];
@@ -466,7 +486,7 @@ static void wifi_init_softap(void)
 static void stop_captive_portal_task(void *pvParameter)
 {
     uint8_t readCount = 0;
-
+    ap_started = 0;
     while (1)
     {
         if (!gpio_vusb_connected())
@@ -501,21 +521,36 @@ void wifi_start_captive_portal()
     setup_server();
     // Start the DNS server that will redirect all queries to the softAP IP
     start_dns_server();
+
+    // wifi_config_t wifi_config = {
+    //     .ap = {
+    //         .ssid = "wifi1234",
+    //         .ssid_len = 0,
+    //         .max_connection = 4,
+    //         .password = "12345678",
+    //         .authmode = WIFI_AUTH_WPA_WPA2_PSK},
+    // };
+
+    // ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    // ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
+    // ESP_ERROR_CHECK(esp_wifi_start());
+
+    // wifi_connect();
 }
 
 void wifi_scan(uint16_t *ap_count)
 {
     esp_err_t err;
-    err = esp_wifi_set_mode(WIFI_MODE_APSTA);
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
-        return;
-    }
+    // err = esp_wifi_set_mode(WIFI_MODE_APSTA);
+    // if (err != ESP_OK)
+    // {
+    //     ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
+    //     return;
+    // }
     if (wifi_state == WIFI_DISCONNECTED)
     {
         err = esp_wifi_start();
-        wifi_state = WIFI_STARTED;
+
         if (err != ESP_OK)
         {
             ESP_LOGE(TAG, "esp_wifi_start failed with 0x%X", err);
@@ -556,5 +591,85 @@ void wifi_scan(uint16_t *ap_count)
     for (int i = 0; i < ap_num; i++)
     {
         ESP_LOGI(TAG, "SSID: %s, RSSI: %d", wifi_ap_list[i].ssid, wifi_ap_list[i].rssi);
+    }
+}
+
+static void ping_success(esp_ping_handle_t hdl, void *args)
+{
+    ESP_LOGI(TAG, "Ping success");
+}
+
+static void ping_timeout(esp_ping_handle_t hdl, void *args)
+{
+    ESP_LOGI(TAG, "Ping timeout");
+}
+
+static void ping_end(esp_ping_handle_t hdl, void *args)
+{
+    ESP_LOGI(TAG, "Ping end");
+
+    uint32_t received;
+    uint32_t transmitted;
+    esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
+    esp_ping_get_profile(hdl, ESP_PING_PROF_REPLY, &received, sizeof(received));
+    ESP_LOGI(TAG, "Ping statistics: %ld packets transmitted, %ld received", transmitted, received);
+    if (received == 0)
+    {
+        xEventGroupSetBits(ping_event_group, BIT1);
+    }
+    else
+    {
+
+        xEventGroupSetBits(ping_event_group, BIT0);
+    }
+}
+
+esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time)
+{
+    esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
+    ping_config.target_addr = host;
+    ping_config.count = 4;
+    esp_ping_handle_t ping;
+
+    esp_ping_callbacks_t cbs = {
+        .on_ping_success = ping_success,
+        .on_ping_timeout = ping_timeout,
+        .on_ping_end = ping_end,
+    };
+
+    esp_err_t err = esp_ping_new_session(&ping_config, &cbs, &ping);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to start ping session: %d", err);
+        return err;
+    }
+    err = esp_ping_start(ping);
+
+    EventBits_t bits = xEventGroupWaitBits(ping_event_group,
+                                           BIT0 | BIT1,
+                                           pdFALSE,
+                                           pdFALSE,
+                                           5000 / portTICK_PERIOD_MS);
+
+    esp_ping_delete_session(ping);
+    if (ping_time != NULL)
+    {
+        *ping_time = 0;
+    }
+
+    if (bits & BIT0)
+    {
+        ESP_LOGI(TAG, "Ping success");
+        return ESP_OK;
+    }
+    else if (bits & BIT1)
+    {
+        ESP_LOGI(TAG, "Ping failed");
+        return ESP_FAIL;
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Ping timeout");
+        return ESP_ERR_TIMEOUT;
     }
 }

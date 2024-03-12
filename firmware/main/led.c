@@ -248,13 +248,13 @@ static void led_task(void *pvParameters)
 
         if (most_priority >= timing->priority)
         {
-            ESP_LOGW(TAG, "Pattern %d not started because of priority", pattern);
+            ESP_LOGD(TAG, "Pattern %d not started because of priority", pattern);
             continue;
         }
 
         if (timing->in_progress)
         {
-            ESP_LOGW(TAG, "Pattern %d already in progress", pattern);
+            ESP_LOGD(TAG, "Pattern %d already in progress", pattern);
             continue;
         }
 

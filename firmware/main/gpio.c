@@ -563,11 +563,11 @@ void gpio_start_pariring()
     case MODE_MQTT_HA:
         ESP_LOGI(TAG, "Web pairing");
         suspendTask(main_task_handle);
-        if (wifi_state == WIFI_CONNECTED)
-        {
-            wifi_disconnect();
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-        }
+        // if (wifi_state == WIFI_CONNECTED)
+        // {
+        //     wifi_disconnect();
+        //     vTaskDelay(1000 / portTICK_PERIOD_MS);
+        // }
         ESP_LOGI(TAG, "Starting captive portal");
         wifi_start_captive_portal();
         break;
