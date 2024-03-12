@@ -58,6 +58,7 @@ typedef enum
 ==============================================================================*/
 extern wifi_state_t wifi_state;
 extern wifi_ap_record_t wifi_ap_list[20];
+extern esp_netif_ip_info_t wifi_current_ip;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
@@ -106,5 +107,7 @@ extern void wifi_start_captive_portal();
 extern void wifi_http_get_config_from_server();
 
 extern void wifi_scan(uint16_t *ap_count);
+
+extern esp_err_t wifi_ping(ip_addr_t host);
 
 #endif /* WIFI_H */

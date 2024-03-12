@@ -12,6 +12,18 @@ static const char *TAG = "HTTP"; // TAG for debug
 
 #define LOCAL_IP "http://4.3.2.1"
 
+typedef enum
+{
+    NO_TEST,
+    WIFI_CONNECT,
+    WIFI_PING,
+    MQTT_CONNECT,
+    MQTT_PUBLISH,
+
+} test_t;
+
+static test_t current_test = NO_TEST;
+
 void reboot_task(void *pvParameter)
 {
     vTaskDelay(3000 / portTICK_PERIOD_MS);
@@ -307,20 +319,6 @@ esp_err_t save_config_handler(httpd_req_t *req)
         }
         key = strtok(NULL, "&");
     }
-
-    // print the parameters
-    // ESP_LOGI(TAG, "ssid: %s", ssid);
-    // ESP_LOGI(TAG, "password: %s", password);
-    // ESP_LOGI(TAG, "server_mode: %d", server_mode);
-    // ESP_LOGI(TAG, "web_url: %s", web_url);
-    // ESP_LOGI(TAG, "web_token: %s", web_token);
-    // ESP_LOGI(TAG, "linky_mode: %s", linky_mode);
-    // ESP_LOGI(TAG, "mqtt_host: %s", mqtt_host);
-    // ESP_LOGI(TAG, "mqtt_port: %d", mqtt_port);
-    // ESP_LOGI(TAG, "mqtt_user: %s", mqtt_user);
-    // ESP_LOGI(TAG, "mqtt_password: %s", mqtt_password);
-    // ESP_LOGI(TAG, "mqtt_topic: %s", mqtt_topic);
-
     // save the parameters
     strncpy(config_values.ssid, ssid, sizeof(config_values.ssid));
     strncpy(config_values.password, password, sizeof(config_values.password));
@@ -347,16 +345,17 @@ esp_err_t save_config_handler(httpd_req_t *req)
     strncpy(config_values.mqtt.password, mqtt_password, sizeof(config_values.mqtt.password));
     strncpy(config_values.mqtt.topic, mqtt_topic, sizeof(config_values.mqtt.topic));
 
-    //  redirect to the reboot page
-    httpd_resp_set_status(req, "302 Temporary Redirect");
-    httpd_resp_set_hdr(req, "Location", "/reboot.html");
-    httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
+    // //  redirect to the reboot page
+    // httpd_resp_set_status(req, "302 Temporary Redirect");
+    // httpd_resp_set_hdr(req, "Location", "/reboot.html");
+    // httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
+    httpd_resp_set_status(req, "200 OK");
 
     config_rw();
     config_write();
 
     // reboot the device
-    xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL);
+    // xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL);
     return ESP_OK;
 }
 
@@ -411,6 +410,75 @@ esp_err_t wifi_scan_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+esp_err_t test_start_handler(httpd_req_t *req)
+{
+    char buf[100];
+    esp_err_t err = httpd_req_get_url_query_str(req, buf, sizeof(buf));
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to get the query string");
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
+    char value[10];
+    err = httpd_query_key_value(buf, "id", value, sizeof(value));
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to get the id");
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
+    uint32_t id = atoi(value);
+    switch (id)
+    {
+    case WIFI_CONNECT:
+        err = wifi_connect();
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Failed to connect to wifi");
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+        break;
+    case WIFI_PING:
+        ip_addr_t ip = {
+            .type = IPADDR_TYPE_V4,
+            .u_addr.ip4.addr = wifi_current_ip.ip.addr,
+        };
+        wifi_ping(ip);
+        break;
+    case MQTT_CONNECT:
+        break;
+    case MQTT_PUBLISH:
+        break;
+    default:
+        ESP_LOGE(TAG, "Unknown test id");
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+        break;
+    }
+    current_test = id;
+
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+
+    return ESP_OK;
+}
+
+esp_err_t test_status_handler(httpd_req_t *req)
+{
+
+    ESP_LOGI(TAG, "URL: %s", req->uri);
+    // response ok
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+
+    return ESP_OK;
+}
 struct request_item_t
 {
     const char *uri;
@@ -424,6 +492,8 @@ struct request_item_t requests[] = {
     {"/generate_204",           HTTP_GET,   get_req_204_handler},
     {"/save-config",            HTTP_POST,  save_config_handler},
     {"/config",                 HTTP_GET,   get_config_handler},
+    {"/test-start",             HTTP_GET,   test_start_handler},
+    {"/test-status",            HTTP_GET,   test_status_handler},
     {"/wifi-scan",              HTTP_GET,   wifi_scan_handler},
     {"/wpad.dat",               HTTP_GET,   get_req_404_handler},
     {"/chat",                   HTTP_GET,   get_req_404_handler},
