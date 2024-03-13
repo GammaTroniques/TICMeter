@@ -104,16 +104,17 @@
                         </svg>
                         <h3>Paramètres WiFi</h3>
                     </div>
-                    <div class="">
-                        <div class="">
+                    <div>
+                        <div class="feild">
                             <h6 class="feild-name">SSID</h6>
                             <div class="flex space">
                                 <input type="text" name="wifi-ssid" id="wifi-ssid"
-                                    placeholder="Entrez le nom de votre réseau WiFi" maxlength="32" />
-                                <button class="auto">Scanner les réseaux</button>
+                                    placeholder="Entrez le nom de votre réseau WiFi" maxlength="32"
+                                    style="flex-grow: 1; margin-right: 10px;" />
+                                <button class="small">Scanner les réseaux</button>
                             </div>
                         </div>
-                        <div>
+                        <div class="feild">
                             <h6 class="feild-name">Mot de passe</h6>
                             <div class="input-w100">
                                 <input type="password" name="wifi-password" maxlength="64"
@@ -132,39 +133,43 @@
                         <h3>Configuration</h3>
                     </div>
                     <div id="mqtt-conf">
-                        <div class="ip-port-container">
-                            <div>
+                        <div class="ip-port-container feild">
+                            <div style="flex-grow: 1; margin-right: 10px;">
                                 <h6 class="feild-name">IP</h6>
-                                <input type="text" name="mqtt-host" maxlength="100" placeholder="ex : 192.168.1.20" />
+                                <div class="input-w100">
+                                    <input type="text" name="mqtt-host" maxlength="100"
+                                        placeholder="ex : 192.168.1.20" />
+                                </div>
                             </div>
-                            <div>
+                            <div class="feild" style="width: 25%;">
                                 <h6 class="feild-name">Port</h6>
-                                <input type="number" name="mqtt-port" max="65535" placeholder="ex : 1883" />
+                                <div class="input-w100">
+                                    <input type="number" name="mqtt-port" max="65535" placeholder="ex : 1883" />
+                                </div>
                             </div>
                         </div>
-                        <div>
+                        <div class="feild">
                             <h6 class="feild-name">Nom d'utilisateur</h6>
                             <div class="input-w100">
-
                                 <input type="text" name="mqtt-user" maxlength="50"
                                     placeholder="Entrez le nom d’utilisateur MQTT" </div>
                             </div>
                         </div>
-                        <div>
+                        <div class="feild">
                             <h6 class="feild-name">Mot de passe</h6>
                             <div class="input-w100">
                                 <input type="password" name="mqtt-password" maxlength="50"
                                     placeholder="Entrez le mot de passe MQTT" />
                             </div>
                         </div>
-                        <div>
+                        <div class="feild">
                             <h6 class="feild-name">Topic</h6>
                             <div class="input-w100">
                                 <input type="text" name="mqtt-topic" maxlength="101"
                                     placeholder="ex : TICMeter/123456" />
                             </div>
                         </div>
-                        <div class="ha-discovery-container">
+                        <div class="ha-discovery-container feild">
                             <div class="flex-h-center">
                                 <h6 class="feild-name">Home Assistant Discovery</h6>
                                 <div class="tooltip ha-help">
@@ -197,31 +202,31 @@
                         </svg>
                         <h3>Mode fonctionnement Linky</h3>
                     </div>
-                    <div>
+                    <div class="feild">
                         <div class="ha-discovery-container">
                             <div class="flex-h-center">
                                 <h6 class="feild-name">Détection automatique</h6>
                             </div>
                             <div>
                                 <label class="switch">
-                                    <input type="checkbox" name="linky-mode" value="3" />
+                                    <input type="checkbox" id="linky-tic-auto" value="3" />
                                     <span class="slider round"></span>
                                 </label>
                             </div>
                         </div>
                         <div class="flex space">
-                            <div class="linky-selector-container">
-                                <input type="radio" name="linky-mode" value="0" checked>
+                            <label class="linky-selector-container">
+                                <input type="radio" name="linky-mode" value="0">
                                 <div class="linky-selector">
                                     <h6 class="">Mode Historique</h6>
                                 </div>
-                            </div>
-                            <div class="linky-selector-container">
+                            </label>
+                            <label class="linky-selector-container">
                                 <input type="radio" name="linky-mode" value="1">
                                 <div class="linky-selector">
                                     <h6 class="black-text">Mode Standard</h6>
                                 </div>
-                            </div>
+                            </label>
                         </div>
                     </div>
                 </section>
@@ -230,6 +235,9 @@
         </div>
 
     </form>
+    <dialog open>
+        sdd
+    </dialog>
 </body>
 
 <script src="index.js"></script>
