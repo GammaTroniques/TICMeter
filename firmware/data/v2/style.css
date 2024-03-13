@@ -111,9 +111,9 @@ button {
   cursor: pointer;
 }
 
-button.auto {
-  padding: 0;
-  /* w */
+button.small {
+  /* padding: 0; */
+  font-size: 15px;
 }
 
 button:disabled {
@@ -193,6 +193,17 @@ button:disabled {
   opacity: 1;
 }
 
+[type="radio"] + .linky-selector {
+  cursor: pointer;
+  opacity: 0.3;
+}
+
+[type="radio"]:checked + .linky-selector {
+  opacity: 1;
+  border: 2px solid #787878;
+  background: #fff;
+}
+
 .ha-discovery-container {
   display: flex;
   flex-direction: row;
@@ -220,7 +231,10 @@ button:disabled {
   width: 50%;
   margin: 0 10px;
 }
-
+.linky-selector-container.disabled {
+  opacity: 0.2;
+  pointer-events: none;
+}
 /* SWITCH */
 .switch {
   position: relative;
@@ -292,7 +306,7 @@ input:checked + .slider:before {
   width: 50vw;
   background-color: black;
   color: #fff;
-  text-align: center;
+  text-align: justify;
   border-radius: 6px;
   padding: 5px 0;
   font-size: 10px;
@@ -300,7 +314,10 @@ input:checked + .slider:before {
   z-index: 1;
   bottom: 150%;
   left: 50%;
-  margin-left: -60px;
+  margin-left: -25vw;
+  padding: 10px;
+  line-height: normal;
+  font-size: 14px;
 }
 
 .tooltip .tooltiptext::after {
@@ -320,4 +337,8 @@ input:checked + .slider:before {
 
 .ha-help {
   margin-left: 5px;
+}
+
+.feild {
+  margin: 5px 0;
 }
