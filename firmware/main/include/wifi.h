@@ -108,6 +108,6 @@ extern void wifi_http_get_config_from_server();
 
 extern void wifi_scan(uint16_t *ap_count);
 
-extern esp_err_t wifi_ping(ip_addr_t host);
+extern esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time);
 
 #endif /* WIFI_H */

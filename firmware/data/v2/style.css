@@ -46,7 +46,14 @@ input {
   background: #fff;
   padding: 10px;
   width: max-content;
+  width: auto;
 }
+
+.input-w100 {
+  display: flex;
+  flex-direction: column;
+}
+
 input:focus {
   border: 2px solid #0042e3;
 }
@@ -146,7 +153,7 @@ button:disabled {
   border-radius: 8px;
   color: #fff;
   padding: 5px 20px;
-  margin: 10px;
+  /* margin: 10px; */
 }
 
 .mode-http {
@@ -172,6 +179,9 @@ button:disabled {
 
 #server-mode-container {
   display: flex;
+  justify-content: space-around;
+  width: 100%;
+  margin: 10px 0;
 }
 
 [type="radio"] + .server-mode-selector {
@@ -209,4 +219,105 @@ button:disabled {
 .linky-selector-container {
   width: 50%;
   margin: 0 10px;
+}
+
+/* SWITCH */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 17px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: 0.4s;
+  transition: 0.4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 13px;
+  width: 13px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: 0.4s;
+  transition: 0.4s;
+}
+
+input:checked + .slider {
+  background-color: #235ee7;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #235ee7;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(13px);
+  -ms-transform: translateX(13px);
+  transform: translateX(13px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 50vw;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 0;
+  font-size: 10px;
+  position: absolute;
+  z-index: 1;
+  bottom: 150%;
+  left: 50%;
+  margin-left: -60px;
+}
+
+.tooltip .tooltiptext::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: black transparent transparent transparent;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+
+.ha-help {
+  margin-left: 5px;
 }

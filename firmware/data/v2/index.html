@@ -64,7 +64,7 @@
                         </svg>
                         <h3>Mode de fonctionnement</h3>
                     </div>
-                    <div class="flex-v-center">
+                    <div class="flex-v-center space">
                         <div id="server-mode-container">
                             <label>
                                 <input type="radio" name="server-mode" value="1" checked>
@@ -107,7 +107,7 @@
                     <div class="">
                         <div class="">
                             <h6 class="feild-name">SSID</h6>
-                            <div>
+                            <div class="flex space">
                                 <input type="text" name="wifi-ssid" id="wifi-ssid"
                                     placeholder="Entrez le nom de votre réseau WiFi" maxlength="32" />
                                 <button class="auto">Scanner les réseaux</button>
@@ -115,8 +115,10 @@
                         </div>
                         <div>
                             <h6 class="feild-name">Mot de passe</h6>
-                            <input type="password" name="wifi-password" maxlength="64"
-                                placeholder="Entrez le mot de passe de votre réseau WiFi" />
+                            <div class="input-w100">
+                                <input type="password" name="wifi-password" maxlength="64"
+                                    placeholder="Entrez le mot de passe de votre réseau WiFi" />
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -142,29 +144,49 @@
                         </div>
                         <div>
                             <h6 class="feild-name">Nom d'utilisateur</h6>
-                            <input type="text" name="mqtt-user" maxlength="50"
-                                placeholder="Entrez le nom d’utilisateur MQTT" </div>
+                            <div class="input-w100">
+
+                                <input type="text" name="mqtt-user" maxlength="50"
+                                    placeholder="Entrez le nom d’utilisateur MQTT" </div>
+                            </div>
                         </div>
                         <div>
                             <h6 class="feild-name">Mot de passe</h6>
-                            <input type="password" name="mqtt-password" maxlength="50"
-                                placeholder="Entrez le mot de passe MQTT" />
+                            <div class="input-w100">
+                                <input type="password" name="mqtt-password" maxlength="50"
+                                    placeholder="Entrez le mot de passe MQTT" />
+                            </div>
                         </div>
                         <div>
                             <h6 class="feild-name">Topic</h6>
-                            <input type="text" name="mqtt-topic" maxlength="101" placeholder="ex : TICMeter/123456" />
+                            <div class="input-w100">
+                                <input type="text" name="mqtt-topic" maxlength="101"
+                                    placeholder="ex : TICMeter/123456" />
+                            </div>
                         </div>
                         <div class="ha-discovery-container">
                             <div class="flex-h-center">
                                 <h6 class="feild-name">Home Assistant Discovery</h6>
-                                <svg width="15" height="15" viewBox="0 0 11 11" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M5.0415 3.20768H5.95817V4.12435H5.0415V3.20768ZM5.0415 5.04102H5.95817V7.79102H5.0415V5.04102ZM5.49984 0.916016C2.96984 0.916016 0.916504 2.96935 0.916504 5.49935C0.916504 8.02935 2.96984 10.0827 5.49984 10.0827C8.02984 10.0827 10.0832 8.02935 10.0832 5.49935C10.0832 2.96935 8.02984 0.916016 5.49984 0.916016ZM5.49984 9.16602C3.47859 9.16602 1.83317 7.5206 1.83317 5.49935C1.83317 3.4781 3.47859 1.83268 5.49984 1.83268C7.52109 1.83268 9.1665 3.4781 9.1665 5.49935C9.1665 7.5206 7.52109 9.16602 5.49984 9.16602Z"
-                                        fill="black" />
-                                </svg>
+                                <div class="tooltip ha-help">
+                                    <span class="tooltiptext">
+                                        Home Assistant Discovery permet à Home Assistant de détecter et d'intégrer
+                                        automatiquement de nouveaux appareils connectés à votre réseau domestique,
+                                        simplifiant ainsi leur configuration.
+                                    </span>
+                                    <svg width="15" height="15" viewBox="0 0 11 11" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <path
+                                            d="M5.0415 3.20768H5.95817V4.12435H5.0415V3.20768ZM5.0415 5.04102H5.95817V7.79102H5.0415V5.04102ZM5.49984 0.916016C2.96984 0.916016 0.916504 2.96935 0.916504 5.49935C0.916504 8.02935 2.96984 10.0827 5.49984 10.0827C8.02984 10.0827 10.0832 8.02935 10.0832 5.49935C10.0832 2.96935 8.02984 0.916016 5.49984 0.916016ZM5.49984 9.16602C3.47859 9.16602 1.83317 7.5206 1.83317 5.49935C1.83317 3.4781 3.47859 1.83268 5.49984 1.83268C7.52109 1.83268 9.1665 3.4781 9.1665 5.49935C9.1665 7.5206 7.52109 9.16602 5.49984 9.16602Z"
+                                            fill="black" />
+                                    </svg>
+                                </div>
                             </div>
-                            <input type="checkbox" name="mqtt-ha-discovery" value="1" />
+                            <div>
+                                <label class="switch">
+                                    <input type="checkbox" name="mqtt-ha-discovery" value="1" />
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
                         </div>
                 </section>
 
@@ -180,7 +202,12 @@
                             <div class="flex-h-center">
                                 <h6 class="feild-name">Détection automatique</h6>
                             </div>
-                            <input type="checkbox" name="linky-mode" value="3" />
+                            <div>
+                                <label class="switch">
+                                    <input type="checkbox" name="linky-mode" value="3" />
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
                         </div>
                         <div class="flex space">
                             <div class="linky-selector-container">

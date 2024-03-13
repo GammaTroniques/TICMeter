@@ -350,6 +350,7 @@ esp_err_t save_config_handler(httpd_req_t *req)
     // httpd_resp_set_hdr(req, "Location", "/reboot.html");
     // httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
     httpd_resp_set_status(req, "200 OK");
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
 
     config_rw();
     config_write();
@@ -444,12 +445,23 @@ esp_err_t test_start_handler(httpd_req_t *req)
         }
         break;
     case WIFI_PING:
+    {
         ip_addr_t ip = {
             .type = IPADDR_TYPE_V4,
             .u_addr.ip4.addr = wifi_current_ip.ip.addr,
         };
-        wifi_ping(ip);
-        break;
+        uint32_t ping;
+        wifi_ping(ip, &ping);
+        // reponse ping value
+        cJSON *jsonObject = cJSON_CreateObject();
+        cJSON_AddNumberToObject(jsonObject, "ping", ping);
+        char *jsonString = cJSON_PrintUnformatted(jsonObject);
+        httpd_resp_set_type(req, "application/json");
+        httpd_resp_send(req, jsonString, strlen(jsonString));
+        free(jsonString);
+        cJSON_Delete(jsonObject);
+    }
+    break;
     case MQTT_CONNECT:
         break;
     case MQTT_PUBLISH:
