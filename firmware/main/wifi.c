@@ -76,6 +76,8 @@ static EventGroupHandle_t s_wifi_event_group;
 static EventGroupHandle_t ping_event_group;
 static uint8_t ap_started = 0;
 
+static uint32_t ping_time_array[10];
+static uint32_t ping_index = 0;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -596,7 +598,16 @@ void wifi_scan(uint16_t *ap_count)
 
 static void ping_success(esp_ping_handle_t hdl, void *args)
 {
-    ESP_LOGI(TAG, "Ping success");
+    uint32_t time;
+    esp_ping_get_profile(hdl, ESP_PING_PROF_TIMEGAP, &time, sizeof(time));
+
+    if (ping_index < sizeof(ping_time_array) / sizeof(ping_time_array[0]))
+    {
+        ping_time_array[ping_index] = time;
+        ping_index++;
+    }
+
+    ESP_LOGI(TAG, "Ping success: time=%ldms", time);
 }
 
 static void ping_timeout(esp_ping_handle_t hdl, void *args)
@@ -626,6 +637,12 @@ static void ping_end(esp_ping_handle_t hdl, void *args)
 
 esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time)
 {
+    ping_index = 0;
+    for (int i = 0; i < sizeof(ping_time_array) / sizeof(ping_time_array[0]); i++)
+    {
+        ping_time_array[i] = UINT32_MAX;
+    }
+
     esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
     ping_config.target_addr = host;
     ping_config.count = 4;
@@ -652,9 +669,28 @@ esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time)
                                            5000 / portTICK_PERIOD_MS);
 
     esp_ping_delete_session(ping);
+
+    uint32_t sum = 0;
+    uint32_t count = 0;
+    for (int i = 0; i < sizeof(ping_time_array) / sizeof(ping_time_array[0]); i++)
+    {
+        if (ping_time_array[i] == UINT32_MAX)
+        {
+            continue;
+        }
+        sum += ping_time_array[i];
+        count++;
+    }
     if (ping_time != NULL)
     {
-        *ping_time = 0;
+        if (count > 0)
+        {
+            *ping_time = sum / count;
+        }
+        else
+        {
+            *ping_time = UINT32_MAX
+        }
     }
 
     if (bits & BIT0)
