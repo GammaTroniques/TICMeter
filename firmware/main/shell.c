@@ -26,6 +26,7 @@
 #include "soc/periph_defs.h"
 #include "esp_pm.h"
 #include "led.h"
+#include "tuya.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -165,7 +166,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"get-VCondo",                  "Get VCondo",                               &get_VCondo_command,                0, {}, {}},
     {"test-led",                    "Test led",                                 &test_led_command,                  0, {}, {}},
     {"ota-check",                   "Check for OTA update",                     &ota_check_command,                 0, {}, {}},
-    {"set-tuya",                    "Set config",                               &set_tuya_command,                  3, {"<product_id>", "<device_uuid>", "<device_auth>"}, {"Product ID", "Device UUID", "Device Auth Key"}},
+    {"set-tuya",                    "Set config",                               &set_tuya_command,                  2, {"<device_uuid>", "<device_auth>"}, {"Device UUID", "Device Auth Key"}},
     {"set-tuya-pairing",            "Set tuya pairing state",                   &set_tuya_pairing,                  1, {"<pairing_state>"}, {"Pairing state"}},
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
@@ -518,15 +519,13 @@ static int ota_check_command(int argc, char **argv)
 
 static int set_tuya_command(int argc, char **argv)
 {
-  if (argc != 4)
+  if (argc != 3)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  memcpy(config_values.tuya.product_id, argv[1],
-         sizeof(config_values.tuya.product_id));
-  memcpy(config_values.tuya.device_uuid, argv[2],
+  memcpy(config_values.tuya.device_uuid, argv[1],
          sizeof(config_values.tuya.device_uuid));
-  memcpy(config_values.tuya.device_auth, argv[3],
+  memcpy(config_values.tuya.device_auth, argv[2],
          sizeof(config_values.tuya.device_auth));
   config_write();
   printf("Tuya config saved\n");
@@ -554,7 +553,7 @@ static int get_tuya_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("%cTuya config:\n", 0x02);
-  printf("Product ID: %s\n", config_values.tuya.product_id);
+  printf("Product ID: %s\n", TUYA_PRODUCT_ID);
   printf("Device UUID: %s\n", config_values.tuya.device_uuid);
   printf("Device Auth: %s\n", config_values.tuya.device_auth);
   printf("Tuya Bind Status: %d%c\n", config_values.pairing_state, 0x03);
@@ -770,6 +769,8 @@ static int efuse_read(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   config_efuse_read();
+  printf("\x02Serial number: %s\n\x03", efuse_values.serialNumber);
+
   return 0;
 }
 
@@ -780,11 +781,19 @@ static int efuse_write(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
 
+  printf("\x02");
   if (strlen(argv[1]) > sizeof(efuse_values.serialNumber) - 1)
   {
     ESP_LOGE(TAG, "Serial number too long");
     return ESP_ERR_INVALID_ARG;
   }
+
+  if (strlen(efuse_values.serialNumber) > 0)
+  {
+    printf("Error: cannot write serial number to efuse, already written\n");
+    return 0;
+  }
+
   printf("Are you sure you want to write the serial number \"%s\" to the efuse?\n", argv[1]);
   printf("This action is irreversible!\n");
   printf("Type 'YES' to confirm\n");
@@ -806,6 +815,8 @@ static int efuse_write(int argc, char **argv)
   {
     printf("Serial number written to efuse\n");
   }
+  printf("\x03");
+
   return 0;
 }
 
@@ -849,10 +860,21 @@ static int print_task_list(int argc, char **argv)
 
 static int start_test_command(int argc, char **argv)
 {
+  if (argc == 1)
+  {
+    printf("Available tests: ");
+    for (int i = 0; i < tests_count; i++)
+    {
+      printf("%s ", tests_str_available_tests[i]);
+    }
+    printf("\n");
+    return 0;
+  }
   if (argc != 2)
   {
     return ESP_ERR_INVALID_ARG;
   }
+
   char *test_name = argv[1];
   for (int i = 0; i < tests_count; i++)
   {

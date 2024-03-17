@@ -125,20 +125,10 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
-  linky_want_debug_frame = 3;
-
-  if (!linky_update())
-  {
-    ESP_LOGE(MAIN_TAG, "Cant find Linky");
-  }
-  else
-  {
-    ESP_LOGI(MAIN_TAG, "Linky found");
-  }
+  // linky_want_debug_frame = 3;
 
   // start_test(TEST_LINKY_STD);
   // esp_pm_dump_locks(stdout);
-
   if (config_verify())
   {
     // esp_pm_lock_release(main_init_lock);
@@ -158,7 +148,14 @@ void app_main(void)
   }
   ESP_LOGI(MAIN_TAG, "Config found. Starting...");
 
-  ESP_LOGI(MAIN_TAG, "Linky found");
+  if (!linky_update())
+  {
+    ESP_LOGE(MAIN_TAG, "Cant find Linky");
+  }
+  else
+  {
+    ESP_LOGI(MAIN_TAG, "Linky found");
+  }
   switch (config_values.mode)
   {
   case MODE_WEB:

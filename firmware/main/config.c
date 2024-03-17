@@ -403,7 +403,7 @@ uint8_t config_verify()
         break;
 
     case MODE_TUYA:
-        if (strlen(config_values.tuya.product_id) == 0 || strlen(config_values.tuya.device_uuid) == 0 || strlen(config_values.tuya.device_auth) == 0 || config_values.pairing_state != TUYA_PAIRED)
+        if (strlen(config_values.tuya.device_uuid) == 0 || strlen(config_values.tuya.device_auth) == 0 || config_values.pairing_state != TUYA_PAIRED)
         {
             // No Tuya key, id, version or region
             return 1;

@@ -42,25 +42,34 @@
  Local Function Declaration
 ===============================================================================*/
 static esp_err_t test_adc(void *ptr);
+static esp_err_t test_mode(void *ptr);
 static esp_err_t test_linky_hist(void *ptr);
 static esp_err_t test_linky_std(void *ptr);
+static esp_err_t test_linky_read(void *ptr);
+static esp_err_t test_linky_stats(void *ptr);
 static void tests_task(void *pvParameters);
 
 /*==============================================================================
 Public Variable
 ===============================================================================*/
 esp_err_t (*tests_available_tests[])(void *ptr) = {
+    [TEST_MODE] = test_mode,
     [TEST_ALL] = test_adc,
     [TEST_ADC] = test_adc,
     [TEST_LINKY_HIST] = test_linky_hist,
     [TEST_LINKY_STD] = test_linky_std,
+    [TEST_LINKY_READ] = test_linky_read,
+    [TEST_LINKY_STATS] = test_linky_stats,
 };
 
 const char *const tests_str_available_tests[] = {
+    [TEST_MODE] = "mode",
     [TEST_ALL] = "all",
     [TEST_ADC] = "adc",
     [TEST_LINKY_HIST] = "linky-hist",
     [TEST_LINKY_STD] = "linky-std",
+    [TEST_LINKY_READ] = "linky-read",
+    [TEST_LINKY_STATS] = "linky-stats",
 };
 
 const uint32_t tests_count = sizeof(tests_str_available_tests) / sizeof(char *);
@@ -202,23 +211,23 @@ static void tests_task(void *pvParameters)
 {
     suspendTask(main_task_handle);
     tests_t test = (tests_t)pvParameters;
-    ESP_LOGI(TAG, "Tests %s started", tests_str_available_tests[test]);
+    printf("\x02Tests %s started\n", tests_str_available_tests[test]);
 
     if (tests_available_tests[test](NULL) == ESP_OK)
     {
-        ESP_LOGI(TAG, "Tests %s passed", tests_str_available_tests[test]);
+        printf("Tests %s passed\n", tests_str_available_tests[test]);
     }
     else
     {
-        ESP_LOGE(TAG, "Tests %s failed", tests_str_available_tests[test]);
+        printf("Tests %s failed\n", tests_str_available_tests[test]);
     }
-
+    printf("\x03");
     vTaskDelete(NULL);
 }
 static esp_err_t test_adc(void *ptr)
 {
-    ESP_LOGI(TAG, "VCondo: %f", gpio_get_vcondo());
-    ESP_LOGI(TAG, "VUSB: %f", gpio_get_vusb());
+    printf("Condo: %f\n", gpio_get_vcondo());
+    printf("VUSB: %f\n", gpio_get_vusb());
     return ESP_OK;
 }
 
@@ -238,5 +247,30 @@ static esp_err_t test_linky_std(void *ptr)
     linky_print();
     // main_send_data();
 
+    return ESP_OK;
+}
+
+static esp_err_t test_mode(void *ptr)
+{
+    printf("Start test mode\n");
+    suspendTask(main_task_handle);
+    return ESP_OK;
+}
+
+static esp_err_t test_linky_read(void *ptr)
+{
+    linky_set_mode(MODE_HIST);
+    if (!linky_update())
+    {
+        printf("Linky update failed\n");
+        return ESP_FAIL;
+    }
+    printf("Linky update success\n");
+    return ESP_OK;
+}
+
+static esp_err_t test_linky_stats(void *ptr)
+{
+    linky_stats();
     return ESP_OK;
 }

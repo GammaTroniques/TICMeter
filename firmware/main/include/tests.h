@@ -31,10 +31,13 @@
 ==============================================================================*/
 typedef enum
 {
+    TEST_MODE,
     TEST_ALL,
     TEST_ADC,
     TEST_LINKY_HIST,
     TEST_LINKY_STD,
+    TEST_LINKY_READ,
+    TEST_LINKY_STATS,
 } tests_t;
 
 /*==============================================================================
