@@ -367,4 +367,6 @@ void linky_print_debug_frame();
 
 linky_contract_t linky_get_contract(linky_data_t *data);
 
+void linky_stats();
+
 #endif /* Linky_H */

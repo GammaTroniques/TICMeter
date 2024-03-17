@@ -689,7 +689,7 @@ esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time)
         }
         else
         {
-            *ping_time = UINT32_MAX
+            *ping_time = UINT32_MAX;
         }
     }
 

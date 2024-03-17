@@ -195,7 +195,7 @@ static void tuya_link_app_task(void *pvParameters)
     const esp_app_desc_t *app_desc = esp_app_get_description();
 
     const tuya_iot_config_t tuya_config = {
-        .productkey = config_values.tuya.product_id,
+        .productkey = TUYA_PRODUCT_ID,
         .uuid = config_values.tuya.device_uuid,
         .authkey = config_values.tuya.device_auth,
         .software_ver = app_desc->version,

@@ -103,7 +103,6 @@ typedef enum
 
 typedef struct
 {
-    char product_id[30];
     char device_uuid[30];
     char device_auth[40];
 } tuyaConfig_t;
