@@ -119,7 +119,7 @@ int8_t config_erase()
         .index_offset = {0},
     };
 
-    snprintf(blank_config.mqtt.topic, sizeof(blank_config.mqtt.topic), "TICMeter/%s", efuse_values.macAddress + 6);
+    snprintf(blank_config.mqtt.topic, sizeof(blank_config.mqtt.topic), "TICMeter/%s", efuse_values.mac_address + 6);
     config_values = blank_config;
     return 0;
 }
@@ -463,7 +463,7 @@ static esp_efuse_coding_scheme_t config_efuse_get_coding_scheme(void)
     esp_efuse_coding_scheme_t coding_scheme = esp_efuse_get_coding_scheme(EFUSE_BLK3);
     if (coding_scheme == EFUSE_CODING_SCHEME_NONE)
     {
-        ESP_LOGD(TAG, "Coding Scheme NONE");
+        ESP_LOGI(TAG, "Coding Scheme NONE");
 #if CONFIG_IDF_TARGET_ESP32
     }
     else if (coding_scheme == EFUSE_CODING_SCHEME_3_4)
@@ -478,7 +478,7 @@ static esp_efuse_coding_scheme_t config_efuse_get_coding_scheme(void)
     }
     else if (coding_scheme == EFUSE_CODING_SCHEME_RS)
     {
-        ESP_LOGD(TAG, "Coding Scheme RS (Reed-Solomon coding)");
+        ESP_LOGI(TAG, "Coding Scheme RS (Reed-Solomon coding)");
     }
 #endif
     return coding_scheme;
@@ -504,56 +504,110 @@ uint8_t config_efuse_read()
     }
     else
     {
-        snprintf(efuse_values.macAddress, sizeof(efuse_values.macAddress), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        ESP_LOGI(TAG, "MAC address: %s", efuse_values.macAddress);
+        snprintf(efuse_values.mac_address, sizeof(efuse_values.mac_address), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        ESP_LOGI(TAG, "MAC address: %s", efuse_values.mac_address);
     }
 
-    err = esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA_SERIALNUMBER, efuse_values.serialNumber, (sizeof(efuse_values.serialNumber) - 1) * 8);
+    err = esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA_SERIALNUMBER, efuse_values.serial_number, (sizeof(efuse_values.serial_number) - 1) * 8);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error 0x%x reading serial number!", err);
-        return 1;
     }
 
-    if (strnlen(efuse_values.serialNumber, sizeof(efuse_values.serialNumber)) == 0)
+    if (strnlen(efuse_values.serial_number, sizeof(efuse_values.serial_number)) == 0)
     {
         ESP_LOGE(TAG, "Serial number is empty!");
-        return 2;
     }
-    ESP_LOGI(TAG, "Serial number: %s", efuse_values.serialNumber);
+    ESP_LOGI(TAG, "Serial number: %s", efuse_values.serial_number);
+
+    err = esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA_HWVERSION, efuse_values.hw_version, 2 * 8);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error 0x%x reading hardware version!", err);
+    }
+
+    if (efuse_values.hw_version[0] == 0 && efuse_values.hw_version[1] == 0)
+    {
+        ESP_LOGE(TAG, "Hardware version is empty!");
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Hardware version: %d.%d", efuse_values.hw_version[0], efuse_values.hw_version[1]);
+    }
+
     return 0;
 }
 
-uint8_t config_efuse_write(const char *serialnumber, uint8_t len)
+uint8_t config_efuse_write(const char *serialnumber, uint8_t len, const uint8_t *hw_version)
 {
     esp_err_t err = ESP_OK;
-    if (len > sizeof(efuse_values.serialNumber) - 1)
+    if (len > sizeof(efuse_values.serial_number) - 1)
     {
         ESP_LOGE(TAG, "Serial number too long!");
         return 1;
     }
     err = config_efuse_read();
-    switch (err)
+
+    esp_efuse_coding_scheme_t coding_scheme = esp_efuse_get_coding_scheme(EFUSE_BLK3);
+    if (coding_scheme == EFUSE_CODING_SCHEME_RS)
     {
-    case 0:
-        ESP_LOGE(TAG, "Serial number already set: can't write");
-        return 1;
-        break;
-    case 1:
-        ESP_LOGE(TAG, "Can't read serial number: can't write");
-        return 1;
-        break;
-    default:
-        break;
+        err = esp_efuse_batch_write_begin();
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error 0x%x starting batch write!", err);
+            return 1;
+        }
     }
-    ESP_LOGI(TAG, "Writing SN \"%s\" to efuse", serialnumber);
-    err = esp_efuse_write_field_blob(ESP_EFUSE_USER_DATA_SERIALNUMBER, serialnumber, len * 8);
-    if (err != ESP_OK)
+
+    printf("Writing SN \"%s\" to efuse\n", serialnumber);
+
+    if (strlen(efuse_values.serial_number) > 0)
     {
-        ESP_LOGE(TAG, "Error 0x%x writing serial number!", err);
-        return 1;
+        printf("Can't write serial number: already written: %s\n", efuse_values.serial_number);
     }
-    ESP_LOGI(TAG, "Serial number written");
+    else
+    {
+        len = (len > 12) ? 12 : len;
+        ESP_LOGI(TAG, "Writing serial number length %d", len);
+        err = esp_efuse_write_field_blob(ESP_EFUSE_USER_DATA_SERIALNUMBER, serialnumber, len * 8);
+        if (err != ESP_OK)
+        {
+            printf("Error 0x%x writing serial number!\n", err);
+        }
+        else
+        {
+            printf("Serial number written\n");
+        }
+    }
+    if (hw_version != NULL)
+    {
+        if (efuse_values.hw_version[0] != 0 || efuse_values.hw_version[1] != 0)
+        {
+            printf("Can't write hardware version: already written: %d.%d\n", hw_version[0], hw_version[1]);
+        }
+        else
+        {
+            err = esp_efuse_write_field_blob(ESP_EFUSE_USER_DATA_HWVERSION, hw_version, 2 * 8);
+            if (err != ESP_OK)
+            {
+                printf("Error 0x%x writing hardware version!\n", err);
+            }
+            else
+            {
+                printf("Hardware version written\n");
+            }
+        }
+    }
+
+    if (coding_scheme == EFUSE_CODING_SCHEME_RS)
+    {
+        err = esp_efuse_batch_write_commit();
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error 0x%x committing batch write!", err);
+            return 1;
+        }
+    }
 
     err = config_efuse_read();
     if (err != ESP_OK)

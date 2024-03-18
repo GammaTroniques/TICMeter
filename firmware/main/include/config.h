@@ -160,8 +160,9 @@ typedef struct
 
 typedef struct
 {
-    char serialNumber[13];
-    char macAddress[13];
+    char serial_number[13];
+    char mac_address[13];
+    char hw_version[2];
 } efuse_t;
 
 /*==============================================================================
@@ -186,6 +187,6 @@ int8_t config_write();
 uint8_t config_verify();
 uint8_t config_rw();
 uint8_t config_efuse_read();
-uint8_t config_efuse_write(const char *serialnumber, uint8_t len);
+uint8_t config_efuse_write(const char *serialnumber, uint8_t len, const uint8_t *hw_version);
 uint8_t config_factory_reset();
 #endif /* CONFIG_H */

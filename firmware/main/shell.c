@@ -769,32 +769,34 @@ static int efuse_read(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   config_efuse_read();
-  printf("\x02Serial number: %s\n\x03", efuse_values.serialNumber);
+  printf("\x02Serial number: %s\n\x03", efuse_values.serial_number);
 
   return 0;
 }
 
 static int efuse_write(int argc, char **argv)
 {
-  if (argc != 2)
+  if (argc != 3)
   {
     return ESP_ERR_INVALID_ARG;
   }
 
   printf("\x02");
-  if (strlen(argv[1]) > sizeof(efuse_values.serialNumber) - 1)
+  if (strlen(argv[1]) > sizeof(efuse_values.serial_number) - 1)
   {
     ESP_LOGE(TAG, "Serial number too long");
     return ESP_ERR_INVALID_ARG;
   }
 
-  if (strlen(efuse_values.serialNumber) > 0)
+  uint8_t version[2];
+  int ret = sscanf(argv[2], "%hhu.%hhu", &version[0], &version[1]);
+  if (ret != 2)
   {
-    printf("Error: cannot write serial number to efuse, already written\n");
-    return 0;
+    ESP_LOGE(TAG, "Invalid version format: XX.XX");
+    return ESP_ERR_INVALID_ARG;
   }
 
-  printf("Are you sure you want to write the serial number \"%s\" to the efuse?\n", argv[1]);
+  printf("Are you sure you want to write the serial number \"%s\" and version \"%d.%d\" to efuse?\n", argv[1], version[0], version[1]);
   printf("This action is irreversible!\n");
   printf("Type 'YES' to confirm\n");
   char input[4];
@@ -811,10 +813,8 @@ static int efuse_write(int argc, char **argv)
     return 0;
   }
 
-  if (config_efuse_write(argv[1], strlen(argv[1])) == 0)
-  {
-    printf("Serial number written to efuse\n");
-  }
+  config_efuse_write(argv[1], strlen(argv[1]), version);
+
   printf("\x03");
 
   return 0;

@@ -531,7 +531,13 @@ static void zigbee_task(void *pvParameters)
 
     //------------------ Endpoint list ------------------
     esp_zb_ep_list_t *esp_zb_ep_list = esp_zb_ep_list_create();
-    esp_zb_ep_list_add_ep(esp_zb_ep_list, esp_zb_cluster_list, LINKY_TIC_ENDPOINT, ESP_ZB_AF_HA_PROFILE_ID, ESP_ZB_HA_METER_INTERFACE_DEVICE_ID);
+    esp_zb_endpoint_config_t endpoint_config = {
+        .endpoint = LINKY_TIC_ENDPOINT,
+        .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID,
+        .app_device_id = ESP_ZB_HA_METER_INTERFACE_DEVICE_ID,
+        .app_device_version = zigbee_get_hex_version(app_desc->version),
+    };
+    esp_zb_ep_list_add_ep(esp_zb_ep_list, esp_zb_cluster_list, endpoint_config);
     esp_zb_device_register(esp_zb_ep_list);
 
     //------------------ Callbacks ------------------
