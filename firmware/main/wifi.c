@@ -438,7 +438,7 @@ static void wifi_init_softap(void)
     // read MAC address
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
-    sprintf(ssid, "%s %s", AP_SSID, efuse_values.macAddress + 6);
+    sprintf(ssid, "%s %s", AP_SSID, efuse_values.mac_address + 6);
 
     strncpy((char *)wifi_config.ap.ssid, ssid, sizeof(wifi_config.ap.ssid));
     strncpy((char *)wifi_config.ap.password, AP_PASS, sizeof(wifi_config.ap.password));

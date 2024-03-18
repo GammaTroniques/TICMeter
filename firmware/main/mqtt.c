@@ -116,7 +116,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     cJSON *sn = cJSON_CreateArray();
     cJSON *cns = cJSON_CreateArray();
     cJSON_AddItemToArray(sn, cJSON_CreateString("SN"));
-    cJSON_AddItemToArray(sn, cJSON_CreateString(efuse_values.serialNumber));
+    cJSON_AddItemToArray(sn, cJSON_CreateString(efuse_values.serial_number));
     cJSON_AddItemToObject(cns, "", sn);
     cJSON_AddItemToObject(jsonDevice, "cns", cns);
 
@@ -547,8 +547,8 @@ int mqtt_init(void)
         return -1;
     }
 
-    snprintf(mqtt_topics.name, sizeof(mqtt_topics.name), MQTT_ID "_%s", efuse_values.macAddress + 6);
-    snprintf(mqtt_topics.unique_id_base, sizeof(mqtt_topics.unique_id_base), "TICMeter_%s_", efuse_values.macAddress + 6);
+    snprintf(mqtt_topics.name, sizeof(mqtt_topics.name), MQTT_ID "_%s", efuse_values.mac_address + 6);
+    snprintf(mqtt_topics.unique_id_base, sizeof(mqtt_topics.unique_id_base), "TICMeter_%s_", efuse_values.mac_address + 6);
     mqtt_state = MQTT_CONNECTING;
     char uri[200];
     snprintf(uri, sizeof(uri), "mqtt://%s:%d", config_values.mqtt.host, config_values.mqtt.port);

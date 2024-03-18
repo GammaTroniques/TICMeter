@@ -852,7 +852,9 @@ CONFIG_GPTIMER_ISR_HANDLER_IN_IRAM=y
 #
 CONFIG_EFUSE_CUSTOM_TABLE=y
 CONFIG_EFUSE_CUSTOM_TABLE_FILENAME="efuse_table.csv"
-# CONFIG_EFUSE_VIRTUAL is not set
+CONFIG_EFUSE_VIRTUAL=y
+# CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH is not set
+CONFIG_EFUSE_VIRTUAL_LOG_ALL_WRITES=y
 CONFIG_EFUSE_MAX_BLK_LEN=256
 # end of eFuse Bit Manager
 
@@ -1994,7 +1996,6 @@ CONFIG_ZB_RADIO_NATIVE=y
 #
 # Zigbee Example
 #
-# CONFIG_ZB_R22_ENABLE is not set
 # CONFIG_ZB_SNIFFER_ENABLE is not set
 # end of Zigbee Example
 
@@ -2002,8 +2003,6 @@ CONFIG_ZB_RADIO_NATIVE=y
 # Zigbee trace log option
 #
 # CONFIG_ESP_ZB_TRACE_ENABLE is not set
-CONFIG_ZB_TRACE_LEVEL=-1
-CONFIG_ZB_TRACE_MASK=0x0
 # end of Zigbee trace log option
 # end of Zigbee
 # end of Component config
