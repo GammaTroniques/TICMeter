@@ -342,3 +342,22 @@ input:checked + .slider:before {
 .feild {
   margin: 5px 0;
 }
+
+.test-frame-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  margin: 20px 0;
+  align-items: center;
+}
+
+.test-frame {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid #d8d8d8;
+  background: #fff;
+  width: 50%;
+}
