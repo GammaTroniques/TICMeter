@@ -543,12 +543,16 @@ void wifi_start_captive_portal()
 void wifi_scan(uint16_t *ap_count)
 {
     esp_err_t err;
-    // err = esp_wifi_set_mode(WIFI_MODE_APSTA);
-    // if (err != ESP_OK)
-    // {
-    //     ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
-    //     return;
-    // }
+
+    if (ap_started)
+    {
+        err = esp_wifi_set_mode(WIFI_MODE_APSTA);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
+            return;
+        }
+    }
     if (wifi_state == WIFI_DISCONNECTED)
     {
         err = esp_wifi_start();

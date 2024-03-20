@@ -8,6 +8,9 @@ const mode_config_mqtt = document.getElementById("mqtt-conf");
 const mode_config_zigbee = document.getElementById("zigbee-conf");
 const mode_config_tuya = document.getElementById("tuya-conf");
 
+const wifi_password = document.getElementById("wifi-password");
+let wifi_password_edited = false;
+
 const save_button = document.getElementById("save-button");
 
 const test_container = document.getElementById("tests-container");
@@ -29,10 +32,10 @@ const FAILURE = 3;
 
 // prettier-ignore
 const tests_list = [
-  { id: 0, text: "Connexion au réseau WiFi",  state: PENDING },
-  { id: 1, text: "Test du réseau WiFi",       state: PENDING },
-  { id: 2, text: "Connexion au serveur MQTT", state: PENDING },
-  { id: 3, text: "Envoi des données MQTT",    state: PENDING },
+  { id: 1, text: "Connexion au réseau WiFi",  state: PENDING },
+  { id: 2, text: "Test du réseau WiFi",       state: PENDING },
+  { id: 3, text: "Connexion au serveur MQTT", state: PENDING },
+  { id: 4, text: "Envoi des données MQTT",    state: PENDING },
 ];
 
 function update_config_view(mode) {
@@ -226,6 +229,28 @@ function update_wifi_list(ap) {
   }
 }
 
+async function start_tests() {
+  update_tests_view();
+  for (let i = 0; i < tests_list.length; i++) {
+    tests_list[i].state = RUNNING;
+    update_tests_view();
+
+    await fetch("/test-start?id=" + tests_list[i].id)
+      .then((data) => {
+        //if OK response
+        if (!data.ok) {
+          throw new Error("Test failed", data);
+        }
+        tests_list[i].state = SUCCESS;
+        update_tests_view();
+      })
+      .catch((error) => {
+        tests_list[i].state = FAILURE;
+        update_tests_view();
+      });
+  }
+}
+
 var wifi_scanning = false;
 function wifi_scan() {
   if (wifi_scanning) {
@@ -251,6 +276,35 @@ function wifi_scan() {
     });
 }
 
+function handleSubmit(event) {
+  event.preventDefault();
+  const data = new FormData(event.target);
+  var config = {};
+  for (const [key, value] of data) {
+    config[key] = value;
+  }
+
+  if (!wifi_password_edited) {
+    delete config["wifi-password"];
+  }
+
+  fetch("/config", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(config),
+  })
+    .then((data) => {
+      console.log("Success:", data);
+      update_page_view(2); // switch to tests page
+      start_tests();
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+    });
+}
+
 window.addEventListener("load", function () {
   linky_tic_auto_switch.addEventListener("change", (event) => {
     update_linky_tic_mode(event.target.checked ? 2 : 3);
@@ -262,17 +316,42 @@ window.addEventListener("load", function () {
     });
   });
 
-  update_config_view(1);
-  update_linky_tic_mode(2);
-  update_page_view(1);
-  update_tests_view();
-  update_popup(1);
+  wifi_password.addEventListener("input", (event) => {
+    wifi_password_edited = true;
+    console.log("Password edited");
+  });
 
-  const ap = [
-    { ssid: "Test 1", rssi: -50 },
-    { ssid: "Test 2", rssi: -70 },
-    { ssid: "Test 3", rssi: -80 },
-    { ssid: "Test 4", rssi: -90 },
-  ];
-  update_wifi_list(ap);
+  const form = document.querySelector("form");
+  form.addEventListener("submit", handleSubmit);
+
+  fetch("/config")
+    .then((response) => response.json())
+    .then((data) => {
+      for (const key in data) {
+        if (data.hasOwnProperty(key)) {
+          const element = data[key];
+          if (key == "server-mode") {
+            continue;
+          }
+          if (key == "wifi-password") {
+            // generate a fake password of data["wifi-password"]
+            wifi_password.value = "*".repeat(element);
+            continue;
+          }
+          const input = document.querySelector(`[name="${key}"]`);
+          if (input) {
+            input.value = element;
+          }
+        }
+      }
+      update_config_view(parseInt(data["server-mode"]));
+      for (let i = 0; i < mode_selectors.length; i++) {
+        if (mode_selectors[i].value == data["server-mode"]) {
+          mode_selectors[i].checked = true;
+        }
+      }
+    });
+
+  update_page_view(1);
+  update_popup(0);
 });
