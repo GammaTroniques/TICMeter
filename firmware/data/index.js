@@ -1,235 +1,164 @@
-const serverMode = document.getElementsByName("server-mode");
-const web = document.querySelector(".web");
-const mqtt = document.querySelector(".mqtt");
-const tuya = document.querySelector(".tuya");
-const zigbee = document.querySelector(".zigbee");
-const radio = document.getElementsByName("server-mode");
-const wifiList = document.querySelector(".wifi-list");
-const wifiLists = document.getElementsByName("wifi-list");
-const wifiHidden = document.getElementsByName("wifi-hidden");
-const wifiSSIDField = document.getElementById("wifi-ssid-field");
-const wifiSSID = document.getElementById("wifi-ssid");
-const wifiScan = document.getElementById("wifi-scan");
-function update_wifi_list(ap) {
-  wifiList.innerHTML = "";
-  if (ap.length == 0) {
-    const label = document.createElement("label");
-    const text = document.createElement("h3");
-    text.textContent = "Aucun réseau Wi-Fi trouvé";
-    text.className = "black";
-    label.appendChild(text);
-    wifiList.appendChild(label);
+const linky_tic_auto_switch = document.getElementById("linky-tic-auto");
+const linky_tic_auto_radio = document.getElementById("linky-mode-auto");
+const linky_tic_mode_values = document.getElementsByName("linky-mode");
+const linky_tic_mode_containers = document.getElementsByClassName("linky-selector-container");
+const mode_selectors = document.getElementsByName("server-mode");
+const mode_config_http = document.getElementById("http-conf");
+const mode_config_mqtt = document.getElementById("mqtt-conf");
+const mode_config_zigbee = document.getElementById("zigbee-conf");
+const mode_config_tuya = document.getElementById("tuya-conf");
+
+const save_button = document.getElementById("save-button");
+
+const test_container = document.getElementById("tests-container");
+
+const page_config = document.getElementById("page-config");
+const page_tests = document.getElementById("page-tests");
+
+const popup = document.getElementById("popup");
+
+const PENDING = 0;
+const RUNNING = 1;
+const SUCCESS = 2;
+const FAILURE = 3;
+
+// prettier-ignore
+const tests_list = [
+  { id: 0, text: "Connexion au réseau WiFi",  state: PENDING },
+  { id: 1, text: "Test du réseau WiFi",       state: PENDING },
+  { id: 2, text: "Connexion au serveur MQTT", state: PENDING },
+  { id: 3, text: "Envoi des données MQTT",    state: PENDING },
+];
+
+function update_config_view(mode) {
+  console.log("Mode: " + mode);
+  mode_config_http.classList.add("hide");
+  mode_config_mqtt.classList.add("hide");
+  mode_config_zigbee.classList.add("hide");
+  mode_config_tuya.classList.add("hide");
+  switch (mode) {
+    case 1:
+      mode_config_http.classList.remove("hide");
+      break;
+    case 2:
+    case 3:
+      mode_config_mqtt.classList.remove("hide");
+      break;
+    case 4:
+      mode_config_zigbee.classList.remove("hide");
+      break;
+    case 5:
+      mode_config_tuya.classList.remove("hide");
+      break;
   }
-  for (let i = 0; i < ap.length; i++) {
-    const element = ap[i];
-    if (element.ssid == "") {
-      continue;
-    }
-    console.log(element);
-    const label = document.createElement("label");
-    const input = document.createElement("input");
-    const text = document.createElement("h3");
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    const div = document.createElement("div");
-    input.type = "radio";
-    input.name = "wifi-list";
-    input.value = element.ssid;
+}
 
-    let level = 0;
-    if (element.rssi > -50) {
-      level = 4;
-    } else if (element.rssi > -70) {
-      level = 3;
-    } else if (element.rssi > -80) {
-      level = 2;
-    } else if (element.rssi > -90) {
-      level = 1;
+function update_linky_tic_mode(mode) {
+  for (let i = 0; i < linky_tic_mode_values.length; i++) {
+    linky_tic_mode_values[i].checked = false;
+  }
+  if (mode == 2) {
+    linky_tic_auto_switch.checked = true;
+    linky_tic_auto_radio.checked = true;
+    for (let i = 0; i < linky_tic_mode_containers.length; i++) {
+      linky_tic_mode_containers[i].classList.add("disabled");
+    }
+  } else {
+    linky_tic_auto_switch.checked = false;
+    linky_tic_auto_radio.checked = false;
+    for (let i = 0; i < linky_tic_mode_containers.length; i++) {
+      linky_tic_mode_containers[i].classList.remove("disabled");
+    }
+  }
+  for (let i = 0; i < linky_tic_mode_values.length; i++) {
+    if (linky_tic_mode_values[i].value == mode) {
+      linky_tic_mode_values[i].checked = true;
+    }
+  }
+}
+
+function update_page_view(page) {
+  page_config.classList.add("hide");
+  page_tests.classList.add("hide");
+  switch (page) {
+    case 1:
+      page_config.classList.remove("hide");
+      save_button.disabled = false;
+      break;
+    case 2:
+      page_tests.classList.remove("hide");
+      save_button.disabled = true;
+      break;
+  }
+}
+
+function update_tests_view() {
+  test_container.innerHTML = "";
+  tests_list.forEach((test, index) => {
+    let test_div = document.createElement("div");
+    test_div.classList.add("test-item");
+
+    let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    let use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+
+    let use_href = "";
+    switch (test.state) {
+      case PENDING:
+        use_href = "#test-pending";
+        break;
+      case RUNNING:
+        use_href = "#test-running";
+        break;
+      case SUCCESS:
+        use_href = "#test-ok";
+        break;
+      case FAILURE:
+        use_href = "#test-error";
+        break;
     }
 
-    use.setAttributeNS("http://www.w3.org/1999/xlink", "href", "#wifi-" + level);
+    use.setAttributeNS("http://www.w3.org/1999/xlink", "href", use_href);
     svg.appendChild(use);
-    svg.setAttribute("width", "50");
-    svg.setAttribute("height", "50");
+    svg.setAttribute("width", "25");
+    svg.setAttribute("height", "25");
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("focusable", "false");
     svg.setAttribute("class", "wifi-level");
 
-    text.textContent = element.ssid;
+    let text = document.createElement("h6");
+    text.textContent = test.text;
     text.className = "black";
 
-    label.appendChild(input);
-    label.className = "wifi-item-container";
-    div.appendChild(svg);
-    div.appendChild(text);
-    div.className = "wifi-item";
-    label.appendChild(div);
-    wifiList.appendChild(label);
-    wifiLists.forEach((element) => {
-      element.onclick = function (e) {
-        wifiSSID.value = this.value;
-        wifiHidden[0].checked = false;
-        wifiSSIDField.classList.add("hide");
-      };
-    });
+    let svg_container = document.createElement("div");
+    svg_container.appendChild(svg);
 
-    let ok = false;
-    wifiLists.forEach((element) => {
-      if (element.value == wifiSSID.value) {
-        element.checked = true;
-        ok = true;
-      }
-    });
-    if (!ok) {
-      wifiHidden[0].checked = true;
-      wifiSSIDField.classList.remove("hide");
-    }
-  }
+    test_div.appendChild(svg_container);
+    test_div.appendChild(text);
+    test_container.appendChild(test_div);
+  });
 }
 
-var wifi_scanning = false;
-function wifi_scan() {
-  if (wifi_scanning) {
-    return;
+function update_popup(state) {
+  if (state) {
+    popup.classList.remove("hide");
+  } else {
+    popup.classList.add("hide");
   }
-  wifi_scanning = true;
-  wifiScan.textContent = "Scan en cours...";
-  fetch("/wifi-scan")
-    .then((response) => response.json())
-    .then((data) => {
-      console.log(data);
-      const ap = data["ap"];
-      update_wifi_list(ap);
-      wifiScan.textContent = "Scanner les réseaux WiFi";
-    })
-    .catch((error) => {
-      wifiScan.textContent = "Erreur lors du scan";
-    })
-    .finally(() => {
-      wifi_scanning = false;
-    });
-}
-
-function get_selected_wifi() {
-  const wifi = document.querySelector('input[name="wifi-ssid"]:checked');
-  if (wifi) {
-    return wifi.value;
-  }
-  return "";
 }
 
 window.addEventListener("load", function () {
-  web.style.display = "none";
-  mqtt.style.display = "none";
-  tuya.style.display = "none";
-  zigbee.style.display = "none";
-  for (let i = 0; i < radio.length; i++) {
-    radio[i].checked = false;
-  }
+  linky_tic_auto_switch.addEventListener("change", (event) => {
+    update_linky_tic_mode(event.target.checked ? 2 : 3);
+  });
 
-  serverMode.forEach((element) => {
-    element.addEventListener("change", (event) => {
-      console.log(event.target.value);
-      web.style.display = "none";
-      mqtt.style.display = "none";
-      tuya.style.display = "none";
-      zigbee.style.display = "none";
-      switch (event.target.value) {
-        case "1":
-          web.style.display = "block";
-          break;
-        case "2":
-          mqtt.style.display = "block";
-          break;
-        case "3":
-          mqtt.style.display = "block";
-          break;
-        case "4":
-          zigbee.style.display = "block";
-          break;
-        case "5":
-          tuya.style.display = "block";
-          break;
-      }
+  mode_selectors.forEach((selector) => {
+    selector.addEventListener("change", (event) => {
+      update_config_view(parseInt(event.target.value));
     });
   });
 
-  wifiHidden.forEach((element) => {
-    console.log(element);
-    element.addEventListener("change", (event) => {
-      console.log(event.target.checked);
-      if (event.target.checked) {
-        wifiSSIDField.classList.remove("hide");
-      } else {
-        wifiSSIDField.classList.add("hide");
-      }
-    });
-  });
-  //fetch config
-  fetch("/config")
-    .then((response) => response.json())
-    .then((data) => {
-      for (const key in data) {
-        if (data.hasOwnProperty(key)) {
-          const element = data[key];
-          if (key == "server-mode") {
-            continue;
-          }
-          const input = document.querySelector(`[name="${key}"]`);
-          if (input) {
-            input.value = element;
-          }
-        }
-      }
-      if ("server-mode" in data) {
-        web.style.display = "none";
-        mqtt.style.display = "none";
-        tuya.style.display = "none";
-        zigbee.style.display = "none";
-        for (let i = 0; i < radio.length; i++) {
-          radio[i].checked = false;
-        }
-
-        switch (data["server-mode"]) {
-          case 1:
-            web.style.display = "flex";
-            radio[0].checked = true;
-            break;
-          case 2:
-          case 3:
-            mqtt.style.display = "flex";
-            radio[1].checked = true;
-            if (data["server-mode"] == 2) {
-              //mqtt + ha
-              const mqttHaDiscovery = document.querySelector(`[name="mqtt-ha-discovery"]`);
-              mqttHaDiscovery.checked = 1;
-            }
-            break;
-          case 4:
-            zigbee.style.display = "block";
-            radio[2].checked = true;
-            break;
-          case 5:
-            tuya.style.display = "block";
-            radio[3].checked = true;
-            break;
-        }
-      }
-
-      if ("linky-mode" in data) {
-        const linkyMode = document.querySelector(`[name="linky-mode"][value="${data["linky-mode"]}"]`);
-        linkyMode.checked = true;
-      }
-
-      if ("tuya-device-uuid" in data) {
-        const tuyaUUID = document.getElementsByName("tuya-device-uuid");
-        tuyaUUID.value = data["tuya-device-uuid"];
-      }
-      if ("tuya-device-auth" in data) {
-        const tuyaAuth = document.getElementsByName("tuya-device-auth");
-        tuyaAuth.value = data["tuya-device-auth"];
-      }
-    });
-
-  wifi_scan();
+  update_config_view(1);
+  update_linky_tic_mode(3);
+  update_page_view(1);
+  update_tests_view();
 });

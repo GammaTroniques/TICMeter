@@ -1,0 +1,195 @@
+<!-- code une page html pour téléphone -->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>TICMeter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-0" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7H0.36C4.24,11.83 8.13,16.66 12,21.5C15.89,16.66 19.77,11.83 23.64,7H23.65C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L12,18.3L3.27,7.44C5.9,5.85 8.92,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-1" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L15.61,13.81C14.5,13.28 13.25,13 12,13C10.75,13 9.5,13.28 8.39,13.8L3.27,7.44C5.91,5.85 8.93,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-2" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L17.5,11.43C16.26,10.74 14.37,10 12,10C9.62,10 7.74,10.75 6.5,11.43L3.27,7.44C5.91,5.85 8.93,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-3" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L18.77,9.88C17.26,9 14.88,8 12,8C9,8 6.68,9 5.21,9.84L3.27,7.44C5.91,5.85 8.93,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-4" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3Z" />
+        </symbol>
+    </svg>
+
+    <form action="/save-config" method="POST" id="form">
+        <div class="titre black-text">
+            <h1>TICMeter</h1>
+        </div>
+        <div class="bloc">
+            <h2>Configuration Wi-Fi</h2>
+            <div class="wifi">
+                <div class="input-field">
+                    <h2>Nom du Wi-Fi</h2>
+                    <button type="button" onclick="wifi_scan()" id="wifi-scan">Scanner les réseaux Wi-Fi</button>
+                </div>
+                <p>Attention, le TICMeter fonctionne uniquement sur les réseaux 2.4GHz.</p>
+                <div class="wifi-list">
+                    <h3 class="black">Aucun réseau Wi-Fi trouvé.</h3>
+                </div>
+                <div class="input-field">
+                    <h3>Utiliser un Wi-Fi caché</h3>
+                    <input type="checkbox" name="wifi-hidden" value="1" />
+                </div>
+                <div class="">
+                    <div class="input-field hide" id="wifi-ssid-field">
+                        <h2>SSID</h2>
+                        <input type="text" name="wifi-ssid" id="wifi-ssid" placeholder="Livebox ..." maxlength="32" />
+                    </div>
+
+                    <div class="input-field">
+                        <h2>Mot de passe</h2>
+                        <input type="password" name="wifi-password" maxlength="64" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="bloc">
+            <h2>Configuration Linky</h2>
+            <p>Faites défiler les menus de votre compteur jusqu'à trouver l'option "MODE TIC".</p>
+            <label>
+                <input type="radio" name="linky-mode" value="2" checked>
+                <div class="linky-selector">
+                    <h3 class="black-text">Détection Automatique</h3>
+                </div>
+            </label>
+            <label>
+                <input type="radio" name="linky-mode" value="0" checked>
+                <div class="linky-selector">
+                    <h3 class="black-text">Mode Historique</h3>
+                </div>
+            </label>
+
+            <label>
+                <input type="radio" name="linky-mode" value="1">
+                <div class="linky-selector">
+                    <h3 class="black-text">Mode Standard</h3>
+                </div>
+            </label>
+
+        </div>
+
+        <div class="bloc server-selector">
+            <h2>Mode de connexion</h2>
+
+            <div>
+                <label>
+                    <input type="radio" name="server-mode" value="1" checked>
+                    <img src="web.jpg" alt="WEB">
+                </label>
+                <label>
+                    <input type="radio" name="server-mode" value="2">
+                    <img src="mqtt.png" alt="MQTT">
+                </label>
+                <label>
+                    <input type="radio" name="server-mode" value="4">
+                    <img src="zigbee.png" alt="Zigbee">
+                </label>
+                <label>
+                    <input type="radio" name="server-mode" value="5">
+                    <img src="tuya.png" alt="Tuya">
+                </label>
+            </div>
+
+            <div class="web">
+                <div class="input-field">
+                    <h3>SERVER</h3>
+                    <input type="text" name="web-url" placeholder="192.168.2.10:3001" maxlength="100" />
+                </div>
+                <div class="input-field">
+                    <h3>POST URL</h3>
+                    <input type="text" name="web-post" placeholder="/post" maxlength="50" />
+                </div>
+                <div class="input-field">
+                    <h3>CONFIG URL</h3>
+                    <input type="text" name="web-config" placeholder="/config" maxlength="50" />
+                </div>
+                <div class="input-field">
+                    <h3>TOKEN</h3>
+                    <input type="text" name="web-token" placeholder="pwGGHTFaOm" maxlength="100" />
+                </div>
+            </div>
+
+            <div class="mqtt">
+                <div class="input-field">
+                    <h3>IP</h3>
+                    <input type="text" name="mqtt-host" maxlength="100" />
+                </div>
+                <div class="input-field">
+                    <h3>Port</h3>
+                    <input type="number" name="mqtt-port" max="65535" />
+                </div>
+                <div class="input-field">
+                    <h3>User</h3>
+                    <input type="text" name="mqtt-user" maxlength="50" />
+                </div>
+                <div class="input-field">
+                    <h3>PWD</h3>
+                    <input type="password" name="mqtt-password" maxlength="50" />
+                </div>
+                <div class="input-field">
+                    <h3>Topic</h3>
+                    <input type="text" name="mqtt-topic" maxlength="101" />
+                </div>
+                <div class="input-field" style="width: 100%;">
+                    <h3>Home Assistant Discovery</h3>
+                    <input type="checkbox" name="mqtt-ha-discovery" value="1" />
+                </div>
+            </div>
+            <div class="tuya">
+                <div class="input-field">
+                    <h3>Device UUID</h3>
+                    <input type="text" name="tuya-device-uuid" maxlength="29" />
+                </div>
+                <div class="input-field">
+                    <h3>Device Auth</h3>
+                    <input type="text" name="tuya-device-auth" maxlength="49" />
+                </div>
+            </div>
+            <div class="zigbee">
+                <p>Il n'y a pas de configuration supplémentaire.</p>
+                <p>Vous pouvez cliquer sur enregistrer et utiliser le
+                    bouton pour lancer l'appairage.</p>
+            </div>
+        </div>
+        <input type="submit" value="Engregistrer">
+    </form>
+</body>
+
+<script src="index.js"></script>
+
+</html>
