@@ -212,9 +212,35 @@ int8_t config_begin()
         ESP_LOGE(TAG, "Config not OK !");
     }
 
+    uint8_t edited = 0;
+
     if (config_values.refreshRate <= 30)
     {
         config_values.refreshRate = 60;
+        edited = 1;
+    }
+
+    if (strnlen(config_values.mqtt.topic, sizeof(config_values.mqtt.topic)) == 0)
+    {
+        ESP_LOGW(TAG, "MQTT topic not set, using default");
+        snprintf(config_values.mqtt.topic, sizeof(config_values.mqtt.topic), "TICMeter/%s", efuse_values.mac_address + 6);
+        edited = 1;
+    }
+
+    if (config_values.mqtt.port == 0)
+    {
+        config_values.mqtt.port = 1883;
+        edited = 1;
+    }
+
+    if (config_values.mode == MODE_NONE || config_values.mode >= MODE_LAST)
+    {
+        config_values.mode = MODE_MQTT_HA;
+        edited = 1;
+    }
+
+    if (edited)
+    {
         config_write();
     }
     return 0;

@@ -129,6 +129,10 @@ void app_main(void)
 
   // start_test(TEST_LINKY_STD);
   // esp_pm_dump_locks(stdout);
+  while (1)
+  {
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
   if (config_verify())
   {
     // esp_pm_lock_release(main_init_lock);

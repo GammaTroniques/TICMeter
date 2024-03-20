@@ -6,6 +6,7 @@
 #include <string.h>
 #include "cJSON.h"
 #include "tuya.h"
+#include "mqtt.h"
 
 static const char *TAG = "HTTP"; // TAG for debug
 #define INDEX_HTML_PATH "/spiffs/index.html"
@@ -205,14 +206,22 @@ esp_err_t get_req_200_handler(httpd_req_t *req)
 
 esp_err_t save_config_handler(httpd_req_t *req)
 {
-    char buf[500];
+    ESP_LOGI(TAG, "URL: %s, len: %d", req->uri, req->content_len);
+    char *buf = (char *)malloc(req->content_len + 1);
+    if (buf == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to allocate memory for the request");
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
     int ret, remaining = req->content_len;
 
     while (remaining > 0)
     {
         /* Read the data for the request */
         if ((ret = httpd_req_recv(req, buf,
-                                  MIN(remaining, sizeof(buf)))) <= 0)
+                                  MIN(remaining, req->content_len + 1))) <= 0)
         {
             if (ret == HTTPD_SOCK_ERR_TIMEOUT)
             {
@@ -226,14 +235,115 @@ esp_err_t save_config_handler(httpd_req_t *req)
     // Null terminate the buffer
     buf[req->content_len] = 0;
 
-    char decoded[500];
-    urldecode(decoded, buf);
+    ESP_LOGI(TAG, "Received data: %s", buf);
 
-    /* Log data received */
+    cJSON *jsonObject = cJSON_Parse(buf);
+    if (jsonObject == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to parse JSON");
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
+
+    cJSON *item = cJSON_GetObjectItem(jsonObject, "wifi-ssid");
+    if (item != NULL)
+    {
+        strncpy(config_values.ssid, item->valuestring, sizeof(config_values.ssid));
+        ESP_LOGI(TAG, "SSID: %s", config_values.ssid);
+    }
+    item = cJSON_GetObjectItem(jsonObject, "wifi-password");
+    if (item != NULL)
+    {
+        strncpy(config_values.password, item->valuestring, sizeof(config_values.password));
+        ESP_LOGI(TAG, "Password: %s", config_values.password);
+    }
+    item = cJSON_GetObjectItem(jsonObject, "linky-mode");
+    if (item != NULL)
+    {
+        config_values.linkyMode = atoi(item->valuestring);
+    }
+    item = cJSON_GetObjectItem(jsonObject, "server-mode");
+    if (item != NULL)
+    {
+        config_values.mode = atoi(item->valuestring);
+        ESP_LOGI(TAG, "Server mode: %d", config_values.mode);
+    }
+    item = cJSON_GetObjectItem(jsonObject, "web-url");
+    if (item != NULL)
+    {
+        strncpy(config_values.web.host, item->valuestring, sizeof(config_values.web.host));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "web-token");
+    if (item != NULL)
+    {
+        strncpy(config_values.web.token, item->valuestring, sizeof(config_values.web.token));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "web-post");
+    if (item != NULL)
+    {
+        strncpy(config_values.web.postUrl, item->valuestring, sizeof(config_values.web.postUrl));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "web-config");
+    if (item != NULL)
+    {
+        strncpy(config_values.web.configUrl, item->valuestring, sizeof(config_values.web.configUrl));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "mqtt-host");
+    if (item != NULL)
+    {
+        strncpy(config_values.mqtt.host, item->valuestring, sizeof(config_values.mqtt.host));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "mqtt-port");
+    if (item != NULL)
+    {
+        config_values.mqtt.port = atoi(item->valuestring);
+    }
+    item = cJSON_GetObjectItem(jsonObject, "mqtt-user");
+    if (item != NULL)
+    {
+        strncpy(config_values.mqtt.username, item->valuestring, sizeof(config_values.mqtt.username));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "mqtt-password");
+    if (item != NULL)
+    {
+        strncpy(config_values.mqtt.password, item->valuestring, sizeof(config_values.mqtt.password));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "mqtt-topic");
+    if (item != NULL)
+    {
+        strncpy(config_values.mqtt.topic, item->valuestring, sizeof(config_values.mqtt.topic));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "tuya-device-uuid");
+    if (item != NULL)
+    {
+        strncpy(config_values.tuya.device_uuid, item->valuestring, sizeof(config_values.tuya.device_uuid));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "tuya-device-auth");
+    if (item != NULL)
+    {
+        strncpy(config_values.tuya.device_auth, item->valuestring, sizeof(config_values.tuya.device_auth));
+    }
+
+    cJSON_Delete(jsonObject);
+    free(buf);
+
+    if (config_values.mode == MODE_TUYA)
+    {
+        config_rw();
+    }
+
+    config_write();
+
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+
+    /*char decoded[500];
+    urldecode(decoded, buf);
     ESP_LOGI(TAG, "=========== RECEIVED DATA ==========");
     ESP_LOGI(TAG, "%s", decoded);
     ESP_LOGI(TAG, "====================================");
-
     // Parse the POST parameters
     char ssid[100] = {0};
     char password[100] = {0};
@@ -356,7 +466,8 @@ esp_err_t save_config_handler(httpd_req_t *req)
     config_write();
 
     // reboot the device
-    // xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL);
+    // xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL)
+    ;*/
     return ESP_OK;
 }
 
@@ -364,7 +475,7 @@ esp_err_t get_config_handler(httpd_req_t *req)
 {
     cJSON *jsonObject = cJSON_CreateObject();
     cJSON_AddStringToObject(jsonObject, "wifi-ssid", config_values.ssid);
-    // cJSON_AddStringToObject(jsonObject, "wifi-password", config_values.password);
+    cJSON_AddNumberToObject(jsonObject, "wifi-password", strnlen(config_values.password, sizeof(config_values.password)));
     cJSON_AddNumberToObject(jsonObject, "linky-mode", config_values.mode);
     cJSON_AddNumberToObject(jsonObject, "server-mode", config_values.mode);
     cJSON_AddStringToObject(jsonObject, "web-url", config_values.web.host);
@@ -463,8 +574,32 @@ esp_err_t test_start_handler(httpd_req_t *req)
     }
     break;
     case MQTT_CONNECT:
+        mqtt_init();
+        err = esp_mqtt_client_start(mqtt_client);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Start failed with 0x%x", err);
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+
         break;
     case MQTT_PUBLISH:
+        err = mqtt_send();
+        if (err == 0)
+        {
+            ESP_LOGE(TAG, "Failed to publish message");
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+
+        return ESP_OK;
+
         break;
     default:
         ESP_LOGE(TAG, "Unknown test id");
@@ -502,7 +637,7 @@ struct request_item_t
 struct request_item_t requests[] = {
     {"/gen_204",                HTTP_GET,   get_req_204_handler},
     {"/generate_204",           HTTP_GET,   get_req_204_handler},
-    {"/save-config",            HTTP_POST,  save_config_handler},
+    {"/config",                 HTTP_POST,  save_config_handler},
     {"/config",                 HTTP_GET,   get_config_handler},
     {"/test-start",             HTTP_GET,   test_start_handler},
     {"/test-status",            HTTP_GET,   test_status_handler},
