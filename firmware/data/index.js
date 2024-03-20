@@ -15,7 +15,12 @@ const test_container = document.getElementById("tests-container");
 const page_config = document.getElementById("page-config");
 const page_tests = document.getElementById("page-tests");
 
+const wifi_ssid = document.getElementById("wifi-ssid");
+
 const popup = document.getElementById("popup");
+
+const wifi_list = document.getElementById("wifi-list");
+const wifi_text = document.getElementById("wifi-text");
 
 const PENDING = 0;
 const RUNNING = 1;
@@ -54,6 +59,7 @@ function update_config_view(mode) {
 }
 
 function update_linky_tic_mode(mode) {
+  console.log("Linky mode: " + mode);
   for (let i = 0; i < linky_tic_mode_values.length; i++) {
     linky_tic_mode_values[i].checked = false;
   }
@@ -62,6 +68,16 @@ function update_linky_tic_mode(mode) {
     linky_tic_auto_radio.checked = true;
     for (let i = 0; i < linky_tic_mode_containers.length; i++) {
       linky_tic_mode_containers[i].classList.add("disabled");
+    }
+  } else if (mode == 3) {
+    //remove auto mode
+    for (let i = 0; i < linky_tic_mode_values.length; i++) {
+      if (linky_tic_mode_values[i].value == 0) {
+        linky_tic_mode_values[i].checked = true;
+      }
+    }
+    for (let i = 0; i < linky_tic_mode_containers.length; i++) {
+      linky_tic_mode_containers[i].classList.remove("disabled");
     }
   } else {
     linky_tic_auto_switch.checked = false;
@@ -140,10 +156,99 @@ function update_tests_view() {
 
 function update_popup(state) {
   if (state) {
+    wifi_scan();
     popup.classList.remove("hide");
   } else {
     popup.classList.add("hide");
   }
+}
+
+function update_wifi_list(ap) {
+  wifi_list.innerHTML = "";
+  if (ap.length == 0) {
+    const label = document.createElement("label");
+    const text = document.createElement("h3");
+    text.textContent = "Aucun réseau Wi-Fi trouvé";
+    text.className = "black";
+    label.appendChild(text);
+    wifi_list.appendChild(label);
+  }
+  for (let i = 0; i < ap.length; i++) {
+    const element = ap[i];
+    if (element.ssid == "") {
+      continue;
+    }
+    console.log(element);
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    const text = document.createElement("h3");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    const div = document.createElement("div");
+    input.type = "radio";
+    input.name = "wifi-list";
+    input.value = element.ssid;
+
+    let level = 0;
+    if (element.rssi > -50) {
+      level = 4;
+    } else if (element.rssi > -70) {
+      level = 3;
+    } else if (element.rssi > -80) {
+      level = 2;
+    } else if (element.rssi > -90) {
+      level = 1;
+    }
+
+    use.setAttributeNS("http://www.w3.org/1999/xlink", "href", "#wifi-" + level);
+    svg.appendChild(use);
+    svg.setAttribute("width", "50");
+    svg.setAttribute("height", "50");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    svg.setAttribute("class", "wifi-level");
+
+    text.textContent = element.ssid;
+    text.className = "black";
+
+    label.appendChild(input);
+    label.className = "wifi-item-container";
+    div.appendChild(svg);
+    div.appendChild(text);
+    div.className = "wifi-item";
+    label.appendChild(div);
+    wifi_list.appendChild(label);
+
+    wifi_list.addEventListener("click", (event) => {
+      wifi_ssid.value = event.target.value;
+      update_popup(0);
+    });
+  }
+}
+
+var wifi_scanning = false;
+function wifi_scan() {
+  if (wifi_scanning) {
+    return;
+  }
+
+  wifi_scanning = true;
+  wifi_text.textContent = "Scan en cours...";
+
+  fetch("/wifi-scan")
+    .then((response) => response.json())
+    .then((data) => {
+      console.log(data);
+      const ap = data["ap"];
+      update_wifi_list(ap);
+      wifi_text.textContent = "";
+    })
+    .catch((error) => {
+      wifi_text.textContent = "Erreur lors du scan";
+    })
+    .finally(() => {
+      wifi_scanning = false;
+    });
 }
 
 window.addEventListener("load", function () {
@@ -158,7 +263,16 @@ window.addEventListener("load", function () {
   });
 
   update_config_view(1);
-  update_linky_tic_mode(3);
+  update_linky_tic_mode(2);
   update_page_view(1);
   update_tests_view();
+  update_popup(1);
+
+  const ap = [
+    { ssid: "Test 1", rssi: -50 },
+    { ssid: "Test 2", rssi: -70 },
+    { ssid: "Test 3", rssi: -80 },
+    { ssid: "Test 4", rssi: -90 },
+  ];
+  update_wifi_list(ap);
 });
