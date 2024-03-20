@@ -404,6 +404,18 @@ svg > .test-running {
   position: absolute;
   top: 0;
   left: 0;
+}
+
+.popup-background {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  border: 2px solid #d8d8d8;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(2px);
 }
@@ -425,11 +437,19 @@ svg > .test-running {
   justify-content: space-between;
   align-items: center;
   border-bottom: 3px solid #d8d8d8;
-  padding-left: 20px;
+  padding-left: 5px;
+}
+
+.popup-title h3 {
+  font-size: 15px;
 }
 
 .popup-content {
-  padding: 20px;
+  padding: 10px;
+}
+
+.popup-content h6 {
+  font-size: 10px;
 }
 
 .popup-button {
@@ -437,4 +457,31 @@ svg > .test-running {
   border: none;
   color: #235ee7;
   padding-right: 20px;
+}
+
+.wifi-item {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 0px 2px;
+  width: 100%;
+}
+
+.wifi-level {
+  margin: 5px;
+  width: 40px;
+}
+
+[type="radio"] + .wifi-item {
+  cursor: pointer;
+  border-radius: 5px;
+  height: 6vh;
+  opacity: 0.8;
+}
+
+[type="radio"]:checked + .wifi-item {
+  opacity: 1;
+  background-color: #cccccc;
 }

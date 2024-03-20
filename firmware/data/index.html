@@ -327,9 +327,13 @@
                 </div>
             </div>
             <div class="wifi-overlay hide" id="popup">
+                <div class="popup-background" onclick="update_popup(0)">
+
+                </div>
+
                 <div class="popup-container">
                     <div class="popup-title">
-                        <h3>Configuration TICMeter</h3>
+                        <h3>Liste des réseaux Wi-Fi disponibles</h3>
                         <button type="button" class="popup-button" onclick="update_popup(0)"><svg width="15" height="15"
                                 viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path
@@ -339,9 +343,10 @@
                         </button>
                     </div>
                     <div class="popup-content">
-                        <h3>Liste des réseaux Wi-Fi disponibles</h3>
-                        <div>
+                        <div id="wifi-list">
+                            <h6 class="black">Aucun réseau Wi-Fi trouvé.</h6>
                         </div>
+                        <h6 id="wifi-text"></h6>
                         <h6>Fonctionne uniquement avec les réseaux Wi-Fi 2.4GHz.</h6>
                     </div>
                 </div>
