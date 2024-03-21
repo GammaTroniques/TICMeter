@@ -3,8 +3,13 @@ h1 {
 }
 
 h2 {
+  font-size: 24px;
 }
 
+p {
+  /* margin: 0; */
+  text-align: left;
+}
 h3 {
   padding: 0;
   margin: 0;
@@ -68,6 +73,17 @@ input:focus {
   justify-content: space-between;
   align-items: center;
   margin: 20px 0;
+}
+
+@media (max-width: 430px) {
+  .title {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .title button {
+    margin-top: 10px;
+    width: 100%;
+  }
 }
 
 .flex {
@@ -156,7 +172,7 @@ button:disabled {
 .server-mode-selector {
   border-radius: 8px;
   color: #fff;
-  padding: 5px 20px;
+  padding: 5px 5px;
   /* margin: 10px; */
 }
 

@@ -12,11 +12,13 @@ const wifi_password = document.getElementById("wifi-password");
 let wifi_password_edited = false;
 
 const save_button = document.getElementById("save-button");
+const quit_button = document.getElementById("quit-button");
 
 const test_container = document.getElementById("tests-container");
 
 const page_config = document.getElementById("page-config");
 const page_tests = document.getElementById("page-tests");
+const page_reboot = document.getElementById("page-reboot");
 
 const wifi_ssid = document.getElementById("wifi-ssid");
 
@@ -99,14 +101,21 @@ function update_linky_tic_mode(mode) {
 function update_page_view(page) {
   page_config.classList.add("hide");
   page_tests.classList.add("hide");
+  page_reboot.classList.add("hide");
+  save_button.classList.add("hide");
+  quit_button.classList.add("hide");
   switch (page) {
     case 1:
       page_config.classList.remove("hide");
-      save_button.disabled = false;
+      save_button.classList.remove("hide");
       break;
     case 2:
       page_tests.classList.remove("hide");
-      save_button.disabled = true;
+      quit_button.classList.remove("hide");
+      break;
+    case 3:
+      page_reboot.classList.remove("hide");
+      save_button.classList.add("hide");
       break;
   }
 }
@@ -305,6 +314,18 @@ function handleSubmit(event) {
     });
 }
 
+function reboot() {
+  update_page_view(3);
+  fetch("/reboot")
+    .then((data) => {
+      console.log("Success:", data);
+      update_page_view(3); // switch to reboot page
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+    });
+}
+
 window.addEventListener("load", function () {
   linky_tic_auto_switch.addEventListener("change", (event) => {
     update_linky_tic_mode(event.target.checked ? 2 : 3);
@@ -323,6 +344,10 @@ window.addEventListener("load", function () {
 
   const form = document.querySelector("form");
   form.addEventListener("submit", handleSubmit);
+
+  update_page_view(1);
+  update_popup(0);
+  update_config_view(1);
 
   fetch("/config")
     .then((response) => response.json())
@@ -351,7 +376,4 @@ window.addEventListener("load", function () {
         }
       }
     });
-
-  update_page_view(1);
-  update_popup(0);
 });
