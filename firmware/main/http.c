@@ -626,6 +626,17 @@ esp_err_t test_status_handler(httpd_req_t *req)
 
     return ESP_OK;
 }
+
+esp_err_t get_reboot_handler(httpd_req_t *req)
+{
+    // response ok
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+
+    xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL);
+    return ESP_OK;
+}
+
 struct request_item_t
 {
     const char *uri;
@@ -640,7 +651,7 @@ struct request_item_t requests[] = {
     {"/config",                 HTTP_POST,  save_config_handler},
     {"/config",                 HTTP_GET,   get_config_handler},
     {"/test-start",             HTTP_GET,   test_start_handler},
-    {"/test-status",            HTTP_GET,   test_status_handler},
+    {"/reboot",                 HTTP_GET,   get_reboot_handler},
     {"/wifi-scan",              HTTP_GET,   wifi_scan_handler},
     {"/wpad.dat",               HTTP_GET,   get_req_404_handler},
     {"/chat",                   HTTP_GET,   get_req_404_handler},

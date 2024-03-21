@@ -79,7 +79,8 @@
     <form action="/save-config" method="POST" id="form">
         <div class="title">
             <h1>TICMeter</h1>
-            <button id="save-button">Enregistrer et quitter</button>
+            <button id="save-button">Enregistrer et tester</button>
+            <button id="quit-button" type="button" class="hide" onclick="reboot()">Enregistrer et quitter</button>
         </div>
         <div class="main-frame" id="page-config">
             <div class="main-conf">
@@ -144,9 +145,8 @@
                                 <div class="flex space">
                                     <input type="text" name="wifi-ssid" id="wifi-ssid"
                                         placeholder="Entrez le nom de votre réseau WiFi" maxlength="32"
-                                        style="flex-grow: 1; margin-right: 10px;" />
-                                    <button class="small" type="button" onclick="update_popup(1)">Scanner les
-                                        réseaux</button>
+                                        style="flex-grow: 1; margin-right: 10px; width: 100%;" />
+                                    <button class="small" type="button" onclick="update_popup(1)">Scanner</button>
                                 </div>
                             </div>
                             <div class="feild">
@@ -211,7 +211,7 @@
                                 <div class="feild" style="width: 25%;">
                                     <h6 class="feild-name">Port</h6>
                                     <div class="input-w100">
-                                        <input type="number" name="mqtt-port" max="65535" placeholder="ex : 1883" />
+                                        <input type="number" name="mqtt-port" max="65535" placeholder="ex: 1883" />
                                     </div>
                                 </div>
                             </div>
@@ -373,6 +373,21 @@
             </div>
 
         </div>
+
+        <div class="main-frame" id="page-reboot">
+            <div class="main-title">
+                <h2>Redémarrage</h2>
+            </div>
+            <div class="section-container">
+                <div>
+                    <p>Redémarrage en cours...</p>
+                    <p>La configuration à été sauvegardée. Le système va redémarrer.</p>
+                    <p>Vous pouvez fermer cette page.</p>
+                </div>
+            </div>
+
+        </div>
+
     </form>
 </body>
 

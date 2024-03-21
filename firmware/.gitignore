@@ -4,3 +4,4 @@ sendBin.bat
 venv/
 .cache/
 version.c
+data/*
