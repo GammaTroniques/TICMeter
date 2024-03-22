@@ -76,6 +76,24 @@
         </symbol>
     </svg>
 
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="password-show" viewBox="0 0 24 24">
+            <path
+                d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" />
+
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="password-hide" viewBox="0 0 24 24">
+            <path
+                d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,7A5,5 0 0,1 17,12C17,12.64 16.87,13.26 16.64,13.82L19.57,16.75C21.07,15.5 22.27,13.86 23,12C21.27,7.61 17,4.5 12,4.5C10.6,4.5 9.26,4.75 8,5.2L10.17,7.35C10.74,7.13 11.35,7 12,7Z" />
+
+        </symbol>
+    </svg>
+
+
     <form action="/save-config" method="POST" id="form">
         <div class="title">
             <h1>TICMeter</h1>
@@ -101,12 +119,6 @@
                         <div class="flex-v-center space">
                             <div id="server-mode-container">
                                 <label>
-                                    <input type="radio" name="server-mode" value="1" checked>
-                                    <div class="server-mode-selector mode-http">
-                                        <h6>HTTP</h6>
-                                    </div>
-                                </label>
-                                <label>
                                     <input type="radio" name="server-mode" value="2">
                                     <div class="server-mode-selector mode-mqtt">
                                         <h6>MQTT</h6>
@@ -122,6 +134,12 @@
                                     <input type="radio" name="server-mode" value="5">
                                     <div class="server-mode-selector mode-tuya">
                                         <h6>Tuya</h6>
+                                    </div>
+                                </label>
+                                <label>
+                                    <input type="radio" name="server-mode" value="1" checked>
+                                    <div class="server-mode-selector mode-http">
+                                        <h6>HTTP</h6>
                                     </div>
                                 </label>
                             </div>
@@ -145,7 +163,7 @@
                                 <div class="flex space">
                                     <input type="text" name="wifi-ssid" id="wifi-ssid"
                                         placeholder="Entrez le nom de votre réseau WiFi" maxlength="32"
-                                        style="flex-grow: 1; margin-right: 10px; width: 100%;" />
+                                        class="dual-feild" />
                                     <button class="small" type="button" onclick="update_popup(1)">Scanner</button>
                                 </div>
                             </div>
@@ -154,6 +172,11 @@
                                 <div class="input-w100">
                                     <input type="password" name="wifi-password" id="wifi-password" maxlength="64"
                                         placeholder="Entrez le mot de passe de votre réseau WiFi" />
+                                    <span onclick="update_wifi_password()" class="password-eye">
+                                        <svg width="24" height="24" fill="#666666">
+                                            <use id="wifi-pw-svg" xlink:href="#password-hide"></use>
+                                        </svg>
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -225,8 +248,13 @@
                             <div class="feild">
                                 <h6 class="feild-name">Mot de passe</h6>
                                 <div class="input-w100">
-                                    <input type="password" name="mqtt-password" maxlength="50"
+                                    <input type="password" name="mqtt-password" id="mqtt-password" maxlength="50"
                                         placeholder="Entrez le mot de passe MQTT" />
+                                    <span onclick="update_mqtt_password()" class="password-eye">
+                                        <svg width="24" height="24" fill="#666666">
+                                            <use id="mqtt-pw-svg" xlink:href="#password-hide"></use>
+                                        </svg>
+                                    </span>
                                 </div>
                             </div>
                             <div class="feild">
@@ -263,23 +291,37 @@
                         </div>
 
                         <div id="zigbee-conf">
-                            <h6>Aucune configuration n'est nécessaire pour le mode Zigbee</h6>
-                            <h6>Enregistrer, attendre 10 secondes et appuyer 3 secondes sur le bouton de configuration
-                                afin de lancer le mode appairage.</h6>
+                            <p>Aucune configuration n'est nécessaire ici pour le mode Zigbee.</p>
+                            <p>Enregistrer, attendre 10 secondes et appuyer 3 secondes sur le bouton de configuration
+                                afin de lancer le mode appairage.</p>
                         </div>
 
                         <div id="tuya-conf">
-                            <div class="feild">
-                                <h6 class="feild-name">Identifiant de l'appareil</h6>
-                                <div class="input-w100">
-                                    <input type="text" name="tuya-device-uuid" maxlength="29" />
-                                </div>
-                            </div>
+                            <p>Télécharger l'application Tuya Smart sur votre smartphone. Créer un compte et
+                                connectez-vous.
+                                Appuyez sur le bouton + en haut à droite.</p>
+                            <p>Cliquez sur "Scanner", le TICMeter devrait apparaître.</p>
 
-                            <div class="feild">
-                                <h6 class="feild-name">Mot de passe de l'appareil</h6>
-                                <div class="input-w100">
-                                    <input type="text" name="tuya-device-auth" maxlength="49" />
+                            <button type="button" class="mini" onclick="update_tuya_advanced()"
+                                style="margin-top: 50px;">Paramètres
+                                avancés</button>
+                            <div id="tuya-advanced" class="hide">
+                                <p>Si ne vous savez pas à quoi correspondent les identifiants, merci de ne pas y
+                                    toucher.</p>
+                                <div class="feild">
+                                    <h6 class="feild-name">Identifiant de l'appareil</h6>
+                                    <div class="input-w100">
+                                        <input type="text" name="tuya-device-uuid" id="tuya-device-uuid"
+                                            maxlength="29" />
+                                    </div>
+                                </div>
+
+                                <div class="feild">
+                                    <h6 class="feild-name">Mot de passe de l'appareil</h6>
+                                    <div class="input-w100">
+                                        <input type="text" name="tuya-device-auth" id="tuya-device-auth"
+                                            maxlength="49" />
+                                    </div>
                                 </div>
                             </div>
 

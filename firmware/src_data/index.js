@@ -8,7 +8,9 @@ const mode_config_mqtt = document.getElementById("mqtt-conf");
 const mode_config_zigbee = document.getElementById("zigbee-conf");
 const mode_config_tuya = document.getElementById("tuya-conf");
 
+const wifi_configurator = document.getElementById("wifi-configurator");
 const wifi_password = document.getElementById("wifi-password");
+const wifi_password_svg = document.getElementById("wifi-pw-svg");
 let wifi_password_edited = false;
 
 const save_button = document.getElementById("save-button");
@@ -26,6 +28,16 @@ const popup = document.getElementById("popup");
 
 const wifi_list = document.getElementById("wifi-list");
 const wifi_text = document.getElementById("wifi-text");
+
+const tuya_advanced = document.getElementById("tuya-advanced");
+const tuya_device_uuid = document.getElementById("tuya-device-uuid");
+const tuya_device_auth = document.getElementById("tuya-device-auth");
+let tuya_device_uuid_edited = false;
+let tuya_device_auth_edited = false;
+
+const mqtt_password = document.getElementById("mqtt-password");
+const mqtt_password_svg = document.getElementById("mqtt-pw-svg");
+let mqtt_password_edited = false;
 
 const PENDING = 0;
 const RUNNING = 1;
@@ -46,19 +58,23 @@ function update_config_view(mode) {
   mode_config_mqtt.classList.add("hide");
   mode_config_zigbee.classList.add("hide");
   mode_config_tuya.classList.add("hide");
+  wifi_configurator.classList.add("hide");
   switch (mode) {
     case 1:
       mode_config_http.classList.remove("hide");
+      wifi_configurator.classList.remove("hide");
       break;
     case 2:
     case 3:
       mode_config_mqtt.classList.remove("hide");
+      wifi_configurator.classList.remove("hide");
       break;
     case 4:
       mode_config_zigbee.classList.remove("hide");
       break;
     case 5:
       mode_config_tuya.classList.remove("hide");
+      wifi_configurator.classList.remove("hide");
       break;
   }
 }
@@ -297,6 +313,18 @@ function handleSubmit(event) {
     delete config["wifi-password"];
   }
 
+  if (!tuya_device_uuid_edited) {
+    delete config["tuya-device-uuid"];
+  }
+
+  if (!tuya_device_auth_edited) {
+    delete config["tuya-device-auth"];
+  }
+
+  if (!mqtt_password_edited) {
+    delete config["mqtt-password"];
+  }
+
   fetch("/config", {
     method: "POST",
     headers: {
@@ -326,6 +354,40 @@ function reboot() {
     });
 }
 
+var tuya_advanced_state = false;
+function update_tuya_advanced() {
+  if (tuya_advanced_state) {
+    tuya_advanced.classList.add("hide");
+  } else {
+    tuya_advanced.classList.remove("hide");
+  }
+  tuya_advanced_state = !tuya_advanced_state;
+}
+
+let wifi_password_shown = false;
+function update_wifi_password() {
+  if (wifi_password_shown) {
+    wifi_password.type = "password";
+    wifi_password_svg.setAttribute("href", "#password-hide");
+  } else {
+    wifi_password.type = "text";
+    wifi_password_svg.setAttribute("href", "#password-show");
+  }
+  wifi_password_shown = !wifi_password_shown;
+}
+
+let mqtt_password_shown = false;
+function update_mqtt_password() {
+  if (mqtt_password_shown) {
+    mqtt_password.type = "password";
+    mqtt_password_svg.setAttribute("href", "#password-hide");
+  } else {
+    mqtt_password.type = "text";
+    mqtt_password_svg.setAttribute("href", "#password-show");
+  }
+  mqtt_password_shown = !mqtt_password_shown;
+}
+
 window.addEventListener("load", function () {
   linky_tic_auto_switch.addEventListener("change", (event) => {
     update_linky_tic_mode(event.target.checked ? 2 : 3);
@@ -340,6 +402,21 @@ window.addEventListener("load", function () {
   wifi_password.addEventListener("input", (event) => {
     wifi_password_edited = true;
     console.log("Password edited");
+  });
+
+  tuya_device_uuid.addEventListener("input", (event) => {
+    tuya_device_uuid_edited = true;
+    console.log("UUID edited");
+  });
+
+  tuya_device_auth.addEventListener("input", (event) => {
+    tuya_device_auth_edited = true;
+    console.log("Auth edited");
+  });
+
+  mqtt_password.addEventListener("input", (event) => {
+    mqtt_password_edited = true;
+    console.log("MQTT password edited");
   });
 
   const form = document.querySelector("form");
