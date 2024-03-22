@@ -418,18 +418,23 @@ input:checked + .slider:before {
 .test-item {
   display: flex;
   align-items: center;
+  margin: 5px 0;
+}
+
+.test-item h6 {
+  font-size: 15px;
 }
 
 @keyframes rotating {
   from {
-    transform: rotate(0deg);
+    transform: rotate(360deg);
   }
   to {
-    transform: rotate(360deg);
+    transform: rotate(0deg);
   }
 }
 
-svg > .test-running {
+svg.spin {
   animation: rotating 2s linear infinite;
 }
 
@@ -505,8 +510,9 @@ svg > .test-running {
 }
 
 .wifi-level {
-  margin: 5px;
-  width: 40px;
+  width: 24px;
+  height: 24px;
+  margin-right: 5px;
 }
 
 [type="radio"] + .wifi-item {

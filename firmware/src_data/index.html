@@ -48,30 +48,30 @@
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
         <symbol id="test-ok" viewBox="0 0 24 24">
             <path
-                d="M10 0C4.48 0 0 4.48 0 10C0 15.52 4.48 20 10 20C15.52 20 20 15.52 20 10C20 4.48 15.52 0 10 0ZM8 15L3 10L4.41 8.59L8 12.17L15.59 4.58L17 6L8 15Z"
+                d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z"
                 fill="#5EDB23" />
         </symbol>
     </svg>
-
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
         <symbol id="test-error" viewBox="0 0 24 24">
             <path
-                d="M10 0C4.48 0 0 4.48 0 10C0 15.52 4.48 20 10 20C15.52 20 20 15.52 20 10C20 4.48 15.52 0 10 0ZM11 15H9V13H11V15ZM11 11H9V5H11V11Z"
+                d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"
                 fill="#F35858" />
+
+
         </symbol>
     </svg>
-
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
         <symbol id="test-running" viewBox="0 0 24 24">
             <path
-                d="M20 10C20 4.48 15.52 -1.95827e-07 10 -4.37114e-07C4.48 -6.78401e-07 -1.95827e-07 4.48 -4.37114e-07 10C-6.78401e-07 15.52 4.48 20 10 20C15.52 20 20 15.52 20 10ZM3 10.06L5.01 10.06C5.01 10.04 5.01 10.02 5.01 10C5.01 8.72 5.5 7.44 6.47 6.46C8.18 4.75 10.82 4.54 12.76 5.82L11.66 6.92C10.33 6.21 8.65 6.39 7.53 7.51C6.83 8.21 6.5 9.13 6.52 10.05L8.66 10.05L5.83 12.88L3 10.06ZM7.24 14.17L8.34 13.07C9.67 13.78 11.35 13.6 12.47 12.48C13.16 11.79 13.5 10.9 13.5 10C13.5 9.98 13.5 9.96 13.5 9.94L11.35 9.94L14.17 7.11L17 9.94L14.98 9.94C15 11.24 14.53 12.55 13.53 13.54C11.83 15.24 9.18 15.45 7.24 14.17Z"
+                d="M2 12A10 10 0 1 0 12 2A10 10 0 0 0 2 12M15.6 13.72A4 4 0 0 0 16 12A4 4 0 0 0 12 8V10L8.88 7L12 4V6A6 6 0 0 1 18 12A5.9 5.9 0 0 1 17.07 15.19M6 12A5.9 5.9 0 0 1 6.93 8.81L8.4 10.28A4 4 0 0 0 8 12A4 4 0 0 0 12 16V14L15 17L12 20V18A6 6 0 0 1 6 12Z"
                 fill="#F5BA20" />
         </symbol>
     </svg>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
         <symbol id="test-pending" viewBox="0 0 24 24">
             <path
-                d="M10 0C4.5 0 0 4.5 0 10C0 15.5 4.5 20 10 20C15.5 20 20 15.5 20 10C20 4.5 15.5 0 10 0ZM14.3 13.2L9 10.3V5H10.5V9.4L15 11.9L14.3 13.2Z"
+                d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12S17.5 2 12 2M16.3 15.2L11 12.3V7H12.5V11.4L17 13.9L16.3 15.2Z"
                 fill="#D6D6D6" />
         </symbol>
     </svg>
@@ -401,12 +401,6 @@
             <div class="section-container">
                 <div class="test-frame-container">
                     <div class="test-frame" id="tests-container">
-                        <div class="flex">
-                            <svg href="#test-pending" width="24" height="24" viewBox="0 0 24 24" fill="none">
-                                <use xlink:href="#test-pending" />
-                            </svg>
-                            <h6>Connexion au réseau WiFi</h6>
-                        </div>
                     </div>
                     <div class="flex">
                         <button type="button" onclick="start_tests()">Relancer les tests</button>

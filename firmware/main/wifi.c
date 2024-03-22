@@ -621,8 +621,6 @@ static void ping_timeout(esp_ping_handle_t hdl, void *args)
 
 static void ping_end(esp_ping_handle_t hdl, void *args)
 {
-    ESP_LOGI(TAG, "Ping end");
-
     uint32_t received;
     uint32_t transmitted;
     esp_ping_get_profile(hdl, ESP_PING_PROF_REQUEST, &transmitted, sizeof(transmitted));
@@ -665,6 +663,14 @@ esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time)
         return err;
     }
     err = esp_ping_start(ping);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to start ping: %d", err);
+        esp_ping_delete_session(ping);
+        return err;
+    }
+
+    ESP_LOGI(TAG, "Start ping to %s", ip4addr_ntoa(&host.u_addr.ip4));
 
     EventBits_t bits = xEventGroupWaitBits(ping_event_group,
                                            BIT0 | BIT1,
@@ -672,6 +678,7 @@ esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time)
                                            pdFALSE,
                                            5000 / portTICK_PERIOD_MS);
 
+    xEventGroupClearBits(ping_event_group, BIT0 | BIT1);
     esp_ping_delete_session(ping);
 
     uint32_t sum = 0;
