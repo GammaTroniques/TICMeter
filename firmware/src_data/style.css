@@ -7,8 +7,9 @@ h2 {
 }
 
 p {
-  /* margin: 0; */
+  margin: 5px 0;
   text-align: left;
+  font-size: 14px;
 }
 h3 {
   padding: 0;
@@ -24,6 +25,10 @@ h3 {
 h6 {
   padding: 0;
   margin: 0;
+}
+
+section {
+  margin-bottom: 10px;
 }
 
 body {
@@ -57,6 +62,7 @@ input {
 .input-w100 {
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 input:focus {
@@ -79,10 +85,17 @@ input:focus {
   .title {
     flex-direction: column;
     align-items: flex-start;
+    margin: 0;
   }
   .title button {
-    margin-top: 10px;
+    margin: 15px 0;
     width: 100%;
+  }
+  .linky-selector h6 {
+    word-spacing: 100px;
+  }
+  .section-container {
+    padding: 10px !important;
   }
 }
 
@@ -125,6 +138,7 @@ button {
   border: 2px solid #0042e3;
   background: #235ee7;
   cursor: pointer;
+  display: flex;
 }
 button:disabled {
   cursor: not-allowed;
@@ -132,6 +146,11 @@ button:disabled {
 
 button.small {
   /* padding: 0; */
+  font-size: 15px;
+}
+
+button.mini {
+  padding: 5px 10px;
   font-size: 15px;
 }
 
@@ -500,4 +519,18 @@ svg > .test-running {
 [type="radio"]:checked + .wifi-item {
   opacity: 1;
   background-color: #cccccc;
+}
+
+.dual-feild {
+  flex-grow: 1;
+  margin-right: 10px;
+  width: 100%;
+}
+
+.password-eye {
+  position: absolute;
+  right: 10px;
+  top: 7px;
+  cursor: pointer;
+  opacity: 0.5;
 }
