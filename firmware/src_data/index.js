@@ -152,6 +152,7 @@ function update_tests_view() {
         break;
       case RUNNING:
         use_href = "#test-running";
+        svg.classList.add("spin");
         break;
       case SUCCESS:
         use_href = "#test-ok";
@@ -163,20 +164,15 @@ function update_tests_view() {
 
     use.setAttributeNS("http://www.w3.org/1999/xlink", "href", use_href);
     svg.appendChild(use);
-    svg.setAttribute("width", "25");
-    svg.setAttribute("height", "25");
     svg.setAttribute("aria-hidden", "true");
     svg.setAttribute("focusable", "false");
-    svg.setAttribute("class", "wifi-level");
+    svg.classList.add("wifi-level");
 
     let text = document.createElement("h6");
     text.textContent = test.text;
     text.className = "black";
 
-    let svg_container = document.createElement("div");
-    svg_container.appendChild(svg);
-
-    test_div.appendChild(svg_container);
+    test_div.appendChild(svg);
     test_div.appendChild(text);
     test_container.appendChild(test_div);
   });
@@ -440,6 +436,17 @@ window.addEventListener("load", function () {
             wifi_password.value = "*".repeat(element);
             continue;
           }
+          if (key == "mqtt-password") {
+            // generate a fake password of data["mqtt-password"]
+            mqtt_password.value = "*".repeat(element);
+            continue;
+          }
+          if (key == "tuya-device-auth") {
+            // generate a fake password of data["tuya-device-auth"]
+            tuya_device_auth.value = "*".repeat(element);
+            continue;
+          }
+
           const input = document.querySelector(`[name="${key}"]`);
           if (input) {
             input.value = element;

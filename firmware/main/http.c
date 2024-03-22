@@ -485,10 +485,10 @@ esp_err_t get_config_handler(httpd_req_t *req)
     cJSON_AddStringToObject(jsonObject, "mqtt-host", config_values.mqtt.host);
     cJSON_AddNumberToObject(jsonObject, "mqtt-port", config_values.mqtt.port);
     cJSON_AddStringToObject(jsonObject, "mqtt-user", config_values.mqtt.username);
-    cJSON_AddStringToObject(jsonObject, "mqtt-password", config_values.mqtt.password);
+    cJSON_AddNumberToObject(jsonObject, "mqtt-password", strnlen(config_values.mqtt.password, sizeof(config_values.mqtt.password)));
     cJSON_AddStringToObject(jsonObject, "mqtt-topic", config_values.mqtt.topic);
     cJSON_AddStringToObject(jsonObject, "tuya-device-uuid", config_values.tuya.device_uuid);
-    cJSON_AddStringToObject(jsonObject, "tuya-device-auth", config_values.tuya.device_auth);
+    cJSON_AddNumberToObject(jsonObject, "tuya-device-auth", strnlen(config_values.tuya.device_auth, sizeof(config_values.tuya.device_auth)));
 
     char *jsonString = cJSON_PrintUnformatted(jsonObject);
     httpd_resp_set_type(req, "application/json");
@@ -559,18 +559,20 @@ esp_err_t test_start_handler(httpd_req_t *req)
     {
         ip_addr_t ip = {
             .type = IPADDR_TYPE_V4,
-            .u_addr.ip4.addr = wifi_current_ip.ip.addr,
+            .u_addr.ip4.addr = wifi_current_ip.gw.addr,
         };
         uint32_t ping;
-        wifi_ping(ip, &ping);
-        // reponse ping value
-        cJSON *jsonObject = cJSON_CreateObject();
-        cJSON_AddNumberToObject(jsonObject, "ping", ping);
-        char *jsonString = cJSON_PrintUnformatted(jsonObject);
-        httpd_resp_set_type(req, "application/json");
-        httpd_resp_send(req, jsonString, strlen(jsonString));
-        free(jsonString);
-        cJSON_Delete(jsonObject);
+        err = wifi_ping(ip, &ping);
+        if (err != ESP_OK)
+        {
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+        break;
     }
     break;
     case MQTT_CONNECT:
