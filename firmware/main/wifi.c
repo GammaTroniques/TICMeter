@@ -78,6 +78,25 @@ static uint8_t ap_started = 0;
 
 static uint32_t ping_time_array[10];
 static uint32_t ping_index = 0;
+
+static wifi_config_t sta_wifi_config = {
+    .sta = {
+        .threshold = {
+            .authmode = WIFI_AUTH_WPA_WPA2_PSK,
+        },
+        .sae_h2e_identifier = {0},
+        .sae_pwe_h2e = WPA3_SAE_PWE_HUNT_AND_PECK,
+    },
+};
+
+static wifi_config_t ap_wifi_config = {
+    .ap = {
+        .authmode = WIFI_AUTH_WPA_WPA2_PSK,
+        .max_connection = 4,
+        // .
+    },
+};
+
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -158,18 +177,8 @@ esp_err_t wifi_connect()
     s_retry_num = 0;
     xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT | WIFI_FAIL_BIT | WIFI_AUTHFAIL_BIT | WIFI_NO_AP_FOUND_BIT);
 
-    wifi_config_t wifi_config = {
-        .sta = {
-            .threshold = {
-                .authmode = WIFI_AUTH_WPA_WPA2_PSK,
-            },
-            .sae_h2e_identifier = {0},
-            .sae_pwe_h2e = WPA3_SAE_PWE_HUNT_AND_PECK,
-        },
-    };
-
-    strncpy((char *)wifi_config.sta.ssid, config_values.ssid, sizeof(wifi_config.sta.ssid));
-    strncpy((char *)wifi_config.sta.password, config_values.password, sizeof(wifi_config.sta.password));
+    strncpy((char *)sta_wifi_config.sta.ssid, config_values.ssid, sizeof(sta_wifi_config.sta.ssid));
+    strncpy((char *)sta_wifi_config.sta.password, config_values.password, sizeof(sta_wifi_config.sta.password));
 
     err = esp_wifi_set_ps(WIFI_PS_NONE);
     if (err != ESP_OK)
@@ -191,7 +200,12 @@ esp_err_t wifi_connect()
         wifi_disconnect();
         return err;
     }
-    err = esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+    err = esp_wifi_set_config(WIFI_IF_STA, &sta_wifi_config);
+    if (ap_started)
+    {
+        err = esp_wifi_set_config(WIFI_IF_AP, &ap_wifi_config);
+    }
+
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_wifi_set_config failed with 0x%X", err);
@@ -209,7 +223,7 @@ esp_err_t wifi_connect()
         return err;
     }
 
-    ESP_LOGI(TAG, "Connecting to %s", (char *)wifi_config.sta.ssid);
+    ESP_LOGI(TAG, "Connecting to %s", (char *)sta_wifi_config.sta.ssid);
 
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
                                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT | WIFI_AUTHFAIL_BIT | WIFI_NO_AP_FOUND_BIT,
@@ -224,20 +238,20 @@ esp_err_t wifi_connect()
 
     if (bits & WIFI_CONNECTED_BIT)
     {
-        ESP_LOGI(TAG, "Connected to ap SSID:%s", (char *)wifi_config.sta.ssid);
+        ESP_LOGI(TAG, "Connected to ap SSID:%s", (char *)sta_wifi_config.sta.ssid);
         wifi_timeout_counter = 0;
         return ESP_OK;
     }
     else if (bits & WIFI_FAIL_BIT)
     {
-        ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)wifi_config.sta.ssid);
+        ESP_LOGI(TAG, "Failed to connect to SSID:%s", (char *)sta_wifi_config.sta.ssid);
         wifi_disconnect();
         led_start_pattern(LED_CONNECTING_FAILED);
         return ESP_FAIL;
     }
     else if (bits & WIFI_AUTHFAIL_BIT)
     {
-        ESP_LOGE(TAG, "Failed to connect to SSID:%s Auth fail", (char *)wifi_config.sta.ssid);
+        ESP_LOGE(TAG, "Failed to connect to SSID:%s Auth fail", (char *)sta_wifi_config.sta.ssid);
         wifi_timeout_counter++;
         wifi_state = WIFI_FAILED;
         led_start_pattern(LED_CONNECTING_FAILED);
@@ -246,7 +260,7 @@ esp_err_t wifi_connect()
     }
     else if (bits & WIFI_NO_AP_FOUND_BIT)
     {
-        ESP_LOGE(TAG, "Failed to connect to SSID:%s No AP found", (char *)wifi_config.sta.ssid);
+        ESP_LOGE(TAG, "Failed to connect to SSID:%s No AP found", (char *)sta_wifi_config.sta.ssid);
         wifi_timeout_counter++;
         wifi_state = WIFI_FAILED;
         led_start_pattern(LED_CONNECTING_FAILED);
@@ -255,7 +269,7 @@ esp_err_t wifi_connect()
     }
     else
     {
-        ESP_LOGE(TAG, "Failed to connect to SSID:%s Timeout", (char *)wifi_config.sta.ssid);
+        ESP_LOGE(TAG, "Failed to connect to SSID:%s Timeout", (char *)sta_wifi_config.sta.ssid);
         wifi_timeout_counter++;
         wifi_state = WIFI_FAILED;
         led_start_pattern(LED_CONNECTING_FAILED);
@@ -446,21 +460,27 @@ static void wifi_init_softap(void)
     // ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     // ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
 
-    wifi_config_t wifi_config = {};
     char ssid[32] = {0};
     // read MAC address
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP);
     sprintf(ssid, "%s %s", AP_SSID, efuse_values.mac_address + 6);
 
-    strncpy((char *)wifi_config.ap.ssid, ssid, sizeof(wifi_config.ap.ssid));
-    strncpy((char *)wifi_config.ap.password, AP_PASS, sizeof(wifi_config.ap.password));
-    wifi_config.ap.ssid_len = strlen(ssid);
-    wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
-    wifi_config.ap.max_connection = 4;
+    strncpy((char *)ap_wifi_config.ap.ssid, ssid, sizeof(ap_wifi_config.ap.ssid));
+    strncpy((char *)ap_wifi_config.ap.password, AP_PASS, sizeof(ap_wifi_config.ap.password));
+    ap_wifi_config.ap.ssid_len = strlen(ssid);
+    // sta_wifi_config.ap.authmode = WIFI_AUTH_WPA_WPA2_PSK;
+    // sta_wifi_config.ap.max_connection = 4;
     if (strlen(AP_PASS) == 0)
     {
-        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+        ap_wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+    }
+
+    err = esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT20);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_wifi_set_bandwidth failed with 0x%X", err);
+        return;
     }
 
     wifi_mode_t mode = WIFI_MODE_AP;
@@ -475,7 +495,17 @@ static void wifi_init_softap(void)
         ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
         return;
     }
-    err = esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_AP, &wifi_config);
+    err = esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_AP, &ap_wifi_config);
+
+    if (wifi_state != WIFI_DISCONNECTED)
+    {
+        err = esp_wifi_set_config((wifi_interface_t)ESP_IF_WIFI_STA, &sta_wifi_config);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "esp_wifi_set_config failed with 0x%X", err);
+            return;
+        }
+    }
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_wifi_set_config failed with 0x%X", err);
@@ -537,7 +567,7 @@ void wifi_start_captive_portal()
     // Start the DNS server that will redirect all queries to the softAP IP
     start_dns_server();
 
-    // wifi_config_t wifi_config = {
+    // wifi_config_t sta_wifi_config = {
     //     .ap = {
     //         .ssid = "wifi1234",
     //         .ssid_len = 0,
@@ -547,7 +577,7 @@ void wifi_start_captive_portal()
     // };
 
     // ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    // ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
+    // ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &sta_wifi_config));
     // ESP_ERROR_CHECK(esp_wifi_start());
 
     // wifi_connect();
