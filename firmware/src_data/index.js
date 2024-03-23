@@ -17,12 +17,16 @@ const save_button = document.getElementById("save-button");
 const quit_button = document.getElementById("quit-button");
 
 const test_container = document.getElementById("tests-container");
+const test_error_text = document.getElementById("test-error-text");
+const test_error_div = document.getElementById("test-error-div");
+const test_success_div = document.getElementById("test-success-div");
 
 const page_config = document.getElementById("page-config");
 const page_tests = document.getElementById("page-tests");
 const page_reboot = document.getElementById("page-reboot");
 
 const wifi_ssid = document.getElementById("wifi-ssid");
+const wifi_loading_svg = document.getElementById("wifi-loading-svg");
 
 const popup = document.getElementById("popup");
 
@@ -253,6 +257,14 @@ function update_wifi_list(ap) {
 async function start_tests() {
   update_tests_view();
   for (let i = 0; i < tests_list.length; i++) {
+    tests_list[i].state = PENDING;
+  }
+
+  test_error_text.textContent = "";
+  test_error_div.classList.add("hide");
+  test_success_div.classList.add("hide");
+
+  for (let i = 0; i < tests_list.length; i++) {
     tests_list[i].state = RUNNING;
     update_tests_view();
 
@@ -260,15 +272,32 @@ async function start_tests() {
       .then((data) => {
         //if OK response
         if (!data.ok) {
-          throw new Error("Test failed", data);
+          console.log("Test failed", data);
+          throw new Error(data.statusText);
         }
         tests_list[i].state = SUCCESS;
         update_tests_view();
       })
       .catch((error) => {
         tests_list[i].state = FAILURE;
+        test_error_text.textContent += "Test " + i + ": " + error + "\n";
         update_tests_view();
       });
+  }
+
+  let failed_count = 0;
+  for (let i = 0; i < tests_list.length; i++) {
+    if (tests_list[i].state == FAILURE) {
+      failed_count++;
+    }
+  }
+
+  if (failed_count > 0) {
+    test_error_div.classList.remove("hide");
+    test_success_div.classList.add("hide");
+  } else {
+    test_error_div.classList.add("hide");
+    test_success_div.classList.remove("hide");
   }
 }
 
@@ -277,9 +306,10 @@ function wifi_scan() {
   if (wifi_scanning) {
     return;
   }
-
+  wifi_list.innerHTML = "";
   wifi_scanning = true;
   wifi_text.textContent = "Scan en cours...";
+  wifi_loading_svg.classList.remove("hide");
 
   fetch("/wifi-scan")
     .then((response) => response.json())
@@ -290,10 +320,11 @@ function wifi_scan() {
       wifi_text.textContent = "";
     })
     .catch((error) => {
-      wifi_text.textContent = "Erreur lors du scan";
+      wifi_text.textContent = "Erreur lors du scan.";
     })
     .finally(() => {
       wifi_scanning = false;
+      wifi_loading_svg.classList.add("hide");
     });
 }
 
