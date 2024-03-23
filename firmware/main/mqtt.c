@@ -88,6 +88,7 @@ static uint16_t mqtt_sent_count = 0;
 static uint16_t mqtt_sensors_count = 0;
 
 static mqtt_topic_t mqtt_topics;
+static EventGroupHandle_t mqtt_event_group;
 
 #ifdef MQTT_DEBUG
 static mqtt_debug_t mqtt_messages[100];
@@ -401,6 +402,7 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
     switch ((esp_mqtt_event_id_t)event_id)
     {
     case MQTT_EVENT_CONNECTED:
+        xEventGroupSetBits(mqtt_event_group, BIT0);
         if (mqtt_state != MQTT_CONNECTED)
         {
             mqtt_state = MQTT_CONNECTED;
@@ -416,14 +418,15 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
                 ESP_LOGI(TAG, "Subscribing to %s", topic);
             }
         }
-
         if (config_values.mode == MODE_MQTT_HA && strlen(mqtt_topics.ha_identifier_topic) > 0)
         {
             ESP_LOGI(TAG, "Subscribing to identifier %s", mqtt_topics.ha_identifier_topic);
             esp_mqtt_client_subscribe(mqtt_client, mqtt_topics.ha_identifier_topic, 1);
         }
+
         break;
     case MQTT_EVENT_DISCONNECTED:
+        xEventGroupSetBits(mqtt_event_group, BIT1);
         if (mqtt_state != MQTT_FAILED)
         {
             mqtt_state = MQTT_DISCONNETED;
@@ -522,6 +525,8 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
     }
     break;
     case MQTT_EVENT_ERROR:
+        xEventGroupSetBits(mqtt_event_group, BIT2);
+
         ESP_LOGI(TAG, "MQTT_EVENT_ERROR, msg_id=%d", event->msg_id);
         if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT)
         {
@@ -568,6 +573,17 @@ int mqtt_init(void)
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
     esp_mqtt_client_register_event(mqtt_client, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     ESP_LOGI(TAG, "init done");
+    return 1;
+}
+
+int mqtt_deinit()
+{
+    if (mqtt_client != NULL)
+    {
+        esp_mqtt_client_destroy(mqtt_client);
+        mqtt_client = NULL;
+    }
+    mqtt_state = MQTT_DEINIT;
     return 1;
 }
 
@@ -679,5 +695,37 @@ void mqtt_topic_comliance(char *topic, int size)
         {
             topic[j] = '_';
         }
+    }
+}
+
+esp_err_t mqtt_test()
+{
+    esp_err_t err = ESP_OK;
+    if (mqtt_event_group == NULL)
+    {
+        mqtt_event_group = xEventGroupCreate();
+    }
+    mqtt_deinit();
+    mqtt_init();
+
+    err = esp_mqtt_client_start(mqtt_client);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Start failed with 0x%x", err);
+        return err;
+    }
+    EventBits_t bits = xEventGroupWaitBits(mqtt_event_group,
+                                           BIT0 | BIT1 | BIT2,
+                                           pdFALSE,
+                                           pdFALSE,
+                                           30000 / portTICK_PERIOD_MS);
+
+    if (bits & BIT0)
+    {
+        return ESP_OK;
+    }
+    else
+    {
+        return ESP_FAIL;
     }
 }

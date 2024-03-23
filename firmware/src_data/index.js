@@ -50,10 +50,11 @@ const FAILURE = 3;
 
 // prettier-ignore
 const tests_list = [
-  { id: 1, text: "Connexion au réseau WiFi",  state: PENDING },
-  { id: 2, text: "Test du réseau WiFi",       state: PENDING },
-  { id: 3, text: "Connexion au serveur MQTT", state: PENDING },
-  { id: 4, text: "Envoi des données MQTT",    state: PENDING },
+  { id: 0, text: " ",  state: PENDING,                         hide: true , retry: false },
+  { id: 1, text: "Connexion au réseau WiFi",  state: PENDING , hide: false, retry: true },
+  { id: 2, text: "Test du réseau WiFi",       state: PENDING , hide: false, retry: false },
+  { id: 3, text: "Connexion au serveur MQTT", state: PENDING , hide: false, retry: false },
+  { id: 4, text: "Envoi des données MQTT",    state: PENDING , hide: false, retry: false },
 ];
 
 function update_config_view(mode) {
@@ -143,6 +144,10 @@ function update_page_view(page) {
 function update_tests_view() {
   test_container.innerHTML = "";
   tests_list.forEach((test, index) => {
+    if (test.hide) {
+      return;
+    }
+
     let test_div = document.createElement("div");
     test_div.classList.add("test-item");
 
@@ -254,6 +259,21 @@ function update_wifi_list(ap) {
   }
 }
 
+async function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 8000 } = options;
+
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  const response = await fetch(resource, {
+    ...options,
+    signal: controller.signal,
+  });
+  clearTimeout(id);
+
+  return response;
+}
+
 async function start_tests() {
   update_tests_view();
   for (let i = 0; i < tests_list.length; i++) {
@@ -264,25 +284,55 @@ async function start_tests() {
   test_error_div.classList.add("hide");
   test_success_div.classList.add("hide");
 
+  let nTry = 3;
   for (let i = 0; i < tests_list.length; i++) {
     tests_list[i].state = RUNNING;
     update_tests_view();
 
-    await fetch("/test-start?id=" + tests_list[i].id)
-      .then((data) => {
-        //if OK response
-        if (!data.ok) {
-          console.log("Test failed", data);
-          throw new Error(data.statusText);
-        }
-        tests_list[i].state = SUCCESS;
-        update_tests_view();
-      })
-      .catch((error) => {
-        tests_list[i].state = FAILURE;
-        test_error_text.textContent += "Test " + i + ": " + error + "\n";
-        update_tests_view();
+    try {
+      let response = await fetchWithTimeout("/test-start?id=" + tests_list[i].id, {
+        timeout: 10000,
       });
+
+      if (!response.ok) {
+        console.log("Test failed", response);
+        throw new Error(response.statusText);
+      }
+
+      if (response.status == 202) {
+        console.log("Waiting for test to finish");
+        await new Promise((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, 2000);
+        });
+        i -= 1;
+        continue;
+      }
+
+      tests_list[i].state = SUCCESS;
+      update_tests_view();
+    } catch (error) {
+      console.error(error);
+      if (tests_list[i].retry) {
+        if (nTry <= 0) {
+          nTry = 3;
+        } else {
+          i -= 1;
+          nTry -= 1;
+          await new Promise((resolve) => {
+            setTimeout(() => {
+              resolve();
+            }, 2000);
+          });
+          continue;
+        }
+      }
+
+      tests_list[i].state = FAILURE;
+      test_error_text.textContent += "Test " + i + ": " + error + "\n";
+      update_tests_view();
+    }
   }
 
   let failed_count = 0;

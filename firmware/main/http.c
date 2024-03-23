@@ -15,12 +15,12 @@ static const char *TAG = "HTTP"; // TAG for debug
 
 typedef enum
 {
-    NO_TEST,
     WIFI_CONNECT,
+    WIFI_CHECK,
     WIFI_PING,
     MQTT_CONNECT,
     MQTT_PUBLISH,
-
+    NO_TEST = 0xFF
 } test_t;
 
 static test_t current_test = NO_TEST;
@@ -530,6 +530,7 @@ const char *str_wifi_error[] = {
 
 esp_err_t test_start_handler(httpd_req_t *req)
 {
+    static esp_err_t last_wifi_connect = -2;
     char buf[100];
     esp_err_t err = httpd_req_get_url_query_str(req, buf, sizeof(buf));
     if (err != ESP_OK)
@@ -552,9 +553,27 @@ esp_err_t test_start_handler(httpd_req_t *req)
     switch (id)
     {
     case WIFI_CONNECT:
+        last_wifi_connect = -2;
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
         wifi_disconnect();
-        err = wifi_connect();
-        if (err != ESP_OK)
+        last_wifi_connect = wifi_connect();
+        ESP_LOGI(TAG, "TEST WIFI_CONNECT: %d", err);
+        last_wifi_connect = err;
+
+        return ESP_OK;
+        break;
+    case WIFI_CHECK:
+
+        if (last_wifi_connect == -2)
+        {
+            // pending
+            httpd_resp_set_status(req, "202 Accepted");
+            httpd_resp_send(req, "Accepted", HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+        if (last_wifi_connect != ESP_OK)
         {
             ESP_LOGE(TAG, "Failed to connect to wifi");
 
@@ -577,6 +596,10 @@ esp_err_t test_start_handler(httpd_req_t *req)
             httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
             return ESP_FAIL;
         }
+
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
         break;
     case WIFI_PING:
     {
@@ -600,8 +623,7 @@ esp_err_t test_start_handler(httpd_req_t *req)
     }
     break;
     case MQTT_CONNECT:
-        mqtt_init();
-        err = esp_mqtt_client_start(mqtt_client);
+        err = mqtt_test();
         if (err != ESP_OK)
         {
             ESP_LOGE(TAG, "Start failed with 0x%x", err);
@@ -609,6 +631,9 @@ esp_err_t test_start_handler(httpd_req_t *req)
             httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
             return ESP_FAIL;
         }
+
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
 
         break;
     case MQTT_PUBLISH:
