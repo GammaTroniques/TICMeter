@@ -89,6 +89,8 @@ static uint16_t mqtt_sensors_count = 0;
 
 static mqtt_topic_t mqtt_topics;
 static EventGroupHandle_t mqtt_event_group;
+static esp_mqtt_connect_return_code_t last_return_code;
+static esp_mqtt_error_type_t last_error_type;
 
 #ifdef MQTT_DEBUG
 static mqtt_debug_t mqtt_messages[100];
@@ -399,6 +401,7 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
+
     switch ((esp_mqtt_event_id_t)event_id)
     {
     case MQTT_EVENT_CONNECTED:
@@ -525,17 +528,24 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
     }
     break;
     case MQTT_EVENT_ERROR:
-        xEventGroupSetBits(mqtt_event_group, BIT2);
+        ESP_LOGI(TAG, "MQTT_EVENT_ERROR type=%d, code=%d, msgid=%d", event->error_handle->error_type, event->error_handle->connect_return_code, event->msg_id);
 
-        ESP_LOGI(TAG, "MQTT_EVENT_ERROR, msg_id=%d", event->msg_id);
-        if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT)
+        switch (event->error_handle->error_type)
         {
+        case MQTT_ERROR_TYPE_TCP_TRANSPORT:
             log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
             log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
             log_error_if_nonzero("captured as transport's socket errno", event->error_handle->esp_transport_sock_errno);
             ESP_LOGI(TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
+            break;
+
+        default:
+            break;
         }
         mqtt_state = MQTT_FAILED;
+        last_error_type = event->error_handle->error_type;
+        last_return_code = event->error_handle->connect_return_code;
+        xEventGroupSetBits(mqtt_event_group, BIT2);
         break;
     default:
         // ESP_LOGI(TAG, "Other event id:%d", event->event_id);
@@ -698,7 +708,7 @@ void mqtt_topic_comliance(char *topic, int size)
     }
 }
 
-esp_err_t mqtt_test()
+esp_err_t mqtt_test(esp_mqtt_error_type_t *type, esp_mqtt_connect_return_code_t *return_code)
 {
     esp_err_t err = ESP_OK;
     if (mqtt_event_group == NULL)
@@ -719,6 +729,17 @@ esp_err_t mqtt_test()
                                            pdFALSE,
                                            pdFALSE,
                                            30000 / portTICK_PERIOD_MS);
+
+    xEventGroupClearBits(mqtt_event_group, BIT0 | BIT1 | BIT2);
+
+    if (type != NULL)
+    {
+        *type = last_error_type;
+    }
+    if (return_code != NULL)
+    {
+        *return_code = last_return_code;
+    }
 
     if (bits & BIT0)
     {

@@ -97,6 +97,7 @@ static wifi_config_t ap_wifi_config = {
     },
 };
 
+static esp_err_t last_wifi_err = ESP_OK;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -274,7 +275,7 @@ esp_err_t wifi_connect()
         wifi_state = WIFI_FAILED;
         led_start_pattern(LED_CONNECTING_FAILED);
         wifi_disconnect();
-        return ESP_FAIL;
+        return last_wifi_err;
     }
 }
 
@@ -311,6 +312,17 @@ void wifi_disconnect()
         {
             ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
         }
+        err = esp_wifi_set_config(WIFI_IF_AP, &ap_wifi_config);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "esp_wifi_set_config failed with 0x%X", err);
+        }
+
+        err = esp_wifi_start();
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "esp_wifi_start failed with 0x%X", err);
+        }
     }
 }
 
@@ -335,9 +347,12 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         }
         else
         {
+            ESP_LOGW(TAG, "Reason: %d", event->reason);
+            last_wifi_err = event->reason;
             switch (event->reason)
             {
             case WIFI_REASON_AUTH_FAIL:
+            case WIFI_REASON_CONNECTION_FAIL:
             case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
                 ESP_LOGE(TAG, "Auth fail");
                 xEventGroupSetBits(s_wifi_event_group, WIFI_AUTHFAIL_BIT);
@@ -480,7 +495,6 @@ static void wifi_init_softap(void)
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_wifi_set_bandwidth failed with 0x%X", err);
-        return;
     }
 
     wifi_mode_t mode = WIFI_MODE_AP;
@@ -682,24 +696,6 @@ static void ping_end(esp_ping_handle_t hdl, void *args)
 
 esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time)
 {
-    uint32_t a32InterfaceKey[3];
-    uint8_t u8KeyIndex = 0U;
-    esp_netif_t *ifscan = esp_netif_next(NULL);
-    while (ifscan != NULL && u8KeyIndex < 3)
-    {
-        a32InterfaceKey[u8KeyIndex++] = (uint32_t)esp_netif_get_ifkey(ifscan);
-        if (esp_netif_get_ifkey(ifscan))
-        {
-            ESP_LOGI(TAG, "Interface key: %d %s", u8KeyIndex, esp_netif_get_ifkey(ifscan));
-        }
-        else
-        {
-            ESP_LOGI(TAG, "Interface key: %d NULL", u8KeyIndex);
-        }
-
-        ifscan = esp_netif_next(ifscan);
-    }
-
     ping_index = 0;
     for (int i = 0; i < sizeof(ping_time_array) / sizeof(ping_time_array[0]); i++)
     {

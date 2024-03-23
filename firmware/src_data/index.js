@@ -50,11 +50,11 @@ const FAILURE = 3;
 
 // prettier-ignore
 const tests_list = [
-  { id: 0, text: " ",  state: PENDING,                         hide: true , retry: false },
-  { id: 1, text: "Connexion au réseau WiFi",  state: PENDING , hide: false, retry: true },
-  { id: 2, text: "Test du réseau WiFi",       state: PENDING , hide: false, retry: false },
-  { id: 3, text: "Connexion au serveur MQTT", state: PENDING , hide: false, retry: false },
-  { id: 4, text: "Envoi des données MQTT",    state: PENDING , hide: false, retry: false },
+  { id: 0, text: " ",  state: PENDING,                         hide: true , retry: false, retry: 3, timeout: 10000, continue: true},
+  { id: 1, text: "Connexion au réseau WiFi",  state: PENDING , hide: false, retry: true , retry: 10,timeout: 2000,  continue: false},
+  { id: 2, text: "Test du réseau WiFi",       state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
+  { id: 3, text: "Connexion au serveur MQTT", state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
+  { id: 4, text: "Envoi des données MQTT",    state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
 ];
 
 function update_config_view(mode) {
@@ -284,42 +284,53 @@ async function start_tests() {
   test_error_div.classList.add("hide");
   test_success_div.classList.add("hide");
 
-  let nTry = 3;
+  let nTry = 0;
   for (let i = 0; i < tests_list.length; i++) {
     tests_list[i].state = RUNNING;
     update_tests_view();
 
     try {
       let response = await fetchWithTimeout("/test-start?id=" + tests_list[i].id, {
-        timeout: 10000,
+        timeout: tests_list[i].timeout,
       });
 
       if (!response.ok) {
         console.log("Test failed", response);
-        throw new Error(response.statusText);
+        tests_list[i].state = FAILURE;
+        var text = await response.text();
+        test_error_text.textContent += "Test " + i + ": " + text + "\n";
+        update_tests_view();
+        if (tests_list[i].continue) {
+          continue;
+        }
+        break;
       }
 
       if (response.status == 202) {
         console.log("Waiting for test to finish");
-        await new Promise((resolve) => {
-          setTimeout(() => {
-            resolve();
-          }, 2000);
-        });
-        i -= 1;
+        if (nTry >= tests_list[i].retry) {
+          nTry = 0;
+        } else {
+          i -= 1;
+          nTry += 1;
+          await new Promise((resolve) => {
+            setTimeout(() => {
+              resolve();
+            }, 2000);
+          });
+          continue;
+        }
         continue;
       }
-
       tests_list[i].state = SUCCESS;
       update_tests_view();
     } catch (error) {
-      console.error(error);
       if (tests_list[i].retry) {
-        if (nTry <= 0) {
-          nTry = 3;
+        if (nTry >= tests_list[i].retry) {
+          nTry = 0;
         } else {
           i -= 1;
-          nTry -= 1;
+          nTry += 1;
           await new Promise((resolve) => {
             setTimeout(() => {
               resolve();
@@ -332,6 +343,10 @@ async function start_tests() {
       tests_list[i].state = FAILURE;
       test_error_text.textContent += "Test " + i + ": " + error + "\n";
       update_tests_view();
+      if (tests_list[i].continue) {
+        continue;
+      }
+      break;
     }
   }
 
