@@ -11,6 +11,13 @@ p {
   text-align: left;
   font-size: 14px;
 }
+pre {
+  margin: 5px 0;
+  text-align: left;
+  font-size: 12px;
+  font-family: Helvetica, Arial, sans-serif;
+}
+
 h3 {
   padding: 0;
   margin: 0;
@@ -25,6 +32,9 @@ h3 {
 h6 {
   padding: 0;
   margin: 0;
+}
+.bold {
+  font-weight: bold !important;
 }
 
 section {
@@ -70,7 +80,7 @@ input:focus {
 }
 
 .hide {
-  display: none;
+  display: none !important;
 }
 
 .title {
@@ -490,6 +500,7 @@ svg.spin {
 
 .popup-content h6 {
   font-size: 10px;
+  font-weight: 500;
 }
 
 .popup-button {

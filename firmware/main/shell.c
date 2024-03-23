@@ -121,7 +121,7 @@ static int skip_command(int argc, char **argv);
 static int start_pairing_command(int argc, char **argv);
 static int pm_stats_command(int argc, char **argv);
 static int wifi_scan_command(int argc, char **argv);
-
+static int ping_command(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -192,6 +192,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"pairing",                     "Start pairing",                            &start_pairing_command,             0, {}, {}},
     {"pm-stats",                    "Power management stats",                   &pm_stats_command,                  0, {}, {}},
     {"wifi-scan",                   "Scan for wifi networks",                   &wifi_scan_command,                 0, {}, {}},
+    {"ping",                        "Ping",                                     &ping_command,                      1, {"<host>"}, {"Host to ping"}},
 
 };
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
@@ -981,5 +982,32 @@ static int wifi_scan_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   wifi_scan(NULL);
+  return 0;
+}
+
+static int ping_command(int argc, char **argv)
+{
+  if (argc != 2)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  char str_ip[20];
+  strncpy(str_ip, argv[1], sizeof(str_ip));
+  str_ip[19] = '\0';
+  // convert string to ip
+  ip4_addr_t ip;
+  if (!ip4addr_aton(str_ip, &ip))
+  {
+    printf("Invalid IP address\n");
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  ip_addr_t ip_addr = {
+      .type = IPADDR_TYPE_V4,
+      .u_addr.ip4.addr = ip.addr,
+  };
+  // ping
+  wifi_ping(ip_addr, NULL);
+
   return 0;
 }

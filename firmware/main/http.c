@@ -522,6 +522,12 @@ esp_err_t wifi_scan_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+const char *str_wifi_error[] = {
+    [ESP_ERR_WIFI_MODE] = "Merci de remplir le champ SSID et Mot de passe",
+    [ESP_ERR_WIFI_SSID] = "SSID incorrect",
+    [ESP_ERR_WIFI_PASSWORD] = "Mot de passe incorrect",
+};
+
 esp_err_t test_start_handler(httpd_req_t *req)
 {
     char buf[100];
@@ -546,12 +552,29 @@ esp_err_t test_start_handler(httpd_req_t *req)
     switch (id)
     {
     case WIFI_CONNECT:
+        wifi_disconnect();
         err = wifi_connect();
         if (err != ESP_OK)
         {
             ESP_LOGE(TAG, "Failed to connect to wifi");
-            httpd_resp_set_status(req, "500 Internal Server Error");
-            httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+
+            switch (err)
+            {
+            case ESP_ERR_WIFI_MODE:
+                sprintf(buf, "500 Merci de remplir le champ SSID et Mot de passe");
+                break;
+            case ESP_ERR_WIFI_SSID:
+                sprintf(buf, "500 SSID incorrect");
+                break;
+            case ESP_ERR_WIFI_PASSWORD:
+                sprintf(buf, "500 Mot de passe incorrect");
+                break;
+            default:
+                sprintf(buf, "500 %s (0x%x)", esp_err_to_name(err), err);
+                break;
+            }
+            httpd_resp_set_status(req, buf);
+            httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
             return ESP_FAIL;
         }
         break;
@@ -565,8 +588,9 @@ esp_err_t test_start_handler(httpd_req_t *req)
         err = wifi_ping(ip, &ping);
         if (err != ESP_OK)
         {
-            httpd_resp_set_status(req, "500 Internal Server Error");
-            httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+            sprintf(buf, "500 Ping %s failed.", ip4addr_ntoa(&ip.u_addr.ip4));
+            httpd_resp_set_status(req, buf);
+            httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
             return ESP_FAIL;
         }
         httpd_resp_set_status(req, "200 OK");

@@ -242,7 +242,7 @@ esp_err_t wifi_connect()
         wifi_state = WIFI_FAILED;
         led_start_pattern(LED_CONNECTING_FAILED);
         wifi_disconnect();
-        return ESP_ERR_WIFI_SSID;
+        return ESP_ERR_WIFI_PASSWORD;
     }
     else if (bits & WIFI_NO_AP_FOUND_BIT)
     {
@@ -279,12 +279,25 @@ void wifi_disconnect()
     {
         ESP_LOGE(TAG, "esp_wifi_disconnect failed with 0x%X", err);
     }
-    err = esp_wifi_stop();
-    if (err != ESP_OK)
+
+    if (!ap_started)
     {
-        ESP_LOGE(TAG, "esp_wifi_stop failed with 0x%X", err);
+        ESP_LOGI(TAG, "Disconnected");
+        err = esp_wifi_stop();
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "esp_wifi_stop failed with 0x%X", err);
+        }
     }
-    ESP_LOGI(TAG, "Disconnected");
+    else
+    {
+        ESP_LOGI(TAG, "Keep Wifi in AP mode");
+        err = esp_wifi_set_mode(WIFI_MODE_AP);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
+        }
+    }
 }
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -639,15 +652,33 @@ static void ping_end(esp_ping_handle_t hdl, void *args)
 
 esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time)
 {
+    uint32_t a32InterfaceKey[3];
+    uint8_t u8KeyIndex = 0U;
+    esp_netif_t *ifscan = esp_netif_next(NULL);
+    while (ifscan != NULL && u8KeyIndex < 3)
+    {
+        a32InterfaceKey[u8KeyIndex++] = (uint32_t)esp_netif_get_ifkey(ifscan);
+        if (esp_netif_get_ifkey(ifscan))
+        {
+            ESP_LOGI(TAG, "Interface key: %d %s", u8KeyIndex, esp_netif_get_ifkey(ifscan));
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Interface key: %d NULL", u8KeyIndex);
+        }
+
+        ifscan = esp_netif_next(ifscan);
+    }
+
     ping_index = 0;
     for (int i = 0; i < sizeof(ping_time_array) / sizeof(ping_time_array[0]); i++)
     {
         ping_time_array[i] = UINT32_MAX;
     }
-
     esp_ping_config_t ping_config = ESP_PING_DEFAULT_CONFIG();
     ping_config.target_addr = host;
-    ping_config.count = 4;
+    ping_config.count = 5;
+    ping_config.interface = 0;
     esp_ping_handle_t ping;
 
     esp_ping_callbacks_t cbs = {
@@ -676,7 +707,7 @@ esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time)
                                            BIT0 | BIT1,
                                            pdFALSE,
                                            pdFALSE,
-                                           5000 / portTICK_PERIOD_MS);
+                                           30000 / portTICK_PERIOD_MS);
 
     xEventGroupClearBits(ping_event_group, BIT0 | BIT1);
     esp_ping_delete_session(ping);
