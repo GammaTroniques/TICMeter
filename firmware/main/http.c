@@ -129,6 +129,12 @@ esp_err_t send_web_page(httpd_req_t *req)
     {
         httpd_resp_set_type(req, "image/x-icon");
     }
+    else if (strcmp(ext, ".pem") == 0)
+    {
+        httpd_resp_set_status(req, "403 Forbidden");
+        httpd_resp_send(req, "Forbidden", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+    }
     else
     {
         httpd_resp_set_type(req, "text/html");
@@ -559,8 +565,7 @@ esp_err_t test_start_handler(httpd_req_t *req)
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         wifi_disconnect();
         last_wifi_connect = wifi_connect();
-        ESP_LOGI(TAG, "TEST WIFI_CONNECT: %d", err);
-        last_wifi_connect = err;
+        ESP_LOGI(TAG, "TEST WIFI_CONNECT: %d", last_wifi_connect);
 
         return ESP_OK;
         break;
@@ -577,22 +582,22 @@ esp_err_t test_start_handler(httpd_req_t *req)
         {
             ESP_LOGE(TAG, "Failed to connect to wifi");
 
-            switch (err)
+            switch (last_wifi_connect)
             {
             case ESP_ERR_WIFI_MODE:
-                sprintf(buf, "500 Merci de remplir le champ SSID et Mot de passe");
+                sprintf(buf, "Merci de remplir le champ SSID et Mot de passe");
                 break;
             case ESP_ERR_WIFI_SSID:
-                sprintf(buf, "500 SSID incorrect");
+                sprintf(buf, "Réseau non trouvé, vérifiez le SSID");
                 break;
             case ESP_ERR_WIFI_PASSWORD:
-                sprintf(buf, "500 Mot de passe incorrect");
+                sprintf(buf, "Mot de passe incorrect");
                 break;
             default:
-                sprintf(buf, "500 %s (0x%x)", esp_err_to_name(err), err);
+                sprintf(buf, "%s (0x%x)", esp_err_to_name(last_wifi_connect), last_wifi_connect);
                 break;
             }
-            httpd_resp_set_status(req, buf);
+            httpd_resp_set_status(req, "500 Internal Server Error");
             httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
             return ESP_FAIL;
         }
@@ -611,8 +616,8 @@ esp_err_t test_start_handler(httpd_req_t *req)
         err = wifi_ping(ip, &ping);
         if (err != ESP_OK)
         {
-            sprintf(buf, "500 Ping %s failed.", ip4addr_ntoa(&ip.u_addr.ip4));
-            httpd_resp_set_status(req, buf);
+            sprintf(buf, "Ping %s failed.", ip4addr_ntoa(&ip.u_addr.ip4));
+            httpd_resp_set_status(req, "500 Internal Server Error");
             httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
             return ESP_FAIL;
         }
@@ -623,12 +628,35 @@ esp_err_t test_start_handler(httpd_req_t *req)
     }
     break;
     case MQTT_CONNECT:
-        err = mqtt_test();
+    {
+        esp_mqtt_error_type_t type;
+        esp_mqtt_connect_return_code_t return_code;
+
+        err = mqtt_test(&type, &return_code);
         if (err != ESP_OK)
         {
-            ESP_LOGE(TAG, "Start failed with 0x%x", err);
+            ESP_LOGE(TAG, "MQTT error: type: %d, return_code: %d", type, return_code);
+            switch (return_code)
+            {
+            case MQTT_CONNECTION_REFUSE_PROTOCOL:
+                sprintf(buf, "Connexion refusée, mauvais protocole");
+                break;
+            case MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE:
+                sprintf(buf, "Connexion refusée, serveur indisponible");
+                break;
+            case MQTT_CONNECTION_REFUSE_BAD_USERNAME:
+                sprintf(buf, "Connexion refusée, mauvais nom d'utilisateur ou mot de passe");
+                break;
+            case MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED:
+                sprintf(buf, "Connexion refusée, non autorisé");
+                break;
+            default:
+                sprintf(buf, "Connexion refusée, raison inconnue");
+                break;
+            }
+            httpd_resp_set_type(req, "text/plain; charset=utf-8");
             httpd_resp_set_status(req, "500 Internal Server Error");
-            httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+            httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
             return ESP_FAIL;
         }
 
@@ -636,11 +664,12 @@ esp_err_t test_start_handler(httpd_req_t *req)
         httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
 
         break;
+    }
     case MQTT_PUBLISH:
-        err = mqtt_send();
+        err = mqtt_prepare_publish(&linky_data);
         if (err == 0)
         {
-            ESP_LOGE(TAG, "Failed to publish message");
+            ESP_LOGE(TAG, "Failed to prepare message");
             httpd_resp_set_status(req, "500 Internal Server Error");
             httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
             return ESP_FAIL;
