@@ -373,15 +373,20 @@ uint8_t tuya_send_data(linky_data_t *linky)
             continue; // dont send data for label not used by current mode
         }
 
-        // TEMP TODO:
-        if (LinkyLabelList[i].id == 108)
+        switch (LinkyLabelList[i].id)
         {
+        case 108:
+            if (linky_str_tarif[linky_contract] != NULL)
+            {
+                cJSON_AddStringToObject(jsonObject, "108", linky_str_tarif[linky_contract]);
+            }
+            else
+            {
+                cJSON_AddStringToObject(jsonObject, "108", "Inconnu");
+            }
             continue;
-        }
-
-        if (LinkyLabelList[i].id == 105)
-        {
-
+            break;
+        case 105:
             switch (linky_mode)
             {
             case MODE_HIST:
@@ -395,6 +400,21 @@ uint8_t tuya_send_data(linky_data_t *linky)
                 break;
             }
             continue;
+            break;
+        case 106:
+            if (linky_three_phase)
+            {
+                cJSON_AddStringToObject(jsonObject, "106", "Triphase");
+            }
+            else
+            {
+                cJSON_AddStringToObject(jsonObject, "106", "Monophase");
+            }
+            continue;
+            break;
+
+        default:
+            break;
         }
 
         // json
