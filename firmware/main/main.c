@@ -129,17 +129,17 @@ void app_main(void)
 
   // start_test(TEST_LINKY_STD);
   // esp_pm_dump_locks(stdout);
-  // while (1)
-  // {
-  //   vTaskDelay(1000 / portTICK_PERIOD_MS);
-  // }
+
   if (config_verify())
   {
     // esp_pm_lock_release(main_init_lock);
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config_verify())
     {
-      led_start_pattern(LED_NO_CONFIG);
+      if (gpio_start_push_time + 5000 < MILLIS) // want 5s after button push
+      {
+        led_start_pattern(LED_NO_CONFIG);
+      }
       vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
     if (config_values.mode == MODE_WEB)

@@ -51,7 +51,7 @@
 ==============================================================================*/
 extern TaskHandle_t gpip_led_ota_task_handle;
 extern TaskHandle_t gpio_led_pairing_task_handle;
-
+extern uint32_t gpio_start_push_time;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
