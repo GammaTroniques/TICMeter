@@ -376,14 +376,15 @@ uint8_t tuya_send_data(linky_data_t *linky)
         switch (LinkyLabelList[i].id)
         {
         case 108:
-            if (linky_str_tarif[linky_contract] != NULL)
-            {
-                cJSON_AddStringToObject(jsonObject, "108", linky_str_tarif[linky_contract]);
-            }
-            else
-            {
-                cJSON_AddStringToObject(jsonObject, "108", "Inconnu");
-            }
+            // TODO:
+            // if (linky_str_tarif[linky_contract] != NULL)
+            // {
+            //     cJSON_AddStringToObject(jsonObject, "108", linky_str_tarif[linky_contract]);
+            // }
+            // else
+            // {
+            //     cJSON_AddStringToObject(jsonObject, "108", "Inconnu");
+            // }
             continue;
             break;
         case 105:
@@ -412,7 +413,14 @@ uint8_t tuya_send_data(linky_data_t *linky)
             }
             continue;
             break;
-
+        case 107:
+            // if data =  "HC.."
+            if (memcmp(LinkyLabelList[i].data, "HC", 2) == 0)
+            {
+                cJSON_AddStringToObject(jsonObject, "107", "HCHP");
+                continue;
+            }
+            break;
         default:
             break;
         }
