@@ -48,13 +48,19 @@ const RUNNING = 1;
 const SUCCESS = 2;
 const FAILURE = 3;
 
+const ANY = 0;
+const HTTP = 1;
+const MQTT = 2;
+const ZIGBEE = 3;
+const TUYA = 4;
+
 // prettier-ignore
 const tests_list = [
-  { id: 0, text: " ",  state: PENDING,                         hide: true , retry: false, retry: 3, timeout: 10000, continue: true},
-  { id: 1, text: "Connexion au réseau WiFi",  state: PENDING , hide: false, retry: true , retry: 10,timeout: 2000,  continue: false},
-  { id: 2, text: "Test du réseau WiFi",       state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
-  { id: 3, text: "Connexion au serveur MQTT", state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
-  { id: 4, text: "Envoi des données MQTT",    state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
+  { id: 0, mode: [], text: " ",  state: PENDING,                         hide: true , retry: false, retry: 3, timeout: 10000, continue: true},
+  { id: 1, mode: [], text: "Connexion au réseau WiFi",  state: PENDING , hide: false, retry: true , retry: 10,timeout: 2000,  continue: false},
+  { id: 2, mode: [], text: "Test du réseau WiFi",       state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
+  { id: 3, mode: [], text: "Connexion au serveur MQTT", state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
+  { id: 4, mode: [], text: "Envoi des données MQTT",    state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
 ];
 
 function update_config_view(mode) {
