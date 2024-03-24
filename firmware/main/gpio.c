@@ -65,6 +65,8 @@ Public Variable
 ===============================================================================*/
 TaskHandle_t gpip_led_ota_task_handle = NULL;
 TaskHandle_t gpio_led_pairing_task_handle = NULL;
+uint32_t gpio_start_push_time = 0;
+
 /*==============================================================================
  Local Variable
 ===============================================================================*/
@@ -396,9 +398,8 @@ uint8_t gpio_vusb_connected()
 
 void gpio_pairing_button_task(void *pvParameters)
 {
-    uint32_t startPushTime = 0;
     uint8_t lastState = 1;
-    uint32_t pushTime = MILLIS - startPushTime;
+    uint32_t pushTime = MILLIS - gpio_start_push_time;
     uint8_t push_from_boot = 0;
     connectivity_t current_mode_led = MODE_NONE;
     uint8_t pairingState = 0;
@@ -424,13 +425,13 @@ void gpio_pairing_button_task(void *pvParameters)
                 suspendTask(tuyaTaskHandle);
                 lastState = 0;
                 current_mode_led = MODE_NONE;
-                startPushTime = MILLIS;
+                gpio_start_push_time = MILLIS;
                 if (MILLIS < 1000)
                 {
                     push_from_boot = 1;
                 }
             }
-            pushTime = MILLIS - startPushTime;
+            pushTime = MILLIS - gpio_start_push_time;
             if (pushTime > 4000)
             {
                 // Color Wheel
@@ -556,18 +557,13 @@ void gpio_start_pariring()
 {
     ESP_LOGI(TAG, "Starting pairing");
     led_start_pattern(LED_PAIRING);
+    suspendTask(main_task_handle);
     switch (config_values.mode)
     {
     case MODE_WEB:
     case MODE_MQTT:
     case MODE_MQTT_HA:
         ESP_LOGI(TAG, "Web pairing");
-        suspendTask(main_task_handle);
-        // if (wifi_state == WIFI_CONNECTED)
-        // {
-        //     wifi_disconnect();
-        //     vTaskDelay(1000 / portTICK_PERIOD_MS);
-        // }
         ESP_LOGI(TAG, "Starting captive portal");
         wifi_start_captive_portal();
         break;
