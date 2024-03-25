@@ -496,7 +496,7 @@ static void ota_spiffs_update(const char *url)
     }
     ESP_LOGI(TAG, "Starting spiffs update");
     err = wifi_connect();
-    if (err != 0)
+    if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Wifi connect failed");
         return;
@@ -539,7 +539,7 @@ static void ota_spiffs_update(const char *url)
 void ota_perform_task(void *pvParameter)
 {
     esp_err_t err = wifi_connect();
-    if (err != 0)
+    if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Wifi connect failed");
         goto ota_end;
