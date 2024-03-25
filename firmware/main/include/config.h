@@ -156,6 +156,7 @@ typedef struct
     uint16_t refreshRate;
     uint8_t sleep;
     index_offset_t index_offset;
+    uint8_t boot_pairing;
 } config_t;
 
 typedef struct

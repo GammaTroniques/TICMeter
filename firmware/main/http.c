@@ -593,6 +593,9 @@ esp_err_t test_start_handler(httpd_req_t *req)
             case ESP_ERR_WIFI_PASSWORD:
                 sprintf(buf, "Mot de passe incorrect");
                 break;
+            case ESP_FAIL:
+                sprintf(buf, "Connexion échouée");
+                break;
             default:
                 sprintf(buf, "%s (0x%x)", esp_err_to_name(last_wifi_connect), last_wifi_connect);
                 break;
@@ -654,6 +657,7 @@ esp_err_t test_start_handler(httpd_req_t *req)
                 sprintf(buf, "Connexion refusée, raison inconnue");
                 break;
             }
+            mqtt_deinit();
             httpd_resp_set_type(req, "text/plain; charset=utf-8");
             httpd_resp_set_status(req, "500 Internal Server Error");
             httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
@@ -672,9 +676,27 @@ esp_err_t test_start_handler(httpd_req_t *req)
             ESP_LOGE(TAG, "Failed to prepare message");
             httpd_resp_set_status(req, "500 Internal Server Error");
             httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+            mqtt_deinit();
             return ESP_FAIL;
         }
 
+        ESP_LOGI(TAG, "Waiting for MQTT send done, outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
+        time_t mqtt_send_timeout = MILLIS + 10000;
+        while ((mqtt_send_timeout > MILLIS) && /*mqtt_sent_count < mqtt_sensors_count*/ esp_mqtt_client_get_outbox_size(mqtt_client) > 0)
+        {
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+            ESP_LOGD(TAG, "Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
+        }
+        if (esp_mqtt_client_get_outbox_size(mqtt_client) > 0)
+        {
+            ESP_LOGE(TAG, "Failed to send all messages");
+            mqtt_deinit();
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, "Impossible d'envoyer tous les messages", HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+        ESP_LOGI(TAG, "All messages sent");
+        mqtt_deinit();
         httpd_resp_set_status(req, "200 OK");
         httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
 

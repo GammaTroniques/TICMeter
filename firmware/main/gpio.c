@@ -516,7 +516,12 @@ void gpio_pairing_button_task(void *pvParameters)
                         esp_restart();
                     }
                     pairingState = 1;
-                    gpio_start_pariring();
+                    ESP_LOGI(TAG, "Saving pairing mode");
+                    config_values.boot_pairing = 1;
+                    config_write();
+                    ESP_LOGI(TAG, "Restarting");
+                    esp_restart();
+                    // gpio_start_pariring();
                 }
                 else
                 {

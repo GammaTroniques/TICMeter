@@ -66,6 +66,8 @@ extern void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
  */
 extern int mqtt_init();
 
+extern int mqtt_deinit();
+
 /**
  * @brief Send all entities to Home Assistant
  *

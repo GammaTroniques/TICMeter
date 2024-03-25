@@ -130,13 +130,25 @@ void app_main(void)
   // start_test(TEST_LINKY_STD);
   // esp_pm_dump_locks(stdout);
 
-  if (config_verify())
+  if (config_verify() || config_values.boot_pairing)
   {
     // esp_pm_lock_release(main_init_lock);
-    ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
+    if (config_values.boot_pairing)
+    {
+      ESP_LOGI(MAIN_TAG, "Waking up in pairing mode. Waiting config...");
+      gpio_start_pariring();
+      ESP_LOGI(MAIN_TAG, "Remove pairing mode for next boot");
+      config_values.boot_pairing = 0;
+      config_write();
+    }
+    else
+    {
+      ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
+    }
+
     while (1)
     {
-      if (gpio_start_push_time + 5000 < MILLIS) // want 5s after button push
+      if (gpio_start_push_time + 5000 < MILLIS && !config_values.boot_pairing) // want 5s after button push
       {
         led_start_pattern(LED_NO_CONFIG);
       }
@@ -159,7 +171,7 @@ void app_main(void)
   case MODE_WEB:
     // connect to wifi
     err = wifi_connect();
-    if (err != ESP_OK)
+    if (err == ESP_OK)
     {
       wifi_get_timestamp();               // get timestamp from ntp server
       wifi_http_get_config_from_server(); // get config from server
@@ -171,13 +183,17 @@ void app_main(void)
       }
       wifi_disconnect();
     }
+    else
+    {
+      ESP_LOGE(MAIN_TAG, "Wifi connection failed: dont start HTTP");
+    }
     break;
   case MODE_MQTT:
   case MODE_MQTT_HA:
     ESP_LOGI(MAIN_TAG, "MQTT init...");
     // connect to wifi
     err = wifi_connect();
-    if (err != ESP_OK)
+    if (err == ESP_OK)
     {
       mqtt_init();          // init mqtt
       wifi_get_timestamp(); // get timestamp from ntp server
@@ -188,6 +204,10 @@ void app_main(void)
       }
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       wifi_disconnect();
+    }
+    else
+    {
+      ESP_LOGE(MAIN_TAG, "Wifi connection failed: dont start MQTT");
     }
 
     break;
@@ -202,12 +222,16 @@ void app_main(void)
       break;
     }
     err = wifi_connect();
-    if (err != ESP_OK)
+    if (err == ESP_OK)
     {
       tuya_init();
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       wifi_disconnect();
       vTaskSuspend(tuyaTaskHandle);
+    }
+    else
+    {
+      ESP_LOGE(MAIN_TAG, "Wifi connection failed: dont start TUYA");
     }
     break;
   default:
@@ -256,7 +280,7 @@ void main_task(void *pvParameters)
     }
 
     esp_pm_lock_acquire(main_init_lock);
-    gpio_peripheral_reinit(); // TODO: enable this
+    gpio_peripheral_reinit();
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
 
@@ -304,15 +328,19 @@ esp_err_t main_send_data()
       web_preapare_json_data(main_data_array, main_data_index, json, sizeof(json));
       ESP_LOGI(MAIN_TAG, "Sending data to server");
       err = wifi_connect();
-      if (err != ESP_OK)
+      if (err == ESP_OK)
       {
         ESP_LOGI(MAIN_TAG, "POST: %s", json);
         wifi_send_to_server(json);
+        if (gpio_vusb_connected())
+        {
+          ota_version_t version;
+          ota_get_latest(&version);
+        }
       }
-      if (gpio_vusb_connected())
+      else
       {
-        ota_version_t version;
-        ota_get_latest(&version);
+        ESP_LOGE(MAIN_TAG, "Wifi connection failed");
       }
       wifi_disconnect();
       main_data_index = 0;
@@ -360,7 +388,7 @@ esp_err_t main_send_data()
   }
   case MODE_TUYA:
     err = wifi_connect();
-    if (err != ESP_OK)
+    if (err == ESP_OK)
     {
       ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
       resumeTask(tuyaTaskHandle); // resume tuya task
@@ -390,6 +418,10 @@ esp_err_t main_send_data()
       wifi_disconnect();
       suspendTask(tuyaTaskHandle);
       led_start_pattern(LED_SEND_OK);
+    }
+    else
+    {
+      ESP_LOGE(MAIN_TAG, "Wifi connection failed: dont send TUYA");
     }
     break;
   case MODE_ZIGBEE:
