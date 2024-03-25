@@ -134,19 +134,13 @@ void app_main(void)
   {
     // esp_pm_lock_release(main_init_lock);
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
-    while (config_verify())
+    while (1)
     {
       if (gpio_start_push_time + 5000 < MILLIS) // want 5s after button push
       {
         led_start_pattern(LED_NO_CONFIG);
       }
       vTaskDelay(5000 / portTICK_PERIOD_MS);
-    }
-    if (config_values.mode == MODE_WEB)
-    {
-      ESP_LOGI(MAIN_TAG, "Config found, restarting... in 5s");
-      vTaskDelay(5000 / portTICK_PERIOD_MS); // wait 5s to be sure that the web page is sent
-      esp_restart();
     }
     // esp_pm_lock_acquire(main_init_lock);
   }
