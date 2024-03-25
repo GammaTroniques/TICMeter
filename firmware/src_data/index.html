@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>TICMeter</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+
+<body>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-0" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7H0.36C4.24,11.83 8.13,16.66 12,21.5C15.89,16.66 19.77,11.83 23.64,7H23.65C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L12,18.3L3.27,7.44C5.9,5.85 8.92,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-1" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L15.61,13.81C14.5,13.28 13.25,13 12,13C10.75,13 9.5,13.28 8.39,13.8L3.27,7.44C5.91,5.85 8.93,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-2" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L17.5,11.43C16.26,10.74 14.37,10 12,10C9.62,10 7.74,10.75 6.5,11.43L3.27,7.44C5.91,5.85 8.93,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-3" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3M12,5C15.07,5 18.09,5.86 20.71,7.45L18.77,9.88C17.26,9 14.88,8 12,8C9,8 6.68,9 5.21,9.84L3.27,7.44C5.91,5.85 8.93,5 12,5Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="wifi-4" viewBox="0 0 24 24">
+            <path
+                d="M12,3C7.79,3 3.7,4.41 0.38,7C4.41,12.06 7.89,16.37 12,21.5C16.08,16.42 20.24,11.24 23.65,7C20.32,4.41 16.22,3 12,3Z" />
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="test-ok" viewBox="0 0 24 24">
+            <path
+                d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z"
+                fill="#5EDB23" />
+        </symbol>
+    </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="test-error" viewBox="0 0 24 24">
+            <path
+                d="M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"
+                fill="#F35858" />
+
+
+        </symbol>
+    </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="test-running" viewBox="0 0 24 24">
+            <path
+                d="M2 12A10 10 0 1 0 12 2A10 10 0 0 0 2 12M15.6 13.72A4 4 0 0 0 16 12A4 4 0 0 0 12 8V10L8.88 7L12 4V6A6 6 0 0 1 18 12A5.9 5.9 0 0 1 17.07 15.19M6 12A5.9 5.9 0 0 1 6.93 8.81L8.4 10.28A4 4 0 0 0 8 12A4 4 0 0 0 12 16V14L15 17L12 20V18A6 6 0 0 1 6 12Z"
+                fill="#F5BA20" />
+        </symbol>
+    </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="test-pending" viewBox="0 0 24 24">
+            <path
+                d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12S17.5 2 12 2M16.3 15.2L11 12.3V7H12.5V11.4L17 13.9L16.3 15.2Z"
+                fill="#D6D6D6" />
+        </symbol>
+    </svg>
+
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="password-show" viewBox="0 0 24 24">
+            <path
+                d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" />
+
+        </symbol>
+    </svg>
+
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="hide">
+        <symbol id="password-hide" viewBox="0 0 24 24">
+            <path
+                d="M11.83,9L15,12.16C15,12.11 15,12.05 15,12A3,3 0 0,0 12,9C11.94,9 11.89,9 11.83,9M7.53,9.8L9.08,11.35C9.03,11.56 9,11.77 9,12A3,3 0 0,0 12,15C12.22,15 12.44,14.97 12.65,14.92L14.2,16.47C13.53,16.8 12.79,17 12,17A5,5 0 0,1 7,12C7,11.21 7.2,10.47 7.53,9.8M2,4.27L4.28,6.55L4.73,7C3.08,8.3 1.78,10 1,12C2.73,16.39 7,19.5 12,19.5C13.55,19.5 15.03,19.2 16.38,18.66L16.81,19.08L19.73,22L21,20.73L3.27,3M12,7A5,5 0 0,1 17,12C17,12.64 16.87,13.26 16.64,13.82L19.57,16.75C21.07,15.5 22.27,13.86 23,12C21.27,7.61 17,4.5 12,4.5C10.6,4.5 9.26,4.75 8,5.2L10.17,7.35C10.74,7.13 11.35,7 12,7Z" />
+
+        </symbol>
+    </svg>
+
+
+    <form action="/save-config" method="POST" id="form">
+        <div class="title">
+            <h1>TICMeter</h1>
+            <button id="save-button" class="flex-h-center">Enregistrer et tester</button>
+            <button id="quit-button" type="button" class="flex-h-center hide" onclick="reboot()">Enregistrer et
+                quitter</button>
+        </div>
+        <div class="main-frame" id="page-config">
+            <div class="main-conf">
+                <div class="main-title">
+                    <h2>Configuration TICMeter</h2>
+                </div>
+                <div class="section-container">
+                    <section>
+                        <div class="section-header">
+                            <svg width="18" height="17" viewBox="0 0 18 17" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M9 14.913L7.11086 16.7771C6.96028 16.9257 6.76863 17 6.53591 17C6.30319 17 6.11154 16.9257 5.96096 16.7771C5.81037 16.6285 5.73508 16.4394 5.73508 16.2098C5.73508 15.9801 5.81037 15.791 5.96096 15.6424L8.17864 13.4541V10.7795C7.80902 10.6174 7.51142 10.3675 7.28582 10.0298C7.05967 9.69209 6.94659 9.32062 6.94659 8.91537C6.94659 8.34803 7.14509 7.86849 7.54208 7.47676C7.93907 7.08502 8.42505 6.88915 9 6.88915C9.57495 6.88915 10.0609 7.08502 10.4579 7.47676C10.8549 7.86849 11.0534 8.34803 11.0534 8.91537C11.0534 9.32062 10.9406 9.69209 10.715 10.0298C10.4889 10.3675 10.191 10.6174 9.82136 10.7795V13.4541L12.039 15.6424C12.1896 15.791 12.2649 15.9801 12.2649 16.2098C12.2649 16.4394 12.1896 16.6285 12.039 16.7771C11.8885 16.9257 11.6968 17 11.4641 17C11.2314 17 11.0397 16.9257 10.8891 16.7771L9 14.913ZM9 4.86293C7.98699 4.86293 7.10046 5.18389 6.34043 5.82579C5.58094 6.46716 5.11906 7.28089 4.95479 8.26698C4.92741 8.46961 4.8283 8.62819 4.65745 8.74274C4.48606 8.85783 4.29085 8.91537 4.07182 8.91537C3.8391 8.91537 3.64745 8.83108 3.49687 8.6625C3.34628 8.49338 3.28468 8.294 3.31206 8.06436C3.50371 6.65951 4.14027 5.50457 5.22173 4.59952C6.30319 3.69448 7.56261 3.24195 9 3.24195C10.4374 3.24195 11.6968 3.69448 12.7783 4.59952C13.8597 5.50457 14.4963 6.65951 14.6879 8.06436C14.7153 8.294 14.6537 8.49338 14.5031 8.6625C14.3525 8.83108 14.1609 8.91537 13.9282 8.91537C13.7091 8.91537 13.5142 8.85783 13.3434 8.74274C13.172 8.62819 13.0726 8.46961 13.0452 8.26698C12.8809 7.28089 12.4191 6.46716 11.6596 5.82579C10.8995 5.18389 10.013 4.86293 9 4.86293ZM9 1.62098C7.08349 1.62098 5.42707 2.25586 4.03075 3.52563C2.63444 4.79539 1.84045 6.37584 1.6488 8.26698C1.62142 8.46961 1.5256 8.62819 1.36132 8.74274C1.19705 8.85783 1.0054 8.91537 0.78637 8.91537C0.553651 8.91537 0.358714 8.83108 0.20156 8.6625C0.0438579 8.49338 -0.0213036 8.294 0.00607517 8.06436C0.101901 6.91617 0.403067 5.85227 0.909575 4.87266C1.41608 3.89359 2.07317 3.04257 2.88085 2.31962C3.68852 1.5972 4.6194 1.02986 5.67348 0.617592C6.72756 0.205864 7.8364 0 9 0C10.1773 0 11.2894 0.205864 12.3364 0.617592C13.3839 1.02986 14.3115 1.5972 15.1192 2.31962C15.9268 3.04257 16.5839 3.89359 17.0904 4.87266C17.5969 5.85227 17.8981 6.91617 17.9939 8.06436C18.0213 8.294 17.9561 8.49338 17.7984 8.6625C17.6413 8.83108 17.4463 8.91537 17.2136 8.91537C16.9946 8.91537 16.8029 8.85783 16.6387 8.74274C16.4744 8.62819 16.3786 8.46961 16.3512 8.26698C16.1595 6.37584 15.3656 4.79539 13.9692 3.52563C12.5729 2.25586 10.9165 1.62098 9 1.62098Z"
+                                    fill="#666666" />
+                            </svg>
+                            <h3>Mode de fonctionnement</h3>
+                        </div>
+                        <div class="flex-v-center space">
+                            <div id="server-mode-container">
+                                <label>
+                                    <input type="radio" name="server-mode" value="2">
+                                    <div class="server-mode-selector mode-mqtt">
+                                        <h6>MQTT</h6>
+                                    </div>
+                                </label>
+                                <label>
+                                    <input type="radio" name="server-mode" value="4">
+                                    <div class="server-mode-selector mode-zigbee">
+                                        <h6>Zigbee</h6>
+                                    </div>
+                                </label>
+                                <label>
+                                    <input type="radio" name="server-mode" value="5">
+                                    <div class="server-mode-selector mode-tuya">
+                                        <h6>Tuya</h6>
+                                    </div>
+                                </label>
+                                <label>
+                                    <input type="radio" name="server-mode" value="1" checked>
+                                    <div class="server-mode-selector mode-http">
+                                        <h6>HTTP</h6>
+                                    </div>
+                                </label>
+                            </div>
+
+                        </div>
+                    </section>
+
+                    <section id="wifi-configurator">
+                        <div class="section-header">
+                            <svg width="19" height="16" viewBox="0 0 19 16" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M7.26404 10.7579C7.50087 10.6035 7.74815 10.4772 8.00588 10.3789C8.26361 10.2807 8.53178 10.2105 8.81041 10.1684C8.74075 10.4351 8.68503 10.7018 8.64323 10.9684C8.60144 11.2351 8.58054 11.5088 8.58054 11.7895C8.58054 12.1263 8.60492 12.4561 8.65368 12.7789C8.70244 13.1018 8.78254 13.4105 8.89399 13.7053L7.20135 11.9789C7.03418 11.7965 6.95407 11.586 6.96104 11.3474C6.96801 11.1088 7.06901 10.9123 7.26404 10.7579ZM9.5 5.05263C10.1826 5.05263 10.8513 5.12632 11.5061 5.27368C12.1609 5.42105 12.7878 5.63509 13.3868 5.91579C12.7738 6.02807 12.2061 6.23158 11.6837 6.52632C11.1613 6.82105 10.6911 7.18597 10.2732 7.62105C10.1478 7.60702 10.0189 7.59649 9.88659 7.58947C9.75424 7.58246 9.62538 7.57895 9.5 7.57895C8.81737 7.57895 8.16261 7.67719 7.5357 7.87368C6.9088 8.07018 6.31672 8.35789 5.75948 8.73684C5.46692 8.93333 5.14302 9.03158 4.78778 9.03158C4.43253 9.03158 4.13649 8.90526 3.89966 8.65263C3.6489 8.4 3.53397 8.09474 3.55486 7.73684C3.57576 7.37895 3.72552 7.09474 4.00415 6.88421C4.79822 6.29474 5.66196 5.84211 6.59535 5.52632C7.52874 5.21053 8.49695 5.05263 9.5 5.05263ZM9.5 0C11.1578 0 12.7634 0.280702 14.3167 0.842105C15.87 1.40351 17.2806 2.21754 18.5483 3.28421C18.8269 3.52281 18.9767 3.82105 18.9976 4.17895C19.0185 4.53684 18.9036 4.84211 18.6528 5.09474C18.402 5.34737 18.1025 5.47018 17.7542 5.46316C17.406 5.45614 17.0925 5.34035 16.8139 5.11579C15.769 4.27368 14.6267 3.63158 13.3868 3.18947C12.1469 2.74737 10.8513 2.52632 9.5 2.52632C8.14867 2.52632 6.85307 2.74737 5.6132 3.18947C4.37332 3.63158 3.23096 4.27368 2.18613 5.11579C1.9075 5.34035 1.59405 5.45614 1.24577 5.46316C0.89749 5.47018 0.59797 5.34737 0.347208 5.09474C0.0964467 4.84211 -0.0184856 4.53684 0.00241117 4.17895C0.023308 3.82105 0.173068 3.52281 0.451692 3.28421C1.71943 2.21754 3.12996 1.40351 4.68329 0.842105C6.23662 0.280702 7.84219 0 9.5 0ZM13.4286 14.7368C13.2614 14.6667 13.1047 14.593 12.9584 14.5158C12.8121 14.4386 12.6624 14.3439 12.5091 14.2316L11.9031 14.4211C11.722 14.4772 11.5444 14.4702 11.3703 14.4C11.1961 14.3298 11.0603 14.2175 10.9628 14.0632L10.7956 13.7684C10.6981 13.6 10.6633 13.4175 10.6911 13.2211C10.719 13.0246 10.8095 12.8632 10.9628 12.7368L11.4225 12.3368C11.3946 12.1684 11.3807 11.986 11.3807 11.7895C11.3807 11.593 11.3946 11.4105 11.4225 11.2421L10.9628 10.8421C10.8095 10.7158 10.719 10.5579 10.6911 10.3684C10.6633 10.1789 10.6981 10 10.7956 9.83158L10.9837 9.51579C11.0812 9.3614 11.2135 9.24912 11.3807 9.17895C11.5479 9.10877 11.722 9.10176 11.9031 9.1579L12.5091 9.34737C12.6624 9.23509 12.8121 9.14035 12.9584 9.06316C13.1047 8.98597 13.2614 8.91228 13.4286 8.84211L13.554 8.23158C13.5958 8.03509 13.6898 7.87719 13.8361 7.75789C13.9824 7.6386 14.153 7.57895 14.3481 7.57895H14.6824C14.8774 7.57895 15.0481 7.64211 15.1944 7.76842C15.3407 7.89474 15.4347 8.05614 15.4765 8.25263L15.6019 8.84211C15.769 8.91228 15.9258 8.98597 16.072 9.06316C16.2183 9.14035 16.3681 9.23509 16.5213 9.34737L17.1273 9.1579C17.3084 9.10176 17.4861 9.10877 17.6602 9.17895C17.8343 9.24912 17.9702 9.3614 18.0677 9.51579L18.2349 9.81053C18.3324 9.97895 18.3672 10.1614 18.3393 10.3579C18.3115 10.5544 18.2209 10.7158 18.0677 10.8421L17.608 11.2421C17.6358 11.4105 17.6497 11.593 17.6497 11.7895C17.6497 11.986 17.6358 12.1684 17.608 12.3368L18.0677 12.7368C18.2209 12.8632 18.3115 13.0211 18.3393 13.2105C18.3672 13.4 18.3324 13.5789 18.2349 13.7474L18.0468 14.0632C17.9493 14.2175 17.8169 14.3298 17.6497 14.4C17.4826 14.4702 17.3084 14.4772 17.1273 14.4211L16.5213 14.2316C16.3681 14.3439 16.2183 14.4386 16.072 14.5158C15.9258 14.593 15.769 14.6667 15.6019 14.7368L15.4765 15.3474C15.4347 15.5439 15.3407 15.7018 15.1944 15.8211C15.0481 15.9404 14.8774 16 14.6824 16H14.3481C14.153 16 13.9824 15.9368 13.8361 15.8105C13.6898 15.6842 13.5958 15.5228 13.554 15.3263L13.4286 14.7368ZM14.5152 10.1053C14.0555 10.1053 13.6619 10.2702 13.3346 10.6C13.0072 10.9298 12.8435 11.3263 12.8435 11.7895C12.8435 12.2526 13.0072 12.6491 13.3346 12.9789C13.6619 13.3088 14.0555 13.4737 14.5152 13.4737C14.975 13.4737 15.3685 13.3088 15.6959 12.9789C16.0233 12.6491 16.187 12.2526 16.187 11.7895C16.187 11.3263 16.0233 10.9298 15.6959 10.6C15.3685 10.2702 14.975 10.1053 14.5152 10.1053Z"
+                                    fill="#666666" />
+                            </svg>
+                            <h3>Paramètres WiFi</h3>
+                        </div>
+                        <div>
+                            <div class="feild">
+                                <h6 class="feild-name">SSID</h6>
+                                <div class="flex space">
+                                    <input type="text" name="wifi-ssid" id="wifi-ssid"
+                                        placeholder="Entrez le nom de votre réseau WiFi" maxlength="32"
+                                        class="dual-feild" />
+                                    <button class="small" type="button" onclick="update_popup(1)">Scanner</button>
+                                </div>
+                            </div>
+                            <div class="feild">
+                                <h6 class="feild-name">Mot de passe</h6>
+                                <div class="input-w100">
+                                    <input type="password" name="wifi-password" id="wifi-password" maxlength="64"
+                                        placeholder="Entrez le mot de passe de votre réseau WiFi" />
+                                    <span onclick="update_wifi_password()" class="password-eye">
+                                        <svg width="24" height="24" fill="#666666">
+                                            <use id="wifi-pw-svg" xlink:href="#password-hide"></use>
+                                        </svg>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <section>
+                        <div class="section-header">
+                            <svg width="19" height="15" viewBox="0 0 14 15" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M12.3523 8.23437C12.3823 8 12.3973 7.75781 12.3973 7.5C12.3973 7.25 12.3823 7 12.3448 6.76562L13.8666 5.53125C14.0015 5.42187 14.039 5.21094 13.9565 5.05469L12.5172 2.46094C12.4273 2.28906 12.2399 2.23437 12.075 2.28906L10.2834 3.03906C9.90854 2.74219 9.51124 2.49219 9.06896 2.30469L8.7991 0.320312C8.76911 0.132812 8.61919 0 8.43928 0H5.56072C5.38081 0 5.23838 0.132812 5.2084 0.320312L4.93853 2.30469C4.49625 2.49219 4.09145 2.75 3.72414 3.03906L1.93253 2.28906C1.76762 2.22656 1.58021 2.28906 1.49026 2.46094L0.058471 5.05469C-0.031484 5.21875 -0.00149907 5.42187 0.148426 5.53125L1.67016 6.76562C1.63268 7 1.6027 7.25781 1.6027 7.5C1.6027 7.74219 1.61769 8 1.65517 8.23437L0.133433 9.46875C-0.00149906 9.57812 -0.0389802 9.78906 0.0434785 9.94531L1.48276 12.5391C1.57271 12.7109 1.76012 12.7656 1.92504 12.7109L3.71664 11.9609C4.09145 12.2578 4.48876 12.5078 4.93103 12.6953L5.2009 14.6797C5.23838 14.8672 5.38081 15 5.56072 15H8.43928C8.61919 15 8.76912 14.8672 8.7916 14.6797L9.06147 12.6953C9.50375 12.5078 9.90855 12.2578 10.2759 11.9609L12.0675 12.7109C12.2324 12.7734 12.4198 12.7109 12.5097 12.5391L13.949 9.94531C14.039 9.77344 14.0015 9.57812 13.8591 9.46875L12.3523 8.23437ZM7 10.3125C5.51574 10.3125 4.30135 9.04688 4.30135 7.5C4.30135 5.95312 5.51574 4.6875 7 4.6875C8.48426 4.6875 9.69865 5.95312 9.69865 7.5C9.69865 9.04688 8.48426 10.3125 7 10.3125Z"
+                                    fill="#666666" />
+                            </svg>
+                            <h3>Configuration</h3>
+                        </div>
+
+                        <div id="http-conf">
+                            <div class="feild">
+                                <h6 class="feild-name">Adresse IP du serveur HTTP</h6>
+                                <div class="input-w100">
+                                    <input type="text" name="web-url" placeholder="192.168.2.10:3001" maxlength="100" />
+                                </div>
+                            </div>
+
+                            <div class="feild">
+                                <h6 class="feild-name">URL POST des données</h6>
+                                <div class="input-w100">
+                                    <input type="text" name="web-post" placeholder="/post" maxlength="50" />
+                                </div>
+                            </div>
+
+                            <div class="feild">
+                                <h6 class="feild-name">URL GET de la config</h6>
+                                <div class="input-w100">
+                                    <input type="text" name="web-config" placeholder="/config" maxlength="50" />
+                                </div>
+                            </div>
+
+                            <div class="feild">
+                                <h6 class="feild-name">Token de connexion</h6>
+                                <div class="input-w100">
+                                    <input type="text" name="web-token" placeholder="pwGGHTFaOm" maxlength="100" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="mqtt-conf">
+                            <div class="ip-port-container feild">
+                                <div style="flex-grow: 1; margin-right: 10px;">
+                                    <h6 class="feild-name">IP</h6>
+                                    <div class="input-w100">
+                                        <input type="text" name="mqtt-host" maxlength="100"
+                                            placeholder="ex : 192.168.1.20" />
+                                    </div>
+                                </div>
+                                <div class="feild" style="width: 25%;">
+                                    <h6 class="feild-name">Port</h6>
+                                    <div class="input-w100">
+                                        <input type="number" name="mqtt-port" max="65535" placeholder="ex: 1883" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="feild">
+                                <h6 class="feild-name">Nom d'utilisateur</h6>
+                                <div class="input-w100">
+                                    <input type="text" name="mqtt-user" maxlength="50"
+                                        placeholder="Entrez le nom d’utilisateur MQTT">
+                                </div>
+                            </div>
+                            <div class="feild">
+                                <h6 class="feild-name">Mot de passe</h6>
+                                <div class="input-w100">
+                                    <input type="password" name="mqtt-password" id="mqtt-password" maxlength="50"
+                                        placeholder="Entrez le mot de passe MQTT" />
+                                    <span onclick="update_mqtt_password()" class="password-eye">
+                                        <svg width="24" height="24" fill="#666666">
+                                            <use id="mqtt-pw-svg" xlink:href="#password-hide"></use>
+                                        </svg>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="feild">
+                                <h6 class="feild-name">Topic</h6>
+                                <div class="input-w100">
+                                    <input type="text" name="mqtt-topic" maxlength="101"
+                                        placeholder="ex : TICMeter/123456" />
+                                </div>
+                            </div>
+                            <div class="ha-discovery-container feild">
+                                <div class="flex-h-center">
+                                    <h6 class="feild-name">Home Assistant Discovery</h6>
+                                    <div class="tooltip ha-help">
+                                        <span class="tooltiptext">
+                                            Home Assistant Discovery permet à Home Assistant de détecter et d'intégrer
+                                            automatiquement de nouveaux appareils connectés à votre réseau domestique,
+                                            simplifiant ainsi leur configuration.
+                                        </span>
+                                        <svg width="15" height="15" viewBox="0 0 11 11" fill="none"
+                                            xmlns="http://www.w3.org/2000/svg">
+                                            <path
+                                                d="M5.0415 3.20768H5.95817V4.12435H5.0415V3.20768ZM5.0415 5.04102H5.95817V7.79102H5.0415V5.04102ZM5.49984 0.916016C2.96984 0.916016 0.916504 2.96935 0.916504 5.49935C0.916504 8.02935 2.96984 10.0827 5.49984 10.0827C8.02984 10.0827 10.0832 8.02935 10.0832 5.49935C10.0832 2.96935 8.02984 0.916016 5.49984 0.916016ZM5.49984 9.16602C3.47859 9.16602 1.83317 7.5206 1.83317 5.49935C1.83317 3.4781 3.47859 1.83268 5.49984 1.83268C7.52109 1.83268 9.1665 3.4781 9.1665 5.49935C9.1665 7.5206 7.52109 9.16602 5.49984 9.16602Z"
+                                                fill="black" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="switch">
+                                        <input type="checkbox" name="mqtt-ha-discovery" value="1" checked />
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="zigbee-conf">
+                            <p>Aucune configuration n'est nécessaire ici pour le mode Zigbee.</p>
+                            <p>Enregistrer, attendre 10 secondes et appuyer 3 secondes sur le bouton de configuration
+                                afin de lancer le mode appairage.</p>
+                        </div>
+
+                        <div id="tuya-conf">
+                            <p>Télécharger l'application Tuya Smart sur votre smartphone. Créer un compte et
+                                connectez-vous.
+                                Appuyez sur le bouton + en haut à droite.</p>
+                            <p>Cliquez sur "Scanner", le TICMeter devrait apparaître.</p>
+
+                            <button type="button" class="mini" onclick="update_tuya_advanced()"
+                                style="margin-top: 50px;">Paramètres
+                                avancés</button>
+                            <div id="tuya-advanced" class="hide">
+                                <p>Si ne vous savez pas à quoi correspondent les identifiants, merci de ne pas y
+                                    toucher.</p>
+                                <div class="feild">
+                                    <h6 class="feild-name">Identifiant de l'appareil</h6>
+                                    <div class="input-w100">
+                                        <input type="text" name="tuya-device-uuid" id="tuya-device-uuid"
+                                            maxlength="29" />
+                                    </div>
+                                </div>
+
+                                <div class="feild">
+                                    <h6 class="feild-name">Mot de passe de l'appareil</h6>
+                                    <div class="input-w100">
+                                        <input type="text" name="tuya-device-auth" id="tuya-device-auth"
+                                            maxlength="49" />
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </section>
+
+                    <section>
+                        <div class="section-header">
+                            <svg width="19" height="16" viewBox="0 0 8 16" fill="none"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path d="M0 0V8.8H2.4V16L8 6.4H4.8L8 0H0Z" fill="#666666" />
+                            </svg>
+                            <h3>Mode fonctionnement Linky</h3>
+                        </div>
+                        <div class="feild">
+                            <div class="ha-discovery-container">
+                                <div class="flex-h-center">
+                                    <h6 class="feild-name">Détection automatique</h6>
+                                </div>
+                                <div>
+                                    <input type="radio" name="linky-mode" id="linky-mode-auto" value="2">
+                                    <label class="switch">
+                                        <input type="checkbox" id="linky-tic-auto" checked />
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="flex space">
+                                <label class="linky-selector-container">
+                                    <input type="radio" name="linky-mode" value="0">
+                                    <div class="linky-selector">
+                                        <h6 class="">Mode Historique</h6>
+                                    </div>
+                                </label>
+                                <label class="linky-selector-container">
+                                    <input type="radio" name="linky-mode" value="1">
+                                    <div class="linky-selector">
+                                        <h6 class="black-text">Mode Standard</h6>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            <div class="wifi-overlay hide" id="popup">
+                <div class="popup-background" onclick="update_popup(0)">
+
+                </div>
+
+                <div class="popup-container">
+                    <div class="popup-title">
+                        <h3>Liste des réseaux Wi-Fi disponibles</h3>
+                        <button type="button" class="popup-button" onclick="update_popup(0)"><svg width="15" height="15"
+                                viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M11.2506 0.757943C10.9256 0.432943 10.4006 0.432943 10.0756 0.757943L6.00059 4.82461L1.92559 0.749609C1.60059 0.424609 1.07559 0.424609 0.750586 0.749609C0.425586 1.07461 0.425586 1.59961 0.750586 1.92461L4.82559 5.99961L0.750586 10.0746C0.425586 10.3996 0.425586 10.9246 0.750586 11.2496C1.07559 11.5746 1.60059 11.5746 1.92559 11.2496L6.00059 7.17461L10.0756 11.2496C10.4006 11.5746 10.9256 11.5746 11.2506 11.2496C11.5756 10.9246 11.5756 10.3996 11.2506 10.0746L7.17559 5.99961L11.2506 1.92461C11.5673 1.60794 11.5673 1.07461 11.2506 0.757943Z"
+                                    fill="black" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="popup-content">
+                        <div class="flex-v-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="100" height="100"
+                                id="wifi-loading-svg" fill="#666666" class="hide spin">
+                                <path
+                                    d="M13 2V4C17.39 4.54 20.5 8.53 19.96 12.92C19.5 16.56 16.64 19.43 13 19.88V21.88C18.5 21.28 22.45 16.34 21.85 10.85C21.33 6.19 17.66 2.5 13 2M11 2C9.04 2.18 7.19 2.95 5.67 4.2L7.1 5.74C8.22 4.84 9.57 4.26 11 4.06V2M4.26 5.67C3 7.19 2.24 9.04 2.05 11H4.05C4.24 9.58 4.8 8.23 5.69 7.1L4.26 5.67M2.06 13C2.26 14.96 3.03 16.81 4.27 18.33L5.69 16.9C4.81 15.77 4.24 14.42 4.06 13H2.06M7.06 18.37L5.67 19.74C7.18 21 9.04 21.79 11 22V20C9.58 19.82 8.23 19.25 7.1 18.37H7.06Z" />
+                            </svg>
+                        </div>
+                        <div id="wifi-list">
+                            <!-- <h6 class="black">Aucun réseau Wi-Fi trouvé.</h6> -->
+                        </div>
+                        <h6 id="wifi-text" class="bold"></h6>
+                        <h6>Fonctionne uniquement avec les réseaux Wi-Fi 2.4GHz.</h6>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="main-frame" id="page-tests">
+            <div class="main-title">
+                <h2>Test de la configuration</h2>
+            </div>
+            <div class="section-container">
+                <div class="test-frame-container">
+                    <div class="test-frame" id="tests-container">
+                    </div>
+                    <div class="flex-v-center hide" style="margin-top: 10px;" id="test-error-div">
+                        <h6>Erreur lors des tests de la configuration</h6>
+                        <pre id="test-error-text"></pre>
+                        <div class="flex-h-center">
+                            <button type="button" class="mini" onclick="start_tests()">Réessayer</button>
+                            <button type="button" class="mini" onclick="update_page_view(1)">Modifier</button>
+                        </div>
+                    </div>
+                    <div class="flex-v-center hide" style="margin-top: 10px;" id="test-success-div">
+                        <h6>Tous les tests de la configuration ont réussi</h6>
+                        <p>Vous pouvez maintenant enregistrer et quitter.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="main-frame" id="page-reboot">
+            <div class="main-title">
+                <h2>Redémarrage</h2>
+            </div>
+            <div class="section-container">
+                <div>
+                    <p>Redémarrage en cours...</p>
+                    <p>La configuration à été sauvegardée. Le système va redémarrer.</p>
+                    <p>Vous pouvez fermer cette page.</p>
+                </div>
+            </div>
+
+        </div>
+
+    </form>
+</body>
+
+<script src="index.js"></script>
+
+</html>

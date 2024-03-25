@@ -48,6 +48,7 @@
 #include "ota.h"
 #include "power.h"
 #include "led.h"
+#include "tests.h"
 
 #include "esp_heap_trace.h"
 #include "esp_err.h"
@@ -69,7 +70,7 @@
  Local Function Declaration
 ===============================================================================*/
 void debug_loop(void *);
-
+static void main_print_heap_diff();
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -90,6 +91,8 @@ Function Implementation
 ===============================================================================*/
 void app_main(void)
 {
+  esp_err_t err;
+
   ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
   // xTaskCreate(debug_loop, "debug_loop", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
   power_init();
@@ -122,16 +125,10 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
-  if (!linky_update())
-  {
-    ESP_LOGE(MAIN_TAG, "Cant find Linky");
-  }
-  else
-  {
-    ESP_LOGI(MAIN_TAG, "Linky found");
-  }
+  // linky_want_debug_frame = 3;
 
-  esp_pm_dump_locks(stdout);
+  // start_test(TEST_LINKY_STD);
+  // esp_pm_dump_locks(stdout);
 
   if (config_verify())
   {
@@ -139,7 +136,10 @@ void app_main(void)
     ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     while (config_verify())
     {
-      led_start_pattern(LED_NO_CONFIG);
+      if (gpio_start_push_time + 5000 < MILLIS) // want 5s after button push
+      {
+        led_start_pattern(LED_NO_CONFIG);
+      }
       vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
     if (config_values.mode == MODE_WEB)
@@ -152,12 +152,20 @@ void app_main(void)
   }
   ESP_LOGI(MAIN_TAG, "Config found. Starting...");
 
-  ESP_LOGI(MAIN_TAG, "Linky found");
+  if (!linky_update())
+  {
+    ESP_LOGE(MAIN_TAG, "Cant find Linky");
+  }
+  else
+  {
+    ESP_LOGI(MAIN_TAG, "Linky found");
+  }
   switch (config_values.mode)
   {
   case MODE_WEB:
     // connect to wifi
-    if (wifi_connect())
+    err = wifi_connect();
+    if (err == 0)
     {
       wifi_get_timestamp();               // get timestamp from ntp server
       wifi_http_get_config_from_server(); // get config from server
@@ -174,7 +182,8 @@ void app_main(void)
   case MODE_MQTT_HA:
     ESP_LOGI(MAIN_TAG, "MQTT init...");
     // connect to wifi
-    if (wifi_connect())
+    err = wifi_connect();
+    if (err == 0)
     {
       mqtt_init();          // init mqtt
       wifi_get_timestamp(); // get timestamp from ntp server
@@ -198,7 +207,8 @@ void app_main(void)
       ESP_LOGW(MAIN_TAG, "Tuya not paired.");
       break;
     }
-    if (wifi_connect())
+    err = wifi_connect();
+    if (err == 0)
     {
       tuya_init();
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -216,7 +226,6 @@ void app_main(void)
 void main_task(void *pvParameters)
 {
   ESP_LOGI(MAIN_TAG, "Starting fetch linky data task");
-  uint32_t last_heap = esp_get_free_heap_size();
   main_next_update_check = MILLIS;
 
   int32_t fetching_time = 0;
@@ -242,16 +251,8 @@ void main_task(void *pvParameters)
 
   while (1)
   {
-    ESP_LOGI(MAIN_TAG, "USB: %d", gpio_vusb_connected());
-
-    if (config_values.mode == MODE_ZIGBEE)
-    {
-      config_values.refreshRate = 30;
-    }
-
     main_sleep_time = abs(config_values.refreshRate - fetching_time);
-
-    esp_pm_dump_locks(stdout);
+    // esp_pm_dump_locks(stdout);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
     esp_pm_lock_release(main_init_lock);
     while (main_sleep_time > 0)
@@ -261,7 +262,6 @@ void main_task(void *pvParameters)
     }
 
     esp_pm_lock_acquire(main_init_lock);
-    // esp_pm_dump_locks(stdout);
     gpio_peripheral_reinit(); // TODO: enable this
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
@@ -270,23 +270,11 @@ void main_task(void *pvParameters)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed");
       led_start_pattern(LED_LINKY_FAILED);
+      continue;
     }
-
-    linky_uptime = esp_timer_get_time() / 1000000;
 
     main_send_data();
-
-    ESP_LOGI(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
-    int32_t diff = last_heap - esp_get_free_heap_size();
-    if (diff > 0)
-    {
-      ESP_LOGW(MAIN_TAG, "Heap: we lost %ld bytes", diff);
-    }
-    else
-    {
-      ESP_LOGI(MAIN_TAG, "Heap: we gained %ld bytes", -diff);
-    }
-    last_heap = esp_get_free_heap_size();
+    main_print_heap_diff();
   }
 }
 
@@ -301,6 +289,9 @@ void debug_loop(void *)
 
 esp_err_t main_send_data()
 {
+  esp_err_t err;
+  linky_uptime = esp_timer_get_time() / 1000000;
+
   switch (config_values.mode)
   {
   case MODE_WEB:
@@ -318,7 +309,8 @@ esp_err_t main_send_data()
       char json[1024] = {0};
       web_preapare_json_data(main_data_array, main_data_index, json, sizeof(json));
       ESP_LOGI(MAIN_TAG, "Sending data to server");
-      if (wifi_connect())
+      err = wifi_connect();
+      if (err == 0)
       {
         ESP_LOGI(MAIN_TAG, "POST: %s", json);
         wifi_send_to_server(json);
@@ -373,7 +365,8 @@ esp_err_t main_send_data()
     break;
   }
   case MODE_TUYA:
-    if (wifi_connect())
+    err = wifi_connect();
+    if (err == 0)
     {
       ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
       resumeTask(tuyaTaskHandle); // resume tuya task
@@ -412,4 +405,20 @@ esp_err_t main_send_data()
     break;
   }
   return ESP_OK;
+}
+
+static void main_print_heap_diff()
+{
+  static uint32_t last_heap = 0;
+  ESP_LOGI(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
+  int32_t diff = last_heap - esp_get_free_heap_size();
+  if (diff > 0)
+  {
+    ESP_LOGW(MAIN_TAG, "Heap: we lost %ld bytes", diff);
+  }
+  else
+  {
+    ESP_LOGI(MAIN_TAG, "Heap: we gained %ld bytes", -diff);
+  }
+  last_heap = esp_get_free_heap_size();
 }

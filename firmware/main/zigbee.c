@@ -22,6 +22,8 @@
 #include <string.h>
 #include "esp_check.h"
 #include "esp_pm.h"
+#include "esp_timer.h"
+#include "esp_ota_ops.h"
 
 #include "zigbee.h"
 #include "gpio.h"
@@ -65,18 +67,22 @@ static void zigbee_task(void *pvParameters);
 static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length);
 static void zigbee_send_first_datas(void *pvParameters);
 static void zigbee_print_value(char *out_buffer, void *data, linky_label_type_t type);
+static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage);
+static uint32_t zigbee_get_hex_version(const char *version);
 
 /*==============================================================================
 Public Variable
 ===============================================================================*/
 extern const char *BUILD_TIME;
-
 /*==============================================================================
  Local Variable
 ===============================================================================*/
 
 DEFINE_PSTRING(zigbee_device_name, "TICMeter");
 DEFINE_PSTRING(zigbee_device_manufacturer, "GammaTroniques");
+
+static const esp_partition_t *zigbee_ota_partition = NULL;
+static esp_ota_handle_t zigbee_ota_handle = 0;
 // DEFINE_PSTRING(zigbee_date_code, BUILD_TIME);
 
 zigbee_state_t zigbee_state = ZIGBEE_NOT_CONNECTED;
@@ -125,6 +131,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         {
             /* commissioning failed */
             ESP_LOGW(TAG, "Commissioning failed (status: %d)", err_status);
+            led_start_pattern(LED_CONNECTING_FAILED);
         }
         break;
 
@@ -199,6 +206,13 @@ static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback
     case ESP_ZB_CORE_SET_ATTR_VALUE_CB_ID:
         ret = zigbee_attribute_handler((esp_zb_zcl_set_attr_value_message_t *)message);
         break;
+    case ESP_ZB_CORE_OTA_UPGRADE_VALUE_CB_ID:
+        ret = zigbee_ota_upgrade_status_handler(*(esp_zb_zcl_ota_upgrade_value_message_t *)message);
+        break;
+    case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
+        esp_zb_zcl_cmd_default_resp_message_t *resp = (esp_zb_zcl_cmd_default_resp_message_t *)(message);
+        ESP_LOGI(TAG, "Received default response cluster: %x", resp->info.cluster);
+        break;
     default:
         ESP_LOGW(TAG, "Receive Zigbee action(0x%x) callback, message: %s", callback_id, (char *)message);
         break;
@@ -249,8 +263,15 @@ static void zigbee_task(void *pvParameters)
         .nwk_cfg.zed_cfg.keep_alive = 4000, // in seconds
     };
 
-    ESP_LOGW(TAG, "Enable sleep");
-    esp_zb_sleep_enable(true);
+    if (!gpio_vusb_connected())
+    {
+        ESP_LOGW(TAG, "Enable sleep");
+        esp_zb_sleep_enable(true);
+    }
+    else
+    {
+        ESP_LOGW(TAG, "Disable sleep: VUSB connected");
+    }
     esp_zb_init(&zigbee_cfg);
 
     ESP_LOGI(TAG, "Zigbee stack initialized");
@@ -328,6 +349,31 @@ static void zigbee_task(void *pvParameters)
     esp_zb_attribute_list_t *esp_zb_ticmeter_cluster = esp_zb_zcl_attr_list_create(TICMETER_CLUSTER_ID);
     esp_zb_cluster_add_attr(esp_zb_ticmeter_cluster, TICMETER_CLUSTER_ID, 0x0018, ESP_ZB_ZCL_ATTR_TYPE_U8, ESP_ZB_ZCL_ATTR_ACCESS_READ_ONLY, &ApplicationVersion);
 
+    // ------------------ OTA cluster ------------------
+
+    /** Create ota client cluster with attributes.
+     *  Manufacturer code, image type and file version should match with configured values for server.
+     *  If the client values do not match with configured values then it shall discard the command and
+     *  no further processing shall continue.
+     */
+    esp_zb_ota_cluster_cfg_t ota_cluster_cfg = {
+        .ota_upgrade_manufacturer = 0x1011,
+        .ota_upgrade_image_type = 0x1011,
+    };
+    ota_cluster_cfg.ota_upgrade_file_version = zigbee_get_hex_version(app_desc->version);
+    ota_cluster_cfg.ota_upgrade_downloaded_file_ver = zigbee_get_hex_version(app_desc->version);
+
+    esp_zb_attribute_list_t *esp_zb_ota_client_cluster = esp_zb_ota_cluster_create(&ota_cluster_cfg);
+    /** add client parameters to ota client cluster */
+    esp_zb_zcl_ota_upgrade_client_variable_t variable_config = {
+        .timer_query = ESP_ZB_ZCL_OTA_UPGRADE_QUERY_TIMER_COUNT_DEF,
+        .max_data_size = 64,
+    };
+    variable_config.hw_version = zigbee_get_hex_version(TICMETER_HW_VERSION);
+    ESP_LOGI(TAG, "HW version: %x", variable_config.hw_version);
+    ESP_LOGI(TAG, "File version: %lx", ota_cluster_cfg.ota_upgrade_file_version);
+    esp_zb_ota_cluster_add_attr(esp_zb_ota_client_cluster, ESP_ZB_ZCL_ATTR_OTA_UPGRADE_CLIENT_DATA_ID, (void *)&variable_config);
+
     // ------------------ Add attributes ------------------
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
@@ -391,28 +437,46 @@ static void zigbee_task(void *pvParameters)
             }
             break;
         }
+        case UINT32_TIME:
+        {
+            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            {
+                continue;
+            }
+            break;
+        }
         default:
             break;
         };
 
         char str_value[100];
+        void *ptr_value = LinkyLabelList[i].data;
+
+        if (LinkyLabelList[i].type == UINT32_TIME)
+        {
+            ptr_value = &((time_label_t *)LinkyLabelList[i].data)->value;
+        }
+
         switch (LinkyLabelList[i].type)
         {
         case UINT8:
-            sprintf(str_value, "%u", *(uint8_t *)LinkyLabelList[i].data);
+            sprintf(str_value, "%u", *(uint8_t *)ptr_value);
             break;
         case UINT16:
-            sprintf(str_value, "%u", *(uint16_t *)LinkyLabelList[i].data);
+            sprintf(str_value, "%u", *(uint16_t *)ptr_value);
             break;
         case UINT32:
-            sprintf(str_value, "%lu", *(uint32_t *)LinkyLabelList[i].data);
+            sprintf(str_value, "%lu", *(uint32_t *)ptr_value);
             break;
         case UINT64:
-            sprintf(str_value, "%llu", *(uint64_t *)LinkyLabelList[i].data);
+            sprintf(str_value, "%llu", *(uint64_t *)ptr_value);
+            break;
+        case UINT32_TIME:
+            sprintf(str_value, "%lu", *(uint32_t *)ptr_value);
             break;
         case STRING:
-            sprintf(str_value, "%s", (char *)LinkyLabelList[i].data);
-            char *str = (char *)LinkyLabelList[i].data;
+            sprintf(str_value, "%s", (char *)ptr_value);
+            char *str = (char *)ptr_value;
             char temp[100];
             memcpy(temp + 1, str, LinkyLabelList[i].size + 1);
             temp[0] = strlen(temp + 1);
@@ -436,17 +500,17 @@ static void zigbee_task(void *pvParameters)
         {
         case ESP_ZB_ZCL_CLUSTER_ID_ELECTRICAL_MEASUREMENT:
         {
-            esp_zb_electrical_meas_cluster_add_attr(esp_zb_electrical_meas_cluster, LinkyLabelList[i].attributeID, LinkyLabelList[i].data);
+            esp_zb_electrical_meas_cluster_add_attr(esp_zb_electrical_meas_cluster, LinkyLabelList[i].attributeID, ptr_value);
             break;
         }
         case ESP_ZB_ZCL_CLUSTER_ID_METERING:
         {
-            esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, LinkyLabelList[i].zb_access, LinkyLabelList[i].data);
+            esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, LinkyLabelList[i].zb_access, ptr_value);
             break;
         }
         case TICMETER_CLUSTER_ID:
         {
-            esp_zb_custom_cluster_add_custom_attr(esp_zb_ticmeter_cluster, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, LinkyLabelList[i].zb_access, LinkyLabelList[i].data);
+            esp_zb_custom_cluster_add_custom_attr(esp_zb_ticmeter_cluster, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, LinkyLabelList[i].zb_access, ptr_value);
             break;
         }
         default:
@@ -461,11 +525,19 @@ static void zigbee_task(void *pvParameters)
     esp_zb_cluster_list_add_electrical_meas_cluster(esp_zb_cluster_list, esp_zb_electrical_meas_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_add_metering_cluster(esp_zb_cluster_list, esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
     esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_ticmeter_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
+    esp_zb_cluster_list_add_ota_cluster(esp_zb_cluster_list, esp_zb_ota_client_cluster, ESP_ZB_ZCL_CLUSTER_CLIENT_ROLE);
+
     // esp_zb_cluster_list_add_custom_cluster(esp_zb_cluster_list, esp_zb_meter_custom_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);
 
     //------------------ Endpoint list ------------------
     esp_zb_ep_list_t *esp_zb_ep_list = esp_zb_ep_list_create();
-    esp_zb_ep_list_add_ep(esp_zb_ep_list, esp_zb_cluster_list, LINKY_TIC_ENDPOINT, ESP_ZB_AF_HA_PROFILE_ID, ESP_ZB_HA_METER_INTERFACE_DEVICE_ID);
+    esp_zb_endpoint_config_t endpoint_config = {
+        .endpoint = LINKY_TIC_ENDPOINT,
+        .app_profile_id = ESP_ZB_AF_HA_PROFILE_ID,
+        .app_device_id = ESP_ZB_HA_METER_INTERFACE_DEVICE_ID,
+        .app_device_version = zigbee_get_hex_version(app_desc->version),
+    };
+    esp_zb_ep_list_add_ep(esp_zb_ep_list, esp_zb_cluster_list, endpoint_config);
     esp_zb_device_register(esp_zb_ep_list);
 
     //------------------ Callbacks ------------------
@@ -508,7 +580,6 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
 char string_buffer[100];
 
 uint64_t temp = 150;
-uint64_t zigbee_summation_delivered = 0;
 uint8_t zigbee_send(linky_data_t *data)
 {
     if (config_values.zigbee.state != ZIGBEE_PAIRED)
@@ -521,9 +592,10 @@ uint8_t zigbee_send(linky_data_t *data)
     //     ESP_LOGE(TAG, "Zigbee not connected");
     //     return 1;
     // }
-    zigbee_summation_delivered = 0;
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
+        char str_value[102];
+        void *ptr_value = LinkyLabelList[i].data;
         ESP_LOGD(TAG, "check %s %d", LinkyLabelList[i].label, i);
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
         {
@@ -535,12 +607,6 @@ uint8_t zigbee_send(linky_data_t *data)
         }
         if (LinkyLabelList[i].clusterID == 0 || LinkyLabelList[i].zb_access == 0)
         {
-            continue;
-        }
-
-        if (LinkyLabelList[i].clusterID == TICMETER_CLUSTER_ID && LinkyLabelList[i].mode == MODE_STD) // TODO:
-        {
-            ESP_LOGW(TAG, "Skip %s cluster", LinkyLabelList[i].label);
             continue;
         }
 
@@ -601,19 +667,28 @@ uint8_t zigbee_send(linky_data_t *data)
             // ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
             break;
         }
+        case UINT32_TIME:
+        {
+            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            {
+                continue;
+            }
+            ptr_value = &((time_label_t *)LinkyLabelList[i].data)->value;
+            if (LinkyLabelList[i].zb_type == ESP_ZB_ZCL_ATTR_TYPE_U64)
+            {
+                // pass only timestamp as uint64_t
+                ptr_value = &((time_label_t *)LinkyLabelList[i].data)->time;
+            }
+            break;
+        }
         default:
             break;
         };
 
-        if (LinkyLabelList[i].device_class == ENERGY)
-        {
-            zigbee_summation_delivered += *(uint32_t *)LinkyLabelList[i].data;
-        }
-
         ESP_LOGD(TAG, "Send %s", LinkyLabelList[i].label);
 
         esp_zb_zcl_status_t status = ESP_ZB_ZCL_STATUS_SUCCESS;
-        char str_value[102];
+
         if (LinkyLabelList[i].zb_access == ESP_ZB_ZCL_ATTR_ACCESS_REPORTING)
         {
             zigbee_print_value(str_value, LinkyLabelList[i].data, LinkyLabelList[i].type);
@@ -657,18 +732,13 @@ uint8_t zigbee_send(linky_data_t *data)
                 continue;
                 break;
             }
-            zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, size);
+            zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, ptr_value, size);
         }
         else
         {
-            ESP_LOGI(TAG, "Set attribute cluster: Status: 0x%X 0x%x, attribute: 0x%x, name: %s, value: %lu", status, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
-            status = esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, LinkyLabelList[i].data, false);
+            ESP_LOGI(TAG, "Set attribute cluster: Status: 0x%X 0x%x, attribute: 0x%x, name: %s, value: %lu", status, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint32_t *)ptr_value);
+            status = esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, ptr_value, false);
         }
-    }
-
-    if (zigbee_summation_delivered != 0)
-    {
-        zigbee_report_attribute(LINKY_TIC_ENDPOINT, ESP_ZB_ZCL_CLUSTER_ID_METERING, ESP_ZB_ZCL_ATTR_METERING_CURRENT_SUMMATION_DELIVERED_ID, &zigbee_summation_delivered, sizeof(zigbee_summation_delivered));
     }
 
     led_start_pattern(LED_SEND_OK);
@@ -746,4 +816,102 @@ static void zigbee_print_value(char *out_buffer, void *data, linky_label_type_t 
     default:
         break;
     };
+}
+
+static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage)
+{
+    static uint32_t total_size = 0;
+    static uint32_t offset = 0;
+    static int64_t start_time = 0;
+    esp_err_t ret = ESP_OK;
+    if (messsage.info.status == ESP_ZB_ZCL_STATUS_SUCCESS)
+    {
+        switch (messsage.upgrade_status)
+        {
+        case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_START:
+            ESP_LOGI(TAG, "-- OTA upgrade start");
+            start_time = esp_timer_get_time();
+            zigbee_ota_partition = esp_ota_get_next_update_partition(NULL);
+            assert(zigbee_ota_partition);
+            ret = esp_ota_begin(zigbee_ota_partition, OTA_WITH_SEQUENTIAL_WRITES, &zigbee_ota_handle);
+            ESP_RETURN_ON_ERROR(ret, TAG, "Failed to begin OTA partition, status: %s", esp_err_to_name(ret));
+            break;
+        case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_RECEIVE:
+            total_size = messsage.ota_header.image_size;
+            offset += messsage.payload_size;
+            ESP_LOGI(TAG, "-- OTA Client receives data: progress [%ld/%ld]", offset, total_size);
+            if (messsage.payload_size && messsage.payload)
+            {
+                ret = esp_ota_write(zigbee_ota_handle, (const void *)messsage.payload, messsage.payload_size);
+                ESP_RETURN_ON_ERROR(ret, TAG, "Failed to write OTA data to partition, status: %s", esp_err_to_name(ret));
+            }
+            break;
+        case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_APPLY:
+            ESP_LOGI(TAG, "-- OTA upgrade apply");
+            break;
+        case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_CHECK:
+            ret = offset == total_size ? ESP_OK : ESP_FAIL;
+            ESP_LOGI(TAG, "-- OTA upgrade check status: %s", esp_err_to_name(ret));
+            break;
+        case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_FINISH:
+            ESP_LOGI(TAG, "-- OTA Finish");
+            ESP_LOGI(TAG,
+                     "-- OTA Information: version: 0x%lx, manufactor code: 0x%x, image type: 0x%x, total size: %ld bytes, cost time: %lld ms,",
+                     messsage.ota_header.file_version, messsage.ota_header.manufacturer_code, messsage.ota_header.image_type,
+                     messsage.ota_header.image_size, (esp_timer_get_time() - start_time) / 1000);
+            ret = esp_ota_end(zigbee_ota_handle);
+            ESP_RETURN_ON_ERROR(ret, TAG, "Failed to end OTA partition, status: %s", esp_err_to_name(ret));
+            ret = esp_ota_set_boot_partition(zigbee_ota_partition);
+            ESP_RETURN_ON_ERROR(ret, TAG, "Failed to set OTA boot partition, status: %s", esp_err_to_name(ret));
+            ESP_LOGW(TAG, "Prepare to restart system");
+            esp_restart();
+            break;
+        default:
+            ESP_LOGI(TAG, "OTA status: %d", messsage.upgrade_status);
+            break;
+        }
+    }
+    return ret;
+}
+
+static uint32_t zigbee_get_hex_version(const char *version)
+{
+    if (!version)
+    {
+        ESP_LOGE(TAG, "Invalid version: NULL");
+        return UINT32_MAX;
+    }
+
+    if (version[0] == 'v' || version[0] == 'V')
+    {
+        version++;
+    }
+    char version_buf[10];
+    strncpy(version_buf, version, sizeof(version_buf));
+    for (int i = 0; i < sizeof(version_buf); i++) // remove the -xxx part of the version
+    {
+        if (version_buf[i] == '-')
+        {
+            version_buf[i] = '\0';
+        }
+    }
+
+    // check if the version is in the format "x.y.z", if yes we convert 3.2.1 to 0x030201
+    uint32_t hex_version = 0;
+    uint8_t major = 0, minor = 0, revision = 0;
+    if (sscanf(version, "%hhu.%hhu.%hhu", &major, &minor, &revision) == 3)
+    {
+        hex_version = (major << 16) | (minor << 8) | revision;
+    }
+    else if (sscanf(version, "%hhu.%hhu", &major, &minor) == 2)
+    {
+        hex_version = (major << 8) | minor;
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Invalid version format: %s", version);
+        return UINT32_MAX;
+    }
+
+    return hex_version;
 }

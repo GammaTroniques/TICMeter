@@ -36,7 +36,7 @@
 /*==============================================================================
  Public Defines
 ==============================================================================*/
-#define WIFI_CONNECT_TIMEOUT 10000
+#define WIFI_CONNECT_TIMEOUT 20000
 /*==============================================================================
  Public Macro
 ==============================================================================*/
@@ -47,15 +47,18 @@
 typedef enum
 {
     WIFI_DISCONNECTED,
+    WIFI_STARTED,
     WIFI_CONNECTING,
     WIFI_CONNECTED,
-    WIFI_FAILED
+    WIFI_FAILED,
 } wifi_state_t;
 
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
 extern wifi_state_t wifi_state;
+extern wifi_ap_record_t wifi_ap_list[20];
+extern esp_netif_ip_info_t wifi_current_ip;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
@@ -65,9 +68,9 @@ extern uint8_t wifi_init();
 /**
  * @brief connect to wifi
  *
- * @return 1 if connected, 0 if not
+ * @return 0 if success, else esp_err_t
  */
-extern uint8_t wifi_connect();
+extern esp_err_t wifi_connect();
 
 /**
  * @brief disconnect from wifi
@@ -102,5 +105,9 @@ extern void wifi_start_captive_portal();
  * @param config
  */
 extern void wifi_http_get_config_from_server();
+
+extern void wifi_scan(uint16_t *ap_count);
+
+extern esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time);
 
 #endif /* WIFI_H */

@@ -1,15 +1,29 @@
 #include "http.h"
+#include "wifi.h"
 #include "config.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include "cJSON.h"
 #include "tuya.h"
+#include "mqtt.h"
 
 static const char *TAG = "HTTP"; // TAG for debug
 #define INDEX_HTML_PATH "/spiffs/index.html"
 
 #define LOCAL_IP "http://4.3.2.1"
+
+typedef enum
+{
+    WIFI_CONNECT,
+    WIFI_CHECK,
+    WIFI_PING,
+    MQTT_CONNECT,
+    MQTT_PUBLISH,
+    NO_TEST = 0xFF
+} test_t;
+
+static test_t current_test = NO_TEST;
 
 void reboot_task(void *pvParameter)
 {
@@ -115,6 +129,12 @@ esp_err_t send_web_page(httpd_req_t *req)
     {
         httpd_resp_set_type(req, "image/x-icon");
     }
+    else if (strcmp(ext, ".pem") == 0)
+    {
+        httpd_resp_set_status(req, "403 Forbidden");
+        httpd_resp_send(req, "Forbidden", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+    }
     else
     {
         httpd_resp_set_type(req, "text/html");
@@ -192,14 +212,22 @@ esp_err_t get_req_200_handler(httpd_req_t *req)
 
 esp_err_t save_config_handler(httpd_req_t *req)
 {
-    char buf[500];
+    ESP_LOGI(TAG, "URL: %s, len: %d", req->uri, req->content_len);
+    char *buf = (char *)malloc(req->content_len + 1);
+    if (buf == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to allocate memory for the request");
+        httpd_resp_set_status(req, "500 Internal Server Error");
+        httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
     int ret, remaining = req->content_len;
 
     while (remaining > 0)
     {
         /* Read the data for the request */
         if ((ret = httpd_req_recv(req, buf,
-                                  MIN(remaining, sizeof(buf)))) <= 0)
+                                  MIN(remaining, req->content_len + 1))) <= 0)
         {
             if (ret == HTTPD_SOCK_ERR_TIMEOUT)
             {
@@ -213,14 +241,115 @@ esp_err_t save_config_handler(httpd_req_t *req)
     // Null terminate the buffer
     buf[req->content_len] = 0;
 
-    char decoded[500];
-    urldecode(decoded, buf);
+    ESP_LOGI(TAG, "Received data: %s", buf);
 
-    /* Log data received */
+    cJSON *jsonObject = cJSON_Parse(buf);
+    if (jsonObject == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to parse JSON");
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
+
+    cJSON *item = cJSON_GetObjectItem(jsonObject, "wifi-ssid");
+    if (item != NULL)
+    {
+        strncpy(config_values.ssid, item->valuestring, sizeof(config_values.ssid));
+        ESP_LOGI(TAG, "SSID: %s", config_values.ssid);
+    }
+    item = cJSON_GetObjectItem(jsonObject, "wifi-password");
+    if (item != NULL)
+    {
+        strncpy(config_values.password, item->valuestring, sizeof(config_values.password));
+        ESP_LOGI(TAG, "Password: %s", config_values.password);
+    }
+    item = cJSON_GetObjectItem(jsonObject, "linky-mode");
+    if (item != NULL)
+    {
+        config_values.linkyMode = atoi(item->valuestring);
+    }
+    item = cJSON_GetObjectItem(jsonObject, "server-mode");
+    if (item != NULL)
+    {
+        config_values.mode = atoi(item->valuestring);
+        ESP_LOGI(TAG, "Server mode: %d", config_values.mode);
+    }
+    item = cJSON_GetObjectItem(jsonObject, "web-url");
+    if (item != NULL)
+    {
+        strncpy(config_values.web.host, item->valuestring, sizeof(config_values.web.host));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "web-token");
+    if (item != NULL)
+    {
+        strncpy(config_values.web.token, item->valuestring, sizeof(config_values.web.token));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "web-post");
+    if (item != NULL)
+    {
+        strncpy(config_values.web.postUrl, item->valuestring, sizeof(config_values.web.postUrl));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "web-config");
+    if (item != NULL)
+    {
+        strncpy(config_values.web.configUrl, item->valuestring, sizeof(config_values.web.configUrl));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "mqtt-host");
+    if (item != NULL)
+    {
+        strncpy(config_values.mqtt.host, item->valuestring, sizeof(config_values.mqtt.host));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "mqtt-port");
+    if (item != NULL)
+    {
+        config_values.mqtt.port = atoi(item->valuestring);
+    }
+    item = cJSON_GetObjectItem(jsonObject, "mqtt-user");
+    if (item != NULL)
+    {
+        strncpy(config_values.mqtt.username, item->valuestring, sizeof(config_values.mqtt.username));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "mqtt-password");
+    if (item != NULL)
+    {
+        strncpy(config_values.mqtt.password, item->valuestring, sizeof(config_values.mqtt.password));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "mqtt-topic");
+    if (item != NULL)
+    {
+        strncpy(config_values.mqtt.topic, item->valuestring, sizeof(config_values.mqtt.topic));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "tuya-device-uuid");
+    if (item != NULL)
+    {
+        strncpy(config_values.tuya.device_uuid, item->valuestring, sizeof(config_values.tuya.device_uuid));
+    }
+    item = cJSON_GetObjectItem(jsonObject, "tuya-device-auth");
+    if (item != NULL)
+    {
+        strncpy(config_values.tuya.device_auth, item->valuestring, sizeof(config_values.tuya.device_auth));
+    }
+
+    cJSON_Delete(jsonObject);
+    free(buf);
+
+    if (config_values.mode == MODE_TUYA)
+    {
+        config_rw();
+    }
+
+    config_write();
+
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+
+    /*char decoded[500];
+    urldecode(decoded, buf);
     ESP_LOGI(TAG, "=========== RECEIVED DATA ==========");
     ESP_LOGI(TAG, "%s", decoded);
     ESP_LOGI(TAG, "====================================");
-
     // Parse the POST parameters
     char ssid[100] = {0};
     char password[100] = {0};
@@ -306,20 +435,6 @@ esp_err_t save_config_handler(httpd_req_t *req)
         }
         key = strtok(NULL, "&");
     }
-
-    // print the parameters
-    // ESP_LOGI(TAG, "ssid: %s", ssid);
-    // ESP_LOGI(TAG, "password: %s", password);
-    // ESP_LOGI(TAG, "server_mode: %d", server_mode);
-    // ESP_LOGI(TAG, "web_url: %s", web_url);
-    // ESP_LOGI(TAG, "web_token: %s", web_token);
-    // ESP_LOGI(TAG, "linky_mode: %s", linky_mode);
-    // ESP_LOGI(TAG, "mqtt_host: %s", mqtt_host);
-    // ESP_LOGI(TAG, "mqtt_port: %d", mqtt_port);
-    // ESP_LOGI(TAG, "mqtt_user: %s", mqtt_user);
-    // ESP_LOGI(TAG, "mqtt_password: %s", mqtt_password);
-    // ESP_LOGI(TAG, "mqtt_topic: %s", mqtt_topic);
-
     // save the parameters
     strncpy(config_values.ssid, ssid, sizeof(config_values.ssid));
     strncpy(config_values.password, password, sizeof(config_values.password));
@@ -346,16 +461,19 @@ esp_err_t save_config_handler(httpd_req_t *req)
     strncpy(config_values.mqtt.password, mqtt_password, sizeof(config_values.mqtt.password));
     strncpy(config_values.mqtt.topic, mqtt_topic, sizeof(config_values.mqtt.topic));
 
-    //  redirect to the reboot page
-    httpd_resp_set_status(req, "302 Temporary Redirect");
-    httpd_resp_set_hdr(req, "Location", "/reboot.html");
-    httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
+    // //  redirect to the reboot page
+    // httpd_resp_set_status(req, "302 Temporary Redirect");
+    // httpd_resp_set_hdr(req, "Location", "/reboot.html");
+    // httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
 
     config_rw();
     config_write();
 
     // reboot the device
-    xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL);
+    // xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL)
+    ;*/
     return ESP_OK;
 }
 
@@ -363,7 +481,7 @@ esp_err_t get_config_handler(httpd_req_t *req)
 {
     cJSON *jsonObject = cJSON_CreateObject();
     cJSON_AddStringToObject(jsonObject, "wifi-ssid", config_values.ssid);
-    // cJSON_AddStringToObject(jsonObject, "wifi-password", config_values.password);
+    cJSON_AddNumberToObject(jsonObject, "wifi-password", strnlen(config_values.password, sizeof(config_values.password)));
     cJSON_AddNumberToObject(jsonObject, "linky-mode", config_values.mode);
     cJSON_AddNumberToObject(jsonObject, "server-mode", config_values.mode);
     cJSON_AddStringToObject(jsonObject, "web-url", config_values.web.host);
@@ -373,16 +491,229 @@ esp_err_t get_config_handler(httpd_req_t *req)
     cJSON_AddStringToObject(jsonObject, "mqtt-host", config_values.mqtt.host);
     cJSON_AddNumberToObject(jsonObject, "mqtt-port", config_values.mqtt.port);
     cJSON_AddStringToObject(jsonObject, "mqtt-user", config_values.mqtt.username);
-    cJSON_AddStringToObject(jsonObject, "mqtt-password", config_values.mqtt.password);
+    cJSON_AddNumberToObject(jsonObject, "mqtt-password", strnlen(config_values.mqtt.password, sizeof(config_values.mqtt.password)));
     cJSON_AddStringToObject(jsonObject, "mqtt-topic", config_values.mqtt.topic);
     cJSON_AddStringToObject(jsonObject, "tuya-device-uuid", config_values.tuya.device_uuid);
-    cJSON_AddStringToObject(jsonObject, "tuya-device-auth", config_values.tuya.device_auth);
+    cJSON_AddNumberToObject(jsonObject, "tuya-device-auth", strnlen(config_values.tuya.device_auth, sizeof(config_values.tuya.device_auth)));
 
     char *jsonString = cJSON_PrintUnformatted(jsonObject);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, jsonString, strlen(jsonString));
     free(jsonString);
     cJSON_Delete(jsonObject);
+    return ESP_OK;
+}
+
+esp_err_t wifi_scan_handler(httpd_req_t *req)
+{
+    uint16_t ap_num = 0;
+    wifi_scan(&ap_num);
+    cJSON *jsonObject = cJSON_CreateObject();
+    cJSON *jsonArray = cJSON_CreateArray();
+    for (int i = 0; i < ap_num; i++)
+    {
+        cJSON *item = cJSON_CreateObject();
+        cJSON_AddStringToObject(item, "ssid", (const char *)wifi_ap_list[i].ssid);
+        cJSON_AddNumberToObject(item, "rssi", wifi_ap_list[i].rssi);
+        cJSON_AddNumberToObject(item, "channel", wifi_ap_list[i].primary);
+        cJSON_AddNumberToObject(item, "auth", wifi_ap_list[i].authmode);
+        cJSON_AddItemToArray(jsonArray, item);
+    }
+    cJSON_AddItemToObject(jsonObject, "ap", jsonArray);
+    char *jsonString = cJSON_PrintUnformatted(jsonObject);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, jsonString, strlen(jsonString));
+    free(jsonString);
+    cJSON_Delete(jsonObject);
+    return ESP_OK;
+}
+
+const char *str_wifi_error[] = {
+    [ESP_ERR_WIFI_MODE] = "Merci de remplir le champ SSID et Mot de passe",
+    [ESP_ERR_WIFI_SSID] = "SSID incorrect",
+    [ESP_ERR_WIFI_PASSWORD] = "Mot de passe incorrect",
+};
+
+esp_err_t test_start_handler(httpd_req_t *req)
+{
+    static esp_err_t last_wifi_connect = -2;
+    char buf[100];
+    esp_err_t err = httpd_req_get_url_query_str(req, buf, sizeof(buf));
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to get the query string");
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
+    char value[10];
+    err = httpd_query_key_value(buf, "id", value, sizeof(value));
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to get the id");
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+    }
+    uint32_t id = atoi(value);
+    switch (id)
+    {
+    case WIFI_CONNECT:
+        last_wifi_connect = -2;
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        wifi_disconnect();
+        last_wifi_connect = wifi_connect();
+        ESP_LOGI(TAG, "TEST WIFI_CONNECT: %d", last_wifi_connect);
+
+        return ESP_OK;
+        break;
+    case WIFI_CHECK:
+
+        if (last_wifi_connect == -2)
+        {
+            // pending
+            httpd_resp_set_status(req, "202 Accepted");
+            httpd_resp_send(req, "Accepted", HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+        if (last_wifi_connect != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Failed to connect to wifi");
+
+            switch (last_wifi_connect)
+            {
+            case ESP_ERR_WIFI_MODE:
+                sprintf(buf, "Merci de remplir le champ SSID et Mot de passe");
+                break;
+            case ESP_ERR_WIFI_SSID:
+                sprintf(buf, "Réseau non trouvé, vérifiez le SSID");
+                break;
+            case ESP_ERR_WIFI_PASSWORD:
+                sprintf(buf, "Mot de passe incorrect");
+                break;
+            default:
+                sprintf(buf, "%s (0x%x)", esp_err_to_name(last_wifi_connect), last_wifi_connect);
+                break;
+            }
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+        break;
+    case WIFI_PING:
+    {
+        ip_addr_t ip = {
+            .type = IPADDR_TYPE_V4,
+            .u_addr.ip4.addr = wifi_current_ip.gw.addr,
+        };
+        uint32_t ping;
+        err = wifi_ping(ip, &ping);
+        if (err != ESP_OK)
+        {
+            sprintf(buf, "Ping %s failed.", ip4addr_ntoa(&ip.u_addr.ip4));
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+        return ESP_OK;
+        break;
+    }
+    break;
+    case MQTT_CONNECT:
+    {
+        esp_mqtt_error_type_t type;
+        esp_mqtt_connect_return_code_t return_code;
+
+        err = mqtt_test(&type, &return_code);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "MQTT error: type: %d, return_code: %d", type, return_code);
+            switch (return_code)
+            {
+            case MQTT_CONNECTION_REFUSE_PROTOCOL:
+                sprintf(buf, "Connexion refusée, mauvais protocole");
+                break;
+            case MQTT_CONNECTION_REFUSE_SERVER_UNAVAILABLE:
+                sprintf(buf, "Connexion refusée, serveur indisponible");
+                break;
+            case MQTT_CONNECTION_REFUSE_BAD_USERNAME:
+                sprintf(buf, "Connexion refusée, mauvais nom d'utilisateur ou mot de passe");
+                break;
+            case MQTT_CONNECTION_REFUSE_NOT_AUTHORIZED:
+                sprintf(buf, "Connexion refusée, non autorisé");
+                break;
+            default:
+                sprintf(buf, "Connexion refusée, raison inconnue");
+                break;
+            }
+            httpd_resp_set_type(req, "text/plain; charset=utf-8");
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+
+        break;
+    }
+    case MQTT_PUBLISH:
+        err = mqtt_prepare_publish(&linky_data);
+        if (err == 0)
+        {
+            ESP_LOGE(TAG, "Failed to prepare message");
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+
+        return ESP_OK;
+
+        break;
+    default:
+        ESP_LOGE(TAG, "Unknown test id");
+        httpd_resp_set_status(req, "400 Bad Request");
+        httpd_resp_send(req, "Bad Request", HTTPD_RESP_USE_STRLEN);
+        return ESP_FAIL;
+        break;
+    }
+    current_test = id;
+
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+
+    return ESP_OK;
+}
+
+esp_err_t test_status_handler(httpd_req_t *req)
+{
+
+    ESP_LOGI(TAG, "URL: %s", req->uri);
+    // response ok
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+
+    return ESP_OK;
+}
+
+esp_err_t get_reboot_handler(httpd_req_t *req)
+{
+    // response ok
+    httpd_resp_set_status(req, "200 OK");
+    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+
+    xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL);
     return ESP_OK;
 }
 
@@ -397,8 +728,11 @@ struct request_item_t
 struct request_item_t requests[] = {
     {"/gen_204",                HTTP_GET,   get_req_204_handler},
     {"/generate_204",           HTTP_GET,   get_req_204_handler},
-    {"/save-config",            HTTP_POST,  save_config_handler},
+    {"/config",                 HTTP_POST,  save_config_handler},
     {"/config",                 HTTP_GET,   get_config_handler},
+    {"/test-start",             HTTP_GET,   test_start_handler},
+    {"/reboot",                 HTTP_GET,   get_reboot_handler},
+    {"/wifi-scan",              HTTP_GET,   wifi_scan_handler},
     {"/wpad.dat",               HTTP_GET,   get_req_404_handler},
     {"/chat",                   HTTP_GET,   get_req_404_handler},
     {"/connecttest.txt",        HTTP_GET,   get_req_logout_handler},

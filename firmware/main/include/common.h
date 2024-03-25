@@ -8,5 +8,5 @@ void deleteTask(TaskHandle_t task);
 void suspendTask(TaskHandle_t task);
 void resumeTask(TaskHandle_t task);
 void hard_restart();
-
+void remove_char(char *str, char c);
 #endif

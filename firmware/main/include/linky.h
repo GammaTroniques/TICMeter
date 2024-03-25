@@ -39,8 +39,8 @@
 typedef struct
 {
     uint32_t value;
-    time_t timestamp;
-} TimeLabel;
+    time_t time;
+} time_label_t;
 
 // clang-format off
 typedef struct
@@ -50,7 +50,9 @@ typedef struct
     char ADCO[14];       //    12                     Adresse du compteur 
     char OPTARIF[6];     //     4                     Option tarifaire choisie
     uint32_t ISOUSC;     //     2         A           Intensité souscrite 
+    uint32_t PREF;       //     2         kVA         Puissance max contrat --> Value computes with ISOUSC (ISOUSC * 200) 
 
+    uint64_t TOTAL;      //     9         Wh          Index total
     uint64_t BASE;       //     9         Wh          Index option Base 
     //----------------------Index option Heures Creuses ----------------------
     uint64_t HCHC;       //     9         Wh          Index option Heures Creuses: Heures Creuses
@@ -59,7 +61,7 @@ typedef struct
     //---------------------- Index option EJP  (Effacement des Jours de Pointe) --> 22 jours par an prix du kWh plus cher
     uint64_t EJPHN;      //     9         Wh          Heures Normales
     uint64_t EJPHPM;     //     9         Wh          Heures de Pointe Mobile
-    uint64_t PEJP;       //     2         minutes     Préavis Début EJP (30 min)
+    uint16_t PEJP;       //     2         minutes     Préavis Début EJP (30 min)
 
     //---------------------- Index option Tempo ----------------------
     uint64_t BBRHCJB;    //     9         Wh          Heures Creuses Jours Bleus
@@ -101,7 +103,7 @@ typedef struct
     //--------------------------------------------------------------------------------------
     char ADSC[14];       //     12                   Adresse Secondaire du Compteur
     char VTIC[4];        //     2                    Version de la TIC
-    TimeLabel DATE;      //     0                    Date du jour
+    time_label_t DATE;      //     0                    Date du jour
     char NGTF[18];       //     16                   Nom du calendrier tarifaire fournisseur
     char LTARF[18];      //     16                   Libellé du calendrier tarifaire
     
@@ -137,7 +139,7 @@ typedef struct
     uint16_t URMS2;      //      3         V          Tension efficace, phase 2
     uint16_t URMS3;      //      3         V          Tension efficace, phase 3
 
-    uint8_t PREF;        //      2         kVA        Puissance app. de référence (PREF) 
+    uint16_t PREF;        //      2         kVA        Puissance app. de référence (PREF) 
     uint8_t PCOUP;       //      2         kVA        Puissance app. de coupure (PCOUP)
 
     uint32_t SINSTS;     //      5         VA         Puissance apparente soutirée instantanée
@@ -145,46 +147,47 @@ typedef struct
     uint32_t SINSTS2;    //      5         VA         Puissance apparente soutirée instantanée, phase 2
     uint32_t SINSTS3;    //      5         VA         Puissance apparente soutirée instantanée, phase 3
 
-    TimeLabel SMAXSN;    //      5         VA         Puissance app. max. soutirée n avec date et heure
-    TimeLabel SMAXSN1;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 1
-    TimeLabel SMAXSN2;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 2
-    TimeLabel SMAXSN3;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 3
+    time_label_t SMAXSN;    //      5         VA         Puissance app. max. soutirée n avec date et heure
+    time_label_t SMAXSN1;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 1
+    time_label_t SMAXSN2;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 2
+    time_label_t SMAXSN3;   //      5         VA         Puissance app. max. soutirée n avec date et heure, phase 3
 
-    TimeLabel SMAXSN_1;  //      5         VA         Puissance app max. soutirée n-1 
-    TimeLabel SMAXSN1_1; //      5         VA         Puissance app max. soutirée n-1, phase 1
-    TimeLabel SMAXSN2_1; //      5         VA         Puissance app max. soutirée n-1, phase 2
-    TimeLabel SMAXSN3_1; //      5         VA         Puissance app max. soutirée n-1, phase 3
+    time_label_t SMAXSN_1;  //      5         VA         Puissance app max. soutirée n-1 
+    time_label_t SMAXSN1_1; //      5         VA         Puissance app max. soutirée n-1, phase 1
+    time_label_t SMAXSN2_1; //      5         VA         Puissance app max. soutirée n-1, phase 2
+    time_label_t SMAXSN3_1; //      5         VA         Puissance app max. soutirée n-1, phase 3
 
     uint32_t SINSTI;     //      5         VA         Puissance app. Instantanée injectée
     
-    TimeLabel SMAXIN;    //      5         VA         Puissance app. max. injectée n avec date et heure
-    TimeLabel SMAXIN_1;  //      5         VA         Puissance app. max. injectée n-1 avec date et heure
+    time_label_t SMAXIN;    //      5         VA         Puissance app. max. injectée n avec date et heure
+    time_label_t SMAXIN_1;  //      5         VA         Puissance app. max. injectée n-1 avec date et heure
 
-    TimeLabel CCASN;     //      5         VA         Point n de la courbe de charge active soutirée
-    TimeLabel CCASN_1;   //      5         VA         Point n-1 de la courbe de charge active soutirée
-    TimeLabel CCAIN;     //      5         VA         Point n de la courbe de charge active injectée
-    TimeLabel CCAIN_1;   //      5         VA         Point n-1 de la courbe de charge active injectée
+    time_label_t CCASN;     //      5         VA         Point n de la courbe de charge active soutirée
+    time_label_t CCASN_1;   //      5         VA         Point n-1 de la courbe de charge active soutirée
+    time_label_t CCAIN;     //      5         VA         Point n de la courbe de charge active injectée
+    time_label_t CCAIN_1;   //      5         VA         Point n-1 de la courbe de charge active injectée
 
-    TimeLabel UMOY1;     //      3         V          Tension moyenne, phase 1
-    TimeLabel UMOY2;     //      3         V          Tension moyenne, phase 2
-    TimeLabel UMOY3;     //      3         V          Tension moyenne, phase 3
+    time_label_t UMOY1;     //      3         V          Tension moyenne, phase 1
+    time_label_t UMOY2;     //      3         V          Tension moyenne, phase 2
+    time_label_t UMOY3;     //      3         V          Tension moyenne, phase 3
 
     char STGE[10];        //      8         -          Registre de Statuts
+    char DEMAIN[6];      //      4         -          Couleur du lendemain
 
-    TimeLabel DPM1;      //      2         -          Début Pointe Mobile 1
-    TimeLabel FPM1;      //      2         -          Fin Pointe Mobile 1
-    TimeLabel DPM2;      //      2         -          Début Pointe Mobile 2
-    TimeLabel FPM2;      //      2         -          Fin Pointe Mobile 2
-    TimeLabel DPM3;      //      2         -          Début Pointe Mobile 3
-    TimeLabel FPM3;      //      2         -          Fin Pointe Mobile 3
+    time_label_t DPM1;      //      2         -          Début Pointe Mobile 1
+    time_label_t FPM1;      //      2         -          Fin Pointe Mobile 1
+    time_label_t DPM2;      //      2         -          Début Pointe Mobile 2
+    time_label_t FPM2;      //      2         -          Fin Pointe Mobile 2
+    time_label_t DPM3;      //      2         -          Début Pointe Mobile 3
+    time_label_t FPM3;      //      2         -          Fin Pointe Mobile 3
 
     char MSG1[34];       //      32        -          Message court
     char MSG2[18];       //      16        -          Message Ultra court 
     char PRM[16];        //      14        -          PRM En mode standard la TIC retransmet le PRM.
     char RELAIS[5];      //      3         -          Etat des relais: Les données transmises correspondent à l’état des 8 relais dont 1 réel et 7 virtuels.
-    char NTARF[4];       //      2         -          Numéro de l’index tarifaire en cours
-    char NJOURF[4];      //      2         -          Numéro du jour en cours calendrier fournisseur
-    char NJOURF_1[4];    //      2         -          Numéro du prochain jour calendrier fournisseur
+    uint16_t NTARF;      //      2         -          Numéro de l’index tarifaire en cours
+    uint16_t NJOURF;     //      2         -          Numéro du jour en cours calendrier fournisseur
+    uint16_t NJOURF_1;   //      2         -          Numéro du prochain jour calendrier fournisseur
     char PJOURF_1[100];  //      98        -          Profil du prochain jour calendrier fournisseur 
     char PPOINTE[100];   //      98        -          Profil du prochain jour de pointe
 
@@ -219,6 +222,7 @@ typedef enum
     C_HCHP,
     C_EJP,
     C_TEMPO,
+    C_PRODUCER,
 } linky_contract_t;
 
 typedef enum
@@ -257,6 +261,7 @@ typedef enum
     POWER_VA,
     POWER_kVA,
     POWER_W,
+    POWER_kW,
     POWER_Q,
     ENERGY,
     ENERGY_Q,
@@ -312,7 +317,7 @@ extern linky_data_t linky_data;
 extern linky_mode_t linky_mode;
 extern linky_contract_t linky_contract;
 
-extern uint8_t linky_tree_phase;
+extern uint8_t linky_three_phase;
 extern uint8_t linky_reading;
 extern uint8_t linky_want_debug_frame;
 extern uint32_t linky_free_heap_size;
@@ -361,5 +366,7 @@ uint8_t linky_presence();
 void linky_print_debug_frame();
 
 linky_contract_t linky_get_contract(linky_data_t *data);
+
+void linky_stats();
 
 #endif /* Linky_H */

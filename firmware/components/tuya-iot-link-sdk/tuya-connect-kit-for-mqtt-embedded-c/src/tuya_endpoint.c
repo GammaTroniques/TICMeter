@@ -100,13 +100,13 @@ static int tuya_region_regist_key_write( const char* region, const char* regist_
     int ret = 0;
     ret = local_storage_set("region", (const uint8_t*)region, strlen(region));
     if (ret != OPRT_OK) {
-        TY_LOGE("local_storage_set region, error:0x%02x", ret);
+        // TY_LOGE("local_storage_set region, error:0x%02x", ret);
         return OPRT_KVS_WR_FAIL;
     }
 
     ret = local_storage_set("regist_key", (const uint8_t*)regist_key, strlen(regist_key));
     if (ret != OPRT_OK) {
-        TY_LOGE("local_storage_set regist_key, error:0x%02x", ret);
+        // TY_LOGE("local_storage_set regist_key, error:0x%02x", ret);
         return OPRT_KVS_WR_FAIL;
     }
 

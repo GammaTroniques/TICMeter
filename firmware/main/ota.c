@@ -117,7 +117,7 @@ int ota_https_request(const char *url, const char *cert)
     const esp_app_desc_t *app_desc = esp_app_get_description();
     char user_agent[64];
 
-    sprintf(user_agent, "TICMeter/%s %s", app_desc->version, efuse_values.serialNumber);
+    sprintf(user_agent, "TICMeter/%s %s", app_desc->version, efuse_values.serial_number);
     ESP_LOGD(TAG, "cert_pem: %d %s", strlen((char *)cert), (char *)cert);
 
     esp_http_client_config_t config = {
@@ -489,12 +489,14 @@ static uint8_t ota_version_compare(const char *current_version, const char *to_c
 
 static void ota_spiffs_update(const char *url)
 {
+    esp_err_t err;
     if (url == NULL)
     {
         return;
     }
     ESP_LOGI(TAG, "Starting spiffs update");
-    if (!wifi_connect())
+    err = wifi_connect();
+    if (err != 0)
     {
         ESP_LOGE(TAG, "Wifi connect failed");
         return;
@@ -520,7 +522,7 @@ static void ota_spiffs_update(const char *url)
         return;
     }
 
-    esp_err_t err = esp_partition_erase_range(storage_partition, 0, storage_partition->size);
+    err = esp_partition_erase_range(storage_partition, 0, storage_partition->size);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to erase storage partition");
@@ -536,7 +538,8 @@ static void ota_spiffs_update(const char *url)
 
 void ota_perform_task(void *pvParameter)
 {
-    if (!wifi_connect())
+    esp_err_t err = wifi_connect();
+    if (err != 0)
     {
         ESP_LOGE(TAG, "Wifi connect failed");
         goto ota_end;
@@ -565,7 +568,7 @@ void ota_perform_task(void *pvParameter)
     esp_err_t ota_finish_err = ESP_OK;
     ESP_LOGI(TAG, "Starting OTA...");
 
-    esp_err_t err = esp_event_handler_register(ESP_HTTPS_OTA_EVENT, ESP_EVENT_ANY_ID, &ota_event_handler, NULL);
+    err = esp_event_handler_register(ESP_HTTPS_OTA_EVENT, ESP_EVENT_ANY_ID, &ota_event_handler, NULL);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "esp_event_handler_register() failed with %s", esp_err_to_name(err));

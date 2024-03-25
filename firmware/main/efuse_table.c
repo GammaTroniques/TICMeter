@@ -19,6 +19,14 @@ static const esp_efuse_desc_t USER_DATA_SERIALNUMBER[] = {
     {EFUSE_BLK3, 0, 96}, // Serial number (12 bytes * 8) or 27 bits for SN,
 };
 
+static const esp_efuse_desc_t USER_DATA_HWVERSION[] = {
+    {EFUSE_BLK3, 96, 16}, // Hardware version (2 bytes * 8) FF.FF --> V3.4
+};
+
 const esp_efuse_desc_t *ESP_EFUSE_USER_DATA_SERIALNUMBER[] = {
     &USER_DATA_SERIALNUMBER[0], // Serial number (12 bytes * 8) or 27 bits for SN
+    NULL};
+
+const esp_efuse_desc_t *ESP_EFUSE_USER_DATA_HWVERSION[] = {
+    &USER_DATA_HWVERSION[0],
     NULL};

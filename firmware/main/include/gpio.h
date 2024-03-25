@@ -21,6 +21,8 @@
 /*==============================================================================
  Public Defines
 ==============================================================================*/
+#define TICMETER_HW_VERSION "3.2"
+
 #define RX_LINKY (gpio_num_t)23
 #define V_CONDO_PIN ADC_CHANNEL_4
 #define V_USB_PIN ADC_CHANNEL_1
@@ -49,7 +51,7 @@
 ==============================================================================*/
 extern TaskHandle_t gpip_led_ota_task_handle;
 extern TaskHandle_t gpio_led_pairing_task_handle;
-
+extern uint32_t gpio_start_push_time;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
