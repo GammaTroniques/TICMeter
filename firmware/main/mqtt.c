@@ -599,6 +599,7 @@ int mqtt_deinit()
 {
     if (mqtt_client != NULL)
     {
+        ESP_LOGI(TAG, "Deinit MQTT");
         esp_mqtt_client_destroy(mqtt_client);
         mqtt_client = NULL;
     }

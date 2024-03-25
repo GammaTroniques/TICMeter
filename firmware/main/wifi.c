@@ -75,6 +75,7 @@ static int s_retry_num = 0;
 static EventGroupHandle_t s_wifi_event_group;
 static EventGroupHandle_t ping_event_group;
 static uint8_t ap_started = 0;
+static uint8_t sta_connecting = 0;
 
 static uint32_t ping_time_array[10];
 static uint32_t ping_index = 0;
@@ -181,30 +182,43 @@ esp_err_t wifi_connect()
     strncpy((char *)sta_wifi_config.sta.ssid, config_values.ssid, sizeof(sta_wifi_config.sta.ssid));
     strncpy((char *)sta_wifi_config.sta.password, config_values.password, sizeof(sta_wifi_config.sta.password));
 
-    err = esp_wifi_set_ps(WIFI_PS_NONE);
-    if (err != ESP_OK)
-    {
-        ESP_LOGE(TAG, "esp_wifi_set_ps failed with 0x%X", err);
-    }
+    // err = esp_wifi_set_ps(WIFI_PS_NONE);
+    // if (err != ESP_OK)
+    // {
+    //     ESP_LOGE(TAG, "esp_wifi_set_ps failed with 0x%X", err);
+    // }
 
-    wifi_mode_t mode = WIFI_MODE_STA;
-    if (ap_started)
-    {
-        ESP_LOGI(TAG, "wifi_connect: APSTA mode");
-        mode = WIFI_MODE_APSTA;
-    }
-    err = esp_wifi_set_mode(mode);
+    wifi_mode_t mode;
+
+    err = esp_wifi_get_mode(&mode);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
+        ESP_LOGE(TAG, "esp_wifi_get_mode failed with 0x%X", err);
         wifi_state = WIFI_FAILED;
         wifi_disconnect();
         return err;
     }
+    if (mode != WIFI_MODE_APSTA)
+    {
+        mode = WIFI_MODE_STA;
+        if (ap_started)
+        {
+            ESP_LOGI(TAG, "wifi_connect: APSTA mode");
+            mode = WIFI_MODE_APSTA;
+        }
+        err = esp_wifi_set_mode(mode);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
+            wifi_state = WIFI_FAILED;
+            wifi_disconnect();
+            return err;
+        }
+    }
     err = esp_wifi_set_config(WIFI_IF_STA, &sta_wifi_config);
     if (ap_started)
     {
-        err = esp_wifi_set_config(WIFI_IF_AP, &ap_wifi_config);
+        // err = esp_wifi_set_config(WIFI_IF_AP, &ap_wifi_config);
     }
 
     if (err != ESP_OK)
@@ -226,6 +240,19 @@ esp_err_t wifi_connect()
 
     ESP_LOGI(TAG, "Connecting to %s", (char *)sta_wifi_config.sta.ssid);
 
+    if (sta_connecting == 0)
+    {
+        sta_connecting = 1;
+        err = esp_wifi_connect();
+        if (err != ESP_OK && err != ESP_ERR_WIFI_CONN)
+        {
+            ESP_LOGE(TAG, "esp_wifi_connect failed with 0x%X", err);
+            wifi_state = WIFI_FAILED;
+            wifi_disconnect();
+            return err;
+        }
+    }
+
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
                                            WIFI_CONNECTED_BIT | WIFI_FAIL_BIT | WIFI_AUTHFAIL_BIT | WIFI_NO_AP_FOUND_BIT,
                                            pdFALSE,
@@ -235,6 +262,7 @@ esp_err_t wifi_connect()
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
 
+    sta_connecting = 0;
     led_stop_pattern(LED_CONNECTING);
 
     if (bits & WIFI_CONNECTED_BIT)
@@ -275,7 +303,7 @@ esp_err_t wifi_connect()
         wifi_state = WIFI_FAILED;
         led_start_pattern(LED_CONNECTING_FAILED);
         wifi_disconnect();
-        return last_wifi_err;
+        return last_wifi_err == ESP_OK ? ESP_ERR_TIMEOUT : last_wifi_err;
     }
 }
 
@@ -288,7 +316,7 @@ void wifi_disconnect()
         return;
     }
     wifi_state = WIFI_DISCONNECTED;
-    esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+    // esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
     err = esp_wifi_disconnect();
     if (err != ESP_OK)
     {
@@ -307,22 +335,6 @@ void wifi_disconnect()
     else
     {
         ESP_LOGI(TAG, "Keep Wifi in AP mode");
-        err = esp_wifi_set_mode(WIFI_MODE_AP);
-        if (err != ESP_OK)
-        {
-            ESP_LOGE(TAG, "esp_wifi_set_mode failed with 0x%X", err);
-        }
-        err = esp_wifi_set_config(WIFI_IF_AP, &ap_wifi_config);
-        if (err != ESP_OK)
-        {
-            ESP_LOGE(TAG, "esp_wifi_set_config failed with 0x%X", err);
-        }
-
-        err = esp_wifi_start();
-        if (err != ESP_OK)
-        {
-            ESP_LOGE(TAG, "esp_wifi_start failed with 0x%X", err);
-        }
     }
 }
 
@@ -332,6 +344,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     ESP_LOGI(TAG, "GOT EVENT: event_base: %s, event_id: %ld", event_base, event_id);
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START && wifi_state != WIFI_DISCONNECTED)
     {
+        sta_connecting = 1;
         esp_wifi_connect();
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED && wifi_state != WIFI_DISCONNECTED)
@@ -341,6 +354,7 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
         if (s_retry_num < ESP_MAXIMUM_RETRY)
         {
             wifi_state = WIFI_CONNECTING;
+            sta_connecting = 1;
             esp_wifi_connect();
             s_retry_num++;
             ESP_LOGW(TAG, "Retry to connect to the AP: %d/%d", s_retry_num, ESP_MAXIMUM_RETRY);
