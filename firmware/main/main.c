@@ -165,7 +165,7 @@ void app_main(void)
   case MODE_WEB:
     // connect to wifi
     err = wifi_connect();
-    if (err == 0)
+    if (err != ESP_OK)
     {
       wifi_get_timestamp();               // get timestamp from ntp server
       wifi_http_get_config_from_server(); // get config from server
@@ -183,7 +183,7 @@ void app_main(void)
     ESP_LOGI(MAIN_TAG, "MQTT init...");
     // connect to wifi
     err = wifi_connect();
-    if (err == 0)
+    if (err != ESP_OK)
     {
       mqtt_init();          // init mqtt
       wifi_get_timestamp(); // get timestamp from ntp server
@@ -208,7 +208,7 @@ void app_main(void)
       break;
     }
     err = wifi_connect();
-    if (err == 0)
+    if (err != ESP_OK)
     {
       tuya_init();
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -310,7 +310,7 @@ esp_err_t main_send_data()
       web_preapare_json_data(main_data_array, main_data_index, json, sizeof(json));
       ESP_LOGI(MAIN_TAG, "Sending data to server");
       err = wifi_connect();
-      if (err == 0)
+      if (err != ESP_OK)
       {
         ESP_LOGI(MAIN_TAG, "POST: %s", json);
         wifi_send_to_server(json);
@@ -335,7 +335,7 @@ esp_err_t main_send_data()
       ESP_LOGE(MAIN_TAG, "Some data will not be sent, but we continue");
     }
     ret = wifi_connect();
-    if (ret == 0)
+    if (ret != ESP_OK)
     {
       ESP_LOGE(MAIN_TAG, "Wifi connection failed");
       goto send_error;
@@ -366,7 +366,7 @@ esp_err_t main_send_data()
   }
   case MODE_TUYA:
     err = wifi_connect();
-    if (err == 0)
+    if (err != ESP_OK)
     {
       ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
       resumeTask(tuyaTaskHandle); // resume tuya task
