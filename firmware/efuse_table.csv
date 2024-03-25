@@ -11,4 +11,5 @@
 #                           |     EFUSE_BLK3) |            |            |                   #
 #############################################################################################
 USER_DATA.SERIALNUMBER,            EFUSE_BLK3,          0,            96, Serial number (12 bytes * 8) or 27 bits for SN
+USER_DATA.HWVERSION,               EFUSE_BLK3,         96,            16, Hardware version (2 bytes * 8) FF.FF --> V3.4
 

@@ -177,8 +177,8 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
     case TUYA_EVENT_ACTIVATE_SUCCESSED:
         ESP_LOGI(TAG, "Tuya binded");
         config_values.pairing_state = TUYA_PAIRED;
-
         config_write();
+        led_stop_pattern(LED_PAIRING);
         break;
     case TUYA_EVENT_DPCACHE_NOTIFY:
         TY_LOGI("Recv TUYA_EVENT_DPCACHE_NOTIFY");
@@ -195,7 +195,7 @@ static void tuya_link_app_task(void *pvParameters)
     const esp_app_desc_t *app_desc = esp_app_get_description();
 
     const tuya_iot_config_t tuya_config = {
-        .productkey = config_values.tuya.product_id,
+        .productkey = TUYA_PRODUCT_ID,
         .uuid = config_values.tuya.device_uuid,
         .authkey = config_values.tuya.device_auth,
         .software_ver = app_desc->version,
@@ -373,15 +373,21 @@ uint8_t tuya_send_data(linky_data_t *linky)
             continue; // dont send data for label not used by current mode
         }
 
-        // TEMP TODO:
-        if (LinkyLabelList[i].id == 108)
+        switch (LinkyLabelList[i].id)
         {
+        case 108:
+            // TODO:
+            // if (linky_str_tarif[linky_contract] != NULL)
+            // {
+            //     cJSON_AddStringToObject(jsonObject, "108", linky_str_tarif[linky_contract]);
+            // }
+            // else
+            // {
+            //     cJSON_AddStringToObject(jsonObject, "108", "Inconnu");
+            // }
             continue;
-        }
-
-        if (LinkyLabelList[i].id == 105)
-        {
-
+            break;
+        case 105:
             switch (linky_mode)
             {
             case MODE_HIST:
@@ -395,6 +401,28 @@ uint8_t tuya_send_data(linky_data_t *linky)
                 break;
             }
             continue;
+            break;
+        case 106:
+            if (linky_three_phase)
+            {
+                cJSON_AddStringToObject(jsonObject, "106", "Triphase");
+            }
+            else
+            {
+                cJSON_AddStringToObject(jsonObject, "106", "Monophase");
+            }
+            continue;
+            break;
+        case 107:
+            // if data =  "HC.."
+            if (memcmp(LinkyLabelList[i].data, "HC", 2) == 0)
+            {
+                cJSON_AddStringToObject(jsonObject, "107", "HCHP");
+                continue;
+            }
+            break;
+        default:
+            break;
         }
 
         // json
@@ -538,6 +566,7 @@ uint8_t tuya_wait_event(tuya_event_id_t event, uint32_t timeout)
 uint8_t tuya_stop()
 {
     ESP_LOGI(TAG, "Tuya stop");
+    led_stop_pattern(LED_PAIRING);
     return tuya_iot_stop(&client);
 }
 
@@ -562,8 +591,8 @@ void ble_token_get_cb(wifi_info_t wifi_info)
         vTaskDelete(gpio_led_pairing_task_handle);
         gpio_led_pairing_task_handle = NULL;
     }
-
-    if (!wifi_connect())
+    esp_err_t err = wifi_connect();
+    if (err != 0)
     {
         ESP_LOGE(TAG, "Tuya pairing failed: no wifi");
         return;

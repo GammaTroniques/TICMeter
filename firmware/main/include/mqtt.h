@@ -81,4 +81,6 @@ extern int mqtt_send();
 
 extern uint8_t mqtt_prepare_publish(linky_data_t *linky);
 
+esp_err_t mqtt_test(esp_mqtt_error_type_t *type, esp_mqtt_connect_return_code_t *return_code);
+
 #endif /* MQTT_H */

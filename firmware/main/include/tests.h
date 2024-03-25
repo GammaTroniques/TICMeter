@@ -16,6 +16,7 @@
  Local Include
 ===============================================================================*/
 #include "esp_ota_ops.h"
+#include "linky.h"
 
 /*==============================================================================
  Public Defines
@@ -30,10 +31,13 @@
 ==============================================================================*/
 typedef enum
 {
+    TEST_MODE,
     TEST_ALL,
     TEST_ADC,
     TEST_LINKY_HIST,
     TEST_LINKY_STD,
+    TEST_LINKY_READ,
+    TEST_LINKY_STATS,
 } tests_t;
 
 /*==============================================================================
@@ -43,6 +47,9 @@ extern esp_err_t (*tests_available_tests[])(void *ptr);
 extern const char *const tests_str_available_tests[];
 
 extern const uint32_t tests_count;
+
+extern const linky_data_hist tests_hist_data;
+extern const linky_data_std tests_std_data;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/

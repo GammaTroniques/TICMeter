@@ -88,6 +88,9 @@ static uint16_t mqtt_sent_count = 0;
 static uint16_t mqtt_sensors_count = 0;
 
 static mqtt_topic_t mqtt_topics;
+static EventGroupHandle_t mqtt_event_group;
+static esp_mqtt_connect_return_code_t last_return_code;
+static esp_mqtt_error_type_t last_error_type;
 
 #ifdef MQTT_DEBUG
 static mqtt_debug_t mqtt_messages[100];
@@ -116,7 +119,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     cJSON *sn = cJSON_CreateArray();
     cJSON *cns = cJSON_CreateArray();
     cJSON_AddItemToArray(sn, cJSON_CreateString("SN"));
-    cJSON_AddItemToArray(sn, cJSON_CreateString(efuse_values.serialNumber));
+    cJSON_AddItemToArray(sn, cJSON_CreateString(efuse_values.serial_number));
     cJSON_AddItemToObject(cns, "", sn);
     cJSON_AddItemToObject(jsonDevice, "cns", cns);
 
@@ -183,6 +186,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     case POWER_VA:
     case POWER_Q:
     case POWER_W:
+    case POWER_kW:
     case CURRENT:
     case TENSION:
         cJSON_AddStringToObject(sensorConfig, "stat_cla", "measurement");
@@ -282,7 +286,7 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         case UINT32_TIME:
         {
 
-            TimeLabel *timeLabel = (TimeLabel *)LinkyLabelList[i].data;
+            time_label_t *timeLabel = (time_label_t *)LinkyLabelList[i].data;
             if (timeLabel->value == UINT32_MAX)
                 continue;
             snprintf(strValue, sizeof(strValue), "%lu", timeLabel->value);
@@ -375,9 +379,9 @@ void mqtt_setup_ha_discovery()
             ESP_LOGD(TAG, "Adding %s: value = %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
             break;
         case UINT32_TIME:
-            if (((TimeLabel *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX)
                 continue;
-            ESP_LOGD(TAG, "Adding %s: value = %lu", LinkyLabelList[i].label, ((TimeLabel *)LinkyLabelList[i].data)->value);
+            ESP_LOGD(TAG, "Adding %s: value = %lu", LinkyLabelList[i].label, ((time_label_t *)LinkyLabelList[i].data)->value);
             break;
         case HA_NUMBER:
             break;
@@ -397,9 +401,11 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 {
     ESP_LOGD(TAG, "Event dispatched from event loop base=%s, event_id=%" PRIi32 "", base, event_id);
     esp_mqtt_event_handle_t event = (esp_mqtt_event_handle_t)event_data;
+
     switch ((esp_mqtt_event_id_t)event_id)
     {
     case MQTT_EVENT_CONNECTED:
+        xEventGroupSetBits(mqtt_event_group, BIT0);
         if (mqtt_state != MQTT_CONNECTED)
         {
             mqtt_state = MQTT_CONNECTED;
@@ -415,14 +421,15 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
                 ESP_LOGI(TAG, "Subscribing to %s", topic);
             }
         }
-
         if (config_values.mode == MODE_MQTT_HA && strlen(mqtt_topics.ha_identifier_topic) > 0)
         {
             ESP_LOGI(TAG, "Subscribing to identifier %s", mqtt_topics.ha_identifier_topic);
             esp_mqtt_client_subscribe(mqtt_client, mqtt_topics.ha_identifier_topic, 1);
         }
+
         break;
     case MQTT_EVENT_DISCONNECTED:
+        xEventGroupSetBits(mqtt_event_group, BIT1);
         if (mqtt_state != MQTT_FAILED)
         {
             mqtt_state = MQTT_DISCONNETED;
@@ -500,7 +507,7 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
                     strncpy((char *)LinkyLabelList[i].data, strValue, LinkyLabelList[i].size);
                     break;
                 case UINT32_TIME:
-                    ((TimeLabel *)LinkyLabelList[i].data)->value = atol(strValue);
+                    ((time_label_t *)LinkyLabelList[i].data)->value = atol(strValue);
                     break;
                 case HA_NUMBER:
                     uint16_t value = atoi(strValue);
@@ -521,15 +528,24 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
     }
     break;
     case MQTT_EVENT_ERROR:
-        ESP_LOGI(TAG, "MQTT_EVENT_ERROR, msg_id=%d", event->msg_id);
-        if (event->error_handle->error_type == MQTT_ERROR_TYPE_TCP_TRANSPORT)
+        ESP_LOGI(TAG, "MQTT_EVENT_ERROR type=%d, code=%d, msgid=%d", event->error_handle->error_type, event->error_handle->connect_return_code, event->msg_id);
+
+        switch (event->error_handle->error_type)
         {
+        case MQTT_ERROR_TYPE_TCP_TRANSPORT:
             log_error_if_nonzero("reported from esp-tls", event->error_handle->esp_tls_last_esp_err);
             log_error_if_nonzero("reported from tls stack", event->error_handle->esp_tls_stack_err);
             log_error_if_nonzero("captured as transport's socket errno", event->error_handle->esp_transport_sock_errno);
             ESP_LOGI(TAG, "Last errno string (%s)", strerror(event->error_handle->esp_transport_sock_errno));
+            break;
+
+        default:
+            break;
         }
         mqtt_state = MQTT_FAILED;
+        last_error_type = event->error_handle->error_type;
+        last_return_code = event->error_handle->connect_return_code;
+        xEventGroupSetBits(mqtt_event_group, BIT2);
         break;
     default:
         // ESP_LOGI(TAG, "Other event id:%d", event->event_id);
@@ -546,8 +562,8 @@ int mqtt_init(void)
         return -1;
     }
 
-    snprintf(mqtt_topics.name, sizeof(mqtt_topics.name), MQTT_ID "_%s", efuse_values.macAddress + 6);
-    snprintf(mqtt_topics.unique_id_base, sizeof(mqtt_topics.unique_id_base), "TICMeter_%s_", efuse_values.macAddress + 6);
+    snprintf(mqtt_topics.name, sizeof(mqtt_topics.name), MQTT_ID "_%s", efuse_values.mac_address + 6);
+    snprintf(mqtt_topics.unique_id_base, sizeof(mqtt_topics.unique_id_base), "TICMeter_%s_", efuse_values.mac_address + 6);
     mqtt_state = MQTT_CONNECTING;
     char uri[200];
     snprintf(uri, sizeof(uri), "mqtt://%s:%d", config_values.mqtt.host, config_values.mqtt.port);
@@ -567,6 +583,17 @@ int mqtt_init(void)
     /* The last argument may be used to pass data to the event handler, in this example mqtt_event_handler */
     esp_mqtt_client_register_event(mqtt_client, (esp_mqtt_event_id_t)ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
     ESP_LOGI(TAG, "init done");
+    return 1;
+}
+
+int mqtt_deinit()
+{
+    if (mqtt_client != NULL)
+    {
+        esp_mqtt_client_destroy(mqtt_client);
+        mqtt_client = NULL;
+    }
+    mqtt_state = MQTT_DEINIT;
     return 1;
 }
 
@@ -678,5 +705,48 @@ void mqtt_topic_comliance(char *topic, int size)
         {
             topic[j] = '_';
         }
+    }
+}
+
+esp_err_t mqtt_test(esp_mqtt_error_type_t *type, esp_mqtt_connect_return_code_t *return_code)
+{
+    esp_err_t err = ESP_OK;
+    if (mqtt_event_group == NULL)
+    {
+        mqtt_event_group = xEventGroupCreate();
+    }
+    mqtt_deinit();
+    mqtt_init();
+
+    err = esp_mqtt_client_start(mqtt_client);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Start failed with 0x%x", err);
+        return err;
+    }
+    EventBits_t bits = xEventGroupWaitBits(mqtt_event_group,
+                                           BIT0 | BIT1 | BIT2,
+                                           pdFALSE,
+                                           pdFALSE,
+                                           30000 / portTICK_PERIOD_MS);
+
+    xEventGroupClearBits(mqtt_event_group, BIT0 | BIT1 | BIT2);
+
+    if (type != NULL)
+    {
+        *type = last_error_type;
+    }
+    if (return_code != NULL)
+    {
+        *return_code = last_return_code;
+    }
+
+    if (bits & BIT0)
+    {
+        return ESP_OK;
+    }
+    else
+    {
+        return ESP_FAIL;
     }
 }

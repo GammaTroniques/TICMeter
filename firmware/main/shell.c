@@ -26,6 +26,7 @@
 #include "soc/periph_defs.h"
 #include "esp_pm.h"
 #include "led.h"
+#include "tuya.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -119,6 +120,8 @@ static int skip_command(int argc, char **argv);
 
 static int start_pairing_command(int argc, char **argv);
 static int pm_stats_command(int argc, char **argv);
+static int wifi_scan_command(int argc, char **argv);
+static int ping_command(int argc, char **argv);
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -163,7 +166,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"get-VCondo",                  "Get VCondo",                               &get_VCondo_command,                0, {}, {}},
     {"test-led",                    "Test led",                                 &test_led_command,                  0, {}, {}},
     {"ota-check",                   "Check for OTA update",                     &ota_check_command,                 0, {}, {}},
-    {"set-tuya",                    "Set config",                               &set_tuya_command,                  3, {"<product_id>", "<device_uuid>", "<device_auth>"}, {"Product ID", "Device UUID", "Device Auth Key"}},
+    {"set-tuya",                    "Set config",                               &set_tuya_command,                  2, {"<device_uuid>", "<device_auth>"}, {"Device UUID", "Device Auth Key"}},
     {"set-tuya-pairing",            "Set tuya pairing state",                   &set_tuya_pairing,                  1, {"<pairing_state>"}, {"Pairing state"}},
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
@@ -187,7 +190,10 @@ static const shell_cmd_t shell_cmds[] = {
     {"zigbee-reset",                "Clear Zigbee config",                      &zigbee_reset_command,              0, {}, {}},
     {"skip",                        "Skip refresh rate delay",                  &skip_command,                      0, {}, {}},
     {"pairing",                     "Start pairing",                            &start_pairing_command,             0, {}, {}},
-    {"pm-stats",                     "Power management stats",                  &pm_stats_command,                  0, {}, {}},
+    {"pm-stats",                    "Power management stats",                   &pm_stats_command,                  0, {}, {}},
+    {"wifi-scan",                   "Scan for wifi networks",                   &wifi_scan_command,                 0, {}, {}},
+    {"ping",                        "Ping",                                     &ping_command,                      1, {"<host>"}, {"Host to ping"}},
+
 };
 const uint8_t shell_cmds_num = sizeof(shell_cmds) / sizeof(shell_cmd_t);
 // clang-format on
@@ -316,7 +322,8 @@ static int set_wifi_command(int argc, char **argv)
 static int connect_wifi_command(int argc, char **argv)
 {
   printf("Connecting to wifi\n");
-  wifi_connect();
+  esp_err_t err = wifi_connect();
+  ESP_LOGI(TAG, "Wifi connect: %d", err);
   return 0;
 }
 static int reconnect_wifi_command(int argc, char **argv)
@@ -513,15 +520,13 @@ static int ota_check_command(int argc, char **argv)
 
 static int set_tuya_command(int argc, char **argv)
 {
-  if (argc != 4)
+  if (argc != 3)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  memcpy(config_values.tuya.product_id, argv[1],
-         sizeof(config_values.tuya.product_id));
-  memcpy(config_values.tuya.device_uuid, argv[2],
+  memcpy(config_values.tuya.device_uuid, argv[1],
          sizeof(config_values.tuya.device_uuid));
-  memcpy(config_values.tuya.device_auth, argv[3],
+  memcpy(config_values.tuya.device_auth, argv[2],
          sizeof(config_values.tuya.device_auth));
   config_write();
   printf("Tuya config saved\n");
@@ -549,7 +554,7 @@ static int get_tuya_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("%cTuya config:\n", 0x02);
-  printf("Product ID: %s\n", config_values.tuya.product_id);
+  printf("Product ID: %s\n", TUYA_PRODUCT_ID);
   printf("Device UUID: %s\n", config_values.tuya.device_uuid);
   printf("Device Auth: %s\n", config_values.tuya.device_auth);
   printf("Tuya Bind Status: %d%c\n", config_values.pairing_state, 0x03);
@@ -765,22 +770,34 @@ static int efuse_read(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   config_efuse_read();
+  printf("\x02Serial number: %s\n\x03", efuse_values.serial_number);
+
   return 0;
 }
 
 static int efuse_write(int argc, char **argv)
 {
-  if (argc != 2)
+  if (argc != 3)
   {
     return ESP_ERR_INVALID_ARG;
   }
 
-  if (strlen(argv[1]) > sizeof(efuse_values.serialNumber) - 1)
+  printf("\x02");
+  if (strlen(argv[1]) > sizeof(efuse_values.serial_number) - 1)
   {
     ESP_LOGE(TAG, "Serial number too long");
     return ESP_ERR_INVALID_ARG;
   }
-  printf("Are you sure you want to write the serial number \"%s\" to the efuse?\n", argv[1]);
+
+  uint8_t version[2];
+  int ret = sscanf(argv[2], "%hhu.%hhu", &version[0], &version[1]);
+  if (ret != 2)
+  {
+    ESP_LOGE(TAG, "Invalid version format: XX.XX");
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  printf("Are you sure you want to write the serial number \"%s\" and version \"%d.%d\" to efuse?\n", argv[1], version[0], version[1]);
   printf("This action is irreversible!\n");
   printf("Type 'YES' to confirm\n");
   char input[4];
@@ -797,10 +814,10 @@ static int efuse_write(int argc, char **argv)
     return 0;
   }
 
-  if (config_efuse_write(argv[1], strlen(argv[1])) == 0)
-  {
-    printf("Serial number written to efuse\n");
-  }
+  config_efuse_write(argv[1], strlen(argv[1]), version);
+
+  printf("\x03");
+
   return 0;
 }
 
@@ -844,10 +861,21 @@ static int print_task_list(int argc, char **argv)
 
 static int start_test_command(int argc, char **argv)
 {
+  if (argc == 1)
+  {
+    printf("Available tests: ");
+    for (int i = 0; i < tests_count; i++)
+    {
+      printf("%s ", tests_str_available_tests[i]);
+    }
+    printf("\n");
+    return 0;
+  }
   if (argc != 2)
   {
     return ESP_ERR_INVALID_ARG;
   }
+
   char *test_name = argv[1];
   for (int i = 0; i < tests_count; i++)
   {
@@ -944,5 +972,42 @@ static int pm_stats_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   esp_pm_dump_locks(stdout);
+  return 0;
+}
+
+static int wifi_scan_command(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  wifi_scan(NULL);
+  return 0;
+}
+
+static int ping_command(int argc, char **argv)
+{
+  if (argc != 2)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  char str_ip[20];
+  strncpy(str_ip, argv[1], sizeof(str_ip));
+  str_ip[19] = '\0';
+  // convert string to ip
+  ip4_addr_t ip;
+  if (!ip4addr_aton(str_ip, &ip))
+  {
+    printf("Invalid IP address\n");
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  ip_addr_t ip_addr = {
+      .type = IPADDR_TYPE_V4,
+      .u_addr.ip4.addr = ip.addr,
+  };
+  // ping
+  wifi_ping(ip_addr, NULL);
+
   return 0;
 }
