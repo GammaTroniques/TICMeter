@@ -87,9 +87,9 @@ static mqtt_state_t mqtt_state = MQTT_DEINIT;
 static uint16_t mqtt_sent_count = 0;
 static uint16_t mqtt_sensors_count = 0;
 
-static mqtt_topic_t mqtt_topics;
-static EventGroupHandle_t mqtt_event_group;
-static esp_mqtt_connect_return_code_t last_return_code;
+static mqtt_topic_t mqtt_topics = {0};
+static EventGroupHandle_t mqtt_event_group = NULL;
+static esp_mqtt_connect_return_code_t last_return_code = 0;
 static esp_mqtt_error_type_t last_error_type;
 
 #ifdef MQTT_DEBUG
@@ -405,7 +405,10 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
     switch ((esp_mqtt_event_id_t)event_id)
     {
     case MQTT_EVENT_CONNECTED:
-        xEventGroupSetBits(mqtt_event_group, BIT0);
+        if (mqtt_event_group)
+        {
+            xEventGroupSetBits(mqtt_event_group, BIT0);
+        }
         if (mqtt_state != MQTT_CONNECTED)
         {
             mqtt_state = MQTT_CONNECTED;
@@ -429,7 +432,10 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 
         break;
     case MQTT_EVENT_DISCONNECTED:
-        xEventGroupSetBits(mqtt_event_group, BIT1);
+        if (mqtt_event_group)
+        {
+            xEventGroupSetBits(mqtt_event_group, BIT1);
+        }
         if (mqtt_state != MQTT_FAILED)
         {
             mqtt_state = MQTT_DISCONNETED;
@@ -545,7 +551,10 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
         mqtt_state = MQTT_FAILED;
         last_error_type = event->error_handle->error_type;
         last_return_code = event->error_handle->connect_return_code;
-        xEventGroupSetBits(mqtt_event_group, BIT2);
+        if (mqtt_event_group)
+        {
+            xEventGroupSetBits(mqtt_event_group, BIT2);
+        }
         break;
     default:
         // ESP_LOGI(TAG, "Other event id:%d", event->event_id);

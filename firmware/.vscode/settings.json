@@ -1,7 +1,7 @@
 {
   "idf.adapterTargetName": "esp32c6",
   "idf.flashType": "UART",
-  "idf.portWin": "COM3",
+  "idf.portWin": "COM18",
   "C_Cpp.intelliSenseEngine": "default",
   "idf.port": "/dev/ttyACM0",
   "C_Cpp.autoAddFileAssociations": false,

@@ -59,7 +59,7 @@ const tests_list = [
   { id: 0, mode: [], text: " ",  state: PENDING,                         hide: true , retry: false, retry: 3, timeout: 10000, continue: true},
   { id: 1, mode: [], text: "Connexion au réseau WiFi",  state: PENDING , hide: false, retry: true , retry: 10,timeout: 2000,  continue: false},
   { id: 2, mode: [], text: "Test du réseau WiFi",       state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
-  { id: 3, mode: [], text: "Connexion au serveur MQTT", state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
+  { id: 3, mode: [], text: "Connexion au serveur MQTT", state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: false},
   { id: 4, mode: [], text: "Envoi des données MQTT",    state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
 ];
 
