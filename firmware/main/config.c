@@ -93,7 +93,7 @@ static struct config_item_t config_items[] = {
     {"refresh",         UINT16, &config_values.refreshRate,     sizeof(config_values.refreshRate),      &config_handle},
     {"sleep",           UINT8,  &config_values.sleep,           sizeof(config_values.sleep),            &config_handle},
     {"index-offset",    BLOB,   &config_values.index_offset,    sizeof(config_values.index_offset),     &config_handle},
-    {"boot-pairing",    UINT8,  &config_values.boot_pairing,    sizeof(config_values.boot_pairing),     &config_handle},
+     {"boot-pairing",    UINT8,  &config_values.boot_pairing,    sizeof(config_values.boot_pairing),     &config_handle},
 
 };
 static const int32_t config_items_size = sizeof(config_items) / sizeof(config_items[0]);

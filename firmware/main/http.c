@@ -7,6 +7,7 @@
 #include "cJSON.h"
 #include "tuya.h"
 #include "mqtt.h"
+#include "mqtt_bind.h"
 
 static const char *TAG = "HTTP"; // TAG for debug
 #define INDEX_HTML_PATH "/spiffs/index.html"
@@ -20,6 +21,7 @@ typedef enum
     WIFI_PING,
     MQTT_CONNECT,
     MQTT_PUBLISH,
+    TUYA_CONNECT,
     NO_TEST = 0xFF
 } test_t;
 
@@ -252,6 +254,7 @@ esp_err_t save_config_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
+    uint8_t tuya_edited = 0;
     cJSON *item = cJSON_GetObjectItem(jsonObject, "wifi-ssid");
     if (item != NULL)
     {
@@ -324,18 +327,31 @@ esp_err_t save_config_handler(httpd_req_t *req)
     if (item != NULL)
     {
         strncpy(config_values.tuya.device_uuid, item->valuestring, sizeof(config_values.tuya.device_uuid));
+        tuya_edited = 1;
     }
     item = cJSON_GetObjectItem(jsonObject, "tuya-device-auth");
     if (item != NULL)
     {
         strncpy(config_values.tuya.device_auth, item->valuestring, sizeof(config_values.tuya.device_auth));
+        tuya_edited = 1;
+    }
+
+    item = cJSON_GetObjectItem(jsonObject, "refresh-rate");
+    if (item != NULL)
+    {
+        config_values.refreshRate = atoi(item->valuestring);
+        if (config_values.refreshRate < 30)
+        {
+            config_values.refreshRate = 30;
+        }
     }
 
     cJSON_Delete(jsonObject);
     free(buf);
 
-    if (config_values.mode == MODE_TUYA)
+    if (tuya_edited)
     {
+        ESP_LOGI(TAG, "Tuya edited, enabling RW");
         config_rw();
     }
 
@@ -343,137 +359,6 @@ esp_err_t save_config_handler(httpd_req_t *req)
 
     httpd_resp_set_status(req, "200 OK");
     httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
-    return ESP_OK;
-
-    /*char decoded[500];
-    urldecode(decoded, buf);
-    ESP_LOGI(TAG, "=========== RECEIVED DATA ==========");
-    ESP_LOGI(TAG, "%s", decoded);
-    ESP_LOGI(TAG, "====================================");
-    // Parse the POST parameters
-    char ssid[100] = {0};
-    char password[100] = {0};
-    char server_mode = 0;
-    char web_url[100] = {0};
-    char web_post_url[100] = {0};
-    char web_config_url[100] = {0};
-    char web_token[100] = {0};
-    char linky_mode = 0;
-    char mqtt_host[100] = {0};
-    uint16_t mqtt_port = 0;
-    char mqtt_user[100] = {0};
-    char mqtt_password[100] = {0};
-    char mqtt_topic[100] = {0};
-    char mqtt_HA_discovery = 0;
-
-    // wifi-ssid=Test&wifi-password=tedt&server-mode=1&web-url=Tedt&web-token=Tehe&web-tarif=base&web-price-base=&web-price-hc=&web-price-hp=&mqtt-host=&mqtt-port=&mqtt-user=&mqtt-password=
-    // parse key value pairs
-    char *key = strtok(decoded, "&");
-    while (key != NULL)
-    {
-        char *value = strchr(key, '=');
-        if (value != NULL)
-        {
-            *value = '\0';
-            value++;
-            if (strcmp(key, "wifi-ssid") == 0)
-            {
-                strncpy(ssid, value, sizeof(ssid));
-            }
-            else if (strcmp(key, "wifi-password") == 0)
-            {
-                strncpy(password, value, sizeof(password));
-            }
-            else if (strcmp(key, "server-mode") == 0)
-            {
-                server_mode = atoi(value);
-            }
-            else if (strcmp(key, "web-url") == 0)
-            {
-                strncpy(web_url, value, sizeof(web_url));
-            }
-            else if (strcmp(key, "web-token") == 0)
-            {
-                strncpy(web_token, value, sizeof(web_token));
-            }
-            else if (strcmp(key, "web-config") == 0)
-            {
-                strncpy(web_config_url, value, sizeof(web_config_url));
-            }
-            else if (strcmp(key, "web-post") == 0)
-            {
-                strncpy(web_post_url, value, sizeof(web_post_url));
-            }
-            else if (strcmp(key, "linky-mode") == 0)
-            {
-                linky_mode = atoi(value);
-            }
-            else if (strcmp(key, "mqtt-host") == 0)
-            {
-                strncpy(mqtt_host, value, sizeof(mqtt_host));
-            }
-            else if (strcmp(key, "mqtt-port") == 0)
-            {
-                mqtt_port = atoi(value);
-            }
-            else if (strcmp(key, "mqtt-user") == 0)
-            {
-                strncpy(mqtt_user, value, sizeof(mqtt_user));
-            }
-            else if (strcmp(key, "mqtt-password") == 0)
-            {
-                strncpy(mqtt_password, value, sizeof(mqtt_password));
-            }
-            else if (strcmp(key, "mqtt-topic") == 0)
-            {
-                strncpy(mqtt_topic, value, sizeof(mqtt_topic));
-            }
-            else if (strcmp(key, "mqtt-ha-discovery") == 0)
-            {
-                mqtt_HA_discovery = atoi(value);
-            }
-        }
-        key = strtok(NULL, "&");
-    }
-    // save the parameters
-    strncpy(config_values.ssid, ssid, sizeof(config_values.ssid));
-    strncpy(config_values.password, password, sizeof(config_values.password));
-
-    if (server_mode == MODE_MQTT && mqtt_HA_discovery == 1)
-    {
-        config_values.mode = MODE_MQTT_HA;
-    }
-    else
-    {
-        config_values.mode = (connectivity_t)server_mode;
-    }
-
-    strncpy(config_values.web.host, web_url, sizeof(config_values.web.host));
-    strncpy(config_values.web.token, web_token, sizeof(config_values.web.token));
-    strncpy(config_values.web.configUrl, web_config_url, sizeof(config_values.web.configUrl));
-    strncpy(config_values.web.postUrl, web_post_url, sizeof(config_values.web.postUrl));
-    if (linky_mode > AUTO)
-        linky_mode = AUTO;
-    config_values.linkyMode = (linky_mode_t)linky_mode;
-    strncpy(config_values.mqtt.host, mqtt_host, sizeof(config_values.mqtt.host));
-    config_values.mqtt.port = mqtt_port;
-    strncpy(config_values.mqtt.username, mqtt_user, sizeof(config_values.mqtt.username));
-    strncpy(config_values.mqtt.password, mqtt_password, sizeof(config_values.mqtt.password));
-    strncpy(config_values.mqtt.topic, mqtt_topic, sizeof(config_values.mqtt.topic));
-
-    // //  redirect to the reboot page
-    // httpd_resp_set_status(req, "302 Temporary Redirect");
-    // httpd_resp_set_hdr(req, "Location", "/reboot.html");
-    // httpd_resp_send(req, "Redirect to the reboot page", HTTPD_RESP_USE_STRLEN);
-    httpd_resp_set_status(req, "200 OK");
-    httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
-
-    config_rw();
-    config_write();
-
-    // reboot the device
-    // xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL)
-    ;*/
     return ESP_OK;
 }
 
@@ -495,6 +380,7 @@ esp_err_t get_config_handler(httpd_req_t *req)
     cJSON_AddStringToObject(jsonObject, "mqtt-topic", config_values.mqtt.topic);
     cJSON_AddStringToObject(jsonObject, "tuya-device-uuid", config_values.tuya.device_uuid);
     cJSON_AddNumberToObject(jsonObject, "tuya-device-auth", strnlen(config_values.tuya.device_auth, sizeof(config_values.tuya.device_auth)));
+    cJSON_AddNumberToObject(jsonObject, "refresh-rate", config_values.refreshRate);
 
     char *jsonString = cJSON_PrintUnformatted(jsonObject);
     httpd_resp_set_type(req, "application/json");
@@ -702,6 +588,40 @@ esp_err_t test_start_handler(httpd_req_t *req)
 
         return ESP_OK;
 
+        break;
+
+    case TUYA_CONNECT:
+        if (!tuya_available())
+        {
+            ESP_LOGE(TAG, "Tuya device UUID or Auth missing");
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            httpd_resp_send(req, "Vous ne possédez pas de clés Tuya", HTTPD_RESP_USE_STRLEN);
+            return ESP_FAIL;
+        }
+        tuya_init();
+
+        time_t tuya_ping_timeout = MILLIS + 7000;
+        ESP_LOGI(TAG, "Waiting for Tuya connect event...");
+        while (mqtt_bind_state != STATE_MQTT_BIND_TOKEN_WAIT && tuya_ping_timeout > MILLIS)
+        {
+            ESP_LOGD(TAG, "Tuya state: %d", mqtt_bind_state);
+            vTaskDelay(100 / portTICK_PERIOD_MS);
+        }
+        if (mqtt_bind_state != STATE_MQTT_BIND_TOKEN_WAIT)
+        {
+            ESP_LOGE(TAG, "Failed to connect to Tuya");
+            httpd_resp_set_status(req, "500 Internal Server Error");
+            snprintf(buf, sizeof(buf), "Impossible de se connecter à Tuya: Etat %d", mqtt_bind_state);
+            httpd_resp_send(req, buf, HTTPD_RESP_USE_STRLEN);
+            tuya_deinit();
+            return ESP_FAIL;
+        }
+        ESP_LOGI(TAG, "Tuya connected");
+        httpd_resp_set_status(req, "200 OK");
+        httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+        tuya_deinit();
+
+        return ESP_OK;
         break;
     default:
         ESP_LOGE(TAG, "Unknown test id");

@@ -12,17 +12,8 @@
 #include "system_interface.h"
 #include "mqtt_service.h"
 #include "cJSON.h"
+#include "mqtt_bind.h"
 
-typedef enum {
-    STATE_MQTT_BIND_START,
-    STATE_MQTT_BIND_CONNECT,
-    STATE_MQTT_BIND_COMPLETE,
-    STATE_MQTT_BIND_TIMEOUT,
-    STATE_MQTT_BIND_FAILED,
-    STATE_MQTT_BIND_EXIT,
-    STATE_MQTT_BIND_CONNECTED_WAIT,
-    STATE_MQTT_BIND_TOKEN_WAIT,
-} mqtt_bind_state_t;
 
 static void mqtt_bind_activate_token_on(tuya_protocol_event_t* ev)
 {
@@ -68,10 +59,10 @@ static void mqtt_bind_activate_token_on(tuya_protocol_event_t* ev)
     strcpy(binding->regist_key, regist_key);
 }
 
+mqtt_bind_state_t mqtt_bind_state = STATE_MQTT_BIND_START;
 int mqtt_bind_token_get(const tuya_iot_config_t* config, tuya_binding_info_t* binding)
 {
     int ret = OPRT_OK;
-    mqtt_bind_state_t mqtt_bind_state = STATE_MQTT_BIND_START;
     tuya_mqtt_context_t mqctx;
 
     while(mqtt_bind_state != STATE_MQTT_BIND_EXIT) {

@@ -404,6 +404,7 @@ void gpio_pairing_button_task(void *pvParameters)
     connectivity_t current_mode_led = MODE_NONE;
     uint8_t pairingState = 0;
     uint32_t io_num = 0;
+
     while (1)
     {
 
@@ -445,18 +446,25 @@ void gpio_pairing_button_task(void *pvParameters)
                 }
                 else if (pushTime % 1000 < 100)
                 {
-                    ESP_LOGI(TAG, "------------------------LED state before compute: %d", current_mode_led);
+                    ESP_LOGI(TAG, "LED state before compute: %d", current_mode_led);
                     current_mode_led++;
                     if (current_mode_led == MODE_MQTT)
                     {
                         // skip MQTT_HA
                         current_mode_led++;
                     }
+                    if (current_mode_led == MODE_TUYA && !tuya_available())
+                    {
+                        ESP_LOGI(TAG, "Tuya not available, skipping");
+                        current_mode_led++;
+                        continue;
+                    }
+
                     if (current_mode_led >= MODE_LAST)
                     {
                         current_mode_led = MODE_WEB;
                     }
-                    ESP_LOGI(TAG, "------------------------LED state: %d", current_mode_led);
+                    ESP_LOGI(TAG, "LED state: %d", current_mode_led);
                     led_start_pattern(LED_COLOR_WHEEL);
                     led_set_color(led_color_mode[current_mode_led]);
                 }

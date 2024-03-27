@@ -551,3 +551,10 @@ svg.spin {
   cursor: pointer;
   opacity: 0.5;
 }
+.secondes {
+  position: absolute;
+  right: 10px;
+  top: 9px;
+  cursor: pointer;
+  opacity: 0.5;
+}
