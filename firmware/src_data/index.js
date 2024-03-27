@@ -33,6 +33,8 @@ const popup = document.getElementById("popup");
 const wifi_list = document.getElementById("wifi-list");
 const wifi_text = document.getElementById("wifi-text");
 
+const mqtt_ha_discovery = document.getElementById("mqtt-ha-discovery");
+
 const tuya_advanced = document.getElementById("tuya-advanced");
 const tuya_device_uuid = document.getElementById("tuya-device-uuid");
 const tuya_device_auth = document.getElementById("tuya-device-auth");
@@ -43,6 +45,9 @@ const mqtt_password = document.getElementById("mqtt-password");
 const mqtt_password_svg = document.getElementById("mqtt-pw-svg");
 let mqtt_password_edited = false;
 
+const refresh_rate = document.getElementById("refresh-rate");
+const refresh_rate_number = document.getElementById("refresh-rate-number");
+
 const PENDING = 0;
 const RUNNING = 1;
 const SUCCESS = 2;
@@ -51,20 +56,28 @@ const FAILURE = 3;
 const ANY = 0;
 const HTTP = 1;
 const MQTT = 2;
-const ZIGBEE = 3;
-const TUYA = 4;
+const MQTT_HA = 3;
+const ZIGBEE = 4;
+const TUYA = 5;
 
 // prettier-ignore
 const tests_list = [
-  { id: 0, mode: [], text: " ",  state: PENDING,                         hide: true , retry: false, retry: 3, timeout: 10000, continue: true},
-  { id: 1, mode: [], text: "Connexion au réseau WiFi",  state: PENDING , hide: false, retry: true , retry: 10,timeout: 2000,  continue: false},
-  { id: 2, mode: [], text: "Test du réseau WiFi",       state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
-  { id: 3, mode: [], text: "Connexion au serveur MQTT", state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: false},
-  { id: 4, mode: [], text: "Envoi des données MQTT",    state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
+  { id: 0, mode: [HTTP, MQTT, MQTT_HA, TUYA], text: " ",  state: PENDING,                         hide: true , retry: false, retry: 3, timeout: 10000, continue: true},
+  { id: 1, mode: [HTTP, MQTT, MQTT_HA, TUYA], text: "Connexion au réseau WiFi",  state: PENDING , hide: false, retry: true , retry: 10,timeout: 2000,  continue: false},
+  { id: 2, mode: [HTTP, MQTT, MQTT_HA, TUYA], text: "Test du réseau WiFi",       state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
+
+  { id: 3, mode: [MQTT, MQTT_HA],             text: "Connexion au serveur MQTT", state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: false},
+  { id: 4, mode: [MQTT, MQTT_HA],             text: "Envoi des données MQTT",    state: PENDING , hide: false, retry: false, retry: 3, timeout: 10000, continue: true},
+
+  { id: 5, mode: [TUYA],                      text: "Connexion à Tuya",          state: PENDING , hide: false, retry: false, retry: 1, timeout: 10000, continue: false},
+
 ];
+
+let current_selected_mode = 0;
 
 function update_config_view(mode) {
   console.log("Mode: " + mode);
+  current_selected_mode = mode;
   mode_config_http.classList.add("hide");
   mode_config_mqtt.classList.add("hide");
   mode_config_zigbee.classList.add("hide");
@@ -76,7 +89,12 @@ function update_config_view(mode) {
       wifi_configurator.classList.remove("hide");
       break;
     case 2:
+      mqtt_ha_discovery.checked = false;
+      mode_config_mqtt.classList.remove("hide");
+      wifi_configurator.classList.remove("hide");
+      break;
     case 3:
+      mqtt_ha_discovery.checked = true;
       mode_config_mqtt.classList.remove("hide");
       wifi_configurator.classList.remove("hide");
       break;
@@ -149,8 +167,12 @@ function update_page_view(page) {
 
 function update_tests_view() {
   test_container.innerHTML = "";
+  let test_count = 0;
   tests_list.forEach((test, index) => {
     if (test.hide) {
+      return;
+    }
+    if (test.mode.indexOf(current_selected_mode) == -1) {
       return;
     }
 
@@ -190,7 +212,17 @@ function update_tests_view() {
     test_div.appendChild(svg);
     test_div.appendChild(text);
     test_container.appendChild(test_div);
+    test_count++;
   });
+
+  if (test_count == 0) {
+    const label = document.createElement("label");
+    const text = document.createElement("h6");
+    text.textContent = "Aucun test disponible pour ce mode";
+    text.className = "black";
+    label.appendChild(text);
+    test_container.appendChild(label);
+  }
 }
 
 function update_popup(state) {
@@ -292,6 +324,9 @@ async function start_tests() {
 
   let nTry = 0;
   for (let i = 0; i < tests_list.length; i++) {
+    if (tests_list[i].mode.indexOf(current_selected_mode) == -1) {
+      continue;
+    }
     tests_list[i].state = RUNNING;
     update_tests_view();
 
@@ -304,6 +339,10 @@ async function start_tests() {
         console.log("Test failed", response);
         tests_list[i].state = FAILURE;
         var text = await response.text();
+        if (text.includes("AbortError")) {
+          text = "Timeout";
+        }
+
         test_error_text.textContent += "Test " + i + ": " + text + "\n";
         update_tests_view();
         if (tests_list[i].continue) {
@@ -423,6 +462,10 @@ function handleSubmit(event) {
     delete config["mqtt-password"];
   }
 
+  if (config["server-mode"] == 2 && mqtt_ha_discovery.checked) {
+    config["server-mode"] = "3";
+  }
+
   fetch("/config", {
     method: "POST",
     headers: {
@@ -486,6 +529,11 @@ function update_mqtt_password() {
   mqtt_password_shown = !mqtt_password_shown;
 }
 
+function set_refresh_rate(value) {
+  refresh_rate.value = value;
+  refresh_rate_number.value = value;
+}
+
 window.addEventListener("load", function () {
   linky_tic_auto_switch.addEventListener("change", (event) => {
     update_linky_tic_mode(event.target.checked ? 2 : 3);
@@ -515,6 +563,14 @@ window.addEventListener("load", function () {
   mqtt_password.addEventListener("input", (event) => {
     mqtt_password_edited = true;
     console.log("MQTT password edited");
+  });
+
+  refresh_rate.addEventListener("input", (event) => {
+    set_refresh_rate(event.target.value);
+  });
+
+  refresh_rate_number.addEventListener("input", (event) => {
+    set_refresh_rate(event.target.value);
   });
 
   const form = document.querySelector("form");
@@ -549,15 +605,23 @@ window.addEventListener("load", function () {
             continue;
           }
 
+          if (key == "refresh-rate") {
+            set_refresh_rate(element);
+            continue;
+          }
           const input = document.querySelector(`[name="${key}"]`);
           if (input) {
             input.value = element;
           }
         }
       }
-      update_config_view(parseInt(data["server-mode"]));
+      let mode = data["server-mode"];
+      update_config_view(parseInt(mode));
+      if (mode == MQTT_HA) {
+        mode = MQTT;
+      }
       for (let i = 0; i < mode_selectors.length; i++) {
-        if (mode_selectors[i].value == data["server-mode"]) {
+        if (mode_selectors[i].value == mode) {
           mode_selectors[i].checked = true;
         }
       }

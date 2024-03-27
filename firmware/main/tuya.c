@@ -95,7 +95,7 @@ TaskHandle_t tuya_ble_pairing_task_handle = NULL;
 /*==============================================================================
  Local Variable
 ===============================================================================*/
-static tuya_iot_client_t client;
+static tuya_iot_client_t client = {0};
 static tuya_event_id_t lastEvent = TUYA_EVENT_RESET;
 static uint8_t newEvent = 0;
 /*==============================================================================
@@ -234,9 +234,25 @@ void tuya_init()
     if (tuyaTaskHandle != NULL)
     {
         ESP_LOGI(TAG, "Tuya already init");
+        tuya_iot_reset(&client);
+        tuya_iot_start(&client);
+        vTaskResume(tuyaTaskHandle);
         return;
     }
     xTaskCreate(tuya_link_app_task, "tuya_link", 1024 * 6, NULL, PRIORITY_TUYA, &tuyaTaskHandle);
+}
+
+void tuya_deinit()
+{
+    if (tuyaTaskHandle != NULL)
+    {
+        ESP_LOGI(TAG, "Tuya deinit");
+        tuya_iot_stop(&client);
+        tuya_iot_reset(&client);
+        vTaskDelete(tuyaTaskHandle);
+        tuyaTaskHandle = NULL;
+        memset(&client, 0, sizeof(tuya_iot_client_t));
+    }
 }
 
 static void tuya_send_callback(int result, void *user_data)
@@ -599,4 +615,9 @@ void ble_token_get_cb(wifi_info_t wifi_info)
     }
     ESP_LOGI(TAG, "Tuya pairing OK");
     return;
+}
+
+uint8_t tuya_available()
+{
+    return !(strnlen(config_values.tuya.device_uuid, sizeof(config_values.tuya.device_uuid)) == 0 || strnlen(config_values.tuya.device_auth, sizeof(config_values.tuya.device_auth)) == 0);
 }

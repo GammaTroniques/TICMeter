@@ -90,7 +90,7 @@ static led_timing_t led_timing[] = {
     {LED_CONNECTING,            60,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
     {LED_CONNECTING_FAILED,     61,     LED_FLASH,      0xFF0000,                       50,     100,    4,       0, 0,},
     
-    {LED_SENDING,               70,     LED_FLASH,      0x00F0FF,                       100,    1000,   FOREVER, 0, 0,},
+    {LED_SENDING,               70,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
     {LED_SEND_FAILED,           72,     LED_FLASH,      0xFF0000,                       50,     100,    5,       0, 0,},
     {LED_SEND_OK,               71,     LED_FLASH,      0x00FF00,                       300,    0,      1,       0, 0,},
 
