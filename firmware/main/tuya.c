@@ -178,7 +178,6 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
         ESP_LOGI(TAG, "Tuya binded");
         config_values.pairing_state = TUYA_PAIRED;
         config_write();
-        led_stop_pattern(LED_PAIRING);
         break;
     case TUYA_EVENT_DPCACHE_NOTIFY:
         TY_LOGI("Recv TUYA_EVENT_DPCACHE_NOTIFY");
@@ -558,7 +557,7 @@ void tuya_pairing_task(void *pvParameters)
     config_write();
     ESP_LOGI(TAG, "Tuya pairing: %d", config_values.pairing_state);
     led_start_pattern(LED_SEND_OK);
-    // will restart via main task
+    esp_restart();
     vTaskDelete(NULL);
 }
 uint8_t tuya_wait_event(tuya_event_id_t event, uint32_t timeout)
@@ -582,7 +581,6 @@ uint8_t tuya_wait_event(tuya_event_id_t event, uint32_t timeout)
 uint8_t tuya_stop()
 {
     ESP_LOGI(TAG, "Tuya stop");
-    led_stop_pattern(LED_PAIRING);
     return tuya_iot_stop(&client);
 }
 

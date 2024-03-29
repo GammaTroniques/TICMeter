@@ -357,8 +357,8 @@ static void zigbee_task(void *pvParameters)
      *  no further processing shall continue.
      */
     esp_zb_ota_cluster_cfg_t ota_cluster_cfg = {
-        .ota_upgrade_manufacturer = 0x1011,
-        .ota_upgrade_image_type = 0x1011,
+        .ota_upgrade_manufacturer = 0xFFFF,
+        .ota_upgrade_image_type = 0x00c8,
     };
     ota_cluster_cfg.ota_upgrade_file_version = zigbee_get_hex_version(app_desc->version);
     ota_cluster_cfg.ota_upgrade_downloaded_file_ver = zigbee_get_hex_version(app_desc->version);
@@ -818,18 +818,29 @@ static void zigbee_print_value(char *out_buffer, void *data, linky_label_type_t 
     };
 }
 
+static size_t ota_data_len_ = 0;
+static size_t ota_header_len_ = 0;
+static bool ota_upgrade_subelement_ = false;
+static uint8_t ota_header_[6] = {0};
 static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage)
 {
     static uint32_t total_size = 0;
     static uint32_t offset = 0;
     static int64_t start_time = 0;
-    esp_err_t ret = ESP_OK;
+
+    static esp_err_t ret = ESP_OK;
+
     if (messsage.info.status == ESP_ZB_ZCL_STATUS_SUCCESS)
     {
         switch (messsage.upgrade_status)
         {
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_START:
             ESP_LOGI(TAG, "-- OTA upgrade start");
+
+            ota_upgrade_subelement_ = false;
+            ota_data_len_ = 0;
+            ota_header_len_ = 0;
+
             start_time = esp_timer_get_time();
             zigbee_ota_partition = esp_ota_get_next_update_partition(NULL);
             assert(zigbee_ota_partition);
@@ -837,13 +848,53 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
             ESP_RETURN_ON_ERROR(ret, TAG, "Failed to begin OTA partition, status: %s", esp_err_to_name(ret));
             break;
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_RECEIVE:
+            size_t payload_size = messsage.payload_size;
+            const uint8_t *payload = messsage.payload;
+
+            ESP_LOG_BUFFER_HEXDUMP(TAG, payload, payload_size, ESP_LOG_INFO);
+
             total_size = messsage.ota_header.image_size;
-            offset += messsage.payload_size;
+            offset += payload_size;
+
             ESP_LOGI(TAG, "-- OTA Client receives data: progress [%ld/%ld]", offset, total_size);
-            if (messsage.payload_size && messsage.payload)
+
+            /* Read and process the first sub-element, ignoring everything else */
+            while (ota_header_len_ < 6 && payload_size > 0)
             {
-                ret = esp_ota_write(zigbee_ota_handle, (const void *)messsage.payload, messsage.payload_size);
-                ESP_RETURN_ON_ERROR(ret, TAG, "Failed to write OTA data to partition, status: %s", esp_err_to_name(ret));
+                ota_header_[ota_header_len_] = payload[0];
+                ota_header_len_++;
+                payload++;
+                payload_size--;
+            }
+
+            if (!ota_upgrade_subelement_ && ota_header_len_ == 6)
+            {
+                if (ota_header_[0] == 0 && ota_header_[1] == 0)
+                {
+                    ota_upgrade_subelement_ = true;
+                    ota_data_len_ =
+                        (((int)ota_header_[5] & 0xFF) << 24) | (((int)ota_header_[4] & 0xFF) << 16) | (((int)ota_header_[3] & 0xFF) << 8) | ((int)ota_header_[2] & 0xFF);
+                    ESP_LOGW(TAG, "OTA sub-element size %zu", ota_data_len_);
+                }
+                else
+                {
+                    ESP_LOGE(TAG, "OTA sub-element type %02x%02x not supported", ota_header_[0], ota_header_[1]);
+                    return ESP_FAIL;
+                }
+            }
+
+            if (ota_data_len_)
+            {
+                payload_size = MIN(ota_data_len_, payload_size);
+                ota_data_len_ -= payload_size;
+
+                if (messsage.payload_size && messsage.payload)
+                {
+                    ret = esp_ota_write(zigbee_ota_handle, payload, payload_size);
+                    ESP_LOG_BUFFER_HEXDUMP(TAG, payload, payload_size, ESP_LOG_WARN);
+
+                    ESP_RETURN_ON_ERROR(ret, TAG, "Failed to write OTA data to partition, status: %s", esp_err_to_name(ret));
+                }
             }
             break;
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_APPLY:
