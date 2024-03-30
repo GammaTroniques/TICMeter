@@ -24,6 +24,7 @@
 #include "esp_pm.h"
 #include "esp_timer.h"
 #include "esp_ota_ops.h"
+#include "zlib.h"
 
 #include "zigbee.h"
 #include "gpio.h"
@@ -57,6 +58,12 @@ typedef enum
     ZIGBEE_CONNECTED,
 } zigbee_state_t;
 
+typedef enum
+{
+    ZB_CMD_REBOOT = 0,
+    ZB_CMD_RESET = 1,
+} zb_cmd_t;
+
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
@@ -82,12 +89,18 @@ DEFINE_PSTRING(zigbee_device_name, "TICMeter");
 DEFINE_PSTRING(zigbee_device_manufacturer, "GammaTroniques");
 
 static const esp_partition_t *zigbee_ota_partition = NULL;
+static const esp_partition_t *zigbee_storage_partition = NULL;
 static esp_ota_handle_t zigbee_ota_handle = 0;
 // DEFINE_PSTRING(zigbee_date_code, BUILD_TIME);
 
 zigbee_state_t zigbee_state = ZIGBEE_NOT_CONNECTED;
 // static esp_pm_lock_handle_t zigbee_pm_apb_lock;
 // static esp_pm_lock_handle_t zigbee_pm_cpu_lock;
+
+z_stream zlib_stream = {0};
+uint8_t zlib_init = 0;
+uint8_t zlib_buf[512];
+
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -195,6 +208,45 @@ static esp_err_t zigbee_attribute_handler(const esp_zb_zcl_set_attr_value_messag
                         message->info.status);
     ESP_LOGI(TAG, "Received message: endpoint(0x%x), cluster(0x%x), attribute(0x%x), data size(%d)", message->info.dst_endpoint, message->info.cluster,
              message->attribute.id, message->attribute.data.size);
+
+    uint8_t *data = message->attribute.data.value;
+    char buffer[101];
+    for (int i = 0; i < LinkyLabelListSize; i++)
+    {
+        if (LinkyLabelList[i].clusterID == message->info.cluster && LinkyLabelList[i].attributeID == message->attribute.id)
+        {
+            switch (LinkyLabelList[i].type)
+            {
+            case UINT8:
+                *(uint8_t *)LinkyLabelList[i].data = data[0];
+                break;
+            case UINT16:
+                *(uint16_t *)LinkyLabelList[i].data = data[1] << 8 | data[0];
+                break;
+            case UINT32:
+                *(uint32_t *)LinkyLabelList[i].data = data[3] << 24 | data[2] << 16 | data[1] << 8 | data[0];
+                break;
+            case UINT64:
+                *(uint64_t *)LinkyLabelList[i].data = data[7] << 56 | data[6] << 48 | data[5] << 40 | data[4] << 32 | data[3] << 24 | data[2] << 16 | data[1] << 8 | data[0];
+                break;
+            case STRING:
+                memcpy(LinkyLabelList[i].data, data, MIN(LinkyLabelList[i].size, message->attribute.data.size));
+                ((char *)LinkyLabelList[i].data)[LinkyLabelList[i].size] = '\0';
+                break;
+            case UINT32_TIME:
+                ((time_label_t *)LinkyLabelList[i].data)->value = data[3] << 24 | data[2] << 16 | data[1] << 8 | data[0];
+                break;
+            default:
+                return ESP_ERR_INVALID_ARG;
+                break;
+            }
+            zigbee_print_value(buffer, LinkyLabelList[i].data, LinkyLabelList[i].type);
+            ESP_LOGI(TAG, "Attribute %s updated to %s", LinkyLabelList[i].label, buffer);
+            config_write();
+            break;
+        }
+    }
+
     return ret;
 }
 
@@ -213,6 +265,31 @@ static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback
         esp_zb_zcl_cmd_default_resp_message_t *resp = (esp_zb_zcl_cmd_default_resp_message_t *)(message);
         ESP_LOGI(TAG, "Received default response cluster: %x", resp->info.cluster);
         break;
+    case ESP_ZB_CORE_CMD_CUSTOM_CLUSTER_REQ_CB_ID:
+        esp_zb_zcl_custom_cluster_command_message_t *cmd = (esp_zb_zcl_custom_cluster_command_message_t *)(message);
+        uint8_t *data = cmd->data.value;
+        switch (cmd->info.command.id)
+        {
+        case ZB_CMD_REBOOT:
+        {
+            ESP_LOGI(TAG, "Reboot command received");
+            hard_restart();
+            break;
+        }
+        case ZB_CMD_RESET:
+        {
+            ESP_LOGI(TAG, "Reset command received");
+            gpio_start_pariring();
+
+            break;
+        }
+        default:
+            ESP_LOGI(TAG, "Received custom cluster: cluster: %x, command: %x, size %d", cmd->info.cluster, cmd->info.command.id, cmd->data.size);
+            ESP_LOG_BUFFER_HEXDUMP(TAG, cmd->data.value, cmd->data.size, ESP_LOG_INFO);
+            break;
+        }
+
+        break;
     default:
         ESP_LOGW(TAG, "Receive Zigbee action(0x%x) callback, message: %s", callback_id, (char *)message);
         break;
@@ -222,11 +299,6 @@ static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback
 
 void zigbee_init_stack()
 {
-    // esp_pm_lock_create(ESP_PM_APB_FREQ_MAX, 0, "zigbee_pm_apb_lock", &zigbee_pm_apb_lock);
-    // esp_pm_lock_create(ESP_PM_CPU_FREQ_MAX, 0, "zigbee_pm_cpu_lock", &zigbee_pm_cpu_lock);
-    // esp_pm_lock_acquire(zigbee_pm_apb_lock);
-    // esp_pm_lock_acquire(zigbee_pm_cpu_lock); // /!\ Zigbee must be running at max frequency
-
     esp_err_t ret = nvs_flash_init();
     if (ret != ESP_OK)
     {
@@ -373,6 +445,8 @@ static void zigbee_task(void *pvParameters)
     ESP_LOGI(TAG, "HW version: %x", variable_config.hw_version);
     ESP_LOGI(TAG, "File version: %lx", ota_cluster_cfg.ota_upgrade_file_version);
     esp_zb_ota_cluster_add_attr(esp_zb_ota_client_cluster, ESP_ZB_ZCL_ATTR_OTA_UPGRADE_CLIENT_DATA_ID, (void *)&variable_config);
+
+    // ------------------ Add commands ------------------
 
     // ------------------ Add attributes ------------------
     for (int i = 0; i < LinkyLabelListSize; i++)
@@ -822,6 +896,9 @@ static size_t ota_data_len_ = 0;
 static size_t ota_header_len_ = 0;
 static bool ota_upgrade_subelement_ = false;
 static uint8_t ota_header_[6] = {0};
+static uint16_t subelement_type = 0;
+static uint32_t subelement_size = 0;
+static uint32_t storage_offset = 0;
 static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage)
 {
     static uint32_t total_size = 0;
@@ -835,23 +912,61 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
         switch (messsage.upgrade_status)
         {
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_START:
-            ESP_LOGI(TAG, "-- OTA upgrade start");
+            ESP_LOGI(TAG, "-- OTA upgrade start, OTA type: 0x%x, OTA file version: 0x%lx, OTA image size: %ld bytes", messsage.ota_header.image_type, messsage.ota_header.file_version, messsage.ota_header.image_size);
 
             ota_upgrade_subelement_ = false;
             ota_data_len_ = 0;
             ota_header_len_ = 0;
 
             start_time = esp_timer_get_time();
+
+            int ret = inflateInit(&zlib_stream);
+
+            if (ret == Z_OK)
+            {
+                zlib_init = 1;
+            }
+            else
+            {
+                ESP_LOGE(TAG, "zlib init failed: %d", ret);
+                return false;
+            }
+
+            if (zigbee_ota_partition != NULL)
+            {
+                ESP_LOGE(TAG, "OTA already started");
+                zigbee_ota_partition = NULL;
+                esp_ota_abort(zigbee_ota_handle);
+                return ESP_FAIL;
+            }
+
             zigbee_ota_partition = esp_ota_get_next_update_partition(NULL);
-            assert(zigbee_ota_partition);
+            if (zigbee_ota_partition == NULL)
+            {
+                ESP_LOGE(TAG, "OTA partition not found");
+                return ESP_FAIL;
+            }
+            zigbee_storage_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, "storage");
+            if (zigbee_storage_partition == NULL)
+            {
+                ESP_LOGE(TAG, "Storage partition not found");
+                return ESP_FAIL;
+            }
+
             ret = esp_ota_begin(zigbee_ota_partition, OTA_WITH_SEQUENTIAL_WRITES, &zigbee_ota_handle);
-            ESP_RETURN_ON_ERROR(ret, TAG, "Failed to begin OTA partition, status: %s", esp_err_to_name(ret));
+            if (ret != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to begin OTA partition, status: %s", esp_err_to_name(ret));
+                zigbee_ota_partition = NULL;
+                return ESP_FAIL;
+            }
+
             break;
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_RECEIVE:
             size_t payload_size = messsage.payload_size;
             const uint8_t *payload = messsage.payload;
 
-            ESP_LOG_BUFFER_HEXDUMP(TAG, payload, payload_size, ESP_LOG_INFO);
+            // ESP_LOG_BUFFER_HEXDUMP(TAG, payload, payload_size, ESP_LOG_INFO);
 
             total_size = messsage.ota_header.image_size;
             offset += payload_size;
@@ -865,21 +980,31 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                 ota_header_len_++;
                 payload++;
                 payload_size--;
+                ESP_LOGI(TAG, "OTA header len %zu:", ota_header_len_);
+                // ESP_LOG_BUFFER_HEXDUMP(TAG, ota_header_, ota_header_len_, ESP_LOG_WARN);
             }
 
             if (!ota_upgrade_subelement_ && ota_header_len_ == 6)
             {
-                if (ota_header_[0] == 0 && ota_header_[1] == 0)
+                subelement_type = (ota_header_[1] << 8) | ota_header_[0];
+                subelement_size = (((int)ota_header_[5] & 0xFF) << 24) | (((int)ota_header_[4] & 0xFF) << 16) | (((int)ota_header_[3] & 0xFF) << 8) | ((int)ota_header_[2] & 0xFF);
+                ota_upgrade_subelement_ = true;
+                switch (subelement_type)
                 {
-                    ota_upgrade_subelement_ = true;
-                    ota_data_len_ =
-                        (((int)ota_header_[5] & 0xFF) << 24) | (((int)ota_header_[4] & 0xFF) << 16) | (((int)ota_header_[3] & 0xFF) << 8) | ((int)ota_header_[2] & 0xFF);
+                case 0:
+                    ota_data_len_ = subelement_size;
                     ESP_LOGW(TAG, "OTA sub-element size %zu", ota_data_len_);
-                }
-                else
-                {
+                    break;
+
+                case 0x100:
+                    ESP_LOGI(TAG, "OTA sub-element storage");
+                    ota_data_len_ = subelement_size;
+                    storage_offset = 0;
+                    break;
+                default:
                     ESP_LOGE(TAG, "OTA sub-element type %02x%02x not supported", ota_header_[0], ota_header_[1]);
                     return ESP_FAIL;
+                    break;
                 }
             }
 
@@ -888,13 +1013,51 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                 payload_size = MIN(ota_data_len_, payload_size);
                 ota_data_len_ -= payload_size;
 
-                if (messsage.payload_size && messsage.payload)
-                {
-                    ret = esp_ota_write(zigbee_ota_handle, payload, payload_size);
-                    ESP_LOG_BUFFER_HEXDUMP(TAG, payload, payload_size, ESP_LOG_WARN);
+                zlib_stream.avail_in = payload_size;
+                zlib_stream.next_in = (Bytef *)payload;
 
-                    ESP_RETURN_ON_ERROR(ret, TAG, "Failed to write OTA data to partition, status: %s", esp_err_to_name(ret));
-                }
+                do
+                {
+                    zlib_stream.avail_out = sizeof(zlib_buf);
+                    zlib_stream.next_out = zlib_buf;
+
+                    ret = inflate(&zlib_stream, Z_NO_FLUSH);
+                    if (ret != Z_OK && ret != Z_STREAM_END)
+                    {
+                        ESP_LOGE(TAG, "zlib inflate failed: %d", ret);
+                        return ESP_FAIL;
+                    }
+
+                    size_t have = sizeof(zlib_buf) - zlib_stream.avail_out;
+                    if (have)
+                    {
+                        // ESP_LOG_BUFFER_HEXDUMP(TAG, zlib_buf, have, ESP_LOG_WARN);
+                        switch (subelement_type)
+                        {
+                        case 0:
+                            ESP_LOGI(TAG, "OTA sub-element Firmware: ota_data_len_ %zu", ota_data_len_);
+                            ret = esp_ota_write(zigbee_ota_handle, zlib_buf, have);
+                            if (ret != ESP_OK)
+                            {
+                                ESP_LOGE(TAG, "Failed to write OTA data to partition, status: %s", esp_err_to_name(ret));
+                                return ESP_FAIL;
+                            }
+                            break;
+                        case 0x100:
+                            ESP_LOGI(TAG, "OTA sub-element storage: ota_data_len_ %zu, storage_offset %lu, subelement_size %lu", ota_data_len_, storage_offset, subelement_size);
+                            ret = esp_partition_write(zigbee_storage_partition, storage_offset, zlib_buf, have);
+                            storage_offset += have;
+                            if (ret != ESP_OK)
+                            {
+                                ESP_LOGE(TAG, "Failed to write OTA data to storage partition, status: 0x%x %s", ret, esp_err_to_name(ret));
+                                return ESP_FAIL;
+                            }
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                } while (zlib_stream.avail_out == 0);
             }
             break;
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_APPLY:

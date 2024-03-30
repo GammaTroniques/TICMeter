@@ -117,6 +117,8 @@ void app_main(void)
     }
   }
 
+  // ESP_LOGI(MAIN_TAG, "VICTOIREEEEEEEEEEEEEEEEEEEEEEEEEE");
+
   // if (gpio_get_vcondo() < 3.4)
   // {
   //   ESP_LOGW(MAIN_TAG, "VCondo too low, light sleep for 30s");
@@ -160,12 +162,14 @@ void app_main(void)
 
   if (!linky_update())
   {
-    ESP_LOGE(MAIN_TAG, "Cant find Linky");
+    while (!linky_update())
+    {
+      ESP_LOGE(MAIN_TAG, "Cant find Linky: retrying every 10s before starting");
+      vTaskDelay(10000 / portTICK_PERIOD_MS);
+    }
   }
-  else
-  {
-    ESP_LOGI(MAIN_TAG, "Linky found");
-  }
+
+  ESP_LOGI(MAIN_TAG, "Linky found");
   switch (config_values.mode)
   {
   case MODE_WEB:

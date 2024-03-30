@@ -238,7 +238,7 @@ const LinkyGroup LinkyLabelList[] =
     {000, "Profil du prochain jour",            "PJOURF+1",    &linky_data.std.PJOURF_1,      STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0xFF42, 0x0028,  ZB_RO, ZB_CHARSTR    },
     {000, "Profil du prochain jour pointe",     "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      58, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0xFF42, 0x0029,  ZB_RO, ZB_CHARSTR     },
     //---------------------------Home Assistant Specific ------------------------------------------------
-    {103, "Temps d'actualisation",              "now-refresh", &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0xFF42, 0x0002,  ZB_RO, ZB_UINT16    },
+    {103, "Temps d'actualisation",              "now-refresh", &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0xFF42, 0x0002,  ZB_RW, ZB_UINT16    },
     {000, "Temps d'actualisation",              "set-refresh", &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
     {105, "Mode TIC",                           "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x002c,  ZB_RO, ZB_UINT8     },
     {106, "Mode Electrique",                    "mode-elec",   &linky_three_phase,            UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x002a,  ZB_RO, ZB_UINT8     },
@@ -856,12 +856,12 @@ char linky_update()
 
     esp_pm_lock_acquire(linky_pm_lock);
     linky_reading = 1;
-    ESP_LOGI(TAG, "liinky mode: %d", linky_mode);
     if (linky_mode > MODE_STD)
     {
         ESP_LOGE(TAG, "Error: Unknown mode: %d", linky_mode);
         return 0;
     }
+    ESP_LOGI(TAG, "Mode: %s", linky_str_mode[linky_mode]);
 
     led_start_pattern(LED_LINKY_READING);
 
@@ -871,7 +871,7 @@ char linky_update()
         ret = linky_read(); // read the data
         if (ret == 0)
         {
-            ESP_LOGE(TAG, "Error: no frame found");
+            // ESP_LOGE(TAG, "Error: no frame found");
             // we continue to decode the frame and test the auto mode
         }
 
@@ -984,16 +984,16 @@ void linky_print()
  */
 static char linky_checksum(char *label, char *data, char *time)
 {
-    int S1 = 0;                                    // sum of the ASCII codes of the characters in the label
-    for (int i = 0; i < strlen(label); i++)        // for each character in the label
-    {                                              //
-        S1 += label[i];                            // add the ASCII code of the label character to the sum
-    }                                              //
-    S1 += linky_group_separator;                   // add the ASCII code of the separator to the sum
-    for (int i = 0; i < strlen(data); i++)         // for each character in the data
-    {                                              //
-        S1 += data[i];                             // add the ASCII code of the data character to the sum
-    }                                              //
+    int S1 = 0;                             // sum of the ASCII codes of the characters in the label
+    for (int i = 0; i < strlen(label); i++) // for each character in the label
+    {                                       //
+        S1 += label[i];                     // add the ASCII code of the label character to the sum
+    } //
+    S1 += linky_group_separator;           // add the ASCII code of the separator to the sum
+    for (int i = 0; i < strlen(data); i++) // for each character in the data
+    {                                      //
+        S1 += data[i];                     // add the ASCII code of the data character to the sum
+    } //
     if (linky_mode == MODE_STD)                    // if the mode is standard
     {                                              //
         S1 += linky_group_separator;               // add the ASCII code of the separator to the sum
@@ -1002,11 +1002,11 @@ static char linky_checksum(char *label, char *data, char *time)
             for (int i = 0; i < strlen(time); i++) // for each character in the time
             {                                      //
                 S1 += time[i];                     // add the ASCII code of the time character to the sum
-            }                                      //
-            S1 += linky_group_separator;           //
-        }                                          //
-    }                                              //
-    return (S1 & 0x3F) + 0x20;                     // return the checksum
+            } //
+            S1 += linky_group_separator; //
+        } //
+    } //
+    return (S1 & 0x3F) + 0x20; // return the checksum
 }
 
 static time_t linky_decode_time(char *time)
