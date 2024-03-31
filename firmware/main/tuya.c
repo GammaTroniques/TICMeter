@@ -76,6 +76,13 @@ typedef enum
     STATE_STOP,
     STATE_EXIT,
 } tuya_run_state_t;
+
+typedef struct
+{
+    const char *look;
+    const char *replace;
+} str_replace_t;
+
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
@@ -86,6 +93,13 @@ static void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps
 static void tuya_link_app_task(void *pvParameters);
 static void tuya_send_callback(int result, void *user_data);
 void ble_token_get_cb(wifi_info_t wifi_info);
+
+str_replace_t str_current_tarif_replace[] = {
+    {"TH..", "BASE"},
+    {"HC..", "Heures Creuses"},
+    {"HP..", "Heures Pleines"},
+};
+
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -192,12 +206,16 @@ static void tuya_link_app_task(void *pvParameters)
 {
     int ret = OPRT_OK;
     const esp_app_desc_t *app_desc = esp_app_get_description();
+    char version[10] = {0};
+    // copy version before '-'
+    strncpy(version, app_desc->version + 1, strcspn(app_desc->version + 1, "-"));
+    ESP_LOGI(TAG, "Tuya version: %s", version);
 
     const tuya_iot_config_t tuya_config = {
         .productkey = TUYA_PRODUCT_ID,
         .uuid = config_values.tuya.device_uuid,
         .authkey = config_values.tuya.device_auth,
-        .software_ver = app_desc->version,
+        .software_ver = version,
         .modules = NULL,
         .skill_param = NULL,
         .storage_namespace = "tuya",
@@ -273,7 +291,7 @@ uint8_t tuya_compute_offset(linky_data_t *linky)
     case MODE_HIST:
     {
 
-        uint64_t *values[] = {&linky->hist.HCHP, &linky->hist.EJPHN, &linky->hist.EJPHPM, &linky->hist.BBRHCJB, &linky->hist.BBRHPJB, &linky->hist.BBRHCJW, &linky->hist.BBRHPJW, &linky->hist.BBRHCJR, &linky->hist.BBRHPJR};
+        uint64_t *values[] = {&linky->hist.TOTAL, &linky->hist.HCHP, &linky->hist.EJPHN, &linky->hist.EJPHPM, &linky->hist.BBRHCJB, &linky->hist.BBRHPJB, &linky->hist.BBRHCJW, &linky->hist.BBRHPJW, &linky->hist.BBRHCJR, &linky->hist.BBRHPJR};
         if (linky->hist.BASE != UINT64_MAX)
         {
             linky->hist.BASE -= config_values.index_offset.index_01;
@@ -298,8 +316,8 @@ uint8_t tuya_compute_offset(linky_data_t *linky)
     case MODE_STD:
     {
 
-        uint64_t *values[] = {&linky->std.EASF01, &linky->std.EASF02, &linky->std.EASF03, &linky->std.EASF04, &linky->std.EASF05, &linky->std.EASF06, &linky->std.EASF07, &linky->std.EASF08, &linky->std.EASF09, &linky->std.EASF10};
-        uint64_t *index = &config_values.index_offset.index_01;
+        uint64_t *values[] = {&linky->std.EAST, &linky->std.EASF01, &linky->std.EASF02, &linky->std.EASF03, &linky->std.EASF04, &linky->std.EASF05, &linky->std.EASF06, &linky->std.EASF07, &linky->std.EASF08, &linky->std.EASF09, &linky->std.EASF10};
+        uint64_t *index = &config_values.index_offset.index_total;
         for (int i = 0; i < sizeof(values) / sizeof(values[0]); i++)
         {
             if (*values[i] == UINT32_MAX)
@@ -390,18 +408,6 @@ uint8_t tuya_send_data(linky_data_t *linky)
 
         switch (LinkyLabelList[i].id)
         {
-        case 108:
-            // TODO:
-            // if (linky_str_tarif[linky_contract] != NULL)
-            // {
-            //     cJSON_AddStringToObject(jsonObject, "108", linky_str_tarif[linky_contract]);
-            // }
-            // else
-            // {
-            //     cJSON_AddStringToObject(jsonObject, "108", "Inconnu");
-            // }
-            continue;
-            break;
         case 105:
             switch (linky_mode)
             {
@@ -429,13 +435,137 @@ uint8_t tuya_send_data(linky_data_t *linky)
             continue;
             break;
         case 107:
-            // if data =  "HC.."
-            if (memcmp(LinkyLabelList[i].data, "HC", 2) == 0)
+        {
+            char *str = (char *)linky_tuya_str_contract[linky_contract];
+            if (str == NULL)
             {
-                cJSON_AddStringToObject(jsonObject, "107", "HCHP");
-                continue;
+                str = (char *)linky_tuya_str_contract[C_UNKNOWN];
             }
+            cJSON_AddStringToObject(jsonObject, "107", str);
             break;
+        }
+        case 108:
+        {
+            char *str = (char *)LinkyLabelList[i].data;
+            for (int i = 0; i < sizeof(str_current_tarif_replace) / sizeof(str_current_tarif_replace[0]); i++)
+            {
+                if (str_current_tarif_replace[i].look == NULL || str_current_tarif_replace[i].replace == NULL)
+                {
+                    continue;
+                }
+                if (strstr(str, str_current_tarif_replace[i].look) != NULL)
+                {
+                    str = (char *)str_current_tarif_replace[i].replace;
+                    break;
+                }
+            }
+            cJSON_AddStringToObject(jsonObject, "108", str);
+
+            continue;
+            break;
+        }
+        case 201:
+        {
+
+            switch (linky_contract)
+            {
+            case C_BASE:
+                cJSON_AddNumberToObject(jsonObject, "110", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            case C_HC:
+                cJSON_AddNumberToObject(jsonObject, "111", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            case C_EJP:
+                cJSON_AddNumberToObject(jsonObject, "113", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            case C_TEMPO:
+                cJSON_AddNumberToObject(jsonObject, "115", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            default:
+                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
+                break;
+            }
+            continue;
+            break;
+        }
+        case 202:
+        {
+            switch (linky_contract)
+            {
+            case C_HC:
+                cJSON_AddNumberToObject(jsonObject, "112", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            case C_EJP:
+                cJSON_AddNumberToObject(jsonObject, "114", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            case C_TEMPO:
+                cJSON_AddNumberToObject(jsonObject, "116", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            default:
+                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
+                break;
+            }
+            continue;
+            break;
+        }
+
+        case 203:
+        {
+            switch (linky_contract)
+            {
+            case C_TEMPO:
+                cJSON_AddNumberToObject(jsonObject, "117", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            default:
+                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
+                break;
+            }
+            continue;
+            break;
+        }
+        case 204:
+        {
+            switch (linky_contract)
+            {
+            case C_TEMPO:
+                cJSON_AddNumberToObject(jsonObject, "118", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            default:
+                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
+                break;
+            }
+            continue;
+            break;
+        }
+        case 205:
+        {
+            switch (linky_contract)
+            {
+            case C_TEMPO:
+                cJSON_AddNumberToObject(jsonObject, "119", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            default:
+                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
+                break;
+            }
+            continue;
+            break;
+        }
+        case 206:
+        {
+            switch (linky_contract)
+            {
+            case C_TEMPO:
+                cJSON_AddNumberToObject(jsonObject, "120", *(uint32_t *)LinkyLabelList[i].data);
+                break;
+            default:
+                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
+                break;
+            }
+            continue;
+            break;
+        }
+
         default:
             break;
         }
@@ -451,7 +581,6 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint8_t *value = (uint8_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT8_MAX)
                 continue;
-            // device[strId] = *value;
             cJSON_AddNumberToObject(jsonObject, strId, *value);
             break;
         }
@@ -460,7 +589,6 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint16_t *value = (uint16_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT16_MAX)
                 continue;
-            // device[strId] = *value;
             cJSON_AddNumberToObject(jsonObject, strId, *value);
             break;
         }
@@ -469,7 +597,6 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
-            // device[strId] = *value;
             cJSON_AddNumberToObject(jsonObject, strId, *value);
             break;
         }
@@ -478,7 +605,6 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
-            // device[strId] = *value;
             cJSON_AddNumberToObject(jsonObject, strId, *value);
             break;
         }
@@ -487,7 +613,6 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint64_t *value = (uint64_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT64_MAX)
                 continue;
-            // device[strId] = *value;
             cJSON_AddNumberToObject(jsonObject, strId, *value);
             break;
         }
@@ -496,7 +621,6 @@ uint8_t tuya_send_data(linky_data_t *linky)
             char *value = (char *)LinkyLabelList[i].data;
             if (value == NULL || strlen(value) == 0)
                 continue;
-            // device[strId] = value;
             cJSON_AddStringToObject(jsonObject, strId, value);
             break;
         }

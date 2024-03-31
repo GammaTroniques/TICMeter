@@ -56,6 +56,7 @@ typedef enum
     ZIGBEE_NOT_CONNECTED,
     ZIGBEE_CONNECTING,
     ZIGBEE_CONNECTED,
+    ZIGBEE_COMMISIONING_ERROR,
 } zigbee_state_t;
 
 typedef enum
@@ -72,7 +73,7 @@ static esp_err_t zigbee_attribute_handler(const esp_zb_zcl_set_attr_value_messag
 static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message);
 static void zigbee_task(void *pvParameters);
 static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length);
-static void zigbee_send_first_datas(void *pvParameters);
+// static void zigbee_send_first_datas(void *pvParameters);
 static void zigbee_print_value(char *out_buffer, void *data, linky_label_type_t type);
 static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage);
 static uint32_t zigbee_get_hex_version(const char *version);
@@ -144,6 +145,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         {
             /* commissioning failed */
             ESP_LOGW(TAG, "Commissioning failed (status: %d)", err_status);
+            zigbee_state = ZIGBEE_COMMISIONING_ERROR;
             led_start_pattern(LED_CONNECTING_FAILED);
         }
         break;
@@ -224,10 +226,10 @@ static esp_err_t zigbee_attribute_handler(const esp_zb_zcl_set_attr_value_messag
                 *(uint16_t *)LinkyLabelList[i].data = data[1] << 8 | data[0];
                 break;
             case UINT32:
-                *(uint32_t *)LinkyLabelList[i].data = data[3] << 24 | data[2] << 16 | data[1] << 8 | data[0];
+                *(uint32_t *)LinkyLabelList[i].data = (uint32_t)data[3] << 24 | (uint32_t)data[2] << 16 | (uint32_t)data[1] << 8 | (uint32_t)data[0];
                 break;
             case UINT64:
-                *(uint64_t *)LinkyLabelList[i].data = data[7] << 56 | data[6] << 48 | data[5] << 40 | data[4] << 32 | data[3] << 24 | data[2] << 16 | data[1] << 8 | data[0];
+                *(uint64_t *)LinkyLabelList[i].data = (uint64_t)data[7] << 56 | (uint64_t)data[6] << 48 | (uint64_t)data[5] << 40 | (uint64_t)data[4] << 32 | (uint64_t)data[3] << 24 | (uint64_t)data[2] << 16 | (uint64_t)data[1] << 8 | (uint64_t)data[0];
                 break;
             case STRING:
                 memcpy(LinkyLabelList[i].data, data, MIN(LinkyLabelList[i].size, message->attribute.data.size));
@@ -267,7 +269,7 @@ static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback
         break;
     case ESP_ZB_CORE_CMD_CUSTOM_CLUSTER_REQ_CB_ID:
         esp_zb_zcl_custom_cluster_command_message_t *cmd = (esp_zb_zcl_custom_cluster_command_message_t *)(message);
-        uint8_t *data = cmd->data.value;
+        // uint8_t *data = cmd->data.value;
         switch (cmd->info.command.id)
         {
         case ZB_CMD_REBOOT:
@@ -648,6 +650,11 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
         ESP_LOGE(TAG, "Attribute not found: 0x%x, attribute: 0x%x", clusterID, attributeID);
         return;
     }
+    if (value == NULL)
+    {
+        ESP_LOGE(TAG, "Report value is NULL");
+        return;
+    }
     memcpy(value_r->data_p, value, value_length);
     esp_zb_zcl_report_attr_cmd_req(&cmd);
 }
@@ -666,6 +673,13 @@ uint8_t zigbee_send(linky_data_t *data)
     //     ESP_LOGE(TAG, "Zigbee not connected");
     //     return 1;
     // }
+
+    if (zigbee_state == ZIGBEE_COMMISIONING_ERROR)
+    {
+        ESP_LOGE(TAG, "Zigbee commisioning error: Don't send data");
+        return 1;
+    }
+
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         char str_value[102];
@@ -820,22 +834,22 @@ uint8_t zigbee_send(linky_data_t *data)
     return 0;
 }
 
-static void zigbee_send_first_datas(void *pvParameters)
-{
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-    ESP_LOGI(TAG, "Send first datas");
-    uint8_t ret = zigbee_send(&linky_data);
-    if (ret != 0)
-    {
-        ESP_LOGE(TAG, "Zigbee first send failed");
-    }
-    else
-    {
-        ESP_LOGI(TAG, "Zigbee first send success");
-    }
+// static void zigbee_send_first_datas(void *pvParameters)
+// {
+//     vTaskDelay(2000 / portTICK_PERIOD_MS);
+//     ESP_LOGI(TAG, "Send first datas");
+//     uint8_t ret = zigbee_send(&linky_data);
+//     if (ret != 0)
+//     {
+//         ESP_LOGE(TAG, "Zigbee first send failed");
+//     }
+//     else
+//     {
+//         ESP_LOGI(TAG, "Zigbee first send success");
+//     }
 
-    vTaskDelete(NULL);
-}
+//     vTaskDelete(NULL);
+// }
 
 uint8_t zigbee_factory_reset()
 {

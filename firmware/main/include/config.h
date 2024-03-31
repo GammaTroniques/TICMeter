@@ -123,7 +123,7 @@ typedef struct
 
 typedef struct
 {
-
+    uint64_t index_total;
     uint64_t index_01;
     uint64_t index_02;
     uint64_t index_03;

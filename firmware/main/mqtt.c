@@ -75,6 +75,8 @@ static void log_error_if_nonzero(const char *message, int error_code);
 static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor);
 void mqtt_setup_ha_discovery();
 void mqtt_topic_comliance(char *topic, int size);
+void mqtt_disconnect_task(void *pvParameters);
+
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -696,15 +698,21 @@ int mqtt_send()
     {
         ESP_LOGI(TAG, "Send Done");
     }
-    esp_mqtt_client_disconnect(mqtt_client);
-    esp_mqtt_client_stop(mqtt_client);
+    xTaskCreate(mqtt_disconnect_task, "mqtt_disconnect_task", 4096, NULL, 5, NULL);
     led_start_pattern(LED_SEND_OK);
     return 1;
 error:
-    esp_mqtt_client_disconnect(mqtt_client);
-    esp_mqtt_client_stop(mqtt_client);
+    xTaskCreate(mqtt_disconnect_task, "mqtt_disconnect_task", 4096, NULL, 5, NULL);
     led_start_pattern(LED_SEND_FAILED);
     return 0;
+}
+
+void mqtt_disconnect_task(void *pvParameters)
+{
+    ESP_LOGI(TAG, "Disconnecting MQTT");
+    esp_mqtt_client_disconnect(mqtt_client);
+    esp_mqtt_client_stop(mqtt_client);
+    vTaskDelete(NULL);
 }
 
 void mqtt_topic_comliance(char *topic, int size)

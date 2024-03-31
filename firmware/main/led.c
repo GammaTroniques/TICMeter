@@ -73,7 +73,7 @@ const uint32_t led_color_mode[] = {
     [MODE_MQTT_HA] = 0x8803FC,
     [MODE_ZIGBEE] = 0xFF0000,
     [MODE_MATTER] = 0xFFFFFF,
-    [MODE_TUYA] = 0xFA650F,
+    [MODE_TUYA] = 0xB04000,
 };
 /*==============================================================================
  Local Variable
@@ -262,8 +262,9 @@ static void led_task(void *pvParameters)
         {
             led_current_pattern->in_progress = 0;
             deleteTask(led_pattern_task_handle);
+            led_set_color(0);
+            vTaskDelay(200 / portTICK_PERIOD_MS);
         }
-
         timing->in_progress = 1;
         led_current_pattern = timing;
         xTaskCreate(led_pattern_task, "led_pattern_task", 4 * 1024, timing, PRIORITY_LED_PATTERN, &led_pattern_task_handle);

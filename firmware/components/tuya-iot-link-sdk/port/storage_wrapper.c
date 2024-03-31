@@ -80,7 +80,7 @@ extern "C"
             return err;
 
         err = nvs_set_blob(storage_handle, key, buffer, length);
-        ESP_LOGE("TUYA_STORAGE", "local_storage_set %s %d bytes", key, length);
+        // ESP_LOGE("TUYA_STORAGE", "local_storage_set %s %d bytes", key, length);
         if (err != ESP_OK)
             return err;
 
@@ -111,7 +111,7 @@ extern "C"
             return err;
 
         err = nvs_get_blob(storage_handle, key, NULL, length);
-        ESP_LOGE("TUYA_STORAGE", "local_storage_get %s %d bytes", key, *length);
+        // ESP_LOGE("TUYA_STORAGE", "local_storage_get %s %d bytes", key, *length);
         if (err == ESP_ERR_NVS_NOT_FOUND)
         {
             return err;
@@ -119,7 +119,7 @@ extern "C"
         log_debug("get key:%s, xlen:%d", key, *length);
 
         err = nvs_get_blob(storage_handle, key, buffer, length);
-        ESP_LOGE("TUYA_STORAGE", "local_storage_get %s %d bytes", key, *length);
+        // ESP_LOGE("TUYA_STORAGE", "local_storage_get %s %d bytes", key, *length);
         if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND)
             return err;
 

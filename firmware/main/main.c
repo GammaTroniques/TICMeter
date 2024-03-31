@@ -69,7 +69,6 @@
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
-void debug_loop(void *);
 static void main_print_heap_diff();
 /*==============================================================================
 Public Variable
@@ -94,7 +93,6 @@ void app_main(void)
   esp_err_t err;
 
   ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
-  // xTaskCreate(debug_loop, "debug_loop", 8192, NULL, PRIORITY_PAIRING, NULL); // start push button task
   power_init();
   shell_wake_reason();
   gpio_init_pins();
@@ -138,10 +136,10 @@ void app_main(void)
     if (config_values.boot_pairing)
     {
       ESP_LOGI(MAIN_TAG, "Waking up in pairing mode. Waiting config...");
-      gpio_start_pariring();
       ESP_LOGI(MAIN_TAG, "Remove pairing mode for next boot");
       config_values.boot_pairing = 0;
       config_write();
+      gpio_start_pariring();
     }
     else
     {
@@ -159,7 +157,7 @@ void app_main(void)
     // esp_pm_lock_acquire(main_init_lock);
   }
   ESP_LOGI(MAIN_TAG, "Config found. Starting...");
-
+  vTaskDelay(200 / portTICK_PERIOD_MS);
   if (!linky_update())
   {
     while (!linky_update())
@@ -249,7 +247,8 @@ void main_task(void *pvParameters)
 {
   ESP_LOGI(MAIN_TAG, "Starting fetch linky data task");
   main_next_update_check = MILLIS;
-
+  esp_err_t err;
+  uint32_t err_count = 0;
   int32_t fetching_time = 0;
   switch (config_values.mode)
   {
@@ -295,17 +294,22 @@ void main_task(void *pvParameters)
       continue;
     }
 
-    main_send_data();
+    err = main_send_data();
+    if (err != ESP_OK)
+    {
+      err_count++;
+      ESP_LOGE(MAIN_TAG, "Data send failed %ld times", err_count);
+      if (err_count > 10)
+      {
+        ESP_LOGE(MAIN_TAG, "Too many errors, rebooting");
+        hard_restart();
+      }
+    }
+    else
+    {
+      err_count = 0;
+    }
     main_print_heap_diff();
-  }
-}
-
-void debug_loop(void *)
-{
-  while (1)
-  {
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    esp_pm_dump_locks(stdout);
   }
 }
 
@@ -345,9 +349,11 @@ esp_err_t main_send_data()
       else
       {
         ESP_LOGE(MAIN_TAG, "Wifi connection failed");
+        return ESP_FAIL;
       }
       wifi_disconnect();
       main_data_index = 0;
+      return ESP_OK;
     }
     break;
   }
@@ -383,11 +389,13 @@ esp_err_t main_send_data()
     }
     wifi_disconnect();
     led_start_pattern(LED_SEND_OK);
+    return ESP_OK;
     break;
 
   send_error:
     wifi_disconnect();
     led_start_pattern(LED_SEND_FAILED);
+    return ESP_FAIL;
     break;
   }
   case MODE_TUYA:
@@ -400,6 +408,7 @@ esp_err_t main_send_data()
       {
         ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
         led_start_pattern(LED_SEND_FAILED);
+        err = ESP_FAIL;
         goto tuya_disconect;
       }
 
@@ -407,11 +416,11 @@ esp_err_t main_send_data()
       {
         ESP_LOGE(MAIN_TAG, "Tuya SEND ERROR");
         led_start_pattern(LED_SEND_FAILED);
+        err = ESP_FAIL;
         goto tuya_disconect;
       }
+      err = ESP_OK;
     tuya_disconect:
-      // tuya_stop();
-      // tuya_wait_event(TUYA_EVENT_MQTT_DISCONNECT, 5000);
       if (gpio_vusb_connected() && main_next_update_check < MILLIS)
       {
         ESP_LOGI(MAIN_TAG, "Checking for update");
@@ -422,10 +431,12 @@ esp_err_t main_send_data()
       wifi_disconnect();
       suspendTask(tuyaTaskHandle);
       led_start_pattern(LED_SEND_OK);
+      return err;
     }
     else
     {
       ESP_LOGE(MAIN_TAG, "Wifi connection failed: dont send TUYA");
+      return ESP_FAIL;
     }
     break;
   case MODE_ZIGBEE:
