@@ -101,6 +101,8 @@ zigbee_state_t zigbee_state = ZIGBEE_NOT_CONNECTED;
 z_stream zlib_stream = {0};
 uint8_t zlib_init = 0;
 uint8_t zlib_buf[512];
+uint8_t zigbee_ota_between_packet[512];
+uint16_t zigbee_ota_between_packet_size = 0;
 
 uint8_t zigbee_ota_running = 0;
 uint8_t zigbee_sending = 0;
@@ -921,6 +923,14 @@ static uint8_t ota_header_[6] = {0};
 static uint16_t subelement_type = 0;
 static uint32_t subelement_size = 0;
 static uint32_t storage_offset = 0;
+static uint32_t remaining_data = 0;
+
+static void reboot_task(void *pvParameter)
+{
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+    esp_restart();
+}
+
 static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage)
 {
     static uint32_t total_size = 0;
@@ -987,8 +997,20 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
 
             break;
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_RECEIVE:
+
+            // next_subelement:
             size_t payload_size = messsage.payload_size;
             const uint8_t *payload = messsage.payload;
+
+            if (zigbee_ota_between_packet_size > 0)
+            {
+                ESP_LOGI(TAG, "OTA between packet: %d", zigbee_ota_between_packet_size);
+                memcpy(zigbee_ota_between_packet + zigbee_ota_between_packet_size, payload, payload_size);
+                payload = zigbee_ota_between_packet;
+                payload_size += zigbee_ota_between_packet_size;
+                ESP_LOG_BUFFER_HEXDUMP(TAG, payload, payload_size, ESP_LOG_INFO);
+                zigbee_ota_between_packet_size = 0;
+            }
 
             // ESP_LOG_BUFFER_HEXDUMP(TAG, payload, payload_size, ESP_LOG_INFO);
 
@@ -996,15 +1018,9 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
             offset += payload_size;
 
             // ESP_LOGI(TAG, "-- OTA Client receives data: progress [%ld/%ld]", offset, total_size);
-
             /* Read and process the first sub-element, ignoring everything else */
-            ESP_LOGW(TAG, "OTA header len %zu, received %zu, ota_data_len_ %zu", ota_header_len_, payload_size, ota_data_len_);
-            if (ota_data_len_ == 0)
-            {
-                ESP_LOGI(TAG, "OTA data len 0");
-                ota_header_len_ = 0;
-                ota_upgrade_subelement_ = false;
-            }
+            // ESP_LOGW(TAG, "OTA header len %zu, received %zu, ota_data_len_ %zu", ota_header_len_, payload_size, ota_data_len_);
+            // ESP_LOG_BUFFER_HEXDUMP(TAG, messsage.payload, messsage.payload_size, ESP_LOG_WARN);
 
             while (ota_header_len_ < 6 && payload_size > 0)
             {
@@ -1013,7 +1029,8 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                 payload++;
                 payload_size--;
                 ESP_LOGI(TAG, "OTA header len %zu:", ota_header_len_);
-                // ESP_LOG_BUFFER_HEXDUMP(TAG, ota_header_, ota_header_len_, ESP_LOG_WARN);
+                ESP_LOG_BUFFER_HEXDUMP(TAG, ota_header_, ota_header_len_, ESP_LOG_WARN);
+                ESP_LOG_BUFFER_HEXDUMP(TAG, payload, payload_size, ESP_LOG_WARN);
             }
 
             if (!ota_upgrade_subelement_ && ota_header_len_ == 6)
@@ -1044,6 +1061,23 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
             }
             if (ota_data_len_)
             {
+                if (zlib_init == 0)
+                {
+                    int ret = inflateInit(&zlib_stream);
+                    if (ret == Z_OK)
+                    {
+                        zlib_init = 1;
+                    }
+                    else
+                    {
+                        ESP_LOGE(TAG, "zlib init failed: %d", ret);
+                        zigbee_ota_running = false;
+                        led_stop_pattern(LED_OTA_IN_PROGRESS);
+                        return ESP_FAIL;
+                    }
+                }
+
+                remaining_data = payload_size - ota_data_len_;
                 payload_size = MIN(ota_data_len_, payload_size);
                 ota_data_len_ -= payload_size;
 
@@ -1056,7 +1090,7 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                     zlib_stream.next_out = zlib_buf;
 
                     ret = inflate(&zlib_stream, Z_NO_FLUSH);
-                    if (ret != Z_OK && ret != Z_STREAM_END)
+                    if (ret == Z_STREAM_ERROR || ret == Z_NEED_DICT || ret == Z_DATA_ERROR || ret == Z_MEM_ERROR)
                     {
                         ESP_LOGE(TAG, "zlib inflate failed: %d", ret);
                         zigbee_ota_running = false;
@@ -1068,7 +1102,6 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                     size_t have = sizeof(zlib_buf) - zlib_stream.avail_out;
                     if (have)
                     {
-                        // ESP_LOG_BUFFER_HEXDUMP(TAG, zlib_buf, have, ESP_LOG_WARN);
                         switch (subelement_type)
                         {
                         case 0:
@@ -1103,6 +1136,36 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                 } while (zlib_stream.avail_out == 0);
             }
 
+            if (ota_data_len_ == 0)
+            {
+                inflateEnd(&zlib_stream);
+                zlib_init = 0;
+                // ESP_LOGI(TAG, "OTA data len 0, remaining data %lu", remaining_data);
+                payload += payload_size;
+                ESP_LOG_BUFFER_HEXDUMP(TAG, payload, remaining_data, ESP_LOG_WARN);
+
+                ota_upgrade_subelement_ = false;
+                ota_header_len_ = 0;
+                while (ota_header_len_ < 6 && payload_size > 0)
+                {
+                    ota_header_[ota_header_len_] = payload[0];
+                    ota_header_len_++;
+                    payload_size--;
+                    remaining_data--;
+                    payload++;
+                    // ESP_LOGI(TAG, "OTA header len END %zu:", ota_header_len_);
+                    ESP_LOG_BUFFER_HEXDUMP(TAG, ota_header_, ota_header_len_, ESP_LOG_WARN);
+                    ESP_LOG_BUFFER_HEXDUMP(TAG, messsage.payload, messsage.payload_size, ESP_LOG_WARN);
+                }
+                if (remaining_data)
+                {
+                    // ESP_LOGI(TAG, "Save remaining data %lu", remaining_data);
+                    ESP_LOG_BUFFER_HEXDUMP(TAG, payload, remaining_data, ESP_LOG_WARN);
+                    memcpy(zigbee_ota_between_packet, payload, remaining_data);
+                    zigbee_ota_between_packet_size = remaining_data;
+                }
+            }
+
             if (zigbee_sending)
             {
                 ESP_LOGI(TAG, "Zigbee sending data, wait a little");
@@ -1130,8 +1193,8 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
             ESP_RETURN_ON_ERROR(ret, TAG, "Failed to end OTA partition, status: %s", esp_err_to_name(ret));
             ret = esp_ota_set_boot_partition(zigbee_ota_partition);
             ESP_RETURN_ON_ERROR(ret, TAG, "Failed to set OTA boot partition, status: %s", esp_err_to_name(ret));
-            ESP_LOGW(TAG, "Prepare to restart system");
-            esp_restart();
+            ESP_LOGW(TAG, "Prepare to restart system in 10s");
+            xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL);
             break;
         default:
             ESP_LOGI(TAG, "OTA status: %d", messsage.upgrade_status);

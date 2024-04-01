@@ -27,7 +27,7 @@ typedef enum
 
 static test_t current_test = NO_TEST;
 
-void reboot_task(void *pvParameter)
+static void reboot_task(void *pvParameter)
 {
     vTaskDelay(3000 / portTICK_PERIOD_MS);
     esp_restart();
