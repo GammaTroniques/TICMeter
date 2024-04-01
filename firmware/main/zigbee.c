@@ -102,6 +102,9 @@ z_stream zlib_stream = {0};
 uint8_t zlib_init = 0;
 uint8_t zlib_buf[512];
 
+uint8_t zigbee_ota_running = 0;
+uint8_t zigbee_sending = 0;
+
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -680,6 +683,12 @@ uint8_t zigbee_send(linky_data_t *data)
         return 1;
     }
 
+    if (zigbee_ota_running)
+    {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+    zigbee_sending = true;
+
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         char str_value[102];
@@ -830,7 +839,6 @@ uint8_t zigbee_send(linky_data_t *data)
     }
 
     led_start_pattern(LED_SEND_OK);
-
     return 0;
 }
 
@@ -974,6 +982,8 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                 zigbee_ota_partition = NULL;
                 return ESP_FAIL;
             }
+            zigbee_ota_running = true;
+            led_start_pattern(LED_OTA_IN_PROGRESS);
 
             break;
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_RECEIVE:
@@ -985,9 +995,17 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
             total_size = messsage.ota_header.image_size;
             offset += payload_size;
 
-            ESP_LOGI(TAG, "-- OTA Client receives data: progress [%ld/%ld]", offset, total_size);
+            // ESP_LOGI(TAG, "-- OTA Client receives data: progress [%ld/%ld]", offset, total_size);
 
             /* Read and process the first sub-element, ignoring everything else */
+            ESP_LOGW(TAG, "OTA header len %zu, received %zu, ota_data_len_ %zu", ota_header_len_, payload_size, ota_data_len_);
+            if (ota_data_len_ == 0)
+            {
+                ESP_LOGI(TAG, "OTA data len 0");
+                ota_header_len_ = 0;
+                ota_upgrade_subelement_ = false;
+            }
+
             while (ota_header_len_ < 6 && payload_size > 0)
             {
                 ota_header_[ota_header_len_] = payload[0];
@@ -1007,21 +1025,23 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                 {
                 case 0:
                     ota_data_len_ = subelement_size;
-                    ESP_LOGW(TAG, "OTA sub-element size %zu", ota_data_len_);
+                    ESP_LOGW(TAG, "OTA sub-element app [%lu/%lu]", offset, subelement_size);
                     break;
 
                 case 0x100:
-                    ESP_LOGI(TAG, "OTA sub-element storage");
+                    ESP_LOGI(TAG, "OTA sub-element storage [%lu/%lu]", offset, subelement_size);
                     ota_data_len_ = subelement_size;
                     storage_offset = 0;
                     break;
                 default:
                     ESP_LOGE(TAG, "OTA sub-element type %02x%02x not supported", ota_header_[0], ota_header_[1]);
+                    zigbee_ota_running = false;
+                    led_stop_pattern(LED_OTA_IN_PROGRESS);
+
                     return ESP_FAIL;
                     break;
                 }
             }
-
             if (ota_data_len_)
             {
                 payload_size = MIN(ota_data_len_, payload_size);
@@ -1039,6 +1059,9 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                     if (ret != Z_OK && ret != Z_STREAM_END)
                     {
                         ESP_LOGE(TAG, "zlib inflate failed: %d", ret);
+                        zigbee_ota_running = false;
+                        led_stop_pattern(LED_OTA_IN_PROGRESS);
+
                         return ESP_FAIL;
                     }
 
@@ -1049,21 +1072,27 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                         switch (subelement_type)
                         {
                         case 0:
-                            ESP_LOGI(TAG, "OTA sub-element Firmware: ota_data_len_ %zu", ota_data_len_);
+                            ESP_LOGI(TAG, "OTA sub-element Firmware [%lu/%lu]", offset, subelement_size);
                             ret = esp_ota_write(zigbee_ota_handle, zlib_buf, have);
                             if (ret != ESP_OK)
                             {
                                 ESP_LOGE(TAG, "Failed to write OTA data to partition, status: %s", esp_err_to_name(ret));
+                                zigbee_ota_running = false;
+                                led_stop_pattern(LED_OTA_IN_PROGRESS);
+
                                 return ESP_FAIL;
                             }
                             break;
                         case 0x100:
-                            ESP_LOGI(TAG, "OTA sub-element storage: ota_data_len_ %zu, storage_offset %lu, subelement_size %lu", ota_data_len_, storage_offset, subelement_size);
+                            ESP_LOGI(TAG, "OTA sub-element Storage [%lu/%lu]", subelement_size - ota_data_len_, subelement_size);
                             ret = esp_partition_write(zigbee_storage_partition, storage_offset, zlib_buf, have);
                             storage_offset += have;
                             if (ret != ESP_OK)
                             {
                                 ESP_LOGE(TAG, "Failed to write OTA data to storage partition, status: 0x%x %s", ret, esp_err_to_name(ret));
+                                zigbee_ota_running = false;
+                                led_stop_pattern(LED_OTA_IN_PROGRESS);
+
                                 return ESP_FAIL;
                             }
                             break;
@@ -1072,6 +1101,13 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                         }
                     }
                 } while (zlib_stream.avail_out == 0);
+            }
+
+            if (zigbee_sending)
+            {
+                ESP_LOGI(TAG, "Zigbee sending data, wait a little");
+                vTaskDelay(5000 / portTICK_PERIOD_MS);
+                zigbee_sending = false;
             }
             break;
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_APPLY:
@@ -1083,6 +1119,9 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
             break;
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_FINISH:
             ESP_LOGI(TAG, "-- OTA Finish");
+            zigbee_ota_running = false;
+            led_stop_pattern(LED_OTA_IN_PROGRESS);
+
             ESP_LOGI(TAG,
                      "-- OTA Information: version: 0x%lx, manufactor code: 0x%x, image type: 0x%x, total size: %ld bytes, cost time: %lld ms,",
                      messsage.ota_header.file_version, messsage.ota_header.manufacturer_code, messsage.ota_header.image_type,

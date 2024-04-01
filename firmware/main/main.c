@@ -240,7 +240,7 @@ void app_main(void)
     break;
   }
   // start linky fetch task
-  xTaskCreate(main_task, "main_task_handle", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &main_task_handle); // start linky task
+  // xTaskCreate(main_task, "main_task_handle", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &main_task_handle); // start linky task
   esp_pm_lock_release(main_init_lock);
 }
 void main_task(void *pvParameters)

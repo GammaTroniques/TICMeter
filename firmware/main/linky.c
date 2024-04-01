@@ -1248,7 +1248,6 @@ linky_contract_t linky_get_contract(linky_data_t *data)
     case MODE_HIST:
         for (int i = 0; i < sizeof(linky_hist_str_contract) / sizeof(linky_hist_str_contract[0]); i++)
         {
-            ESP_LOGI(TAG, "Contract: %d", i);
             if (linky_hist_str_contract[i] == NULL)
             {
                 continue;
