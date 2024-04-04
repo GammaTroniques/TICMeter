@@ -20,6 +20,8 @@
 #include "esp_efuse_table.h"
 #include "esp_vfs.h"
 #include "esp_spiffs.h"
+#include "esp_hmac.h"
+#include "nvs_sec_provider.h"
 /*==============================================================================
  Local Define
 ===============================================================================*/
@@ -100,6 +102,11 @@ static const int32_t config_items_size = sizeof(config_items) / sizeof(config_it
 
 // clang-format on
 
+nvs_sec_cfg_t nvs_ro_sec_cfg = {0};
+nvs_sec_scheme_t *sec_scheme_handle = NULL;
+nvs_sec_config_hmac_t sec_scheme_cfg = {
+    .hmac_key_id = HMAC_KEY5,
+};
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -155,14 +162,42 @@ int8_t config_begin()
     }
 
     // ------------------ Read-only partition ------------------
+    err = nvs_sec_provider_register_hmac(&sec_scheme_cfg, &sec_scheme_handle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error (%s) registering HMAC!", esp_err_to_name(err));
+        return 1;
+    }
+
+    err = nvs_flash_read_security_cfg_v2(sec_scheme_handle, &nvs_ro_sec_cfg);
+    if (err != ESP_OK)
+    {
+        if (err == ESP_ERR_NVS_SEC_HMAC_KEY_NOT_FOUND)
+        {
+            err = nvs_flash_generate_keys_v2(sec_scheme_handle, &nvs_ro_sec_cfg);
+            if (err != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to generate NVS encr-keys!");
+                return 1;
+            }
+        }
+        ESP_LOGE(TAG, "Failed to read NVS security cfg!");
+        return 1;
+    }
+
     uint8_t want_init_ro = 0;
-    err = nvs_flash_init_partition(RO_PARTITION);
+    err = nvs_flash_secure_init_partition(RO_PARTITION, &nvs_ro_sec_cfg);
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
         // NVS partition was truncated and needs to be erased
         // Retry nvs_flash_init
-        ESP_ERROR_CHECK(nvs_flash_erase_partition(RO_PARTITION));
-        err = nvs_flash_init_partition(RO_PARTITION);
+        err = nvs_flash_erase_partition(RO_PARTITION);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error (%s) erasing ro NVS!", esp_err_to_name(err));
+            return 1;
+        }
+        err = nvs_flash_secure_init_partition(RO_PARTITION, &nvs_ro_sec_cfg);
         want_init_ro = 1;
         if (err != ESP_OK)
         {
@@ -460,13 +495,13 @@ uint8_t config_rw()
 
     err = nvs_flash_deinit_partition(RO_PARTITION);
     // open read-write partition
-    err = nvs_flash_init_partition(RO_PARTITION);
+    err = nvs_flash_secure_init_partition(RO_PARTITION, &nvs_ro_sec_cfg);
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
         // NVS partition was truncated and needs to be erased
         // Retry nvs_flash_init
         ESP_ERROR_CHECK(nvs_flash_erase_partition(RO_PARTITION));
-        err = nvs_flash_init_partition(RO_PARTITION);
+        err = nvs_flash_secure_init_partition(RO_PARTITION, &nvs_ro_sec_cfg);
     }
     if (err != ESP_OK)
     {

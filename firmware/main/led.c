@@ -280,7 +280,7 @@ static void led_pattern_task(void *pattern_ptr)
         ESP_LOGE(TAG, "Pattern is NULL");
         vTaskDelete(NULL);
     }
-    ESP_LOGW(TAG, "Pattern %ld, type: %d, color: %ld, tOn: %ld, tOff: %ld, repeat: %ld", pattern->id, pattern->type, pattern->color, pattern->tOn, pattern->tOff, pattern->repeat);
+    ESP_LOGD(TAG, "Pattern %ld, type: %d, color: %ld, tOn: %ld, tOff: %ld, repeat: %ld", pattern->id, pattern->type, pattern->color, pattern->tOn, pattern->tOff, pattern->repeat);
     uint32_t repeat = pattern->repeat;
     while (repeat == FOREVER || repeat > 0)
     {

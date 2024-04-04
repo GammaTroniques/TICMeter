@@ -115,7 +115,7 @@ void app_main(void)
     }
   }
 
-  // ESP_LOGI(MAIN_TAG, "VICTOIREEEEEEEEEEEEEEEEEEEEEEEEEE");
+  // ESP_LOGI(MAIN_TAG, "VICTOIREEEEEEEEEEEEEEEEEEEEEEEEEE123456789");
 
   // if (gpio_get_vcondo() < 3.4)
   // {
