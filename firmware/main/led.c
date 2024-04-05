@@ -100,7 +100,7 @@ static led_timing_t led_timing[] = {
     {LED_NO_CONFIG,             20,     LED_FLASH,      0xFF0000,                       50,     100,    2,       0, 0,},
     
     {LED_OTA_AVAILABLE,         10,     LED_WAVE,       0x0000FF,                       0,      1000,   FOREVER, 1, 0,},
-    {LED_OTA_IN_PROGRESS,       11,     LED_WAVE,       0xFFFF00,                       0,      1000,   FOREVER, 1, 0,},
+    {LED_OTA_IN_PROGRESS,       11,     LED_WAVE,       0xFFFF00,                       0,      1000,   FOREVER, 0, 0,},
 
 };
 
@@ -400,7 +400,7 @@ void led_usb_event(bool connected)
 
 static void led_start_next_pattern()
 {
-    uint16_t most_priority = 0;
+    int16_t most_priority = -1;
 
     // find most priority pattern
     for (int i = 0; i < led_pattern_size; i++)
@@ -413,12 +413,18 @@ static void led_start_next_pattern()
             }
         }
     }
+    if (most_priority == -1)
+    {
+        ESP_LOGD(TAG, "No pattern in progress");
+        return;
+    }
 
     // start most priority pattern
     for (int i = 0; i < led_pattern_size; i++)
     {
         if (led_timing[i].priority == most_priority)
         {
+            ESP_LOGD(TAG, "Restarting pattern %ld", led_timing[i].id);
             led_start_pattern(led_timing[i].id);
             return;
         }

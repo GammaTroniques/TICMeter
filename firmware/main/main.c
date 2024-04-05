@@ -115,7 +115,7 @@ void app_main(void)
     }
   }
 
-  // ESP_LOGI(MAIN_TAG, "VICTOIREEEEEEEEEEEEEEEEEEEEEEEEEE123456789");
+  // ESP_LOGI(MAIN_TAG, "VICTOIREEEEEEEErEEEEEEEEEEEEEEEEEE123456789");
 
   // if (gpio_get_vcondo() < 3.4)
   // {
@@ -228,8 +228,12 @@ void app_main(void)
     {
       tuya_init();
       vTaskDelay(1000 / portTICK_PERIOD_MS);
-      wifi_disconnect();
-      vTaskSuspend(tuyaTaskHandle);
+
+      if (!gpio_vusb_connected())
+      {
+        wifi_disconnect();
+        vTaskSuspend(tuyaTaskHandle);
+      }
     }
     else
     {
@@ -240,7 +244,7 @@ void app_main(void)
     break;
   }
   // start linky fetch task
-  // xTaskCreate(main_task, "main_task_handle", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &main_task_handle); // start linky task
+  xTaskCreate(main_task, "main_task_handle", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &main_task_handle); // start linky task
   esp_pm_lock_release(main_init_lock);
 }
 void main_task(void *pvParameters)
@@ -428,8 +432,13 @@ esp_err_t main_send_data()
         ota_version_t version;
         ota_get_latest(&version);
       }
-      wifi_disconnect();
-      suspendTask(tuyaTaskHandle);
+
+      if (!gpio_vusb_connected())
+      {
+        ESP_LOGI(MAIN_TAG, "VUSB not connected, suspend TUYA");
+        wifi_disconnect();
+        suspendTask(tuyaTaskHandle);
+      }
       led_start_pattern(LED_SEND_OK);
       return err;
     }

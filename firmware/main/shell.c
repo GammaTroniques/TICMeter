@@ -81,6 +81,7 @@ static int ota_check_command(int argc, char **argv);
 static int set_tuya_command(int argc, char **argv);
 static int set_tuya_pairing(int argc, char **argv);
 static int get_tuya_command(int argc, char **argv);
+static int start_tuya(int argc, char **argv);
 
 static int set_linky_mode_command(int argc, char **argv);
 static int get_linky_mode_command(int argc, char **argv);
@@ -169,6 +170,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"set-tuya",                    "Set config",                               &set_tuya_command,                  2, {"<device_uuid>", "<device_auth>"}, {"Device UUID", "Device Auth Key"}},
     {"set-tuya-pairing",            "Set tuya pairing state",                   &set_tuya_pairing,                  1, {"<pairing_state>"}, {"Pairing state"}},
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
+    {"start-tuya",                  "Start tuya",                               &start_tuya,                        0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
     {"linky-print",                 "Print linky linky_data",                   &linky_print_command,               1, {"<debug>"}, {"View raw frame, bool 0/1"}},
@@ -558,6 +560,17 @@ static int get_tuya_command(int argc, char **argv)
   printf("Device UUID: %s\n", config_values.tuya.device_uuid);
   printf("Device Auth: %s\n", config_values.tuya.device_auth);
   printf("Tuya Bind Status: %d%c\n", config_values.pairing_state, 0x03);
+  return 0;
+}
+
+static int start_tuya(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  wifi_connect();
+  resumeTask(tuyaTaskHandle); // resume tuya task
   return 0;
 }
 

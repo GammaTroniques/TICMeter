@@ -17,6 +17,7 @@
 
 #include "tuya_log.h"
 #include "tuya_iot.h"
+#include "tuya_ota.h"
 #include "cJSON.h"
 #include "qrcode.h"
 #include "gpio.h"
@@ -24,6 +25,7 @@
 #include "main.h"
 #include "common.h"
 #include "led.h"
+#include "ota_zlib.h"
 
 /* BLE */
 #include "esp_ota_ops.h"
@@ -110,6 +112,9 @@ TaskHandle_t tuya_ble_pairing_task_handle = NULL;
  Local Variable
 ===============================================================================*/
 static tuya_iot_client_t client = {0};
+static tuya_ota_handle_t ota_handle = {
+    .channel = 9,
+};
 static tuya_event_id_t lastEvent = TUYA_EVENT_RESET;
 static uint8_t newEvent = 0;
 /*==============================================================================
@@ -157,6 +162,20 @@ static void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps
     tuya_iot_dp_report_json(client, json_dps);
 }
 
+static void user_upgrade_notify_on(tuya_iot_client_t *client, cJSON *upgrade)
+{
+    TY_LOGI("----- Upgrade information -----");
+    TY_LOGI("OTA Channel: %d", cJSON_GetObjectItem(upgrade, "type")->valueint);
+    TY_LOGI("Version: %s", cJSON_GetObjectItem(upgrade, "version")->valuestring);
+    TY_LOGI("Size: %s", cJSON_GetObjectItem(upgrade, "size")->valuestring);
+    TY_LOGI("MD5: %s", cJSON_GetObjectItem(upgrade, "md5")->valuestring);
+    TY_LOGI("HMAC: %s", cJSON_GetObjectItem(upgrade, "hmac")->valuestring);
+    TY_LOGI("URL: %s", cJSON_GetObjectItem(upgrade, "url")->valuestring);
+    TY_LOGI("HTTPS URL: %s", cJSON_GetObjectItem(upgrade, "httpsUrl")->valuestring);
+
+    tuya_ota_begin(&ota_handle, upgrade);
+}
+
 static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg_t *event)
 {
     // ESP_LOGI(TAG, "TUYA_EVENT: %s", EVENT_ID2STR(event->id));
@@ -181,7 +200,15 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
     }
     case TUYA_EVENT_RESET:
         ESP_LOGI(TAG, "Tuya unbined");
-        config_values.pairing_state = TUYA_WIFI_CONNECTING;
+        config_values.pairing_state = TUYA_NOT_CONFIGURED;
+        ESP_LOGI(TAG, "Erasing NVS");
+        esp_err_t err = nvs_flash_erase();
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error (%s) erasing NVS!", esp_err_to_name(err));
+        }
+        ESP_LOGI(TAG, "Saving config");
+        config_begin();
         config_write();
         break;
     case TUYA_EVENT_BIND_TOKEN_ON:
@@ -195,11 +222,46 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
         break;
     case TUYA_EVENT_DPCACHE_NOTIFY:
         TY_LOGI("Recv TUYA_EVENT_DPCACHE_NOTIFY");
+        break;
+    case TUYA_EVENT_UPGRADE_NOTIFY:
+        user_upgrade_notify_on(client, event->value.asJSON);
+        break;
+
     default:
         break;
     }
     newEvent = 1;
     lastEvent = event->id;
+}
+
+static void user_ota_event_cb(tuya_ota_handle_t *handle, tuya_ota_event_t *event)
+{
+    esp_err_t ret = ESP_OK;
+    switch (event->id)
+    {
+    case TUYA_OTA_EVENT_START:
+        ESP_LOGI(TAG, "OTA start");
+        ret = ota_zlib_init();
+        break;
+
+    case TUYA_OTA_EVENT_ON_DATA:
+        ESP_LOGI(TAG, "OTA data len: %d %d/%d", event->data_len, event->offset, event->file_size);
+        ret = ota_zlib_write(event->data, event->data_len);
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE(TAG, "OTA write error: %d", ret);
+            tuya_ota_upgrade_status_report(handle, TUS_DOWNLOAD_ERROR_UNKONW);
+        }
+        break;
+
+    case TUYA_OTA_EVENT_FINISH:
+        ESP_LOGI(TAG, "OTA finish");
+        ret = ota_zlib_end();
+        break;
+    case TUYA_OTA_EVENT_FAULT:
+        ESP_LOGE(TAG, "OTA fault");
+        break;
+    }
 }
 
 static void tuya_link_app_task(void *pvParameters)
@@ -225,8 +287,13 @@ static void tuya_link_app_task(void *pvParameters)
 
     /* Initialize Tuya device configuration */
     ret = tuya_iot_init(&client, &tuya_config);
-
     assert(ret == OPRT_OK);
+
+    tuya_ota_init(&ota_handle, &(const tuya_ota_config_t){
+                                   .client = &client,
+                                   .event_cb = user_ota_event_cb,
+                                   .range_size = 1024,
+                                   .timeout_ms = 5000});
 
     /* Start tuya iot task */
     tuya_iot_start(&client);
@@ -635,6 +702,9 @@ uint8_t tuya_send_data(linky_data_t *linky)
     ESP_LOGI(TAG, "JSON: %s", json);
     uint8_t sendComplete = 0;
     time_t timout = MILLIS + 3000;
+
+    int ret = tuya_ota_upgrade_status_report(&ota_handle, TUS_RD);
+    ESP_LOGI(TAG, "tuya_ota_upgrade_status_report: %d", ret);
     tuya_iot_dp_report_json_with_notify(&client, json, NULL, tuya_send_callback, &sendComplete, 1000);
     while (sendComplete == 0 && MILLIS < timout)
     {

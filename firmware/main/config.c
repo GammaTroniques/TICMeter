@@ -145,8 +145,18 @@ int8_t config_begin()
         // NVS partition was truncated and needs to be erased
         // Retry nvs_flash_init
         ESP_LOGW(TAG, "NVS partition was truncated and needs to be erased");
-        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_erase();
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error (%s) erasing NVS!", esp_err_to_name(err));
+            return 1;
+        }
         err = nvs_flash_init();
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Error (%s) initializing NVS!", esp_err_to_name(err));
+            return 1;
+        }
         want_init = 1;
     }
     if (err != ESP_OK)
