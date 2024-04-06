@@ -714,3 +714,17 @@ uint8_t config_factory_reset()
     hard_restart();
     return 0;
 }
+
+esp_err_t config_erase_partition(const char *partition_label)
+{
+    esp_err_t err = nvs_flash_erase_partition(partition_label);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to erase partition %s (%s 0x%x)", partition_label, esp_err_to_name(err), err);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Partition %s erased", partition_label);
+    }
+    return err;
+}

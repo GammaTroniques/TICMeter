@@ -626,4 +626,10 @@ window.addEventListener("load", function () {
         }
       }
     });
+  fetch("/version.txt")
+    .then((response) => response.text())
+    .then((data) => {
+      const version = document.getElementById("version");
+      version.textContent = data;
+    });
 });

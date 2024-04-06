@@ -215,7 +215,6 @@ esp_err_t wifi_connect()
             return err;
         }
     }
-retry_wifi:
     err = esp_wifi_set_config(WIFI_IF_STA, &sta_wifi_config);
     if (err != ESP_OK)
     {
@@ -223,7 +222,7 @@ retry_wifi:
         if (err == ESP_ERR_NVS_NOT_ENOUGH_SPACE)
         {
             ESP_LOGE(TAG, "NVS not enough space, clear NVS");
-            err = nvs_flash_erase();
+            err = config_erase_partition("nvs");
             if (err != ESP_OK)
             {
                 ESP_LOGE(TAG, "nvs_flash_erase failed with 0x%X", err);
@@ -233,7 +232,7 @@ retry_wifi:
                 ESP_LOGI(TAG, "NVS erased, retry wifi");
                 config_begin();
                 config_write();
-                goto retry_wifi;
+                esp_restart();
             }
         }
 

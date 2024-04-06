@@ -26,7 +26,7 @@
 /*==============================================================================
  Local Macro
 ===============================================================================*/
-#define TAG "GPIO"
+#define TAG "LED"
 
 #define FOREVER UINT32_MAX
 
@@ -111,6 +111,12 @@ static TaskHandle_t led_task_handle = NULL;
 static QueueHandle_t led_pattern_queue = NULL;
 static TaskHandle_t  led_pattern_task_handle = NULL;
 static led_timing_t *led_current_pattern = NULL;
+
+static bool led_want_to_stop = false;
+
+SemaphoreHandle_t mutex = NULL;
+uint32_t last_color = 0;
+
 // clang-format on
 
 /*==============================================================================
@@ -122,6 +128,16 @@ uint32_t led_init()
     gpio_set_direction(LED_EN, GPIO_MODE_OUTPUT);
     // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
     gpio_set_level(LED_EN, 1);
+
+    if (mutex == NULL)
+    {
+        mutex = xSemaphoreCreateMutex();
+    }
+    if (mutex == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to create mutex");
+        return -1;
+    }
 
     /* LED strip initialization with the GPIO and pixels number*/
     led_strip_config_t strip_config = {
@@ -150,12 +166,11 @@ uint32_t led_init()
     esp_err_t ret = led_strip_new_rmt_device(&strip_config, &rmt_config, &led);
     if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "LED init failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "LED init failed: 0x%x", ret);
         return ret;
     }
 
     led_strip_clear(led);
-    led_strip_refresh(led);
 
     if (led_pattern_queue == NULL)
     {
@@ -179,13 +194,9 @@ uint32_t led_init()
 static void led_set_rgb(uint32_t color, uint32_t brightness)
 {
 
-    if (color == 0 || brightness == 0)
+    if (mutex == NULL)
     {
-        led_strip_clear(led);
-        led_strip_refresh(led);
-        vTaskDelay(1);
-        gpio_set_level(LED_EN, 0);
-        // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
+        ESP_LOGE(TAG, "Mutex is NULL");
         return;
     }
 
@@ -198,10 +209,45 @@ static void led_set_rgb(uint32_t color, uint32_t brightness)
     g = (g * brightness) / 1000;
     b = (b * brightness) / 1000;
 
+    uint32_t now = r << 16 | g << 8 | b;
+    ESP_LOGD(TAG, "now: %ld, last: %ld", now, last_color);
+    if (now == last_color)
+    {
+        ESP_LOGD(TAG, "Same color, skipping");
+        return;
+    }
+
+    ESP_LOGD(TAG, "Mutex take");
+    int ret = xSemaphoreTake(mutex, portMAX_DELAY);
+    if (ret != pdTRUE)
+    {
+        ESP_LOGE(TAG, "Failed to take mutex");
+        return;
+    }
+
+    last_color = now;
+    if (color == 0 || brightness == 0)
+    {
+        led_strip_clear(led);
+        // vTaskDelay(1);
+        gpio_set_level(LED_EN, 0);
+        // gpio_set_direction(LED_DATA, GPIO_MODE_INPUT); // HIGH-Z
+        ESP_LOGD(TAG, "Mutex give");
+        xSemaphoreGive(mutex);
+        return;
+    }
+
     ESP_LOGD(TAG, "r: %ld, g: %ld, b: %ld, brightness: %ld", r, g, b, brightness);
     gpio_set_level(LED_EN, 1);
     led_strip_set_pixel(led, 0, r, g, b);
-    led_strip_refresh(led);
+    esp_err_t err = led_strip_refresh(led);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to refresh led: 0x%x", err);
+        led_init();
+    }
+    ESP_LOGD(TAG, "Mutex give");
+    xSemaphoreGive(mutex);
 }
 
 void led_set_color(uint32_t color)
@@ -217,7 +263,7 @@ static void led_task(void *pvParameters)
     while (1)
     {
         xQueueReceive(led_pattern_queue, &pattern, portMAX_DELAY);
-        ESP_LOGD(TAG, "pattern: %d", pattern);
+        ESP_LOGD(TAG, "Received pattern: %d", pattern);
         led_timing_t *timing = NULL;
 
         for (int i = 0; i < led_pattern_size; i++)
@@ -252,21 +298,24 @@ static void led_task(void *pvParameters)
             continue;
         }
 
-        if (timing->in_progress)
+        if (led_current_pattern == timing && timing->in_progress)
         {
             ESP_LOGD(TAG, "Pattern %d already in progress", pattern);
             continue;
         }
 
-        if (led_current_pattern != NULL && led_current_pattern->in_progress)
+        if (led_current_pattern != NULL)
         {
-            // led_current_pattern->in_progress = 0;
-            deleteTask(led_pattern_task_handle);
-            led_set_color(0);
-            vTaskDelay(200 / portTICK_PERIOD_MS);
+            ESP_LOGD(TAG, "Stop cleaning pattern %ld", led_current_pattern->id);
+            led_want_to_stop = true;
+            while (led_current_pattern != NULL)
+            {
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+            }
         }
         timing->in_progress = 1;
         led_current_pattern = timing;
+        led_want_to_stop = false;
         xTaskCreate(led_pattern_task, "led_pattern_task", 4 * 1024, timing, PRIORITY_LED_PATTERN, &led_pattern_task_handle);
         ESP_LOGD(TAG, "Pattern %d started", pattern);
     }
@@ -275,6 +324,7 @@ static void led_task(void *pvParameters)
 static void led_pattern_task(void *pattern_ptr)
 {
     led_timing_t *pattern = (led_timing_t *)pattern_ptr;
+    uint32_t stop_time = 0;
     if (pattern == NULL)
     {
         ESP_LOGE(TAG, "Pattern is NULL");
@@ -282,15 +332,35 @@ static void led_pattern_task(void *pattern_ptr)
     }
     ESP_LOGD(TAG, "Pattern %ld, type: %d, color: %ld, tOn: %ld, tOff: %ld, repeat: %ld", pattern->id, pattern->type, pattern->color, pattern->tOn, pattern->tOff, pattern->repeat);
     uint32_t repeat = pattern->repeat;
-    while (repeat == FOREVER || repeat > 0)
+    while ((repeat == FOREVER || repeat > 0) && led_want_to_stop == false)
     {
         switch (pattern->type)
         {
         case LED_FLASH:
             led_set_color(pattern->color);
-            vTaskDelay(pattern->tOn / portTICK_PERIOD_MS);
+
+            stop_time = xTaskGetTickCount() + pattern->tOn / portTICK_PERIOD_MS;
+            while (xTaskGetTickCount() < stop_time)
+            {
+                if (led_want_to_stop)
+                {
+                    goto end;
+                }
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
+
             led_set_color(0);
-            vTaskDelay(pattern->tOff / portTICK_PERIOD_MS);
+
+            stop_time = xTaskGetTickCount() + pattern->tOff / portTICK_PERIOD_MS;
+            while (xTaskGetTickCount() < stop_time)
+            {
+                if (led_want_to_stop)
+                {
+                    goto end;
+                }
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
+
             if (repeat != FOREVER)
             {
                 repeat--;
@@ -298,9 +368,29 @@ static void led_pattern_task(void *pattern_ptr)
             break;
         case LED_FLASH_MODE:
             led_set_color(led_color_mode[config_values.mode]);
-            vTaskDelay(pattern->tOn / portTICK_PERIOD_MS);
+
+            stop_time = xTaskGetTickCount() + pattern->tOn / portTICK_PERIOD_MS;
+            while (xTaskGetTickCount() < stop_time)
+            {
+                if (led_want_to_stop)
+                {
+                    goto end;
+                }
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
+
             led_set_color(0);
-            vTaskDelay(pattern->tOff / portTICK_PERIOD_MS);
+
+            stop_time = xTaskGetTickCount() + pattern->tOff / portTICK_PERIOD_MS;
+            while (xTaskGetTickCount() < stop_time)
+            {
+                if (led_want_to_stop)
+                {
+                    goto end;
+                }
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
+
             if (repeat != FOREVER)
             {
                 repeat--;
@@ -310,6 +400,10 @@ static void led_pattern_task(void *pattern_ptr)
             uint32_t brightness = 0;
             while (brightness < 500)
             {
+                if (led_want_to_stop)
+                {
+                    goto end;
+                }
                 brightness++;
                 led_set_rgb(pattern->color, brightness);
                 vTaskDelay(5 / portTICK_PERIOD_MS);
@@ -317,6 +411,10 @@ static void led_pattern_task(void *pattern_ptr)
             vTaskDelay(pattern->tOn / portTICK_PERIOD_MS);
             while (brightness > 0)
             {
+                if (led_want_to_stop)
+                {
+                    goto end;
+                }
                 brightness--;
                 led_set_rgb(pattern->color, brightness);
                 vTaskDelay(5 / portTICK_PERIOD_MS);
@@ -328,18 +426,45 @@ static void led_pattern_task(void *pattern_ptr)
             }
             break;
         case LED_MANUAL:
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            stop_time = xTaskGetTickCount() + 1000 / portTICK_PERIOD_MS;
+            while (xTaskGetTickCount() < stop_time)
+            {
+                if (led_want_to_stop)
+                {
+                    goto end;
+                }
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
             break;
         default:
             ESP_LOGE(TAG, "Unknown pattern type");
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            stop_time = xTaskGetTickCount() + 1000 / portTICK_PERIOD_MS;
+            while (xTaskGetTickCount() < stop_time)
+            {
+                if (led_want_to_stop)
+                {
+                    goto end;
+                }
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
             break;
         }
     }
-    led_set_color(0);
-    pattern->in_progress = 0;
 
+end:
+    if (led_want_to_stop)
+    {
+        ESP_LOGD(TAG, "Pattern deleted");
+    }
+    else
+    {
+        pattern->in_progress = 0; // only if pattern naturally finished
+    }
+    led_want_to_stop = false;
+    led_set_color(0);
+    led_current_pattern = NULL;
     vTaskDelay(100 / portTICK_PERIOD_MS);
+    ESP_LOGD(TAG, "Pattern %ld finished", pattern->id);
     led_start_next_pattern();
     vTaskDelete(NULL); // Delete this task
 }
@@ -363,9 +488,14 @@ void led_stop_pattern(led_pattern_t pattern)
             led_timing[i].in_progress = 0;
             if (led_current_pattern != NULL)
             {
+                ESP_LOGD(TAG, "Stop pattern %ld", led_current_pattern->id);
                 led_current_pattern->in_progress = 0;
-                deleteTask(led_pattern_task_handle);
-                led_current_pattern = NULL;
+                led_want_to_stop = true;
+                while (led_current_pattern != NULL)
+                {
+                    // xTaskAbortDelay(led_pattern_task_handle);
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                }
             }
             return;
         }
@@ -390,10 +520,13 @@ void led_usb_event(bool connected)
         }
         if (led_current_pattern != NULL && led_current_pattern->only_usb_powered)
         {
-            led_current_pattern->in_progress = 0;
-            deleteTask(led_pattern_task_handle);
-            led_current_pattern = NULL;
-            led_set_color(0);
+            ESP_LOGD(TAG, "Stop cleaning pattern %ld", led_current_pattern->id);
+            led_want_to_stop = true;
+            while (led_current_pattern != NULL)
+            {
+                // xTaskAbortDelay(led_pattern_task_handle);
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+            }
         }
     }
 }

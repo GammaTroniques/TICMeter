@@ -107,6 +107,7 @@ Public Variable
 ===============================================================================*/
 TaskHandle_t tuyaTaskHandle = NULL;
 TaskHandle_t tuya_ble_pairing_task_handle = NULL;
+bool tuya_state = false;
 
 /*==============================================================================
  Local Variable
@@ -201,15 +202,19 @@ static void tuya_user_event_handler_on(tuya_iot_client_t *client, tuya_event_msg
     case TUYA_EVENT_RESET:
         ESP_LOGI(TAG, "Tuya unbined");
         config_values.pairing_state = TUYA_NOT_CONFIGURED;
-        ESP_LOGI(TAG, "Erasing NVS");
-        esp_err_t err = nvs_flash_erase();
+        config_values.boot_pairing = 1;
+        esp_err_t err = config_erase_partition("nvs");
         if (err != ESP_OK)
         {
-            ESP_LOGE(TAG, "Error (%s) erasing NVS!", esp_err_to_name(err));
+            ESP_LOGE(TAG, "nvs_flash_erase failed with 0x%X", err);
         }
-        ESP_LOGI(TAG, "Saving config");
-        config_begin();
-        config_write();
+        else
+        {
+            ESP_LOGI(TAG, "NVS erased, retry wifi");
+            config_begin();
+            config_write();
+            esp_restart();
+        }
         break;
     case TUYA_EVENT_BIND_TOKEN_ON:
         // start of binding
@@ -242,6 +247,13 @@ static void user_ota_event_cb(tuya_ota_handle_t *handle, tuya_ota_event_t *event
     case TUYA_OTA_EVENT_START:
         ESP_LOGI(TAG, "OTA start");
         ret = ota_zlib_init();
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE(TAG, "OTA init error: %d", ret);
+            tuya_ota_upgrade_status_report(handle, TUS_DOWNLOAD_ERROR_UNKONW);
+        }
+        led_start_pattern(LED_OTA_IN_PROGRESS);
+
         break;
 
     case TUYA_OTA_EVENT_ON_DATA:
@@ -249,6 +261,7 @@ static void user_ota_event_cb(tuya_ota_handle_t *handle, tuya_ota_event_t *event
         ret = ota_zlib_write(event->data, event->data_len);
         if (ret != ESP_OK)
         {
+            led_stop_pattern(LED_OTA_IN_PROGRESS);
             ESP_LOGE(TAG, "OTA write error: %d", ret);
             tuya_ota_upgrade_status_report(handle, TUS_DOWNLOAD_ERROR_UNKONW);
         }
@@ -257,9 +270,17 @@ static void user_ota_event_cb(tuya_ota_handle_t *handle, tuya_ota_event_t *event
     case TUYA_OTA_EVENT_FINISH:
         ESP_LOGI(TAG, "OTA finish");
         ret = ota_zlib_end();
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE(TAG, "OTA end error: %d", ret);
+            tuya_ota_upgrade_status_report(handle, TUS_DOWNLOAD_ERROR_UNKONW);
+        }
+        led_stop_pattern(LED_OTA_IN_PROGRESS);
         break;
     case TUYA_OTA_EVENT_FAULT:
         ESP_LOGE(TAG, "OTA fault");
+        led_stop_pattern(LED_OTA_IN_PROGRESS);
+
         break;
     }
 }
@@ -308,7 +329,6 @@ static void tuya_link_app_task(void *pvParameters)
     {
         /* Loop to receive packets, and handles client keepalive */
         tuya_iot_yield(&client);
-        // vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 

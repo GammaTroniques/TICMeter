@@ -37,6 +37,7 @@
  Public Variables Declaration
 ==============================================================================*/
 extern TaskHandle_t tuyaTaskHandle;
+extern bool tuya_state;
 
 /*==============================================================================
  Public Functions Declaration

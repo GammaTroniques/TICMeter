@@ -157,8 +157,10 @@ void app_main(void)
     // esp_pm_lock_acquire(main_init_lock);
   }
   ESP_LOGI(MAIN_TAG, "Config found. Starting...");
-  vTaskDelay(200 / portTICK_PERIOD_MS);
-  if (!linky_update())
+
+  vTaskDelay(200 / portTICK_PERIOD_MS); // for led pattern
+
+  if (config_values.mode == MODE_ZIGBEE && !linky_update())
   {
     while (!linky_update())
     {
@@ -227,12 +229,14 @@ void app_main(void)
     if (err == ESP_OK)
     {
       tuya_init();
+      tuya_state = true;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
 
       if (!gpio_vusb_connected())
       {
         wifi_disconnect();
         vTaskSuspend(tuyaTaskHandle);
+        tuya_state = false;
       }
     }
     else
@@ -407,13 +411,18 @@ esp_err_t main_send_data()
     if (err == ESP_OK)
     {
       ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
-      resumeTask(tuyaTaskHandle); // resume tuya task
-      if (tuya_wait_event(TUYA_EVENT_MQTT_CONNECTED, 10000))
+      if (tuya_state == false)
       {
-        ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
-        led_start_pattern(LED_SEND_FAILED);
-        err = ESP_FAIL;
-        goto tuya_disconect;
+        ESP_LOGE(MAIN_TAG, "Tuya not connected, reconnecting...");
+        resumeTask(tuyaTaskHandle); // resume tuya task
+        tuya_state = true;
+        if (tuya_wait_event(TUYA_EVENT_MQTT_CONNECTED, 10000))
+        {
+          ESP_LOGE(MAIN_TAG, "Tuya MQTT ERROR");
+          led_start_pattern(LED_SEND_FAILED);
+          err = ESP_FAIL;
+          goto tuya_disconect;
+        }
       }
 
       if (tuya_send_data(&linky_data))
@@ -438,6 +447,7 @@ esp_err_t main_send_data()
         ESP_LOGI(MAIN_TAG, "VUSB not connected, suspend TUYA");
         wifi_disconnect();
         suspendTask(tuyaTaskHandle);
+        tuya_state = false;
       }
       led_start_pattern(LED_SEND_OK);
       return err;

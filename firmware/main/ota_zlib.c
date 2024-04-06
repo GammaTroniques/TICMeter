@@ -52,8 +52,8 @@ z_stream zlib_stream = {0};
 uint8_t zlib_init = 0;
 uint8_t zlib_buf[2048];
 
-static const esp_partition_t *zigbee_ota_partition = NULL;
-static const esp_partition_t *zigbee_storage_partition = NULL;
+static const esp_partition_t *ota_partition = NULL;
+static const esp_partition_t *storage_partition = NULL;
 static esp_ota_handle_t zigbee_ota_handle = 0;
 
 static size_t ota_data_len_ = 0;
@@ -90,32 +90,32 @@ esp_err_t ota_zlib_init()
         return false;
     }
 
-    if (zigbee_ota_partition != NULL)
+    if (ota_partition != NULL)
     {
         ESP_LOGE(TAG, "OTA already started");
-        zigbee_ota_partition = NULL;
+        ota_partition = NULL;
         esp_ota_abort(zigbee_ota_handle);
         return ESP_FAIL;
     }
 
-    zigbee_ota_partition = esp_ota_get_next_update_partition(NULL);
-    if (zigbee_ota_partition == NULL)
+    ota_partition = esp_ota_get_next_update_partition(NULL);
+    if (ota_partition == NULL)
     {
         ESP_LOGE(TAG, "OTA partition not found");
         return ESP_FAIL;
     }
-    zigbee_storage_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, "storage");
-    if (zigbee_storage_partition == NULL)
+    storage_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, "storage");
+    if (storage_partition == NULL)
     {
         ESP_LOGE(TAG, "Storage partition not found");
         return ESP_FAIL;
     }
 
-    ret = esp_ota_begin(zigbee_ota_partition, OTA_WITH_SEQUENTIAL_WRITES, &zigbee_ota_handle);
+    ret = esp_ota_begin(ota_partition, OTA_WITH_SEQUENTIAL_WRITES, &zigbee_ota_handle);
     if (ret != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to begin OTA partition, status: %s", esp_err_to_name(ret));
-        zigbee_ota_partition = NULL;
+        ota_partition = NULL;
         return ESP_FAIL;
     }
     ESP_LOGI(TAG, "Init OK");
@@ -173,6 +173,13 @@ esp_err_t ota_zlib_write(const uint8_t *payload, size_t payload_size)
             ESP_LOGI(TAG, "OTA sub-element storage [%lu/%lu]", offset, subelement_size);
             ota_data_len_ = subelement_size;
             storage_offset = 0;
+            ret = esp_partition_erase_range(storage_partition, 0, storage_partition->size);
+            if (ret != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Failed to erase storage partition");
+                return ESP_FAIL;
+            }
+            ESP_LOGI(TAG, "Storage partition erased");
             break;
         default:
             ESP_LOGE(TAG, "OTA sub-element type %02x%02x not supported", ota_header_[0], ota_header_[1]);
@@ -233,7 +240,8 @@ esp_err_t ota_zlib_write(const uint8_t *payload, size_t payload_size)
                     break;
                 case 0x100:
                     ESP_LOGI(TAG, "OTA sub-element Storage [%lu/%lu]", subelement_size - ota_data_len_, subelement_size);
-                    ret = esp_partition_write(zigbee_storage_partition, storage_offset, zlib_buf, have);
+                    ret = esp_partition_write(storage_partition, storage_offset, zlib_buf, have);
+                    ESP_LOGI(TAG, "Write %zu bytes to storage partition at offset %ld", have, storage_offset);
                     storage_offset += have;
                     if (ret != ESP_OK)
                     {
@@ -291,7 +299,7 @@ esp_err_t ota_zlib_end()
     esp_err_t ret = ESP_OK;
     ret = esp_ota_end(zigbee_ota_handle);
     ESP_RETURN_ON_ERROR(ret, TAG, "Failed to end OTA partition, status: %s", esp_err_to_name(ret));
-    ret = esp_ota_set_boot_partition(zigbee_ota_partition);
+    ret = esp_ota_set_boot_partition(ota_partition);
     ESP_RETURN_ON_ERROR(ret, TAG, "Failed to set OTA boot partition, status: %s", esp_err_to_name(ret));
     ESP_LOGW(TAG, "Prepare to restart system in 10s");
     xTaskCreate(&reboot_task, "reboot_task", 2048, NULL, 20, NULL);
