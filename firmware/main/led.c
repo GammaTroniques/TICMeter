@@ -408,7 +408,17 @@ static void led_pattern_task(void *pattern_ptr)
                 led_set_rgb(pattern->color, brightness);
                 vTaskDelay(5 / portTICK_PERIOD_MS);
             }
-            vTaskDelay(pattern->tOn / portTICK_PERIOD_MS);
+
+            stop_time = xTaskGetTickCount() + pattern->tOn / portTICK_PERIOD_MS;
+            while (xTaskGetTickCount() < stop_time)
+            {
+                if (led_want_to_stop)
+                {
+                    goto end;
+                }
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
+
             while (brightness > 0)
             {
                 if (led_want_to_stop)
@@ -419,7 +429,17 @@ static void led_pattern_task(void *pattern_ptr)
                 led_set_rgb(pattern->color, brightness);
                 vTaskDelay(5 / portTICK_PERIOD_MS);
             }
-            vTaskDelay(pattern->tOff / portTICK_PERIOD_MS);
+
+            stop_time = xTaskGetTickCount() + pattern->tOff / portTICK_PERIOD_MS;
+            while (xTaskGetTickCount() < stop_time)
+            {
+                if (led_want_to_stop)
+                {
+                    goto end;
+                }
+                vTaskDelay(50 / portTICK_PERIOD_MS);
+            }
+
             if (repeat != FOREVER)
             {
                 repeat--;

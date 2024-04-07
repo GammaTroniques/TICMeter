@@ -1,12 +1,13 @@
 {
   "idf.adapterTargetName": "esp32c6",
-  "idf.flashType": "UART",
-  "idf.portWin": "COM21",
+  "idf.flashType": "JTAG",
+  "idf.portWin": "COM3",
   "C_Cpp.intelliSenseEngine": "default",
   "idf.port": "/dev/ttyACM0",
   "C_Cpp.autoAddFileAssociations": false,
   "idf.flashBaudRate": "1000000",
   "files.associations": {
     "*.yaml": "home-assistant"
-  }
+  },
+  "idf.openOcdConfigs": ["board/esp32c6-builtin.cfg"]
 }

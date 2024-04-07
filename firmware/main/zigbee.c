@@ -931,7 +931,7 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
                 return ret;
             }
             start_time = esp_timer_get_time();
-
+            zigbee_ota_running = true;
             led_start_pattern(LED_OTA_IN_PROGRESS);
 
             break;
@@ -954,6 +954,7 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
             ret = ota_zlib_write(payload, payload_size);
             if (ret != ESP_OK)
             {
+                ESP_LOGE(TAG, "OTA write failed: 0x%x", ret);
                 zigbee_ota_running = false;
                 led_stop_pattern(LED_OTA_IN_PROGRESS);
                 return ret;
