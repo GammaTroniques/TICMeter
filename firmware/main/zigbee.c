@@ -932,7 +932,7 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
             }
             start_time = esp_timer_get_time();
             zigbee_ota_running = true;
-            led_start_pattern(LED_OTA_IN_PROGRESS);
+            // led_start_pattern(LED_OTA_IN_PROGRESS);
 
             break;
         case ESP_ZB_ZCL_OTA_UPGRADE_STATUS_RECEIVE:
@@ -956,7 +956,7 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
             {
                 ESP_LOGE(TAG, "OTA write failed: 0x%x", ret);
                 zigbee_ota_running = false;
-                led_stop_pattern(LED_OTA_IN_PROGRESS);
+                // led_stop_pattern(LED_OTA_IN_PROGRESS);
                 return ret;
             }
 
@@ -974,11 +974,11 @@ static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_
             if (ret != ESP_OK)
             {
                 zigbee_ota_running = false;
-                led_stop_pattern(LED_OTA_IN_PROGRESS);
+                // led_stop_pattern(LED_OTA_IN_PROGRESS);
                 return ret;
             }
             zigbee_ota_running = false;
-            led_stop_pattern(LED_OTA_IN_PROGRESS);
+            // led_stop_pattern(LED_OTA_IN_PROGRESS);
 
             ESP_LOGI(TAG,
                      "-- OTA Information: version: 0x%lx, manufactor code: 0x%x, image type: 0x%x, total size: %ld bytes, cost time: %lld ms,",
