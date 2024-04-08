@@ -377,43 +377,54 @@ uint8_t tuya_compute_offset(linky_data_t *linky)
     {
     case MODE_HIST:
     {
-
-        uint64_t *values[] = {&linky->hist.TOTAL, &linky->hist.HCHP, &linky->hist.EJPHN, &linky->hist.EJPHPM, &linky->hist.BBRHCJB, &linky->hist.BBRHPJB, &linky->hist.BBRHCJW, &linky->hist.BBRHPJW, &linky->hist.BBRHCJR, &linky->hist.BBRHPJR};
-        if (linky->hist.BASE != UINT64_MAX)
+        switch (linky_contract)
         {
+        case C_BASE:
             linky->hist.BASE -= config_values.index_offset.index_01;
-        }
-        else
-        {
+            break;
+        case C_HC:
             linky->hist.HCHC -= config_values.index_offset.index_01;
-        }
+            linky->hist.HCHP -= config_values.index_offset.index_02;
+            break;
+        case C_EJP:
+            linky->hist.EJPHN -= config_values.index_offset.index_01;
+            linky->hist.EJPHPM -= config_values.index_offset.index_02;
+            break;
+        case C_TEMPO:
+        case C_SEM_WE_LUNDI:
+        case C_SEM_WE_MERCREDI:
+        case C_SEM_WE_VENDREDI:
+        case C_ZEN_FLEX:
+        case C_HEURES_SUPER_CREUSES:
+            linky->hist.BBRHCJB -= config_values.index_offset.index_01;
+            linky->hist.BBRHPJB -= config_values.index_offset.index_02;
+            linky->hist.BBRHCJW -= config_values.index_offset.index_03;
+            linky->hist.BBRHPJW -= config_values.index_offset.index_04;
+            linky->hist.BBRHCJR -= config_values.index_offset.index_05;
+            linky->hist.BBRHPJR -= config_values.index_offset.index_06;
 
-        uint64_t *index = &config_values.index_offset.index_02;
-        for (int i = 0; i < sizeof(values) / sizeof(values[0]); i++)
-        {
-            if (*values[i] == UINT64_MAX)
-            {
-                continue;
-            }
-            *values[i] -= *index;
-            index++;
+            break;
+        default:
+            ESP_LOGE(TAG, "Unknown contract: %d", linky_contract);
+            break;
         }
+        linky->hist.TOTAL -= config_values.index_offset.index_total;
     }
     break;
     case MODE_STD:
     {
-
-        uint64_t *values[] = {&linky->std.EAST, &linky->std.EASF01, &linky->std.EASF02, &linky->std.EASF03, &linky->std.EASF04, &linky->std.EASF05, &linky->std.EASF06, &linky->std.EASF07, &linky->std.EASF08, &linky->std.EASF09, &linky->std.EASF10};
-        uint64_t *index = &config_values.index_offset.index_total;
-        for (int i = 0; i < sizeof(values) / sizeof(values[0]); i++)
-        {
-            if (*values[i] == UINT32_MAX)
-            {
-                continue;
-            }
-            *values[i] -= *index;
-            index++;
-        }
+        linky->std.EAST -= config_values.index_offset.index_total;
+        linky->std.EASF01 -= config_values.index_offset.index_01;
+        linky->std.EASF02 -= config_values.index_offset.index_02;
+        linky->std.EASF03 -= config_values.index_offset.index_03;
+        linky->std.EASF04 -= config_values.index_offset.index_04;
+        linky->std.EASF05 -= config_values.index_offset.index_05;
+        linky->std.EASF06 -= config_values.index_offset.index_06;
+        linky->std.EASF07 -= config_values.index_offset.index_07;
+        linky->std.EASF08 -= config_values.index_offset.index_08;
+        linky->std.EASF09 -= config_values.index_offset.index_09;
+        linky->std.EASF10 -= config_values.index_offset.index_10;
+        linky->std.EAIT -= config_values.index_offset.index_production;
         break;
     }
     default:
@@ -423,38 +434,65 @@ uint8_t tuya_compute_offset(linky_data_t *linky)
     return 0;
 }
 
+char *tuya_replace(char *str, str_replace_t *replace, int size)
+{
+    for (int i = 0; i < size; i++)
+    {
+        if (replace[i].look == NULL || replace[i].replace == NULL)
+        {
+            continue;
+        }
+        if (strstr(str, replace[i].look) != NULL)
+        {
+            str = (char *)replace[i].replace;
+            break;
+        }
+    }
+    return str;
+}
+
 uint8_t tuya_send_data(linky_data_t *linky)
 {
-    // tuya_iot_reconnect(&client);
     ESP_LOGI(TAG, "Send data to tuya");
-    // DynamicJsonDocument device(1024);
     cJSON *jsonObject = cJSON_CreateObject(); // Create the root object
-
     if (config_values.index_offset.value_saved == 0)
     {
         ESP_LOGI(TAG, "Index offset not saved, skip tuya saving...");
-
+        // TODO: save index index_total and check contract
         switch (linky_mode)
         {
         case MODE_HIST:
-            if (linky->hist.BASE != UINT64_MAX)
-            {
-                config_values.index_offset.index_01 = linky->hist.BASE;
-            }
-            else
-            {
-                config_values.index_offset.index_01 = linky->hist.HCHC;
-            }
-            config_values.index_offset.index_02 = linky->hist.HCHP;
-            config_values.index_offset.index_03 = linky->hist.EJPHN;
-            config_values.index_offset.index_04 = linky->hist.EJPHPM;
-            config_values.index_offset.index_05 = linky->hist.BBRHCJB;
-            config_values.index_offset.index_06 = linky->hist.BBRHPJB;
-            config_values.index_offset.index_07 = linky->hist.BBRHCJW;
-            config_values.index_offset.index_08 = linky->hist.BBRHPJW;
-            config_values.index_offset.index_09 = linky->hist.BBRHCJR;
-            config_values.index_offset.index_10 = linky->hist.BBRHPJR;
 
+            switch (linky_contract)
+            {
+            case C_BASE:
+                config_values.index_offset.index_01 = linky->hist.BASE;
+                break;
+            case C_HC:
+                config_values.index_offset.index_01 = linky->hist.HCHC;
+                config_values.index_offset.index_02 = linky->hist.HCHP;
+                break;
+            case C_EJP:
+                config_values.index_offset.index_01 = linky->hist.EJPHN;
+                config_values.index_offset.index_02 = linky->hist.EJPHPM;
+                break;
+            case C_TEMPO:
+            case C_SEM_WE_LUNDI:
+            case C_SEM_WE_MERCREDI:
+            case C_SEM_WE_VENDREDI:
+            case C_ZEN_FLEX:
+            case C_HEURES_SUPER_CREUSES:
+                config_values.index_offset.index_01 = linky->hist.BBRHCJB;
+                config_values.index_offset.index_02 = linky->hist.BBRHPJB;
+                config_values.index_offset.index_03 = linky->hist.BBRHCJW;
+                config_values.index_offset.index_04 = linky->hist.BBRHPJW;
+                config_values.index_offset.index_05 = linky->hist.BBRHCJR;
+                config_values.index_offset.index_06 = linky->hist.BBRHPJR;
+                break;
+            default:
+                ESP_LOGE(TAG, "Unknown contract: %d", linky_contract);
+                break;
+            }
             break;
         case MODE_STD:
             config_values.index_offset.index_01 = linky->std.EASF01;
@@ -499,13 +537,13 @@ uint8_t tuya_send_data(linky_data_t *linky)
             switch (linky_mode)
             {
             case MODE_HIST:
-                cJSON_AddStringToObject(jsonObject, "105", "Historique");
+                cJSON_AddStringToObject(jsonObject, "105", "HISTORIQUE");
                 break;
             case MODE_STD:
-                cJSON_AddStringToObject(jsonObject, "105", "Standard");
+                cJSON_AddStringToObject(jsonObject, "105", "STANDARD");
                 break;
             default:
-                cJSON_AddStringToObject(jsonObject, "105", "Unknown");
+                cJSON_AddStringToObject(jsonObject, "105", "INCONNU");
                 break;
             }
             continue;
@@ -513,11 +551,11 @@ uint8_t tuya_send_data(linky_data_t *linky)
         case 106:
             if (linky_three_phase)
             {
-                cJSON_AddStringToObject(jsonObject, "106", "Triphase");
+                cJSON_AddStringToObject(jsonObject, "106", "TRIPHASE");
             }
             else
             {
-                cJSON_AddStringToObject(jsonObject, "106", "Monophase");
+                cJSON_AddStringToObject(jsonObject, "106", "MONOPHASE");
             }
             continue;
             break;
@@ -534,19 +572,28 @@ uint8_t tuya_send_data(linky_data_t *linky)
         case 108:
         {
             char *str = (char *)LinkyLabelList[i].data;
-            for (int i = 0; i < sizeof(str_current_tarif_replace) / sizeof(str_current_tarif_replace[0]); i++)
+            str = tuya_replace(str, str_current_tarif_replace, sizeof(str_current_tarif_replace) / sizeof(str_current_tarif_replace[0]));
+            cJSON_AddStringToObject(jsonObject, "108", str);
+            continue;
+            break;
+        }
+        case 109:
+        {
+            switch (linky_mode)
             {
-                if (str_current_tarif_replace[i].look == NULL || str_current_tarif_replace[i].replace == NULL)
+            case MODE_HIST:
+                cJSON_AddStringToObject(jsonObject, "109", linky->hist.DEMAIN);
+                break;
+            case MODE_STD:
+                if (strnlen(linky->std.DEMAIN, sizeof(linky->std.DEMAIN)) == 0)
                 {
-                    continue;
-                }
-                if (strstr(str, str_current_tarif_replace[i].look) != NULL)
-                {
-                    str = (char *)str_current_tarif_replace[i].replace;
                     break;
                 }
+                cJSON_AddStringToObject(jsonObject, "109", linky->std.DEMAIN);
+                break;
+            default:
+                break;
             }
-            cJSON_AddStringToObject(jsonObject, "108", str);
 
             continue;
             break;

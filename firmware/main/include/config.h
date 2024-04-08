@@ -134,6 +134,7 @@ typedef struct
     uint64_t index_08;
     uint64_t index_09;
     uint64_t index_10;
+    uint64_t index_production;
     uint8_t value_saved;
 } index_offset_t;
 

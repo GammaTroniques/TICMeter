@@ -184,7 +184,7 @@ const LinkyGroup LinkyLabelList[] =
     {124, "Puissance soutirée Phase 2",         "SINSTS2",     &linky_data.std.SINSTS2,       UINT32,       0, MODE_STD,  C_ANY,   G_TRI,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090F,  ZB_RP, ZB_INT16,    },
     {125, "Puissance soutirée Phase 3",         "SINSTS3",     &linky_data.std.SINSTS3,       UINT32,       0, MODE_STD,  C_ANY,   G_TRI,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0F,  ZB_RP, ZB_INT16,    },
 
-    {000, "Puissance max soutirée Auj.",        "SMAXSN",      &linky_data.std.SMAXSN,        UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050D,  ZB_RO, ZB_INT16,    },
+    {135, "Puissance max soutirée Auj.",        "SMAXSN",      &linky_data.std.SMAXSN,        UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050D,  ZB_RO, ZB_INT16,    },
     {000, "Puissance max soutirée Auj. 1",      "SMAXSN1",     &linky_data.std.SMAXSN1,       UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x050D,  ZB_RO, ZB_INT16,    },
     {000, "Puissance max soutirée Auj. 2",      "SMAXSN2",     &linky_data.std.SMAXSN2,       UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x090D,  ZB_RO, ZB_INT16,    },
     {000, "Puissance max soutirée Auj. 3",      "SMAXSN3",     &linky_data.std.SMAXSN3,       UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0x0B04, 0x0A0D,  ZB_RO, ZB_INT16,    },
@@ -219,7 +219,7 @@ const LinkyGroup LinkyLabelList[] =
     {000, "Tension moyenne Phase 3",            "UMOY3",       &linky_data.std.UMOY3,         UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0A11,  ZB_RO, ZB_UINT16,   },
 
     {000, "Registre de Statuts",                "STGE",        &linky_data.std.STGE,          STRING,       8, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x000A,  ZB_RO, ZB_OCTSTR,   },
-    {109, "Couleur du lendemain",               "demain",      &linky_data.std.DEMAIN,        STRING,       4, MODE_STD,  C_TEMPO, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x0003,  ZB_RP, ZB_OCTSTR,   }, // TODO: Enedis-NOI-CPT_54E p25 Couleur du lendemain --> tuya 116
+    {109, "Couleur du lendemain",               "demain",      &linky_data.std.DEMAIN,        STRING,       4, MODE_STD,  C_TEMPO, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x0003,  ZB_RP, ZB_OCTSTR,   }, // TODO: Enedis-NOI-CPT_54E p25 Couleur du lendemain --> tuya 109
 
     {000, "Début Pointe Mobile 1",              "DPM1",        &linky_data.std.DPM1,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x001c,  ZB_RO, ZB_UINT64,   },
     {000, "Fin Pointe Mobile 1",                "FPM1",        &linky_data.std.FPM1,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x001d,  ZB_RO, ZB_UINT64,   },
@@ -846,6 +846,21 @@ static char linky_decode()
             // tomorrow color: bit 26 and 27
             uint8_t tomorrow_color = (value >> 26) & 0x3;
             ESP_LOGI(TAG, "tomorrow color: %d", tomorrow_color);
+            switch (tomorrow_color)
+            {
+            case 1:
+                strcpy(linky_data.std.DEMAIN, "JB");
+                break;
+            case 2:
+                strcpy(linky_data.std.DEMAIN, "JW");
+                break;
+            case 3:
+                strcpy(linky_data.std.DEMAIN, "JR");
+                break;
+            default:
+                strcpy(linky_data.std.DEMAIN, "");
+                break;
+            }
         }
         break;
     default:
