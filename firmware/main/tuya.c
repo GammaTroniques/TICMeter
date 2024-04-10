@@ -365,75 +365,6 @@ static void tuya_send_callback(int result, void *user_data)
     *sendComplete = 1;
 }
 
-uint8_t tuya_compute_offset(linky_data_t *linky)
-{
-    ESP_LOGI(TAG, "Compute offset for tuya");
-    if (config_values.index_offset.value_saved == 0)
-    {
-        ESP_LOGI(TAG, "Index offset not saved, skip tuya offset");
-        return 1;
-    }
-    switch (linky_mode)
-    {
-    case MODE_HIST:
-    {
-        switch (linky_contract)
-        {
-        case C_BASE:
-            linky->hist.BASE -= config_values.index_offset.index_01;
-            break;
-        case C_HC:
-            linky->hist.HCHC -= config_values.index_offset.index_01;
-            linky->hist.HCHP -= config_values.index_offset.index_02;
-            break;
-        case C_EJP:
-            linky->hist.EJPHN -= config_values.index_offset.index_01;
-            linky->hist.EJPHPM -= config_values.index_offset.index_02;
-            break;
-        case C_TEMPO:
-        case C_SEM_WE_LUNDI:
-        case C_SEM_WE_MERCREDI:
-        case C_SEM_WE_VENDREDI:
-        case C_ZEN_FLEX:
-        case C_HEURES_SUPER_CREUSES:
-            linky->hist.BBRHCJB -= config_values.index_offset.index_01;
-            linky->hist.BBRHPJB -= config_values.index_offset.index_02;
-            linky->hist.BBRHCJW -= config_values.index_offset.index_03;
-            linky->hist.BBRHPJW -= config_values.index_offset.index_04;
-            linky->hist.BBRHCJR -= config_values.index_offset.index_05;
-            linky->hist.BBRHPJR -= config_values.index_offset.index_06;
-
-            break;
-        default:
-            ESP_LOGE(TAG, "Unknown contract: %d", linky_contract);
-            break;
-        }
-        linky->hist.TOTAL -= config_values.index_offset.index_total;
-    }
-    break;
-    case MODE_STD:
-    {
-        linky->std.EAST -= config_values.index_offset.index_total;
-        linky->std.EASF01 -= config_values.index_offset.index_01;
-        linky->std.EASF02 -= config_values.index_offset.index_02;
-        linky->std.EASF03 -= config_values.index_offset.index_03;
-        linky->std.EASF04 -= config_values.index_offset.index_04;
-        linky->std.EASF05 -= config_values.index_offset.index_05;
-        linky->std.EASF06 -= config_values.index_offset.index_06;
-        linky->std.EASF07 -= config_values.index_offset.index_07;
-        linky->std.EASF08 -= config_values.index_offset.index_08;
-        linky->std.EASF09 -= config_values.index_offset.index_09;
-        linky->std.EASF10 -= config_values.index_offset.index_10;
-        linky->std.EAIT -= config_values.index_offset.index_production;
-        break;
-    }
-    default:
-        ESP_LOGE(TAG, "Unknown Linky mode: %d", linky_mode);
-        return 1;
-    }
-    return 0;
-}
-
 char *tuya_replace(char *str, str_replace_t *replace, int size)
 {
     for (int i = 0; i < size; i++)
@@ -451,6 +382,70 @@ char *tuya_replace(char *str, str_replace_t *replace, int size)
     return str;
 }
 
+void tuya_fill_index(index_offset_t *out, linky_data_t *linky)
+{
+    switch (linky_mode)
+    {
+    case MODE_HIST:
+
+        switch (linky_contract)
+        {
+        case C_BASE:
+            break;
+        case C_HC:
+            out->index_hc = linky->hist.HCHC;
+            out->index_hp = linky->hist.HCHP;
+            break;
+        case C_EJP:
+            out->index_hc = linky->hist.EJPHN;
+            out->index_hp = linky->hist.EJPHPM;
+            break;
+        case C_TEMPO:
+            out->index_hc = linky->hist.BBRHCJB + linky->hist.BBRHCJW + linky->hist.BBRHCJR;
+            out->index_hp = linky->hist.BBRHPJB + linky->hist.BBRHPJW + linky->hist.BBRHPJR;
+            break;
+        default:
+            ESP_LOGE(TAG, "Unknown contract: %d", linky_contract);
+            break;
+        }
+        out->index_total = linky->hist.TOTAL;
+        break;
+    case MODE_STD:
+        switch (linky_contract)
+        {
+        case C_BASE:
+            break;
+        case C_HC:
+        case C_EJP:
+            out->index_hc = linky->std.EASF01;
+            out->index_hp = linky->std.EASF02;
+            break;
+        case C_HEURES_SUPER_CREUSES:
+            out->index_hc = linky->std.EASF01 + linky->std.EASF02;
+            out->index_hp = linky->std.EASF03;
+            break;
+        case C_TEMPO:
+        case C_SEM_WE_LUNDI:
+        case C_SEM_WE_MERCREDI:
+        case C_SEM_WE_VENDREDI:
+        case C_ZEN_FLEX:
+            out->index_total = linky->std.EASF01 + linky->std.EASF02 + linky->std.EASF03 + linky->std.EASF04 + linky->std.EASF05 + linky->std.EASF06 + linky->std.EASF07 + linky->std.EASF08 + linky->std.EASF09 + linky->std.EASF10;
+            out->index_hc = linky->std.EASF01 + linky->std.EASF03 + linky->std.EASF05 + linky->std.EASF07 + linky->std.EASF09;
+            out->index_hp = linky->std.EASF02 + linky->std.EASF04 + linky->std.EASF06 + linky->std.EASF08 + linky->std.EASF10;
+            break;
+        default:
+            ESP_LOGE(TAG, "Unknown Linky mode: %d", linky_mode);
+            break;
+        }
+        out->index_total = linky->std.EAST;
+        out->index_production = linky->std.EAIT;
+        break;
+    default:
+        ESP_LOGE(TAG, "Unknown Linky mode: %d", linky_mode);
+        break;
+    }
+}
+
 uint8_t tuya_send_data(linky_data_t *linky)
 {
     ESP_LOGI(TAG, "Send data to tuya");
@@ -458,71 +453,44 @@ uint8_t tuya_send_data(linky_data_t *linky)
     if (config_values.index_offset.value_saved == 0)
     {
         ESP_LOGI(TAG, "Index offset not saved, skip tuya saving...");
-        // TODO: save index index_total and check contract
-        switch (linky_mode)
-        {
-        case MODE_HIST:
-
-            switch (linky_contract)
-            {
-            case C_BASE:
-                config_values.index_offset.index_01 = linky->hist.BASE;
-                break;
-            case C_HC:
-                config_values.index_offset.index_01 = linky->hist.HCHC;
-                config_values.index_offset.index_02 = linky->hist.HCHP;
-                break;
-            case C_EJP:
-                config_values.index_offset.index_01 = linky->hist.EJPHN;
-                config_values.index_offset.index_02 = linky->hist.EJPHPM;
-                break;
-            case C_TEMPO:
-            case C_SEM_WE_LUNDI:
-            case C_SEM_WE_MERCREDI:
-            case C_SEM_WE_VENDREDI:
-            case C_ZEN_FLEX:
-            case C_HEURES_SUPER_CREUSES:
-                config_values.index_offset.index_01 = linky->hist.BBRHCJB;
-                config_values.index_offset.index_02 = linky->hist.BBRHPJB;
-                config_values.index_offset.index_03 = linky->hist.BBRHCJW;
-                config_values.index_offset.index_04 = linky->hist.BBRHPJW;
-                config_values.index_offset.index_05 = linky->hist.BBRHCJR;
-                config_values.index_offset.index_06 = linky->hist.BBRHPJR;
-                break;
-            default:
-                ESP_LOGE(TAG, "Unknown contract: %d", linky_contract);
-                break;
-            }
-            break;
-        case MODE_STD:
-            config_values.index_offset.index_01 = linky->std.EASF01;
-            config_values.index_offset.index_02 = linky->std.EASF02;
-            config_values.index_offset.index_03 = linky->std.EASF03;
-            config_values.index_offset.index_04 = linky->std.EASF04;
-            config_values.index_offset.index_05 = linky->std.EASF05;
-            config_values.index_offset.index_06 = linky->std.EASF06;
-            config_values.index_offset.index_07 = linky->std.EASF07;
-            config_values.index_offset.index_08 = linky->std.EASF08;
-            config_values.index_offset.index_09 = linky->std.EASF09;
-            config_values.index_offset.index_10 = linky->std.EASF10;
-            break;
-        default:
-            ESP_LOGE(TAG, "Unknown Linky mode: %d", linky_mode);
-            break;
-        }
+        tuya_fill_index(&config_values.index_offset, linky);
         config_values.index_offset.value_saved = 1;
         config_write();
     }
 
-    if (tuya_compute_offset(linky))
+    // add index:
+    index_offset_t now = {0};
+    tuya_fill_index(&now, linky);
+    now.index_total -= config_values.index_offset.index_total;
+    now.index_hc -= config_values.index_offset.index_hc;
+    now.index_hp -= config_values.index_offset.index_hp;
+    now.index_production -= config_values.index_offset.index_production;
+
+    switch (linky_contract)
     {
-        ESP_LOGE(TAG, "Error computing offset for tuya, skip sending data");
-        return 1;
+    case C_BASE:
+        cJSON_AddNumberToObject(jsonObject, "111", now.index_total);
+        break;
+    case C_HC:
+    case C_EJP:
+    case C_TEMPO:
+    case C_SEM_WE_LUNDI:
+    case C_SEM_WE_MERCREDI:
+    case C_SEM_WE_VENDREDI:
+    case C_ZEN_FLEX:
+        cJSON_AddNumberToObject(jsonObject, "111", now.index_total);
+        cJSON_AddNumberToObject(jsonObject, "112", now.index_hc);
+        cJSON_AddNumberToObject(jsonObject, "113", now.index_hp);
+        break;
+
+    default:
+        ESP_LOGE(TAG, "Unknown contract: %d", linky_contract);
+        break;
     }
 
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
-        if (LinkyLabelList[i].id < 101)
+        if (LinkyLabelList[i].id < 101 || LinkyLabelList[i].id > 199)
         {
             continue; // dont send data for label < 101 : they are not used by tuya
         }
@@ -567,139 +535,9 @@ uint8_t tuya_send_data(linky_data_t *linky)
                 str = (char *)linky_tuya_str_contract[C_UNKNOWN];
             }
             cJSON_AddStringToObject(jsonObject, "107", str);
-            break;
-        }
-        case 108:
-        {
-            char *str = (char *)LinkyLabelList[i].data;
-            str = tuya_replace(str, str_current_tarif_replace, sizeof(str_current_tarif_replace) / sizeof(str_current_tarif_replace[0]));
-            cJSON_AddStringToObject(jsonObject, "108", str);
             continue;
             break;
         }
-        case 109:
-        {
-            switch (linky_mode)
-            {
-            case MODE_HIST:
-                cJSON_AddStringToObject(jsonObject, "109", linky->hist.DEMAIN);
-                break;
-            case MODE_STD:
-                if (strnlen(linky->std.DEMAIN, sizeof(linky->std.DEMAIN)) == 0)
-                {
-                    break;
-                }
-                cJSON_AddStringToObject(jsonObject, "109", linky->std.DEMAIN);
-                break;
-            default:
-                break;
-            }
-
-            continue;
-            break;
-        }
-        case 201:
-        {
-
-            switch (linky_contract)
-            {
-            case C_BASE:
-                cJSON_AddNumberToObject(jsonObject, "110", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            case C_HC:
-                cJSON_AddNumberToObject(jsonObject, "111", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            case C_EJP:
-                cJSON_AddNumberToObject(jsonObject, "113", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            case C_TEMPO:
-                cJSON_AddNumberToObject(jsonObject, "115", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            default:
-                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
-                break;
-            }
-            continue;
-            break;
-        }
-        case 202:
-        {
-            switch (linky_contract)
-            {
-            case C_HC:
-                cJSON_AddNumberToObject(jsonObject, "112", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            case C_EJP:
-                cJSON_AddNumberToObject(jsonObject, "114", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            case C_TEMPO:
-                cJSON_AddNumberToObject(jsonObject, "116", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            default:
-                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
-                break;
-            }
-            continue;
-            break;
-        }
-
-        case 203:
-        {
-            switch (linky_contract)
-            {
-            case C_TEMPO:
-                cJSON_AddNumberToObject(jsonObject, "117", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            default:
-                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
-                break;
-            }
-            continue;
-            break;
-        }
-        case 204:
-        {
-            switch (linky_contract)
-            {
-            case C_TEMPO:
-                cJSON_AddNumberToObject(jsonObject, "118", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            default:
-                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
-                break;
-            }
-            continue;
-            break;
-        }
-        case 205:
-        {
-            switch (linky_contract)
-            {
-            case C_TEMPO:
-                cJSON_AddNumberToObject(jsonObject, "119", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            default:
-                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
-                break;
-            }
-            continue;
-            break;
-        }
-        case 206:
-        {
-            switch (linky_contract)
-            {
-            case C_TEMPO:
-                cJSON_AddNumberToObject(jsonObject, "120", *(uint32_t *)LinkyLabelList[i].data);
-                break;
-            default:
-                ESP_LOGE(TAG, "ID: %d, Unknown contract: %d", LinkyLabelList[i].id, linky_contract);
-                break;
-            }
-            continue;
-            break;
-        }
-
         default:
             break;
         }
@@ -770,8 +608,6 @@ uint8_t tuya_send_data(linky_data_t *linky)
     uint8_t sendComplete = 0;
     time_t timout = MILLIS + 3000;
 
-    int ret = tuya_ota_upgrade_status_report(&ota_handle, TUS_RD);
-    ESP_LOGI(TAG, "tuya_ota_upgrade_status_report: %d", ret);
     tuya_iot_dp_report_json_with_notify(&client, json, NULL, tuya_send_callback, &sendComplete, 1000);
     while (sendComplete == 0 && MILLIS < timout)
     {

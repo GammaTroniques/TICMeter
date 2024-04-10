@@ -124,16 +124,8 @@ typedef struct
 typedef struct
 {
     uint64_t index_total;
-    uint64_t index_01;
-    uint64_t index_02;
-    uint64_t index_03;
-    uint64_t index_04;
-    uint64_t index_05;
-    uint64_t index_06;
-    uint64_t index_07;
-    uint64_t index_08;
-    uint64_t index_09;
-    uint64_t index_10;
+    uint64_t index_hc;
+    uint64_t index_hp;
     uint64_t index_production;
     uint8_t value_saved;
 } index_offset_t;

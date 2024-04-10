@@ -72,7 +72,8 @@ typedef struct
     uint64_t BBRHPJR;    //     9         Wh          Heures Pleines Jours Rouges
 
     char PTEC[6];        //     4                     Période Tarifaire en cours: TH.. Heures Creuses, HP.. Heures Pleines, HC.. Heures Creuses, HN.. Heures Normales, PM.. Heures de Pointe Mobile, HCJB.. Heures Creuses Jours Bleus, HPJB.. Heures Pleines Jours Bleus, HCJW.. Heures Creuses Jours Blancs, HPJW.. Heures Pleines Jours Blancs, HCJR.. Heures Creuses Jours Rouges, HPJR.. Heures Pleines Jours Rouges
-    char DEMAIN[6];      //     4                     Couleur du lendemain 
+    char AUJOUR[10];      //     4                     Couleur du jour
+    char DEMAIN[10];      //     4                     Couleur du lendemain 
 
     uint16_t IINST;      //     3         A           Intensité Instantanée
     uint16_t IINST1;     //     3         A           Intensité Instantanée Phase 1
@@ -172,7 +173,8 @@ typedef struct
     time_label_t UMOY3;     //      3         V          Tension moyenne, phase 3
 
     char STGE[10];        //      8         -          Registre de Statuts
-    char DEMAIN[6];      //      4         -          Couleur du lendemain
+    char AUJOUR[10];       //      4         -          Couleur du jour
+    char DEMAIN[10];      //      4         -          Couleur du lendemain
 
     time_label_t DPM1;      //      2         -          Début Pointe Mobile 1
     time_label_t FPM1;      //      2         -          Fin Pointe Mobile 1
@@ -281,7 +283,7 @@ typedef enum
 
 typedef struct
 {
-    uint8_t id;
+    uint16_t id;
     const char *name;
     const char *label;
     void *data;
