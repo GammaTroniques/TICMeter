@@ -21,14 +21,7 @@ jobs:
           target: esp32c6
           path: 'firmware'
           command: "idf.py build"
-      # - name: Install ESP-IDF and Build project
-      #   uses: xmow49/esp-idf-action@v5
-      #   with: 
-      #       esp_idf_version: v5.1.1
-      #       esp_idf_target: esp32c6
-      #       path: 'firmware'
-      #       prebuild_cmd: "echo -e 'CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200' >> sdkconfig"
-            
+
       - name: Create manifest
         run: |
           cd firmware/scripts
@@ -36,10 +29,6 @@ jobs:
           
       - name: Release
         uses: softprops/action-gh-release@v1
-        # Note:
-        # If you get the error "Resource not accessible by integration",
-        # The access rights are not sufficient, see
-        # https://github.com/softprops/action-gh-release/issues/232#issuecomment-1131379440
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name:  ${{ steps.get_version.outputs.version-without-v }}
@@ -50,6 +39,7 @@ jobs:
             firmware/build/TICMeter.bin
             firmware/build/storage.bin
             firmware/build/ota_data_initial.bin
+            firmware/build/TICMeter.ota
             firmware/build/manifest.json
             
       - name: update manifest on the server
