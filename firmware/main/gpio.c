@@ -582,6 +582,23 @@ void gpio_start_pariring()
         break;
     case MODE_TUYA:
         ESP_LOGI(TAG, "Tuya pairing");
+        if (tuya_available() == false)
+        {
+            ESP_LOGI(TAG, "Tuya not available, skipping");
+            for (int i = 0; i < 10; i++)
+            {
+                led_stop_pattern(LED_PAIRING);
+                led_start_pattern(LED_CONNECTING_FAILED);
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+                led_stop_pattern(LED_CONNECTING_FAILED);
+                led_start_pattern(LED_PAIRING);
+                vTaskDelay(500 / portTICK_PERIOD_MS);
+            }
+            led_stop_pattern(LED_PAIRING);
+            esp_restart();
+            return;
+        }
+
         xTaskCreate(tuya_pairing_task, "tuya_pairing_task", 8 * 1024, NULL, PRIORITY_TUYA, NULL);
         break;
     case MODE_ZIGBEE:
