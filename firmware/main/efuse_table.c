@@ -20,7 +20,7 @@ static const esp_efuse_desc_t USER_DATA_SERIALNUMBER[] = {
 };
 
 static const esp_efuse_desc_t USER_DATA_HWVERSION[] = {
-    {EFUSE_BLK3, 96, 16}, // Hardware version (2 bytes * 8) FF.FF --> V3.4
+    {EFUSE_BLK3, 96, 24}, // Hardware version (3 bytes * 8) FF.FF --> V3.4
 };
 
 const esp_efuse_desc_t *ESP_EFUSE_USER_DATA_SERIALNUMBER[] = {

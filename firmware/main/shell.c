@@ -783,7 +783,7 @@ static int efuse_read(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   config_efuse_read();
-  printf("\x02Serial number: %s\n\x03", efuse_values.serial_number);
+  printf("\x02Serial number: %s\nHW Version: %d.%d.%d\n\x03", efuse_values.serial_number, efuse_values.hw_version[0], efuse_values.hw_version[1], efuse_values.hw_version[2]);
 
   return 0;
 }
@@ -802,15 +802,15 @@ static int efuse_write(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
 
-  uint8_t version[2];
-  int ret = sscanf(argv[2], "%hhu.%hhu", &version[0], &version[1]);
-  if (ret != 2)
+  uint8_t version[3];
+  int ret = sscanf(argv[2], "%hhu.%hhu.%hhu", &version[0], &version[1], &version[2]);
+  if (ret != 3)
   {
-    ESP_LOGE(TAG, "Invalid version format: XX.XX");
+    ESP_LOGE(TAG, "Invalid version format: XX.XX.XX");
     return ESP_ERR_INVALID_ARG;
   }
 
-  printf("Are you sure you want to write the serial number \"%s\" and version \"%d.%d\" to efuse?\n", argv[1], version[0], version[1]);
+  printf("Are you sure you want to write the serial number \"%s\" and version \"%d.%d.%d\" to efuse?\n", argv[1], version[0], version[1], version[2]);
   printf("This action is irreversible!\n");
   printf("Type 'YES' to confirm\n");
   char input[4];

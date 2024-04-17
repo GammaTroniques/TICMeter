@@ -156,7 +156,7 @@ typedef struct
 {
     char serial_number[13];
     char mac_address[13];
-    char hw_version[2];
+    char hw_version[3];
 } efuse_t;
 
 /*==============================================================================
@@ -184,5 +184,6 @@ uint8_t config_efuse_read();
 uint8_t config_efuse_write(const char *serialnumber, uint8_t len, const uint8_t *hw_version);
 uint8_t config_factory_reset();
 esp_err_t config_erase_partition(const char *partition_label);
+uint32_t config_get_hw_version();
 
 #endif /* CONFIG_H */

@@ -592,19 +592,19 @@ uint8_t config_efuse_read()
     }
     ESP_LOGI(TAG, "Serial number: %s", efuse_values.serial_number);
 
-    err = esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA_HWVERSION, efuse_values.hw_version, 2 * 8);
+    err = esp_efuse_read_field_blob(ESP_EFUSE_USER_DATA_HWVERSION, efuse_values.hw_version, 3 * 8);
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Error 0x%x reading hardware version!", err);
     }
 
-    if (efuse_values.hw_version[0] == 0 && efuse_values.hw_version[1] == 0)
+    if (efuse_values.hw_version[0] == 0 && efuse_values.hw_version[1] == 0 && efuse_values.hw_version[2] == 0)
     {
         ESP_LOGE(TAG, "Hardware version is empty!");
     }
     else
     {
-        ESP_LOGI(TAG, "Hardware version: %d.%d", efuse_values.hw_version[0], efuse_values.hw_version[1]);
+        ESP_LOGI(TAG, "Hardware version: %d.%d.%d", efuse_values.hw_version[0], efuse_values.hw_version[1], efuse_values.hw_version[2]);
     }
 
     return 0;
@@ -653,13 +653,13 @@ uint8_t config_efuse_write(const char *serialnumber, uint8_t len, const uint8_t 
     }
     if (hw_version != NULL)
     {
-        if (efuse_values.hw_version[0] != 0 || efuse_values.hw_version[1] != 0)
+        if (efuse_values.hw_version[0] != 0 || efuse_values.hw_version[1] != 0 || efuse_values.hw_version[2] != 0)
         {
-            printf("Can't write hardware version: already written: %d.%d\n", hw_version[0], hw_version[1]);
+            printf("Can't write hardware version: already written: %d.%d.%d\n", efuse_values.hw_version[0], efuse_values.hw_version[1], efuse_values.hw_version[2]);
         }
         else
         {
-            err = esp_efuse_write_field_blob(ESP_EFUSE_USER_DATA_HWVERSION, hw_version, 2 * 8);
+            err = esp_efuse_write_field_blob(ESP_EFUSE_USER_DATA_HWVERSION, hw_version, 3 * 8);
             if (err != ESP_OK)
             {
                 printf("Error 0x%x writing hardware version!\n", err);
@@ -704,6 +704,15 @@ uint8_t config_factory_reset()
         ESP_LOGI(TAG, "NVS erased");
     }
 
+    err = config_erase_partition("nvs");
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to erase partition nvs (%s 0x%x)", esp_err_to_name(err), err);
+    }
+    else
+    {
+        ESP_LOGI(TAG, "Partition nvs erased");
+    }
     config_begin(); // ??
     config_erase();
     config_write();
@@ -727,4 +736,9 @@ esp_err_t config_erase_partition(const char *partition_label)
         ESP_LOGI(TAG, "Partition %s erased", partition_label);
     }
     return err;
+}
+
+uint32_t config_get_hw_version()
+{
+    return (efuse_values.hw_version[0] << 16) | (efuse_values.hw_version[1] << 8) | efuse_values.hw_version[2];
 }

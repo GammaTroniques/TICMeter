@@ -252,7 +252,12 @@ static void led_set_rgb(uint32_t color, uint32_t brightness)
 
 void led_set_color(uint32_t color)
 {
-    led_set_rgb(color, 50); // 5% brightness
+    uint16_t brightness = 50; // 5% brightness
+    if (config_get_hw_version() == 0x030401)
+    {
+        brightness = 200;
+    }
+    led_set_rgb(color, brightness);
     // gpio_set_direction(LED_DATA, GPIO_MODE_OUTPUT);
 }
 
