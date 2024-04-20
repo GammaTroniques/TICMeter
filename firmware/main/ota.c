@@ -79,6 +79,12 @@ uint32_t ota_version_buffer_size = 0;
 ota_versions_url_t ota_versions_url[5] = {0};
 int8_t ota_to_use_version = -1;
 char *ota_cert;
+
+bool spiffs_update = false;
+const esp_partition_t *storage_partition;
+char *storage_buffer = NULL;
+uint32_t storage_buffer_size = 0;
+uint32_t storage_buffer_index = 0;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
@@ -378,7 +384,7 @@ static void ota_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
             ESP_LOGI(TAG, "Callback to decrypt function");
             break;
         case ESP_HTTPS_OTA_WRITE_FLASH:
-            ESP_LOGD(TAG, "Writing to flash: %d written", *(int *)event_data);
+            ESP_LOGI(TAG, "Writing to flash: %d written", *(int *)event_data);
             break;
         case ESP_HTTPS_OTA_UPDATE_BOOT_PARTITION:
             ESP_LOGI(TAG, "Boot partition updated. Next Partition: %d", *(esp_partition_subtype_t *)event_data);
@@ -495,30 +501,45 @@ static void ota_spiffs_update(const char *url)
         return;
     }
     ESP_LOGI(TAG, "Starting spiffs update");
+    spiffs_update = true;
     err = wifi_connect();
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Wifi connect failed");
+        spiffs_update = false;
         return;
     }
-    ota_https_request(url, ota_cert);
-    if (ota_version_buffer == NULL)
-    {
-        ESP_LOGE(TAG, "HTTP Get: %s Buffer is NULL", url);
-        return;
-    }
-    ESP_LOGD(TAG, "Version: %s", ota_version_buffer);
-
-    const esp_partition_t *storage_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, "storage");
+    storage_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, "storage");
     if (storage_partition == NULL)
     {
         ESP_LOGE(TAG, "Failed to find storage partition");
+        spiffs_update = false;
         return;
     }
 
-    if (ota_version_buffer_size != storage_partition->size)
+    storage_buffer_size = storage_partition->size;
+    storage_buffer = malloc(storage_buffer_size);
+    storage_buffer_index = 0;
+    if (storage_buffer == NULL)
+    {
+        ESP_LOGE(TAG, "Failed to allocate storage buffer");
+        spiffs_update = false;
+        return;
+    }
+    ota_https_request(url, ota_cert);
+    if (storage_buffer == NULL)
+    {
+        ESP_LOGE(TAG, "HTTP Get: %s Buffer is NULL", url);
+        spiffs_update = false;
+        return;
+    }
+
+    ESP_LOGD(TAG, "Version: %s", ota_version_buffer);
+
+    if (storage_buffer_index != storage_partition->size)
     {
         ESP_LOGE(TAG, "Version size is not correct: %ld != %ld", ota_version_buffer_size, storage_partition->size);
+        spiffs_update = false;
         return;
     }
 
@@ -526,28 +547,37 @@ static void ota_spiffs_update(const char *url)
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to erase storage partition");
+        spiffs_update = false;
         return;
     }
     ESP_LOGI(TAG, "Storage partition erased");
-    esp_partition_write(storage_partition, 0, ota_version_buffer, ota_version_buffer_size);
+    esp_partition_write(storage_partition, 0, storage_buffer, storage_buffer_size);
 
     ESP_LOGI(TAG, "Storage partition updated");
-    free(ota_version_buffer);
-    ota_version_buffer = NULL;
+    spiffs_update = false;
+    free(storage_buffer);
+    storage_buffer = NULL;
+    storage_buffer_size = 0;
+    storage_buffer_index = 0;
 }
 
 void ota_perform_task(void *pvParameter)
 {
-    esp_err_t err = wifi_connect();
+    esp_err_t err = ESP_OK;
+    esp_https_ota_handle_t https_ota_handle = NULL;
+    ota_version_t version = {0};
+
+    err = wifi_connect();
     if (err != ESP_OK)
     {
         ESP_LOGE(TAG, "Wifi connect failed");
         goto ota_end;
     }
 
-    ota_version_t version = {0};
     int ret = ota_get_latest(&version);
     ota_state = OTA_INSTALLING;
+    led_stop_pattern(LED_OTA_AVAILABLE);
+    led_start_pattern(LED_OTA_IN_PROGRESS);
     if (ret == -1)
     {
         ESP_LOGE(TAG, "Get latest version failed");
@@ -601,7 +631,6 @@ void ota_perform_task(void *pvParameter)
         .http_client_init_cb = ota_http_client_init_cb, // Register a callback to be invoked after esp_http_client is initialized
     };
 
-    esp_https_ota_handle_t https_ota_handle = NULL;
     err = esp_https_ota_begin(&ota_config, &https_ota_handle);
     if (err != ESP_OK)
     {
@@ -662,7 +691,10 @@ void ota_perform_task(void *pvParameter)
     }
 ota_end:
     ota_state = OTA_ERROR;
-    esp_https_ota_abort(https_ota_handle);
+    if (https_ota_handle)
+    {
+        esp_https_ota_abort(https_ota_handle);
+    }
     ESP_LOGE(TAG, "ESP_HTTPS_OTA upgrade failed");
     vTaskDelay(3000 / portTICK_PERIOD_MS);
     esp_restart();
@@ -684,16 +716,36 @@ static esp_err_t ota_https_event_handler(esp_http_client_event_t *evt)
         // ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
         if (!esp_http_client_is_chunked_response(evt->client))
         {
-            ota_version_buffer = realloc(ota_version_buffer, ota_version_buffer_size + evt->data_len + 1);
-            if (ota_version_buffer)
+            if (spiffs_update)
             {
-                memcpy(ota_version_buffer + ota_version_buffer_size, evt->data, evt->data_len);
-                ota_version_buffer_size += evt->data_len;
-                ota_version_buffer[ota_version_buffer_size] = '\0';
+                if (!storage_buffer)
+                {
+                    ESP_LOGE(TAG, "Storage buffer is NULL");
+                    return ESP_FAIL;
+                }
+                if (storage_buffer_index + evt->data_len > storage_buffer_size)
+                {
+                    ESP_LOGE(TAG, "Storage buffer too small: %ld + %d > %ld", storage_buffer_index, evt->data_len, storage_buffer_size);
+                    return ESP_FAIL;
+                }
+                memcpy(storage_buffer + storage_buffer_index, evt->data, evt->data_len);
+                storage_buffer_index += evt->data_len;
             }
             else
             {
-                ESP_LOGE(TAG, "get version: realloc failed");
+                ESP_LOGI(TAG, "Realloc buffer %ld", ota_version_buffer_size + evt->data_len + 1);
+                ota_version_buffer = realloc(ota_version_buffer, ota_version_buffer_size + evt->data_len + 1);
+
+                if (ota_version_buffer)
+                {
+                    memcpy(ota_version_buffer + ota_version_buffer_size, evt->data, evt->data_len);
+                    ota_version_buffer_size += evt->data_len;
+                    ota_version_buffer[ota_version_buffer_size] = '\0';
+                }
+                else
+                {
+                    ESP_LOGE(TAG, "get version: realloc failed");
+                }
             }
         }
         else
