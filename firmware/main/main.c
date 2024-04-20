@@ -109,9 +109,10 @@ void app_main(void)
   }
   else
   {
-    if (gpio_vusb_connected())
+    if (config_values.zigbee.state == ZIGBEE_WANT_PAIRING)
     {
-      shell_init();
+      ESP_LOGI(MAIN_TAG, "Zigbee pairing mode");
+      led_start_pattern(LED_PAIRING);
     }
   }
 

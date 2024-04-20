@@ -297,6 +297,11 @@ static void led_task(void *pvParameters)
             }
         }
 
+        if (timing->repeat == FOREVER)
+        {
+            timing->in_progress = 1;
+        }
+
         if (most_priority >= timing->priority)
         {
             ESP_LOGD(TAG, "Pattern %d not started because of priority", pattern);
