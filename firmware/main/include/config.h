@@ -82,7 +82,7 @@ typedef struct
     char postUrl[50];
     char configUrl[50];
     char token[100];
-} webConfig_t;
+} web_config_t;
 
 typedef struct
 {
@@ -91,7 +91,7 @@ typedef struct
     char username[51];
     char password[51];
     char topic[101];
-} mqttConfig_t;
+} mqtt_config_t;
 
 typedef enum
 {
@@ -105,7 +105,7 @@ typedef struct
 {
     char device_uuid[30];
     char device_auth[40];
-} tuyaConfig_t;
+} tuya_config_t;
 
 typedef enum
 {
@@ -118,6 +118,8 @@ typedef enum
 typedef struct
 {
     zigbee_pairing_state_t state;
+    uint32_t last_attribute_count;
+    uint8_t spare[8];
 
 } zigbee_config_t;
 
@@ -139,10 +141,10 @@ typedef struct
     linky_mode_t linkyMode;
     linky_mode_t last_linky_mode;
     connectivity_t mode;
-    webConfig_t web;
-    mqttConfig_t mqtt;
+    web_config_t web;
+    mqtt_config_t mqtt;
     pairing_state_t pairing_state;
-    tuyaConfig_t tuya;
+    tuya_config_t tuya;
     zigbee_config_t zigbee;
 
     char version[10];

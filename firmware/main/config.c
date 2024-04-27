@@ -407,6 +407,8 @@ int8_t config_write()
         case BLOB:
             err = nvs_set_blob(*config_items[i].handle, config_items[i].name, config_items[i].value, config_items[i].size);
             bytesWritten = config_items[i].size;
+            // ESP_LOGI(TAG, "Writing %s", config_items[i].name);
+            // ESP_LOG_BUFFER_HEXDUMP(TAG, config_items[i].value, bytesWritten, ESP_LOG_INFO);
             break;
         default:
             break;

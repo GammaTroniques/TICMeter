@@ -259,7 +259,7 @@ static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback
         break;
     case ESP_ZB_CORE_CMD_DEFAULT_RESP_CB_ID:
         esp_zb_zcl_cmd_default_resp_message_t *resp = (esp_zb_zcl_cmd_default_resp_message_t *)(message);
-        ESP_LOGI(TAG, "Received default response cluster: %x", resp->info.cluster);
+        ESP_LOGD(TAG, "Received default response cluster: %x", resp->info.cluster);
         break;
     case ESP_ZB_CORE_CMD_CUSTOM_CLUSTER_REQ_CB_ID:
         esp_zb_zcl_custom_cluster_command_message_t *cmd = (esp_zb_zcl_custom_cluster_command_message_t *)(message);
@@ -445,6 +445,8 @@ static void zigbee_task(void *pvParameters)
     // ------------------ Add commands ------------------
 
     // ------------------ Add attributes ------------------
+    uint32_t attributes_count = 0;
+
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].zb_access == 0)
@@ -564,7 +566,7 @@ static void zigbee_task(void *pvParameters)
             break;
         }
 
-        ESP_LOGI(TAG, "Adding %s : Cluster: %x, attribute: %x, zbtype: %x, value: %s", LinkyLabelList[i].label, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, str_value);
+        ESP_LOGI(TAG, "Adding %s : Cluster: 0x%04x, attribute: 0x%04x, zbtype: %x, value: %s", LinkyLabelList[i].label, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, str_value);
 
         switch (LinkyLabelList[i].clusterID)
         {
@@ -586,8 +588,18 @@ static void zigbee_task(void *pvParameters)
         default:
             break;
         }
+        attributes_count++;
     }
 
+    ESP_LOGI(TAG, "Attributes count: %ld", attributes_count);
+    if (attributes_count != config_values.zigbee.last_attribute_count)
+    {
+        ESP_LOGI(TAG, "Attributes count changed: %ld -> %ld", config_values.zigbee.last_attribute_count, attributes_count);
+        config_values.zigbee.last_attribute_count = attributes_count;
+        config_write();
+        ESP_LOGI(TAG, "Potential crash incoming: Wait 10 seconds before pressing the factory reset button.");
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
+    }
     //------------------ Cluster list ------------------
     esp_zb_cluster_list_t *esp_zb_cluster_list = esp_zb_zcl_cluster_list_create();
     esp_zb_cluster_list_add_basic_cluster(esp_zb_cluster_list, esp_zb_basic_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE);

@@ -126,7 +126,7 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
-  // linky_want_debug_frame = 3;
+  // linky_want_debug_frame = 4;
 
   // start_test(TEST_LINKY_STD);
   // esp_pm_dump_locks(stdout);
@@ -219,6 +219,7 @@ void app_main(void)
   case MODE_ZIGBEE:
     power_set_zigbee();
     zigbee_init_stack();
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
     break;
   case MODE_TUYA:
     if (config_values.pairing_state != TUYA_PAIRED)
