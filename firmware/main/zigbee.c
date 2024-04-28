@@ -340,6 +340,8 @@ static void zigbee_task(void *pvParameters)
     {
         ESP_LOGW(TAG, "Disable sleep: VUSB connected");
     }
+
+    esp_zb_aps_src_binding_table_size_set(64);
     esp_zb_init(&zigbee_cfg);
 
     ESP_LOGI(TAG, "Zigbee stack initialized");
