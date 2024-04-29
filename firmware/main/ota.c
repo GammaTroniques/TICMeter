@@ -733,7 +733,7 @@ static esp_err_t ota_https_event_handler(esp_http_client_event_t *evt)
             }
             else
             {
-                ESP_LOGI(TAG, "Realloc buffer %ld", ota_version_buffer_size + evt->data_len + 1);
+                ESP_LOGD(TAG, "Realloc buffer %ld", ota_version_buffer_size + evt->data_len + 1);
                 ota_version_buffer = realloc(ota_version_buffer, ota_version_buffer_size + evt->data_len + 1);
 
                 if (ota_version_buffer)

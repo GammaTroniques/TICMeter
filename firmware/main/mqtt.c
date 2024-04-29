@@ -59,6 +59,8 @@ typedef struct
     char ha_discovery_configured_temp;
 } mqtt_topic_t;
 
+// #define MQTT_DEBUG
+
 #ifdef MQTT_DEBUG
 typedef struct
 {
@@ -135,7 +137,12 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
 
     char state_topic[100];
     snprintf(state_topic, sizeof(state_topic), "~/%s", sensor.label);
-    snprintf(config_topic, sizeof(state_topic), "homeassistant/%s/%s/%s/config", ha_sensors_str[sensor.type], mqtt_topics.name, sensor.label);
+    linky_label_type_t type = sensor.type;
+    if (sensor.device_class == CLASS_BOOL)
+    {
+        type = BOOL;
+    }
+    snprintf(config_topic, sizeof(state_topic), "homeassistant/%s/%s/%s/config", ha_sensors_str[type], mqtt_topics.name, sensor.label);
     if (strcmp(sensor.label, "ADCO") == 0 || strcmp(sensor.label, "ADSC") == 0)
     {
         strncpy(mqtt_topics.ha_identifier_topic, config_topic, sizeof(mqtt_topics.ha_identifier_topic));
@@ -158,7 +165,8 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     {
         cJSON_AddStringToObject(sensorConfig, "val_tpl", "{{ as_datetime(value) }}");
     }
-    if (strlen(HADeviceClassStr[sensor.device_class]) > 0)
+
+    if (HADeviceClassStr[sensor.device_class] && strlen(HADeviceClassStr[sensor.device_class]) > 0)
     {
         cJSON_AddStringToObject(sensorConfig, "dev_cla", HADeviceClassStr[sensor.device_class]);
     }
@@ -167,7 +175,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
         cJSON_AddStringToObject(sensorConfig, "icon", sensor.icon);
     }
 
-    if (sensor.device_class != NONE_CLASS && sensor.device_class != TIMESTAMP)
+    if (sensor.device_class != NONE_CLASS && sensor.device_class != TIMESTAMP && sensor.device_class != CLASS_BOOL)
     {
         cJSON_AddStringToObject(sensorConfig, "unit_of_meas", HAUnitsStr[sensor.device_class]);
     }
@@ -227,7 +235,6 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
 
     ESP_LOGI(TAG, "Pre-send Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
 
-    linkydata->timestamp = wifi_get_timestamp();
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
@@ -287,7 +294,6 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         }
         case UINT32_TIME:
         {
-
             time_label_t *timeLabel = (time_label_t *)LinkyLabelList[i].data;
             if (timeLabel->value == UINT32_MAX)
                 continue;
@@ -301,6 +307,34 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         default:
             break;
         }
+
+        if (LinkyLabelList[i].data == &linky_mode)
+        {
+            switch (linky_mode)
+            {
+            case MODE_HIST:
+                snprintf(strValue, sizeof(strValue), "Historique");
+                break;
+            case MODE_STD:
+                snprintf(strValue, sizeof(strValue), "Standard");
+                break;
+            default:
+                snprintf(strValue, sizeof(strValue), "Inconnu");
+                break;
+            }
+        }
+        else if (LinkyLabelList[i].data == &linky_three_phase)
+        {
+            if (linky_three_phase == 1)
+            {
+                snprintf(strValue, sizeof(strValue), "Triphasé");
+            }
+            else
+            {
+                snprintf(strValue, sizeof(strValue), "Monophasé");
+            }
+        }
+
         mqtt_sensors_count++;
         // esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
         mqtt_topic_comliance(topic, sizeof(topic));
@@ -350,6 +384,7 @@ void mqtt_setup_ha_discovery()
             continue;
         }
 
+        ESP_LOGD(TAG, "HA Discovery: %s", LinkyLabelList[i].label);
         switch (LinkyLabelList[i].type)
         {
         case UINT8:
@@ -388,6 +423,7 @@ void mqtt_setup_ha_discovery()
         case HA_NUMBER:
             break;
         default:
+            ESP_LOGE(TAG, "Unknown type %d", LinkyLabelList[i].type);
             continue;
             break;
         }
@@ -567,6 +603,11 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
 int mqtt_init(void)
 {
     esp_log_level_set("mqtt_client", ESP_LOG_WARN);
+
+#ifdef MQTT_DEBUG
+    ESP_LOGW(TAG, "MQTT_DEBUG enabled");
+#endif
+
     if (wifi_state == WIFI_DISCONNECTED)
     {
         ESP_LOGI(TAG, "WIFI not connected: MQTT ERROR");
@@ -710,6 +751,7 @@ error:
 void mqtt_disconnect_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "Disconnecting MQTT");
+    mqtt_state = MQTT_DISCONNETED;
     esp_mqtt_client_disconnect(mqtt_client);
     esp_mqtt_client_stop(mqtt_client);
     vTaskDelete(NULL);

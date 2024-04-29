@@ -206,6 +206,7 @@ typedef enum
     UINT32_TIME = 12,
     HA_NUMBER = 13,
     BLOB = 14,
+    BOOL
 } linky_label_type_t;
 
 typedef enum
@@ -277,7 +278,7 @@ typedef enum
     TENSION,
     TEXT,
     TIME,
-    BOOL,
+    CLASS_BOOL,
     BYTES,
 } HADeviceClass;
 

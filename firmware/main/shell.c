@@ -236,24 +236,25 @@ void shell_init()
     // ESP_LOGI(TAG, "Help: %s", shell_cmds[i].help);
     // ESP_LOGI(TAG, "Func: %p", shell_cmds[i].func);
     // ESP_LOGI(TAG, "Args num: %d", shell_cmds[i].args_num);
-    esp_console_cmd_t cmd = {.command = shell_cmds[i].command,
-                             .help = shell_cmds[i].help,
-                             .func = shell_cmds[i].func};
+    esp_console_cmd_t cmd = {
+        .command = shell_cmds[i].command,
+        .help = shell_cmds[i].help,
+        .func = shell_cmds[i].func,
+        .hint = NULL,
+    };
 
-    struct arg_str *args[MAX_ARGS_COUNT + 1] = {NULL};
+    struct arg_lit **args_array = calloc(MAX_ARGS_COUNT + 1, sizeof(struct arg_lit *));
 
     if (shell_cmds[i].args_num > 0)
     {
       for (int j = 0; j < shell_cmds[i].args_num; j++)
       {
-        args[j] =
-            arg_str1(NULL, NULL, shell_cmds[i].args[j], shell_cmds[i].hint[j]);
-        ESP_LOGD(TAG, "arg[%d]: %p", j, args[j]);
+        args_array[j] = (struct arg_lit *)arg_str1(NULL, NULL, shell_cmds[i].args[j], shell_cmds[i].hint[j]);
+        // ESP_LOGI(TAG, "arg[%d]: %p", j, args_array[j]);
       }
-      struct arg_end *end = arg_end(MAX_ARGS_COUNT);
-      args[shell_cmds[i].args_num] = (struct arg_str *)end;
-      ESP_LOGD(TAG, "arg[%d]: %p", shell_cmds[i].args_num, args[shell_cmds[i].args_num]);
-      cmd.argtable = args;
+      struct arg_end *end = arg_end(shell_cmds[i].args_num - 1);
+      args_array[shell_cmds[i].args_num] = (struct arg_lit *)end;
+      cmd.argtable = args_array;
     }
     esp_console_cmd_register(&cmd);
   }

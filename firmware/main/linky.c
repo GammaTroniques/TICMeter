@@ -100,13 +100,13 @@ const LinkyGroup LinkyLabelList[] =
     {000, "Intensité souscrite",                "ISOUSC",      &linky_data.hist.ISOUSC,       UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO,       }, //TODO: zigbee: when  Meter Identification cluster
     {102, "Puissance Max contrat",              "pref",        &linky_data.hist.PREF ,        UINT32,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  POWER_kVA,   "",                                    0xFF42, 0x002b,  ZB_RO, ZB_UINT16,    }, //TODO: zigbee: when  Meter Identification cluster  0x0B01, 0x000D, 
 
-    {999, "Index Total",                        "total",       &linky_data.hist.TOTAL,        UINT64,       0, MODE_HIST,  C_ANY,   G_ANY, STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0000,  ZB_RP, ZB_UINT48,   },
+    {999, "Index Total",                        "total",       &linky_data.hist.TOTAL,        UINT64,       0, MODE_HIST,  C_ANY,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0000,  ZB_RP, ZB_UINT48,   },
     {999, "Index Base",                         "BASE",        &linky_data.hist.BASE,         UINT64,       0, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
-    {999, "Index Heures Creuses",               "HCHC",        &linky_data.hist.HCHC,         UINT64,       0, MODE_HIST, C_HC,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
-    {999, "Index Heures Pleines",               "HCHP",        &linky_data.hist.HCHP,         UINT64,       0, MODE_HIST, C_HC,  G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
+    {999, "Index Heures Creuses",               "HCHC",        &linky_data.hist.HCHC,         UINT64,       0, MODE_HIST, C_HC,    G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
+    {999, "Index Heures Pleines",               "HCHP",        &linky_data.hist.HCHP,         UINT64,       0, MODE_HIST, C_HC,    G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
     {999, "Index Heures Normales",              "EJPHN",       &linky_data.hist.EJPHN,        UINT64,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
     {999, "Index Heures de Pointe Mobile",      "EJPHPM",      &linky_data.hist.EJPHPM,       UINT64,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
-    {999, "Préavis Début EJP",                  "PEJP",        &linky_data.hist.PEJP,         UINT16,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  BOOL,        "mdi:clock",                           0xFF42, 0x0001,  ZB_RP, ZB_UINT16,   },
+    {999, "Préavis Début EJP",                  "PEJP",        &linky_data.hist.PEJP,         UINT16,       0, MODE_HIST, C_EJP,   G_ANY,  STATIC_VALUE,  CLASS_BOOL,  "mdi:clock",                           0xFF42, 0x0001,  ZB_RP, ZB_UINT16,   },
     {999, "Heures Creuses Jours Bleus",         "BBRHCJB",     &linky_data.hist.BBRHCJB,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0100,  ZB_RP, ZB_UINT48,   },
     {999, "Heures Pleines Jours Bleus",         "BBRHPJB",     &linky_data.hist.BBRHPJB,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0102,  ZB_RP, ZB_UINT48,   },
     {999, "Heures Creuses Jours Blancs",        "BBRHCJW",     &linky_data.hist.BBRHCJW,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x0104,  ZB_RP, ZB_UINT48,   },
@@ -242,11 +242,11 @@ const LinkyGroup LinkyLabelList[] =
     //---------------------------Home Assistant Specific ------------------------------------------------
     {103, "Temps d'actualisation",              "now-refresh", &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0xFF42, 0x0002,  ZB_RW, ZB_UINT16    },
     {000, "Temps d'actualisation",              "set-refresh", &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {105, "Mode TIC",                           "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x002c,  ZB_RO, ZB_UINT8     },
-    {106, "Mode Electrique",                    "mode-elec",   &linky_three_phase,            UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x002a,  ZB_RO, ZB_UINT8     },
+    {105, "Mode TIC",                           "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:translate",                       0xFF42, 0x002c,  ZB_RO, ZB_UINT8     },
+    {106, "Mode Electrique",                    "mode-elec",   &linky_three_phase,            UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:power-plug-outline",              0xFF42, 0x002a,  ZB_RO, ZB_UINT8     },
     {000, "Dernière actualisation",             "timestamp",   &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
     {104, "Temps de fonctionnement",            "uptime",      &linky_uptime,                 UINT64,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     TIME,        "mdi:clock-time-eight-outline",        0xFF42, 0x002d,  ZB_RO, ZB_UINT48    },
-    {000, "Free RAM",                           "free-ram",    &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     BYTES,       "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
+ // {000, "Free RAM",                           "free-ram",    &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     BYTES,       "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
 
 };
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
@@ -275,8 +275,8 @@ const char *const HADeviceClassStr[] = {
     [TENSION] = "voltage",
     [TEXT] = "",
     [TIME] = "duration",
-    [BOOL] = "binary_sensor",
     [BYTES] = "",
+    [CLASS_BOOL] = "",
 };
 
 const char *const HAUnitsStr[] = {
@@ -304,6 +304,7 @@ const char *const ha_sensors_str[] = {
     [STRING] = "sensor",
     [UINT32_TIME] = "sensor",
     [HA_NUMBER] = "number",
+    [BOOL] = "binary_sensor",
 };
 
 const char *const linky_hist_str_contract[] = {
@@ -781,6 +782,8 @@ static char linky_decode()
         linky_set_mode(MODE_HIST);
         linky_data.hist = tests_hist_data;
     }
+
+    linky_data.timestamp = wifi_get_timestamp();
 
     // remove spaces from contract name
     remove_char(linky_data.hist.OPTARIF, ' ');
