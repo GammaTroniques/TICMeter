@@ -94,4 +94,6 @@ void gpio_peripheral_reinit();
 
 void gpio_start_pariring();
 
+void gpio_restart_in_pairing();
+
 #endif /* __GPIO_H__ */

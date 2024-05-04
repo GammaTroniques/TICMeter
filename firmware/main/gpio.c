@@ -423,7 +423,7 @@ void gpio_pairing_button_task(void *pvParameters)
             if (lastState == 1)
             {
                 ESP_LOGI(TAG, "Start pushing %ld", MILLIS);
-                suspendTask(tuyaTaskHandle);
+                suspend_task(tuyaTaskHandle);
                 lastState = 0;
                 current_mode_led = MODE_NONE;
                 gpio_start_push_time = MILLIS;
@@ -524,20 +524,15 @@ void gpio_pairing_button_task(void *pvParameters)
                         esp_restart();
                     }
                     pairingState = 1;
-                    ESP_LOGI(TAG, "Saving pairing mode");
-                    config_values.boot_pairing = 1;
-                    config_write();
-                    ESP_LOGI(TAG, "Restarting");
-                    esp_restart();
-                    // gpio_start_pariring();
+                    gpio_restart_in_pairing();
                 }
                 else
                 {
                     if (ota_state == OTA_AVAILABLE && gpio_vusb_connected())
                     {
                         ESP_LOGI(TAG, "OTA available, starting update");
-                        suspendTask(main_task_handle);
-                        resumeTask(tuyaTaskHandle);
+                        suspend_task(main_task_handle);
+                        resume_task(tuyaTaskHandle);
                         ota_state = OTA_INSTALLING;
                         vTaskDelay(500 / portTICK_PERIOD_MS); // wait for led task to update
                         xTaskCreate(ota_perform_task, "ota_perform_task", 16 * 1024, NULL, PRIORITY_OTA, NULL);
@@ -555,7 +550,7 @@ void gpio_pairing_button_task(void *pvParameters)
                             ESP_LOGI(TAG, "No action");
                         }
                         vTaskDelay(500 / portTICK_PERIOD_MS);
-                        resumeTask(tuyaTaskHandle);
+                        resume_task(tuyaTaskHandle);
                     }
                 }
                 lastState = 1;
@@ -566,11 +561,20 @@ void gpio_pairing_button_task(void *pvParameters)
     }
 }
 
+void gpio_restart_in_pairing()
+{
+    ESP_LOGI(TAG, "Saving pairing mode");
+    config_values.boot_pairing = 1;
+    config_write();
+    ESP_LOGI(TAG, "Restarting");
+    esp_restart();
+}
+
 void gpio_start_pariring()
 {
     ESP_LOGI(TAG, "Starting pairing");
     led_start_pattern(LED_PAIRING);
-    suspendTask(main_task_handle);
+    suspend_task(main_task_handle);
     switch (config_values.mode)
     {
     case MODE_WEB:

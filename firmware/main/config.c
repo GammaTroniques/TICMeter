@@ -420,6 +420,8 @@ int8_t config_write()
         }
         if (err == ESP_ERR_NVS_NOT_ENOUGH_SPACE)
         {
+            ESP_LOGE(TAG, "Error writing %s: not enough space", config_items[i].name);
+            continue;
         }
         else if (err != ESP_OK)
         {

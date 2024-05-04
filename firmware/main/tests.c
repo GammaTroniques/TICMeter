@@ -209,7 +209,7 @@ esp_err_t start_test(tests_t test)
 
 static void tests_task(void *pvParameters)
 {
-    suspendTask(main_task_handle);
+    suspend_task(main_task_handle);
     tests_t test = (tests_t)pvParameters;
     printf("\x02Tests %s started\n", tests_str_available_tests[test]);
 
@@ -253,7 +253,7 @@ static esp_err_t test_linky_std(void *ptr)
 static esp_err_t test_mode(void *ptr)
 {
     printf("Start test mode\n");
-    suspendTask(main_task_handle);
+    suspend_task(main_task_handle);
     return ESP_OK;
 }
 

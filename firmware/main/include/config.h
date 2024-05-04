@@ -135,8 +135,8 @@ typedef struct
 typedef struct
 {
     uint8_t initialized; // should be 1 if the config is initialized
-    char ssid[50];
-    char password[50];
+    char ssid[33];
+    char password[65];
 
     linky_mode_t linky_mode;
     linky_mode_t last_linky_mode;

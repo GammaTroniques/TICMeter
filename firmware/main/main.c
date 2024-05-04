@@ -380,6 +380,7 @@ esp_err_t main_send_data()
       ota_version_t version;
       ota_get_latest(&version);
     }
+    vTaskDelay(100 / portTICK_PERIOD_MS);
     wifi_disconnect();
     led_start_pattern(LED_SEND_OK);
     return ESP_OK;
@@ -399,7 +400,7 @@ esp_err_t main_send_data()
       if (tuya_state == false)
       {
         ESP_LOGE(MAIN_TAG, "Tuya not connected, reconnecting...");
-        resumeTask(tuyaTaskHandle); // resume tuya task
+        resume_task(tuyaTaskHandle); // resume tuya task
         tuya_state = true;
         if (tuya_wait_event(TUYA_EVENT_MQTT_CONNECTED, 10000))
         {
@@ -431,7 +432,7 @@ esp_err_t main_send_data()
       {
         ESP_LOGI(MAIN_TAG, "VUSB not connected, suspend TUYA");
         wifi_disconnect();
-        suspendTask(tuyaTaskHandle);
+        suspend_task(tuyaTaskHandle);
         tuya_state = false;
       }
       led_start_pattern(LED_SEND_OK);

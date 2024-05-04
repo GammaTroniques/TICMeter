@@ -258,13 +258,15 @@ esp_err_t save_config_handler(httpd_req_t *req)
     cJSON *item = cJSON_GetObjectItem(jsonObject, "wifi-ssid");
     if (item != NULL)
     {
-        strncpy(config_values.ssid, item->valuestring, sizeof(config_values.ssid));
+        strncpy(config_values.ssid, item->valuestring, sizeof(config_values.ssid) - 1);
+        config_values.ssid[sizeof(config_values.ssid) - 1] = '\0';
         ESP_LOGI(TAG, "SSID: %s", config_values.ssid);
     }
     item = cJSON_GetObjectItem(jsonObject, "wifi-password");
     if (item != NULL)
     {
-        strncpy(config_values.password, item->valuestring, sizeof(config_values.password));
+        strncpy(config_values.password, item->valuestring, sizeof(config_values.password) - 1);
+        config_values.password[sizeof(config_values.password) - 1] = '\0';
         ESP_LOGI(TAG, "Password: %s", config_values.password);
     }
     item = cJSON_GetObjectItem(jsonObject, "linky-mode");
@@ -281,58 +283,76 @@ esp_err_t save_config_handler(httpd_req_t *req)
     item = cJSON_GetObjectItem(jsonObject, "web-url");
     if (item != NULL)
     {
-        strncpy(config_values.web.host, item->valuestring, sizeof(config_values.web.host));
+        strncpy(config_values.web.host, item->valuestring, sizeof(config_values.web.host) - 1);
+        config_values.web.host[sizeof(config_values.web.host) - 1] = '\0';
     }
     item = cJSON_GetObjectItem(jsonObject, "web-token");
     if (item != NULL)
     {
-        strncpy(config_values.web.token, item->valuestring, sizeof(config_values.web.token));
+        strncpy(config_values.web.token, item->valuestring, sizeof(config_values.web.token) - 1);
+        config_values.web.token[sizeof(config_values.web.token) - 1] = '\0';
     }
     item = cJSON_GetObjectItem(jsonObject, "web-post");
     if (item != NULL)
     {
-        strncpy(config_values.web.postUrl, item->valuestring, sizeof(config_values.web.postUrl));
+        strncpy(config_values.web.postUrl, item->valuestring, sizeof(config_values.web.postUrl) - 1);
+        config_values.web.postUrl[sizeof(config_values.web.postUrl) - 1] = '\0';
     }
     item = cJSON_GetObjectItem(jsonObject, "web-config");
     if (item != NULL)
     {
-        strncpy(config_values.web.configUrl, item->valuestring, sizeof(config_values.web.configUrl));
+        strncpy(config_values.web.configUrl, item->valuestring, sizeof(config_values.web.configUrl) - 1);
+        config_values.web.configUrl[sizeof(config_values.web.configUrl) - 1] = '\0';
     }
     item = cJSON_GetObjectItem(jsonObject, "mqtt-host");
     if (item != NULL)
     {
-        strncpy(config_values.mqtt.host, item->valuestring, sizeof(config_values.mqtt.host));
+        strncpy(config_values.mqtt.host, item->valuestring, sizeof(config_values.mqtt.host) - 1);
+        config_values.mqtt.host[sizeof(config_values.mqtt.host) - 1] = '\0';
     }
     item = cJSON_GetObjectItem(jsonObject, "mqtt-port");
     if (item != NULL)
     {
-        config_values.mqtt.port = atoi(item->valuestring);
+        uint32_t port = atoi(item->valuestring);
+        if (port > 0 && port < 65535)
+        {
+            config_values.mqtt.port = port;
+        }
+        else
+        {
+            config_values.mqtt.port = 1883;
+        }
     }
     item = cJSON_GetObjectItem(jsonObject, "mqtt-user");
     if (item != NULL)
     {
-        strncpy(config_values.mqtt.username, item->valuestring, sizeof(config_values.mqtt.username));
+        strncpy(config_values.mqtt.username, item->valuestring, sizeof(config_values.mqtt.username) - 1);
+        config_values.mqtt.username[sizeof(config_values.mqtt.username) - 1] = '\0';
     }
     item = cJSON_GetObjectItem(jsonObject, "mqtt-password");
     if (item != NULL)
     {
-        strncpy(config_values.mqtt.password, item->valuestring, sizeof(config_values.mqtt.password));
+        strncpy(config_values.mqtt.password, item->valuestring, sizeof(config_values.mqtt.password) - 1);
+        config_values.mqtt.password[sizeof(config_values.mqtt.password) - 1] = '\0';
     }
     item = cJSON_GetObjectItem(jsonObject, "mqtt-topic");
     if (item != NULL)
     {
-        strncpy(config_values.mqtt.topic, item->valuestring, sizeof(config_values.mqtt.topic));
+        strncpy(config_values.mqtt.topic, item->valuestring, sizeof(config_values.mqtt.topic) - 1);
+        config_values.mqtt.topic[sizeof(config_values.mqtt.topic) - 1] = '\0';
     }
     item = cJSON_GetObjectItem(jsonObject, "tuya-device-uuid");
     if (item != NULL)
     {
-        strncpy(config_values.tuya.device_uuid, item->valuestring, sizeof(config_values.tuya.device_uuid));
+        strncpy(config_values.tuya.device_uuid, item->valuestring, sizeof(config_values.tuya.device_uuid) - 1);
+        config_values.tuya.device_uuid[sizeof(config_values.tuya.device_uuid) - 1] = '\0';
         tuya_edited = 1;
     }
     item = cJSON_GetObjectItem(jsonObject, "tuya-device-auth");
     if (item != NULL)
     {
-        strncpy(config_values.tuya.device_auth, item->valuestring, sizeof(config_values.tuya.device_auth));
+        strncpy(config_values.tuya.device_auth, item->valuestring, sizeof(config_values.tuya.device_auth) - 1);
+        config_values.tuya.device_auth[sizeof(config_values.tuya.device_auth) - 1] = '\0';
         tuya_edited = 1;
     }
 

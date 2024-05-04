@@ -1,7 +1,7 @@
 #include "common.h"
 #include "gpio.h"
 
-void deleteTask(TaskHandle_t task)
+void delete_task(TaskHandle_t task)
 {
     if (task != NULL)
     {
@@ -10,7 +10,7 @@ void deleteTask(TaskHandle_t task)
     }
 }
 
-void suspendTask(TaskHandle_t task)
+void suspend_task(TaskHandle_t task)
 {
     if (task != NULL)
     {
@@ -18,7 +18,7 @@ void suspendTask(TaskHandle_t task)
     }
 }
 
-void resumeTask(TaskHandle_t task)
+void resume_task(TaskHandle_t task)
 {
     if (task != NULL)
     {

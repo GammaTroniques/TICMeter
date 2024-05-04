@@ -100,6 +100,15 @@ str_replace_t str_current_tarif_replace[] = {
     {"TH..", "BASE"},
     {"HC..", "Heures Creuses"},
     {"HP..", "Heures Pleines"},
+    {"HCJB", "Heures Creuses Jours Bleus"},
+    {"HCJW", "Heures Creuses Jours Blancs"},
+    {"HCJR", "Heures Creuses Jours Rouges"},
+    {"HPJB", "Heures Pleines Jours Bleus"},
+    {"HPJW", "Heures Pleines Jours Blancs"},
+    {"HPJR", "Heures Pleines Jours Rouges"},
+    {"HN..", "Heures Normales"},
+    {"PM..", "Heures de Pointe Mobile"},
+    {NULL, NULL},
 };
 
 /*==============================================================================
@@ -365,17 +374,19 @@ static void tuya_send_callback(int result, void *user_data)
     *sendComplete = 1;
 }
 
-char *tuya_replace(char *str, str_replace_t *replace, int size)
+char *tuya_replace(char *str, str_replace_t *replace)
 {
-    for (int i = 0; i < size; i++)
+    for (str_replace_t *_replace = replace; replace->look != NULL && replace->replace != NULL; replace++)
     {
-        if (replace[i].look == NULL || replace[i].replace == NULL)
+        if (_replace->look == NULL || _replace->replace == NULL)
         {
             continue;
         }
-        if (strstr(str, replace[i].look) != NULL)
+        ESP_LOGD(TAG, "Compare %s with %s", str, _replace->look);
+        if (strnstr(str, _replace->look, strlen(str)) != NULL)
         {
-            str = (char *)replace[i].replace;
+            ESP_LOGD(TAG, "Replace %s with %s", str, _replace->replace);
+            str = (char *)_replace->replace;
             break;
         }
     }
@@ -538,6 +549,15 @@ uint8_t tuya_send_data(linky_data_t *linky)
             continue;
             break;
         }
+        case 108:
+        {
+            char *str = (char *)LinkyLabelList[i].data;
+            str = tuya_replace(str, str_current_tarif_replace);
+            cJSON_AddStringToObject(jsonObject, "108", str);
+            continue;
+            break;
+        }
+
         default:
             break;
         }

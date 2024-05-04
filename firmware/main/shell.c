@@ -16,6 +16,7 @@
 #include "esp_ota_ops.h"
 #include "esp_timer.h"
 #include "gpio.h"
+#include "zigbee.h"
 #include "main.h"
 #include "mqtt.h"
 #include "ota.h"
@@ -117,6 +118,7 @@ static int start_test_command(int argc, char **argv);
 
 static int zigbee_reset_command(int argc, char **argv);
 static int skip_command(int argc, char **argv);
+static int stop_main(int argc, char **argv);
 
 static int start_pairing_command(int argc, char **argv);
 static int pm_stats_command(int argc, char **argv);
@@ -189,6 +191,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"start-test",                  "Start a test",                             &start_test_command,                1, {"<test-name>"}, {"Available tests: adc"}},
     {"zigbee-reset",                "Clear Zigbee config",                      &zigbee_reset_command,              0, {}, {}},
     {"skip",                        "Skip refresh rate delay",                  &skip_command,                      0, {}, {}},
+    {"main",                        "Start/Stop the main task",                 &stop_main,                         1, {"<enable>"}, {"Enable the main task (0/1)"}},
     {"pairing",                     "Start pairing",                            &start_pairing_command,             0, {}, {}},
     {"pm-stats",                    "Power management stats",                   &pm_stats_command,                  0, {}, {}},
     {"wifi-scan",                   "Scan for wifi networks",                   &wifi_scan_command,                 0, {}, {}},
@@ -437,12 +440,9 @@ static int mqtt_send_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  printf("MQTT send\n");
   linky_data_t linky_data;
-  // linky_data.hist->timestamp = wifi_get_timestamp();
-  // linky_data.hist->BASE = 5050;
-  // linky_data.hist->IINST = 10;
   mqtt_send(&linky_data);
+  printf("MQTT sent\n");
   return 0;
 }
 static int mqtt_discovery_command(int argc, char **argv)
@@ -462,7 +462,12 @@ static int get_mode_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  printf("Mode: %d - %s\n", config_values.mode, MODES[config_values.mode]);
+  const char *mode = MODES[config_values.mode];
+  if (!mode)
+  {
+    mode = "Unknown";
+  }
+  printf("Mode: %d - %s\n", config_values.mode, mode);
   return 0;
 }
 static int set_mode_command(int argc, char **argv)
@@ -471,7 +476,12 @@ static int set_mode_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  config_values.mode = (connectivity_t)atoi(argv[1]);
+  connectivity_t mode = (connectivity_t)atoi(argv[1]);
+  if (mode < 0 || mode >= MODE_LAST)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  config_values.mode = mode;
   config_write();
   printf("Mode saved\n");
   get_mode_command(1, NULL);
@@ -581,7 +591,7 @@ static int start_tuya(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   wifi_connect();
-  resumeTask(tuyaTaskHandle); // resume tuya task
+  resume_task(tuyaTaskHandle); // resume tuya task
   return 0;
 }
 
@@ -716,7 +726,7 @@ static int ota_start(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
 
-  suspendTask(main_task_handle);
+  suspend_task(main_task_handle);
   const esp_partition_t *configured = esp_ota_get_boot_partition();
   const esp_partition_t *running = esp_ota_get_running_partition();
   const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
@@ -920,7 +930,7 @@ static int zigbee_reset_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("Resetting Zigbee config\n");
-  esp_zb_factory_reset();
+  zigbee_factory_reset();
   printf("Zigbee config reset\n");
   return 0;
 }
@@ -935,6 +945,23 @@ static int skip_command(int argc, char **argv)
   return 0;
 }
 
+static int stop_main(int argc, char **argv)
+{
+  if (argc != 2)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  if (atoi(argv[1]) == 0)
+  {
+    suspend_task(main_task_handle);
+  }
+  else
+  {
+    resume_task(main_task_handle);
+  }
+  return 0;
+}
+
 static int start_pairing_command(int argc, char **argv)
 {
   if (argc != 1)
@@ -942,7 +969,7 @@ static int start_pairing_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("Starting pairing\n");
-  gpio_start_pariring();
+  gpio_restart_in_pairing();
   return 0;
 }
 

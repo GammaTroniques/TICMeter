@@ -128,7 +128,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                 ESP_LOGI(TAG, "Start network steering");
                 esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
                 led_start_pattern(LED_PAIRING);
-                suspendTask(main_task_handle);
+                suspend_task(main_task_handle);
             }
             else
             {
@@ -160,7 +160,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                 config_values.zigbee.state = ZIGBEE_PAIRED;
                 config_write();
                 led_stop_pattern(LED_PAIRING);
-                resumeTask(main_task_handle);
+                resume_task(main_task_handle);
             }
             zigbee_state = ZIGBEE_CONNECTED;
             // xTaskCreate(zigbee_send_first_datas, "zigbee_send_first_datas", 4 * 1024, NULL, PRIORITY_ZIGBEE, NULL);
