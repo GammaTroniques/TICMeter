@@ -332,6 +332,9 @@ extern uint8_t linky_three_phase;
 extern uint8_t linky_reading;
 extern uint8_t linky_want_debug_frame;
 extern uint32_t linky_free_heap_size;
+
+extern const void *linky_protected_data[];
+extern const uint8_t linky_protected_data_size;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/

@@ -70,6 +70,19 @@ void web_preapare_json_data(linky_data_t *data, char count, char **json)
             {
                 continue;
             }
+            uint8_t found = 0;
+            for (uint32_t k = 0; k < linky_protected_data_size; k++)
+            {
+                if (LinkyLabelList[j].data == linky_protected_data[k])
+                {
+                    found = 1;
+                    continue;
+                }
+            }
+            if (found)
+            {
+                continue;
+            }
             uint32_t delta_in_data = (char *)LinkyLabelList[j].data - (char *)&linky_data;
             ESP_LOGD(TAG, "Adress in data: 0x%lx", delta_in_data);
             void *value = (char *)&data[i] + delta_in_data;

@@ -251,6 +251,8 @@ const LinkyGroup LinkyLabelList[] =
 const int32_t LinkyLabelListSize = sizeof(LinkyLabelList) / sizeof(LinkyLabelList[0]);
 // clang-format on
 
+const void *linky_protected_data[] = {&config_values.refresh_rate, &linky_mode, &linky_three_phase};
+const uint8_t linky_protected_data_size = sizeof(linky_protected_data) / sizeof(linky_protected_data[0]);
 linky_data_t linky_data; // The data
 linky_mode_t linky_mode = MODE_HIST;
 linky_contract_t linky_contract = C_ANY;
@@ -1221,11 +1223,10 @@ static void linky_clear_data()
         {
             continue;
         }
-        void *protected_data[] = {&config_values.refresh_rate, &linky_mode, &linky_three_phase};
         uint8_t found = 0;
-        for (uint32_t j = 0; j < sizeof(protected_data) / sizeof(protected_data[0]); j++)
+        for (uint32_t j = 0; j < linky_protected_data_size; j++)
         {
-            if (LinkyLabelList[i].data == protected_data[j])
+            if (LinkyLabelList[i].data == linky_protected_data[j])
             {
                 found = 1;
                 continue;
