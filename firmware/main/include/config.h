@@ -82,6 +82,7 @@ typedef struct
     char postUrl[50];
     char configUrl[50];
     char token[100];
+    uint8_t store_before_send;
 } web_config_t;
 
 typedef struct

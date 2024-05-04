@@ -16,6 +16,7 @@
 #include "config.h"
 #include "gpio.h"
 #include "wifi.h"
+#include "common.h"
 #include "led.h"
 
 /*==============================================================================
@@ -49,59 +50,97 @@ Public Variable
 Function Implementation
 ===============================================================================*/
 
-void web_preapare_json_data(linky_data_t *data, char dataIndex, char *json, unsigned int jsonSize)
+void web_preapare_json_data(linky_data_t *data, char count, char **json)
 {
     cJSON *jsonObject = cJSON_CreateObject(); // Create the root object
     cJSON_AddStringToObject(jsonObject, "TOKEN", config_values.web.token);
     cJSON_AddNumberToObject(jsonObject, "VCONDO", gpio_get_vcondo());
     cJSON *dataObject = cJSON_CreateArray(); // Create the data array
-    for (int i = 0; i < dataIndex; i++)      // Add data to the array
+    for (int i = 0; i < count; i++)          // Add data to the array
     {
+        ESP_LOGI(TAG, "Data index: %d: timestamp: %lld", i, data[i].timestamp);
         cJSON *dataItem = cJSON_CreateObject();
-        switch (linky_mode)
+        for (uint32_t j = 0; j < LinkyLabelListSize; j++)
         {
-        case MODE_HIST:
-            cJSON_AddNumberToObject(dataItem, "DATE", data[i].timestamp);
-            cJSON_AddStringToObject(dataItem, "ADCO", data[i].hist.ADCO);
-            cJSON_AddStringToObject(dataItem, "OPTARIF", data[i].hist.OPTARIF);
-            cJSON_AddNumberToObject(dataItem, "ISOUSC", data[i].hist.ISOUSC);
-            if (data[i].hist.BASE != 0)
-                cJSON_AddNumberToObject(dataItem, "BASE", data[i].hist.BASE);
-            if (data[i].hist.HCHC != 0)
-                cJSON_AddNumberToObject(dataItem, "HCHC", data[i].hist.HCHC);
-            if (data[i].hist.HCHP != 0)
-                cJSON_AddNumberToObject(dataItem, "HCHP", data[i].hist.HCHP);
-            cJSON_AddStringToObject(dataItem, "PTEC", data[i].hist.PTEC);
-            cJSON_AddNumberToObject(dataItem, "IINST", data[i].hist.IINST);
-            cJSON_AddNumberToObject(dataItem, "IMAX", data[i].hist.IMAX);
-            cJSON_AddNumberToObject(dataItem, "PAPP", data[i].hist.PAPP);
-            cJSON_AddStringToObject(dataItem, "HHPHC", data[i].hist.HHPHC);
-            cJSON_AddStringToObject(dataItem, "MOTDETAT", data[i].hist.MOTDETAT);
-            break;
-        case MODE_STD:
-            ESP_LOGI("WEB", "MODE_STD not implemented yet");
-            break;
-        default:
-            break;
+            if (LinkyLabelList[j].data == NULL)
+            {
+                continue;
+            }
+            if (linky_mode != LinkyLabelList[j].mode && LinkyLabelList[j].mode != ANY)
+            {
+                continue;
+            }
+            uint32_t delta_in_data = (char *)LinkyLabelList[j].data - (char *)&linky_data;
+            ESP_LOGD(TAG, "Adress in data: 0x%lx", delta_in_data);
+            void *value = (char *)&data[i] + delta_in_data;
+            ESP_LOGD(TAG, "Adress in value: 0x%p", value);
+            switch (LinkyLabelList[j].type)
+            {
+            case UINT8:
+                if (*(uint8_t *)value == UINT8_MAX)
+                {
+                    continue;
+                }
+                ESP_LOGD(TAG, "Name: %s Type: UINT8 Value: %d", LinkyLabelList[j].label, *(uint8_t *)value);
+                cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint8_t *)value);
+                break;
+            case UINT16:
+                if (*(uint16_t *)value == UINT16_MAX)
+                {
+                    continue;
+                }
+                ESP_LOGD(TAG, "Name: %s Type: UINT16 Value: %d", LinkyLabelList[j].label, *(uint16_t *)value);
+                cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint16_t *)value);
+                break;
+            case UINT32:
+                if (*(uint32_t *)value == UINT32_MAX)
+                {
+                    continue;
+                }
+                ESP_LOGD(TAG, "Name: %s Type: UINT32 Value: %ld", LinkyLabelList[j].label, *(uint32_t *)value);
+                cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint32_t *)value);
+                break;
+            case UINT64:
+                if (*(uint64_t *)value == UINT64_MAX)
+                {
+                    continue;
+                }
+                ESP_LOGD(TAG, "Name: %s Type: UINT64 Value: %lld", LinkyLabelList[j].label, *(uint64_t *)value);
+                cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint64_t *)value);
+                break;
+            case STRING:
+                if (strlen((char *)value) == 0)
+                {
+                    continue;
+                }
+                ESP_LOGD(TAG, "Name: %s Type: STRING Value: %s", LinkyLabelList[j].label, (char *)value);
+                cJSON_AddStringToObject(dataItem, LinkyLabelList[j].label, (char *)value);
+                break;
+            case UINT32_TIME:
+                if (*(uint32_t *)value == UINT32_MAX)
+                {
+                    continue;
+                }
+                ESP_LOGD(TAG, "Name: %s Type: UINT32_TIME Value: %ld", LinkyLabelList[j].label, *(uint32_t *)value);
+                cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint32_t *)value);
+                break;
+            case BOOL:
+                ESP_LOGD(TAG, "Name: %s Type: BOOL Value: %d", LinkyLabelList[j].label, *(bool *)value);
+                cJSON_AddBoolToObject(dataItem, LinkyLabelList[j].label, *(bool *)value);
+                break;
+            default:
+                break;
+            }
         }
         cJSON_AddItemToArray(dataObject, dataItem);
     }
-
-    if (dataIndex == 0)
+    if (count == 0)
     {
         // Send empty data to server to keep the connection alive
         cJSON_AddStringToObject(jsonObject, "ERROR", "Cant read data from linky");
-        cJSON *dataItem = cJSON_CreateObject();
-        cJSON_AddNumberToObject(dataItem, "DATE", wifi_get_timestamp());
-        cJSON_AddNullToObject(dataItem, "BASE");
-        cJSON_AddNullToObject(dataItem, "HCHC");
-        cJSON_AddNullToObject(dataItem, "HCHP");
-        cJSON_AddItemToArray(dataObject, dataItem);
     }
     cJSON_AddItemToObject(jsonObject, "data", dataObject); // Add the data array to the root object
-    char *jsonString = cJSON_PrintUnformatted(jsonObject); // Convert the json object to string
-    strncpy(json, jsonString, jsonSize);                   // Copy the string to the buffer
-    free(jsonString);                                      // Free the memory
+    *json = cJSON_PrintUnformatted(jsonObject);            // Convert the json object to string
     cJSON_Delete(jsonObject);                              // Delete the json object
 }
 
@@ -110,7 +149,7 @@ static esp_err_t web_http_send_data_handler(esp_http_client_event_handle_t evt)
     switch (evt->event_id)
     {
     case HTTP_EVENT_ON_DATA:
-        printf("Config: %.*s\n", evt->data_len, (char *)evt->data);
+        printf("Config: %.*s", evt->data_len, (char *)evt->data);
         break;
 
     default:
@@ -157,7 +196,38 @@ esp_err_t wifi_http_get_config_handler(esp_http_client_event_handle_t evt)
     switch (evt->event_id)
     {
     case HTTP_EVENT_ON_DATA:
-        printf("Config: %.*s\n", evt->data_len, (char *)evt->data);
+        ESP_LOGI(TAG, "Config: %.*s", evt->data_len, (char *)evt->data);
+        cJSON *json = cJSON_Parse(evt->data);
+        cJSON *refresh_rate = cJSON_GetObjectItem(json, "refresh_rate");
+        if (refresh_rate != NULL)
+        {
+            uint16_t value = refresh_rate->valueint;
+            if (value < 10)
+            {
+                value = 10;
+            }
+            if (value > 3600)
+            {
+                value = 3600;
+            }
+            config_values.refresh_rate = value;
+            ESP_LOGI(TAG, "Set refresh_rate: %d", value);
+        }
+        cJSON *store_before_send = cJSON_GetObjectItem(json, "store_before_send");
+        if (store_before_send != NULL)
+        {
+            uint8_t value = store_before_send->valueint;
+            if (store_before_send->valueint < 0)
+            {
+                value = 0;
+            }
+            else if (store_before_send->valueint > MAX_DATA_INDEX)
+            {
+                value = MAX_DATA_INDEX;
+            }
+            config_values.web.store_before_send = value;
+            ESP_LOGI(TAG, "Set store_before_send: %d", value);
+        }
         break;
 
     default:

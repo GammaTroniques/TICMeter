@@ -125,6 +125,8 @@ int8_t config_erase()
         .pairing_state = TUYA_NOT_CONFIGURED,
         .zigbee.state = ZIGBEE_NOT_CONFIGURED,
         .index_offset = {0},
+
+        .web.store_before_send = 3,
     };
 
     snprintf(blank_config.mqtt.topic, sizeof(blank_config.mqtt.topic), "TICMeter/%s", efuse_values.mac_address + 6);

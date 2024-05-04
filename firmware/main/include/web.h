@@ -47,6 +47,6 @@
  * @param json  the json destination
  * @param jsonSize the size of the json destination
  */
-extern void web_preapare_json_data(linky_data_t *data, char dataIndex, char *json, unsigned int jsonSize);
+extern void web_preapare_json_data(linky_data_t *data, char dataIndex, char **json);
 
 #endif /* WEB_H */

@@ -80,7 +80,6 @@ uint32_t main_sleep_time = 99999;
 ===============================================================================*/
 static esp_pm_lock_handle_t main_init_lock;
 
-#define MAX_DATA_INDEX 5
 linky_data_t main_data_array[MAX_DATA_INDEX];
 unsigned int main_data_index = 0;
 uint64_t main_next_update_check;
@@ -309,8 +308,6 @@ void main_task(void *pvParameters)
 esp_err_t main_send_data()
 {
   esp_err_t err;
-  linky_uptime = esp_timer_get_time() / 1000000;
-
   switch (config_values.mode)
   {
   case MODE_WEB:
@@ -320,13 +317,18 @@ esp_err_t main_send_data()
     {
       main_data_index = 0;
     }
-    main_data_array[main_data_index] = linky_data;
-    main_data_array[main_data_index++].timestamp = wifi_get_timestamp();
-    ESP_LOGI(MAIN_TAG, "Data stored: %d - BASE: %lld", main_data_index, main_data_array[0].timestamp);
-    if (1)
+    main_data_array[main_data_index++] = linky_data;
+    ESP_LOGI(MAIN_TAG, "Data stored: %d/%d: time: %lld", main_data_index, config_values.web.store_before_send, linky_data.timestamp);
+    if (main_data_index >= config_values.web.store_before_send || main_data_index >= MAX_DATA_INDEX)
     {
-      char json[1024] = {0};
-      web_preapare_json_data(main_data_array, main_data_index, json, sizeof(json));
+      char *json = NULL;
+      web_preapare_json_data(main_data_array, main_data_index, &json);
+      if (json == NULL)
+      {
+        ESP_LOGE(MAIN_TAG, "Cant prepare json data");
+        return ESP_FAIL;
+      }
+
       ESP_LOGI(MAIN_TAG, "Sending data to server");
       err = wifi_connect();
       if (err == ESP_OK)
@@ -344,6 +346,7 @@ esp_err_t main_send_data()
         ESP_LOGE(MAIN_TAG, "Wifi connection failed");
         return ESP_FAIL;
       }
+      free(json);
       wifi_disconnect();
       main_data_index = 0;
       return ESP_OK;

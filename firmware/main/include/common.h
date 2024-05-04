@@ -3,6 +3,7 @@
 
 #include "linky.h"
 #include "config.h"
+#define MAX_DATA_INDEX 10
 
 void delete_task(TaskHandle_t task);
 void suspend_task(TaskHandle_t task);

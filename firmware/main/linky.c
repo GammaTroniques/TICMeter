@@ -88,7 +88,6 @@ Public Variable
 // clang-format off
 
 uint32_t linky_free_heap_size = 0;
-uint64_t linky_uptime = 0;
 
 const LinkyGroup LinkyLabelList[] =
 {   
@@ -245,7 +244,7 @@ const LinkyGroup LinkyLabelList[] =
     {105, "Mode TIC",                           "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:translate",                       0xFF42, 0x002c,  ZB_RO, ZB_UINT8     },
     {106, "Mode Electrique",                    "mode-elec",   &linky_three_phase,            UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:power-plug-outline",              0xFF42, 0x002a,  ZB_RO, ZB_UINT8     },
     {000, "Dernière actualisation",             "timestamp",   &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {104, "Temps de fonctionnement",            "uptime",      &linky_uptime,                 UINT64,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     TIME,        "mdi:clock-time-eight-outline",        0xFF42, 0x002d,  ZB_RO, ZB_UINT48    },
+    {104, "Temps de fonctionnement",            "uptime",      &linky_data.uptime,            UINT64,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     TIME,        "mdi:clock-time-eight-outline",        0xFF42, 0x002d,  ZB_RO, ZB_UINT48    },
  // {000, "Free RAM",                           "free-ram",    &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     BYTES,       "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
 
 };
@@ -784,6 +783,7 @@ static char linky_decode()
     }
 
     linky_data.timestamp = wifi_get_timestamp();
+    linky_data.uptime = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
     // remove spaces from contract name
     remove_char(linky_data.hist.OPTARIF, ' ');
@@ -1221,7 +1221,7 @@ static void linky_clear_data()
         {
             continue;
         }
-        void *protected_data[] = {&config_values.refresh_rate, &linky_mode, &linky_three_phase, &linky_uptime};
+        void *protected_data[] = {&config_values.refresh_rate, &linky_mode, &linky_three_phase};
         uint8_t found = 0;
         for (uint32_t j = 0; j < sizeof(protected_data) / sizeof(protected_data[0]); j++)
         {

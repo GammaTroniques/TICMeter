@@ -307,6 +307,7 @@ typedef struct
     linky_data_hist hist;
     linky_data_std std;
     time_t timestamp;
+    uint64_t uptime;
 } linky_data_t;
 
 /*==============================================================================
@@ -331,7 +332,6 @@ extern uint8_t linky_three_phase;
 extern uint8_t linky_reading;
 extern uint8_t linky_want_debug_frame;
 extern uint32_t linky_free_heap_size;
-extern uint64_t linky_uptime;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
