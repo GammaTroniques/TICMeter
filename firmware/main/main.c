@@ -116,8 +116,6 @@ void app_main(void)
     }
   }
 
-  // ESP_LOGI(MAIN_TAG, "VICTOIREEEEEEEErEEEEEEEEEEEEEEEEEE123456789");
-
   // if (gpio_get_vcondo() < 3.4)
   // {
   //   ESP_LOGW(MAIN_TAG, "VCondo too low, light sleep for 30s");
@@ -128,9 +126,7 @@ void app_main(void)
 
   // linky_want_debug_frame = 4;
 
-  // start_test(TEST_LINKY_STD);
   // esp_pm_dump_locks(stdout);
-
   if (config_verify() || config_values.boot_pairing)
   {
     // esp_pm_lock_release(main_init_lock);
@@ -259,30 +255,17 @@ void main_task(void *pvParameters)
   main_next_update_check = MILLIS;
   esp_err_t err;
   uint32_t err_count = 0;
-  int32_t fetching_time = 0;
-  switch (config_values.mode)
-  {
-  case MODE_WEB:
-    fetching_time = 10;
-    break;
-  case MODE_MQTT:
-  case MODE_MQTT_HA:
-    fetching_time = 10;
-    break;
-  case MODE_ZIGBEE:
-    fetching_time = 2;
-    break;
-  case MODE_TUYA:
-    fetching_time = 10;
-    break;
-  default:
-    fetching_time = 10;
-    break;
-  }
+  const uint32_t fetching_time[] = {
+      [MODE_WEB] = 10,
+      [MODE_MQTT] = 10,
+      [MODE_MQTT_HA] = 10,
+      [MODE_ZIGBEE] = 2,
+      [MODE_TUYA] = 10,
+  };
 
   while (1)
   {
-    main_sleep_time = abs(config_values.refreshRate - fetching_time);
+    main_sleep_time = abs((int32_t)config_values.refresh_rate - (int32_t)fetching_time[config_values.mode]);
     // esp_pm_dump_locks(stdout);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
     esp_pm_lock_release(main_init_lock);

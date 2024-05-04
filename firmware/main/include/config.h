@@ -138,7 +138,7 @@ typedef struct
     char ssid[50];
     char password[50];
 
-    linky_mode_t linkyMode;
+    linky_mode_t linky_mode;
     linky_mode_t last_linky_mode;
     connectivity_t mode;
     web_config_t web;
@@ -148,7 +148,7 @@ typedef struct
     zigbee_config_t zigbee;
 
     char version[10];
-    uint16_t refreshRate;
+    uint16_t refresh_rate;
     uint8_t sleep;
     index_offset_t index_offset;
     uint8_t boot_pairing;
@@ -169,6 +169,8 @@ extern const char *GIT_TAG;
 extern const char *GIT_REV;
 extern const char *GIT_BRANCH;
 extern const char *BUILD_TIME;
+
+#define PRODUCTION (strlen(GIT_TAG) > 0)
 
 extern config_t config_values;
 extern efuse_t efuse_values;

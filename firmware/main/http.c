@@ -270,7 +270,7 @@ esp_err_t save_config_handler(httpd_req_t *req)
     item = cJSON_GetObjectItem(jsonObject, "linky-mode");
     if (item != NULL)
     {
-        config_values.linkyMode = atoi(item->valuestring);
+        config_values.linky_mode = atoi(item->valuestring);
     }
     item = cJSON_GetObjectItem(jsonObject, "server-mode");
     if (item != NULL)
@@ -339,10 +339,10 @@ esp_err_t save_config_handler(httpd_req_t *req)
     item = cJSON_GetObjectItem(jsonObject, "refresh-rate");
     if (item != NULL)
     {
-        config_values.refreshRate = atoi(item->valuestring);
-        if (config_values.refreshRate < 30)
+        config_values.refresh_rate = atoi(item->valuestring);
+        if (config_values.refresh_rate < 30)
         {
-            config_values.refreshRate = 30;
+            config_values.refresh_rate = 30;
         }
     }
 
@@ -380,7 +380,7 @@ esp_err_t get_config_handler(httpd_req_t *req)
     cJSON_AddStringToObject(jsonObject, "mqtt-topic", config_values.mqtt.topic);
     cJSON_AddStringToObject(jsonObject, "tuya-device-uuid", config_values.tuya.device_uuid);
     cJSON_AddNumberToObject(jsonObject, "tuya-device-auth", strnlen(config_values.tuya.device_auth, sizeof(config_values.tuya.device_auth)));
-    cJSON_AddNumberToObject(jsonObject, "refresh-rate", config_values.refreshRate);
+    cJSON_AddNumberToObject(jsonObject, "refresh-rate", config_values.refresh_rate);
 
     char *jsonString = cJSON_PrintUnformatted(jsonObject);
     httpd_resp_set_type(req, "application/json");

@@ -240,8 +240,8 @@ const LinkyGroup LinkyLabelList[] =
     {000, "Profil du prochain jour",            "PJOURF+1",    &linky_data.std.PJOURF_1,      STRING,      16, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0xFF42, 0x0028,  ZB_RO, ZB_CHARSTR    },
     {000, "Profil du prochain jour pointe",     "PPOINTE",     &linky_data.std.PPOINTE,       STRING,      58, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:sun-clock",                       0xFF42, 0x0029,  ZB_RO, ZB_CHARSTR     },
     //---------------------------Home Assistant Specific ------------------------------------------------
-    {103, "Temps d'actualisation",              "now-refresh", &config_values.refreshRate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0xFF42, 0x0002,  ZB_RW, ZB_UINT16    },
-    {000, "Temps d'actualisation",              "set-refresh", &config_values.refreshRate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {103, "Temps d'actualisation",              "now-refresh", &config_values.refresh_rate,    UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0xFF42, 0x0002,  ZB_RW, ZB_UINT16    },
+    {000, "Temps d'actualisation",              "set-refresh", &config_values.refresh_rate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
     {105, "Mode TIC",                           "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:translate",                       0xFF42, 0x002c,  ZB_RO, ZB_UINT8     },
     {106, "Mode Electrique",                    "mode-elec",   &linky_three_phase,            UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:power-plug-outline",              0xFF42, 0x002a,  ZB_RO, ZB_UINT8     },
     {000, "Dernière actualisation",             "timestamp",   &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
@@ -383,7 +383,7 @@ void linky_init(linky_mode_t mode, int RX)
     linky_group_separator = (mode == MODE_HIST) ? 0x20 : 0x09;
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
 
-    switch (config_values.linkyMode)
+    switch (config_values.linky_mode)
     {
     case AUTO:
         ESP_LOGI(TAG, "Trying to autodetect Linky mode, testing last known mode: %s", linky_str_mode[config_values.last_linky_mode]);
@@ -582,7 +582,7 @@ static char linky_decode()
     linky_decode_checksum_error = 0;
     if (linky_frame[0] == 0) // if no frame found
     {
-        if (config_values.linkyMode == AUTO)
+        if (config_values.linky_mode == AUTO)
         {
             switch (linky_mode)
             {
@@ -590,7 +590,7 @@ static char linky_decode()
                 if (strlen(linky_data.hist.ADCO) > 0)
                 {
                     ESP_LOGI(TAG, "Auto mode: Mode Historique Found!");
-                    config_values.linkyMode = MODE_HIST;
+                    config_values.linky_mode = MODE_HIST;
                     config_write();
                 }
                 else
@@ -604,7 +604,7 @@ static char linky_decode()
                 if (strlen(linky_data.std.ADSC) > 0)
                 {
                     ESP_LOGI(TAG, "Auto mode: Mode Standard Found!");
-                    config_values.linkyMode = MODE_STD;
+                    config_values.linky_mode = MODE_STD;
                     config_write();
                 }
                 else
@@ -622,7 +622,7 @@ static char linky_decode()
     }
 
     // if we have a valid frame, with mode auto and its a new value mode, we save it.
-    if (config_values.linkyMode == AUTO && linky_mode != config_values.last_linky_mode)
+    if (config_values.linky_mode == AUTO && linky_mode != config_values.last_linky_mode)
     {
         ESP_LOGI(TAG, "Linky mode: %d", linky_mode);
         ESP_LOGI(TAG, "Auto mode: New mode found: %s", linky_str_mode[linky_mode]);
@@ -1221,7 +1221,7 @@ static void linky_clear_data()
         {
             continue;
         }
-        void *protected_data[] = {&config_values.refreshRate, &linky_mode, &linky_three_phase, &linky_uptime};
+        void *protected_data[] = {&config_values.refresh_rate, &linky_mode, &linky_three_phase, &linky_uptime};
         uint8_t found = 0;
         for (uint32_t j = 0; j < sizeof(protected_data) / sizeof(protected_data[0]); j++)
         {
@@ -1347,7 +1347,7 @@ void linky_stats()
     printf("Linky three phase: %s\n", linky_three_phase ? "Yes" : "No");
     printf("Linky presence: %s\n", linky_presence() ? "Yes" : "No");
     printf("Linky contract: %s\n", linky_hist_str_contract[linky_contract]);
-    printf("Linky refresh rate: %d\n", config_values.refreshRate);
+    printf("Linky refresh rate: %d\n", config_values.refresh_rate);
     printf("Linky decode count: %ld\n", linky_decode_count);
     printf("Linky checksum error: %ld\n", linky_decode_checksum_error);
 }

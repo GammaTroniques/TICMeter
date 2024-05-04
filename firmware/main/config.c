@@ -80,7 +80,7 @@ static struct config_item_t config_items[] = {
     {"wifi-ssid",       STRING, &config_values.ssid,            sizeof(config_values.ssid),             &config_handle},
     {"wifi-pw"  ,       STRING, &config_values.password,        sizeof(config_values.password),         &config_handle},
     
-    {"linky-mode",      UINT8,  &config_values.linkyMode,       sizeof(config_values.linkyMode),        &config_handle},
+    {"linky-mode",      UINT8,  &config_values.linky_mode,       sizeof(config_values.linky_mode),      &config_handle},
     {"last-linky-mode", UINT8,  &config_values.last_linky_mode, sizeof(config_values.last_linky_mode),  &config_handle},
 
     {"connect-mode",    UINT8, &config_values.mode,             sizeof(config_values.mode),             &config_handle},
@@ -92,10 +92,10 @@ static struct config_item_t config_items[] = {
     {"zigbee",          BLOB,   &config_values.zigbee,          sizeof(config_values.zigbee),           &config_handle},
  
     {"version",         STRING, &config_values.version,         sizeof(config_values.version),          &config_handle},
-    {"refresh",         UINT16, &config_values.refreshRate,     sizeof(config_values.refreshRate),      &config_handle},
+    {"refresh",         UINT16, &config_values.refresh_rate,     sizeof(config_values.refresh_rate),    &config_handle},
     {"sleep",           UINT8,  &config_values.sleep,           sizeof(config_values.sleep),            &config_handle},
     {"index-offset",    BLOB,   &config_values.index_offset,    sizeof(config_values.index_offset),     &config_handle},
-     {"boot-pairing",    UINT8,  &config_values.boot_pairing,    sizeof(config_values.boot_pairing),     &config_handle},
+    {"boot-pairing",    UINT8,  &config_values.boot_pairing,    sizeof(config_values.boot_pairing),     &config_handle},
 
 };
 static const int32_t config_items_size = sizeof(config_items) / sizeof(config_items[0]);
@@ -115,9 +115,9 @@ int8_t config_erase()
 {
     config_t blank_config = {
         .initialized = 1,
-        .refreshRate = 60,
+        .refresh_rate = 60,
         .sleep = 1,
-        .linkyMode = AUTO,
+        .linky_mode = AUTO,
         .last_linky_mode = NONE,
         .mode = MODE_MQTT_HA,
 
@@ -260,9 +260,9 @@ int8_t config_begin()
 
     uint8_t edited = 0;
 
-    if (config_values.refreshRate <= 30)
+    if (config_values.refresh_rate < 30)
     {
-        config_values.refreshRate = 60;
+        config_values.refresh_rate = 30;
         edited = 1;
     }
 

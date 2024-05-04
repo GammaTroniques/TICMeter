@@ -182,7 +182,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
 
     if (sensor.realTime == REAL_TIME)
     {
-        cJSON_AddNumberToObject(sensorConfig, "exp_aft", config_values.refreshRate * 4);
+        cJSON_AddNumberToObject(sensorConfig, "exp_aft", config_values.refresh_rate * 4);
     }
 
     switch (sensor.device_class)

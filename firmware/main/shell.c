@@ -57,7 +57,6 @@ typedef struct
 static int get_wifi_command(int argc, char **argv);
 static int set_wifi_command(int argc, char **argv);
 static int connect_wifi_command(int argc, char **argv);
-static int reconnect_wifi_command(int argc, char **argv);
 static int wifi_disconnect_command(int argc, char **argv);
 static int wifi_status_command(int argc, char **argv);
 
@@ -137,7 +136,6 @@ static const shell_cmd_t shell_cmds[] = {
     {"get-wifi",                    "Get wifi config",                          &get_wifi_command,                  0, {}, {}},
     {"set-wifi",                    "Set wifi config",                          &set_wifi_command,                  2, {"<ssid>", "<password>"}, {"SSID of AP", "Password of AP"}},
     {"wifi-connect",                "Connect to wifi",                          &connect_wifi_command,              0, {}, {}},
-    {"wifi-reconnect",              "Reconnect to wifi",                        &reconnect_wifi_command,            0, {}, {}},
     {"wifi-disconnect",             "Disconnect from wifi",                     &wifi_disconnect_command,           0, {}, {}},
     {"wifi-status",                 "Get wifi status",                          &wifi_status_command,               0, {}, {}},
     {"wifi-start-captive-portal",   "Start captive portal",                     &wifi_start_captive_portal_command, 0, {}, {}},
@@ -279,6 +277,23 @@ void shell_init()
   // close(fd);
 }
 
+static void shell_print_obfuscated(const char *name, const char *str)
+{
+  printf("%s: ", name);
+  if (PRODUCTION)
+  {
+    for (int i = 0; i < strlen(str); i++)
+    {
+      printf("*");
+    }
+  }
+  else
+  {
+    printf("%s", str);
+  }
+  printf("\n");
+}
+
 void shell_deinit()
 {
   ESP_LOGI(TAG, "Deinit shell");
@@ -305,8 +320,7 @@ static int get_wifi_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("SSID: %s\n", config_values.ssid);
-  printf("Password: %s\n", config_values.password);
-
+  shell_print_obfuscated("Password", config_values.password);
   return 0;
 }
 static int set_wifi_command(int argc, char **argv)
@@ -329,11 +343,7 @@ static int connect_wifi_command(int argc, char **argv)
   ESP_LOGI(TAG, "Wifi connect: %d", err);
   return 0;
 }
-static int reconnect_wifi_command(int argc, char **argv)
-{
-  ESP_LOGI(TAG, "%f", gpio_get_vcondo());
-  return 0;
-}
+
 static int wifi_disconnect_command(int argc, char **argv)
 {
   printf("Disconnecting from wifi\n");
@@ -342,8 +352,7 @@ static int wifi_disconnect_command(int argc, char **argv)
 }
 static int wifi_status_command(int argc, char **argv)
 {
-  printf("Wifi status TODO\n");
-  // TODO
+  printf("Wifi status: %d\n", wifi_state);
   return 0;
 }
 static int wifi_start_captive_portal_command(int argc, char **argv)
@@ -377,7 +386,7 @@ static int get_web_command(int argc, char **argv)
   printf("Host: %s\n", config_values.web.host);
   printf("PostUrl: %s\n", config_values.web.postUrl);
   printf("ConfigUrl: %s\n", config_values.web.configUrl);
-  printf("Token: %s\n", config_values.web.token);
+  shell_print_obfuscated("Token", config_values.web.token);
   return 0;
 }
 
@@ -391,7 +400,8 @@ static int get_mqtt_command(int argc, char **argv)
   printf("Port: %d\n", config_values.mqtt.port);
   printf("Topic: %s\n", config_values.mqtt.topic);
   printf("Username: %s\n", config_values.mqtt.username);
-  printf("Password: %s\n", config_values.mqtt.password);
+  shell_print_obfuscated("Password", config_values.mqtt.password);
+
   return 0;
 }
 static int set_mqtt_command(int argc, char **argv)
@@ -559,7 +569,7 @@ static int get_tuya_command(int argc, char **argv)
   printf("%cTuya config:\n", 0x02);
   printf("Product ID: %s\n", TUYA_PRODUCT_ID);
   printf("Device UUID: %s\n", config_values.tuya.device_uuid);
-  printf("Device Auth: %s\n", config_values.tuya.device_auth);
+  shell_print_obfuscated("Device Auth", config_values.tuya.device_auth);
   printf("Tuya Bind Status: %d%c\n", config_values.pairing_state, 0x03);
   return 0;
 }
@@ -584,7 +594,7 @@ static int get_linky_mode_command(int argc, char **argv)
 
   printf("Current Linky mode: %d: %s\n", linky_mode, linky_str_mode[linky_mode]);
   printf("Last Known Linky mode: %d: %s\n", config_values.last_linky_mode, linky_str_mode[config_values.last_linky_mode]);
-  printf("Configured Linky mode: %d: %s\n", config_values.linkyMode, linky_str_mode[config_values.linkyMode]);
+  printf("Configured Linky mode: %d: %s\n", config_values.linky_mode, linky_str_mode[config_values.linky_mode]);
   return 0;
 }
 static int set_linky_mode_command(int argc, char **argv)
@@ -593,9 +603,9 @@ static int set_linky_mode_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  config_values.linkyMode = (linky_mode_t)atoi(argv[1]);
+  config_values.linky_mode = (linky_mode_t)atoi(argv[1]);
   config_write();
-  printf("Mode saved: %d\n", config_values.linkyMode);
+  printf("Mode saved: %d\n", config_values.linky_mode);
   get_linky_mode_command(1, NULL);
   return 0;
 }
@@ -733,7 +743,7 @@ static int set_refresh_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  config_values.refreshRate = atoi(argv[1]);
+  config_values.refresh_rate = atoi(argv[1]);
   config_write();
   printf("Refresh saved\n");
   get_refresh_command(1, NULL);
@@ -746,7 +756,7 @@ static int get_refresh_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  printf("Refresh: %d\n", config_values.refreshRate);
+  printf("Refresh: %d\n", config_values.refresh_rate);
   return 0;
 }
 
