@@ -86,8 +86,8 @@ static led_timing_t led_timing[] = {
     {LED_FACTORY_RESET_ADVERT,  101,    LED_FLASH,      0x00F0FF,                       100,    100,    FOREVER, 0, 0,},
     {LED_BOOT,                  100,    LED_FLASH_MODE, 0x000000,                       100,    0,      1,       0, 0,},
     {LED_PAIRING,               99,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
-    {LED_FLASH_OK,              98,     LED_FLASH,      0xB04000,                       500,    500,    FOREVER, 0, 0,},
-    {LED_FLASH_OK_TUYA,         97,     LED_FLASH,      0x00FF00,                       500,    500,    FOREVER, 0, 0,},
+    {LED_FLASH_OK_TUYA,         98,     LED_FLASH,      0xB04000,                       500,    500,    FOREVER, 0, 0,},
+    {LED_FLASH_OK,              97,     LED_FLASH,      0x00FF00,                       500,    500,    FOREVER, 0, 0,},
     {LED_FLASH_FAILED,          96,     LED_FLASH,      0xFF0000,                       500,    500,    FOREVER, 0, 0,},
 
     {LED_CONNECTING,            60,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
