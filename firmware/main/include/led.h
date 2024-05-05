@@ -46,6 +46,10 @@ typedef enum
 
     LED_PAIRING,
 
+    LED_FLASH_OK,
+    LED_FLASH_FAILED,
+    LED_FLASH_OK_TUYA,
+
     LED_OTA_AVAILABLE,
     LED_OTA_IN_PROGRESS,
 
