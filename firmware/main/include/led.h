@@ -76,5 +76,6 @@ void led_stop_pattern(led_pattern_t pattern);
 void led_set_color(uint32_t color);
 
 void led_usb_event(bool connected);
+void led_reset_sleep();
 
 #endif /* LED_H */

@@ -30,6 +30,8 @@
 
 #define FOREVER UINT32_MAX
 
+#define LED_SLEEP_TIME 3600 * 1000 // in ms
+
 /*==============================================================================
  Local Type
 ===============================================================================*/
@@ -47,11 +49,12 @@ typedef struct led_timing_t
     const uint16_t priority;
     const led_type_t type;
     const uint32_t color;
-    const uint32_t tOn;
-    const uint32_t tOff;
+    const uint32_t t_on;
+    const uint32_t t_off;
     const uint32_t repeat;
-    const uint8_t only_usb_powered;
-    uint8_t in_progress;
+    const bool only_usb_powered;
+    bool in_progress;
+    const bool can_sleep;
 } led_timing_t;
 
 /*==============================================================================
@@ -61,7 +64,7 @@ static void led_pattern_task(void *pattern_ptr);
 static void led_task(void *pvParameters);
 static void led_set_rgb(uint32_t color, uint32_t brightness);
 static void led_start_next_pattern();
-
+static bool led_can_i_sleep();
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -81,29 +84,29 @@ const uint32_t led_color_mode[] = {
 
 // clang-format off
 static led_timing_t led_timing[] = {
-    {LED_FACTORY_RESET,         103,    LED_FLASH,      0x00F0FF,                      2000,    100,    FOREVER, 0, 0,},
-    {LED_COLOR_WHEEL,           102,    LED_MANUAL,     0x000000,                         0,    0,      FOREVER, 0, 0,},
-    {LED_FACTORY_RESET_ADVERT,  101,    LED_FLASH,      0x00F0FF,                       100,    100,    FOREVER, 0, 0,},
-    {LED_BOOT,                  100,    LED_FLASH_MODE, 0x000000,                       100,    0,      1,       0, 0,},
-    {LED_PAIRING,               99,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
-    {LED_FLASH_OK_TUYA,         98,     LED_FLASH,      0xB04000,                       500,    500,    FOREVER, 0, 0,},
-    {LED_FLASH_OK,              97,     LED_FLASH,      0x00FF00,                       500,    500,    FOREVER, 0, 0,},
-    {LED_FLASH_FAILED,          96,     LED_FLASH,      0xFF0000,                       500,    500,    FOREVER, 0, 0,},
+    {LED_FACTORY_RESET,         103,    LED_FLASH,      0x00F0FF,                      2000,    100,    FOREVER, 0, 0, false,},
+    {LED_COLOR_WHEEL,           102,    LED_MANUAL,     0x000000,                         0,    0,      FOREVER, 0, 0, false,},
+    {LED_FACTORY_RESET_ADVERT,  101,    LED_FLASH,      0x00F0FF,                       100,    100,    FOREVER, 0, 0, false,},
+    {LED_BOOT,                  100,    LED_FLASH_MODE, 0x000000,                       100,    0,      1,       0, 0, false,},
+    {LED_PAIRING,               99,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0, false,},
+    {LED_FLASH_OK_TUYA,         98,     LED_FLASH,      0xB04000,                       500,    500,    FOREVER, 0, 0, false,},
+    {LED_FLASH_OK,              97,     LED_FLASH,      0x00FF00,                       500,    500,    FOREVER, 0, 0, false,},
+    {LED_FLASH_FAILED,          96,     LED_FLASH,      0xFF0000,                       500,    500,    FOREVER, 0, 0, false,},
 
-    {LED_CONNECTING,            60,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
-    {LED_CONNECTING_FAILED,     61,     LED_FLASH,      0xFF0000,                       50,     100,    4,       0, 0,},
-    
-    {LED_SENDING,               70,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0,},
-    {LED_SEND_FAILED,           72,     LED_FLASH,      0xFF0000,                       50,     100,    5,       0, 0,},
-    {LED_SEND_OK,               71,     LED_FLASH,      0x00FF00,                       300,    0,      1,       0, 0,},
+    {LED_CONNECTING,            60,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0, true, },
+    {LED_CONNECTING_FAILED,     61,     LED_FLASH,      0xFF0000,                       50,     100,    4,       0, 0, true, },
 
-    {LED_LINKY_READING,         50,     LED_FLASH,      0xFF8000,                       100,    900,    FOREVER, 0, 0,},
-    {LED_LINKY_FAILED,          51,     LED_FLASH,      0xFF0000,                       50,     100,    3,       0, 0,},
-    
-    {LED_NO_CONFIG,             20,     LED_FLASH,      0xFF0000,                       50,     100,    2,       0, 0,},
-    
-    {LED_OTA_AVAILABLE,         10,     LED_WAVE,       0x0000FF,                       0,      1000,   FOREVER, 1, 0,},
-    {LED_OTA_IN_PROGRESS,       11,     LED_WAVE,       0xFFFF00,                       0,      1000,   FOREVER, 0, 0,},
+    {LED_SENDING,               70,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0, true, },
+    {LED_SEND_FAILED,           72,     LED_FLASH,      0xFF0000,                       50,     100,    5,       0, 0, true, },
+    {LED_SEND_OK,               71,     LED_FLASH,      0x00FF00,                       300,    0,      1,       0, 0, true, },
+
+    {LED_LINKY_READING,         50,     LED_FLASH,      0xFF8000,                       100,    900,    FOREVER, 0, 0, true, },
+    {LED_LINKY_FAILED,          51,     LED_FLASH,      0xFF0000,                       50,     100,    3,       0, 0, true, },
+
+    {LED_NO_CONFIG,             20,     LED_FLASH,      0xFF0000,                       50,     100,    2,       0, 0, false,},
+
+    {LED_OTA_AVAILABLE,         10,     LED_WAVE,       0x0000FF,                       0,      1000,   FOREVER, 1, 0, true, },
+    {LED_OTA_IN_PROGRESS,       11,     LED_WAVE,       0xFFFF00,                       0,      1000,   FOREVER, 0, 0, true, },
 
 };
 
@@ -120,11 +123,37 @@ static bool led_want_to_stop = false;
 SemaphoreHandle_t mutex = NULL;
 uint32_t last_color = 0;
 
+static uint32_t sleep_last_time = 0;
+static bool sleep_reset = false;
+
 // clang-format on
 
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
+
+static bool led_can_i_sleep()
+{
+    if (sleep_reset)
+    {
+        sleep_last_time = MILLIS;
+        sleep_reset = false;
+    }
+
+    ESP_LOGD(TAG, "MILLIS: %ld, sleep_last_time: %ld, cal: %ld", MILLIS, sleep_last_time, sleep_last_time + LED_SLEEP_TIME);
+    if (MILLIS > sleep_last_time + LED_SLEEP_TIME)
+    {
+        ESP_LOGD(TAG, "Can sleep");
+        return true;
+    }
+    ESP_LOGD(TAG, "Can't sleep");
+    return false;
+}
+
+void led_reset_sleep()
+{
+    sleep_reset = true;
+}
 
 uint32_t led_init()
 {
@@ -288,6 +317,12 @@ static void led_task(void *pvParameters)
             continue;
         }
 
+        if (timing->can_sleep && led_can_i_sleep())
+        {
+            ESP_LOGD(TAG, "LED Sleeping, skipping pattern %d", pattern);
+            continue;
+        }
+
         uint32_t most_priority = 0;
         for (int i = 0; i < led_pattern_size; i++)
         {
@@ -343,7 +378,7 @@ static void led_pattern_task(void *pattern_ptr)
         ESP_LOGE(TAG, "Pattern is NULL");
         vTaskDelete(NULL);
     }
-    ESP_LOGD(TAG, "Pattern %ld, type: %d, color: %ld, tOn: %ld, tOff: %ld, repeat: %ld", pattern->id, pattern->type, pattern->color, pattern->tOn, pattern->tOff, pattern->repeat);
+    ESP_LOGD(TAG, "Pattern %ld, type: %d, color: %ld, t_on: %ld, t_off: %ld, repeat: %ld", pattern->id, pattern->type, pattern->color, pattern->t_on, pattern->t_off, pattern->repeat);
     uint32_t repeat = pattern->repeat;
     while ((repeat == FOREVER || repeat > 0) && led_want_to_stop == false)
     {
@@ -352,7 +387,7 @@ static void led_pattern_task(void *pattern_ptr)
         case LED_FLASH:
             led_set_color(pattern->color);
 
-            stop_time = xTaskGetTickCount() + pattern->tOn / portTICK_PERIOD_MS;
+            stop_time = xTaskGetTickCount() + pattern->t_on / portTICK_PERIOD_MS;
             while (xTaskGetTickCount() < stop_time)
             {
                 if (led_want_to_stop)
@@ -364,7 +399,7 @@ static void led_pattern_task(void *pattern_ptr)
 
             led_set_color(0);
 
-            stop_time = xTaskGetTickCount() + pattern->tOff / portTICK_PERIOD_MS;
+            stop_time = xTaskGetTickCount() + pattern->t_off / portTICK_PERIOD_MS;
             while (xTaskGetTickCount() < stop_time)
             {
                 if (led_want_to_stop)
@@ -382,7 +417,7 @@ static void led_pattern_task(void *pattern_ptr)
         case LED_FLASH_MODE:
             led_set_color(led_color_mode[config_values.mode]);
 
-            stop_time = xTaskGetTickCount() + pattern->tOn / portTICK_PERIOD_MS;
+            stop_time = xTaskGetTickCount() + pattern->t_on / portTICK_PERIOD_MS;
             while (xTaskGetTickCount() < stop_time)
             {
                 if (led_want_to_stop)
@@ -394,7 +429,7 @@ static void led_pattern_task(void *pattern_ptr)
 
             led_set_color(0);
 
-            stop_time = xTaskGetTickCount() + pattern->tOff / portTICK_PERIOD_MS;
+            stop_time = xTaskGetTickCount() + pattern->t_off / portTICK_PERIOD_MS;
             while (xTaskGetTickCount() < stop_time)
             {
                 if (led_want_to_stop)
@@ -422,7 +457,7 @@ static void led_pattern_task(void *pattern_ptr)
                 vTaskDelay(5 / portTICK_PERIOD_MS);
             }
 
-            stop_time = xTaskGetTickCount() + pattern->tOn / portTICK_PERIOD_MS;
+            stop_time = xTaskGetTickCount() + pattern->t_on / portTICK_PERIOD_MS;
             while (xTaskGetTickCount() < stop_time)
             {
                 if (led_want_to_stop)
@@ -443,7 +478,7 @@ static void led_pattern_task(void *pattern_ptr)
                 vTaskDelay(5 / portTICK_PERIOD_MS);
             }
 
-            stop_time = xTaskGetTickCount() + pattern->tOff / portTICK_PERIOD_MS;
+            stop_time = xTaskGetTickCount() + pattern->t_off / portTICK_PERIOD_MS;
             while (xTaskGetTickCount() < stop_time)
             {
                 if (led_want_to_stop)
@@ -509,6 +544,7 @@ void led_start_pattern(led_pattern_t pattern)
         ESP_LOGE(TAG, "led_pattern_queue is NULL");
         return;
     }
+
     xQueueSend(led_pattern_queue, &pattern, 0);
 }
 

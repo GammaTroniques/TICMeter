@@ -157,11 +157,11 @@ static void gpio_init_vusb()
 static void IRAM_ATTR gpio_pairing_isr_cb(void *arg)
 {
     uint32_t gpio_num = (uint32_t)arg;
-    esp_rom_printf("IT PAIR %ld\n", gpio_num);
     uint8_t level = gpio_get_level(gpio_num);
     if (level == 0) // if button is pushed
     {
         gpio_intr_disable(gpio_num);
+        led_reset_sleep();
         xQueueSendFromISR(gpio_pairing_button_isr_queue, &gpio_num, NULL);
     }
     portYIELD_FROM_ISR();
