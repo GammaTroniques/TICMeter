@@ -287,6 +287,7 @@ const char *const HAUnitsStr[] = {
     [POWER_VA] = "VA",
     [POWER_kVA] = "kVA",
     [POWER_W] = "W",
+    [POWER_kW] = "",
     [POWER_Q] = "var",
     [ENERGY] = "Wh",
     [ENERGY_Q] = "VArh",
@@ -295,7 +296,7 @@ const char *const HAUnitsStr[] = {
     [TEXT] = "",
     [TIME] = "s",
     [TIME_M] = "s",
-    [BOOL] = "",
+    [CLASS_BOOL] = "",
     [BYTES] = "bytes",
 };
 
@@ -332,6 +333,8 @@ const char *const linky_std_str_contract[] = {
 };
 
 const char *const linky_tuya_str_contract[] = {
+    [C_ANY] = "ANY",
+    [C_UNKNOWN] = "UNKNOWN",
     [C_BASE] = "BASE",
     [C_HC] = "HCHP",
     [C_HEURES_SUPER_CREUSES] = "HSC",
@@ -417,6 +420,8 @@ void linky_init(linky_mode_t mode, int RX)
             ESP_LOGE(TAG, "Failed to create PM lock: 0x%x", err);
         }
     }
+
+    linky_clear_data();
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
 }
 
@@ -991,7 +996,8 @@ void linky_print()
     ESP_LOGI(TAG, "-------------------");
     for (uint32_t i = 0; i < LinkyLabelListSize; i++)
     {
-
+        if (LinkyLabelList[i].data == NULL)
+            continue;
         if (linky_mode != LinkyLabelList[i].mode)
             continue;
 
@@ -999,53 +1005,73 @@ void linky_print()
         switch (LinkyLabelList[i].type)
         {
         case STRING:
-            if (strlen((char *)LinkyLabelList[i].data) > 0) // print only if we have a value
-                // ESP_LOGI(TAG, "%s: %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
-                strncpy(str_value, (char *)LinkyLabelList[i].data, strlen((char *)LinkyLabelList[i].data));
+            if (strnlen((char *)LinkyLabelList[i].data, LinkyLabelList[i].size) == 0) // print only if we have a value
+                continue;
+            // ESP_LOGI(TAG, "%s: %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
+            snprintf(str_value, sizeof(str_value), "%s", (char *)LinkyLabelList[i].data);
             break;
         case UINT8:
-            if (*(uint8_t *)LinkyLabelList[i].data != UINT8_MAX) // print only if we have a value
-                // ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
-                sprintf(str_value, "%u", *(uint8_t *)LinkyLabelList[i].data);
+            if (*(uint8_t *)LinkyLabelList[i].data == UINT8_MAX) // print only if we have a value
+                continue;
+            // ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
+            snprintf(str_value, sizeof(str_value), "%u", *(uint8_t *)LinkyLabelList[i].data);
             break;
         case UINT16:
-            if (*(uint16_t *)LinkyLabelList[i].data != UINT16_MAX) // print only if we have a value
-                // ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
-                sprintf(str_value, "%u", *(uint16_t *)LinkyLabelList[i].data);
+            if (*(uint16_t *)LinkyLabelList[i].data == UINT16_MAX) // print only if we have a value
+                continue;
+            // ESP_LOGI(TAG, "%s: %u", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+            snprintf(str_value, sizeof(str_value), "%u", *(uint16_t *)LinkyLabelList[i].data);
             break;
         case UINT32:
-            if (*(uint32_t *)LinkyLabelList[i].data != UINT32_MAX) // print only if we have a value
-                // ESP_LOGI(TAG, "%s: %lu", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
-                sprintf(str_value, "%lu", *(uint32_t *)LinkyLabelList[i].data);
+            if (*(uint32_t *)LinkyLabelList[i].data == UINT32_MAX) // print only if we have a value
+                continue;
+            // ESP_LOGI(TAG, "%s: %lu", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
+            snprintf(str_value, sizeof(str_value), "%lu", *(uint32_t *)LinkyLabelList[i].data);
             break;
         case UINT64:
-            if (*(uint64_t *)LinkyLabelList[i].data != UINT64_MAX) // print only if we have a value
-                // ESP_LOGI(TAG, "%s: %llu", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
-                sprintf(str_value, "%llu", *(uint64_t *)LinkyLabelList[i].data);
+            if (*(uint64_t *)LinkyLabelList[i].data == UINT64_MAX) // print only if we have a value
+                continue;
+            // ESP_LOGI(TAG, "%s: %llu", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
+            snprintf(str_value, sizeof(str_value), "%llu", *(uint64_t *)LinkyLabelList[i].data);
             break;
         case UINT32_TIME:
         {
             time_label_t timeLabel = *(time_label_t *)LinkyLabelList[i].data;
-            if (timeLabel.value != UINT32_MAX) // print only if we have a value
-            {
-                struct tm *timeinfo = localtime(&timeLabel.time);
-                char timeString[20];
-                strftime(timeString, sizeof(timeString), "%d/%m/%Y %H:%M:%S", timeinfo);
-                // ESP_LOGI(TAG, "%s: %s %lu", LinkyLabelList[i].label, timeString, timeLabel.value);
-                sprintf(str_value, "%s - %lu", timeString, timeLabel.value);
-            }
+            if (timeLabel.value == UINT32_MAX) // print only if we have a value
+                continue;
+            struct tm *timeinfo = localtime(&timeLabel.time);
+            char timeString[20];
+            strftime(timeString, sizeof(timeString), "%d/%m/%Y %H:%M:%S", timeinfo);
+            // ESP_LOGI(TAG, "%s: %s %lu", LinkyLabelList[i].label, timeString, timeLabel.value);
+            snprintf(str_value, sizeof(str_value), "%s %lu", timeString, timeLabel.value);
+
             break;
         }
         default:
+            continue;
             break;
         }
-        if (strlen(str_value) > 0)
+        char *class = (char *)HAUnitsStr[LinkyLabelList[i].device_class];
+        if (class == NULL)
         {
-            ESP_LOGI(TAG, "%s (%s): %s %s", LinkyLabelList[i].name, LinkyLabelList[i].label, str_value, HAUnitsStr[LinkyLabelList[i].device_class]);
+            class = "";
         }
+        ESP_LOGI(TAG, "%s (%s): %s %s", LinkyLabelList[i].name, LinkyLabelList[i].label, str_value, class);
     }
-    ESP_LOGI(TAG, "Contract: %s", linky_tuya_str_contract[linky_contract]);
-    ESP_LOGI(TAG, "Mode: %s", linky_str_mode[linky_mode]);
+
+    char *contract = (char *)linky_tuya_str_contract[linky_contract];
+    if (contract == NULL)
+    {
+        contract = "";
+    }
+    ESP_LOGI(TAG, "Contract: %s", contract);
+
+    char *mode = (char *)linky_str_mode[linky_mode];
+    if (mode == NULL)
+    {
+        mode = "";
+    }
+    ESP_LOGI(TAG, "Mode: %s", mode);
     ESP_LOGI(TAG, "Three phases: %s", linky_three_phase ? "Yes" : "No");
 
     ESP_LOGI(TAG, "-------------------");
