@@ -111,6 +111,17 @@ static void log_error_if_nonzero(const char *message, int error_code)
     }
 }
 
+static void mqtt_remove_plus(char *topic)
+{
+    for (int j = 0; j < strlen(topic); j++)
+    {
+        if (topic[j] == '+')
+        {
+            topic[j] = '_';
+        }
+    }
+}
+
 static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor)
 {
     const esp_app_desc_t *app_desc = esp_app_get_description();
@@ -119,13 +130,11 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     cJSON_AddStringToObject(jsonDevice, "mdl", app_desc->project_name);
     cJSON_AddStringToObject(jsonDevice, "mf", MANUFACTURER);
     cJSON_AddStringToObject(jsonDevice, "sw", app_desc->version);
-    // serial
-    cJSON *sn = cJSON_CreateArray();
-    cJSON *cns = cJSON_CreateArray();
-    cJSON_AddItemToArray(sn, cJSON_CreateString("SN"));
-    cJSON_AddItemToArray(sn, cJSON_CreateString(efuse_values.serial_number));
-    cJSON_AddItemToObject(cns, "", sn);
-    cJSON_AddItemToObject(jsonDevice, "cns", cns);
+    cJSON_AddStringToObject(jsonDevice, "sn", efuse_values.serial_number);
+    char hw_version[15];
+    snprintf(hw_version, sizeof(hw_version), "%d.%d.%d", efuse_values.hw_version[0], efuse_values.hw_version[1], efuse_values.hw_version[2]);
+    cJSON_AddStringToObject(jsonDevice, "hw", hw_version);
+    cJSON_AddStringToObject(jsonDevice, "ids", efuse_values.serial_number);
 
     cJSON *sensorConfig = cJSON_CreateObject(); // Create the root object
     cJSON_AddStringToObject(sensorConfig, "~", config_values.mqtt.topic);
@@ -159,6 +168,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     }
     else
     {
+        mqtt_remove_plus(state_topic);
         cJSON_AddStringToObject(sensorConfig, "stat_t", state_topic);
     }
     if (sensor.device_class == TIMESTAMP)
@@ -214,6 +224,7 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
 
 uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
 {
+    static bool first = true;
     mqtt_sensors_count = 0;
     mqtt_sent_count = 0;
     if (mqtt_state == MQTT_DEINIT)
@@ -224,8 +235,9 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
 
     uint8_t has_error = 0;
     mqtt_topics.ha_discovery_configured_temp = 0;
-    if (config_values.mode == MODE_MQTT_HA && mqtt_topics.ha_discovery_configured == 0)
+    if ((config_values.mode == MODE_MQTT_HA && mqtt_topics.ha_discovery_configured == 0) || first)
     {
+        first = false;
         ESP_LOGW(TAG, "Home Assistant Discovery not configured, configuring...");
         mqtt_setup_ha_discovery(linkydata);
     }
@@ -334,6 +346,10 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
                 snprintf(strValue, sizeof(strValue), "Monophasé");
             }
         }
+        else if (LinkyLabelList[i].device_class == TIME_M)
+        {
+            snprintf(strValue, sizeof(strValue), "%lu", *((uint32_t *)LinkyLabelList[i].data) / 1000);
+        }
 
         mqtt_sensors_count++;
         // esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
@@ -371,17 +387,18 @@ void mqtt_setup_ha_discovery()
 {
     char mqttBuffer[1024];
     char config_topic[100];
+    bool delete = false;
 
     for (int i = 0; i < LinkyLabelListSize; i++)
     {
-        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
+        if (LinkyLabelList[i].data == NULL)
         {
             continue;
         }
 
-        if (LinkyLabelList[i].data == NULL)
+        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
         {
-            continue;
+            delete = true;
         }
 
         ESP_LOGD(TAG, "HA Discovery: %s", LinkyLabelList[i].label);
@@ -389,35 +406,48 @@ void mqtt_setup_ha_discovery()
         {
         case UINT8:
             if (*(uint8_t *)LinkyLabelList[i].data == UINT8_MAX)
-                continue;
+            {
+                delete = true;
+            }
             ESP_LOGD(TAG, "Adding %s: value = %d", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
             break;
         case UINT16:
             if (*(uint16_t *)LinkyLabelList[i].data == UINT16_MAX)
-                continue;
+            {
+                delete = true;
+            }
             ESP_LOGD(TAG, "Adding %s: value = %d", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
             break;
         case UINT32:
             if (*(uint32_t *)LinkyLabelList[i].data == UINT32_MAX)
-                continue;
+            {
+                delete = true;
+            }
             if (LinkyLabelList[i].device_class == ENERGY && *(uint32_t *)(LinkyLabelList[i].data) == 0)
-                continue;
-
+            {
+                delete = true;
+            }
             ESP_LOGD(TAG, "Adding %s: value = %ld", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
             break;
         case UINT64:
             if (*(uint64_t *)LinkyLabelList[i].data == UINT64_MAX)
-                continue;
+            {
+                delete = true;
+            }
             ESP_LOGD(TAG, "Adding %s: value = %lld", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
             break;
         case STRING:
             if (strlen((char *)LinkyLabelList[i].data) == 0)
-                continue;
+            {
+                delete = true;
+            }
             ESP_LOGD(TAG, "Adding %s: value = %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
             break;
         case UINT32_TIME:
             if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX)
-                continue;
+            {
+                delete = true;
+            }
             ESP_LOGD(TAG, "Adding %s: value = %lu", LinkyLabelList[i].label, ((time_label_t *)LinkyLabelList[i].data)->value);
             break;
         case HA_NUMBER:
@@ -429,7 +459,17 @@ void mqtt_setup_ha_discovery()
         }
         mqtt_create_sensor(mqttBuffer, config_topic, LinkyLabelList[i]);
         mqtt_topic_comliance(config_topic, sizeof(config_topic));
-        esp_mqtt_client_enqueue(mqtt_client, config_topic, mqttBuffer, 0, 2, 1, true);
+        if (delete)
+        {
+            ESP_LOGW(TAG, "Delete %s", config_topic);
+            esp_mqtt_client_enqueue(mqtt_client, config_topic, "", 0, 1, 0, true);
+            delete = false;
+        }
+        else
+        {
+            esp_mqtt_client_enqueue(mqtt_client, config_topic, mqttBuffer, 0, 2, 1, true);
+        }
+
         mqtt_sensors_count++;
     }
     ESP_LOGI(TAG, "Home Assistant Discovery done");
@@ -621,7 +661,7 @@ int mqtt_init(void)
     snprintf(uri, sizeof(uri), "mqtt://%s:%d", config_values.mqtt.host, config_values.mqtt.port);
     esp_mqtt_client_config_t mqtt_cfg = {
         // .session.message_retransmit_timeout = 500,
-        .outbox.limit = 32 * 1024,
+        .outbox.limit = 64 * 1024,
         .credentials.username = config_values.mqtt.username,
         .credentials.authentication.password = config_values.mqtt.password,
         .task = {

@@ -278,6 +278,7 @@ typedef enum
     TENSION,
     TEXT,
     TIME,
+    TIME_M, // ms
     CLASS_BOOL,
     BYTES,
 } HADeviceClass;

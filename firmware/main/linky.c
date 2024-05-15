@@ -163,10 +163,10 @@ const LinkyGroup LinkyLabelList[] =
 
     {999, "Energie injectée totale",            "EAIT",        &linky_data.std.EAIT,          UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "mdi:transmission-tower-export",       0x0702, 0x0001,  ZB_RP, ZB_UINT48,   },
 
-    {000, "Energie réactive Q1 totale",         "ERQ1",        &linky_data.std.ERQ1,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x0305,  ZB_RP, ZB_INT16,    },
-    {000, "Energie réactive Q2 totale",         "ERQ2",        &linky_data.std.ERQ2,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x050E,  ZB_RP, ZB_INT16,    },
-    {000, "Energie réactive Q3 totale",         "ERQ3",        &linky_data.std.ERQ3,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x090E,  ZB_RP, ZB_INT16,    },
-    {000, "Energie réactive Q4 totale",         "ERQ4",        &linky_data.std.ERQ4,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "",                                    0x0B04, 0x0A0E,  ZB_RP, ZB_INT16,    },
+    {000, "Energie réactive Q1 totale",         "ERQ1",        &linky_data.std.ERQ1,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "mdi:lightning-bolt",                  0x0B04, 0x0305,  ZB_RP, ZB_INT16,    },
+    {000, "Energie réactive Q2 totale",         "ERQ2",        &linky_data.std.ERQ2,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "mdi:lightning-bolt",                  0x0B04, 0x050E,  ZB_RP, ZB_INT16,    },
+    {000, "Energie réactive Q3 totale",         "ERQ3",        &linky_data.std.ERQ3,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "mdi:lightning-bolt",                  0x0B04, 0x090E,  ZB_RP, ZB_INT16,    },
+    {000, "Energie réactive Q4 totale",         "ERQ4",        &linky_data.std.ERQ4,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "mdi:lightning-bolt",                  0x0B04, 0x0A0E,  ZB_RP, ZB_INT16,    },
 
     {127, "Courant efficace Phase 1",           "IRMS1",       &linky_data.std.IRMS1,         UINT16,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0508,  ZB_RP, ZB_UINT16,   },
     {128, "Courant efficace Phase 2",           "IRMS2",       &linky_data.std.IRMS2,         UINT16,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  CURRENT,     "",                                    0x0B04, 0x0908,  ZB_RP, ZB_UINT16,   },
@@ -198,10 +198,10 @@ const LinkyGroup LinkyLabelList[] =
     {000, "Puissance max soutirée Hier 1",      "SMAXSN1-1",   &linky_data.std.SMAXSN1_1,     UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0013,  ZB_RO, ZB_INT16,    },
     {000, "Puissance max soutirée Hier 2",      "SMAXSN2-1",   &linky_data.std.SMAXSN2_1,     UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0014,  ZB_RO, ZB_INT16,    },
     {000, "Puissance max soutirée Hier 3",      "SMAXSN3-1",   &linky_data.std.SMAXSN3_1,     UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0015,  ZB_RO, ZB_INT16,    },
-    {000, "Heure Puissance max soutirée Hier",  "maxs-1_time", &linky_data.std.SMAXSN_1.time, UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0033,  ZB_RO, ZB_UINT64,    },
-    {000, "Heure Puissance max soutirée Hier 1","maxs1-1_time",&linky_data.std.SMAXSN1_1.time,UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0034,  ZB_RO, ZB_UINT64,    },
-    {000, "Heure Puissance max soutirée Hier 2","maxs2-1_time",&linky_data.std.SMAXSN2_1.time,UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0035,  ZB_RO, ZB_UINT64,    },
-    {000, "Heure Puissance max soutirée Hier 3","maxs3-1_time",&linky_data.std.SMAXSN3_1.time,UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0036,  ZB_RO, ZB_UINT64,    },
+    {000, "Heure Puissance max soutirée Hier",  "maxs-1_time", &linky_data.std.SMAXSN_1.time, UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,    "",                                    0xFF42, 0x0033,  ZB_RO, ZB_UINT64,    },
+    {000, "Heure Puissance max soutirée Hier 1","maxs1-1_time",&linky_data.std.SMAXSN1_1.time,UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,    "",                                    0xFF42, 0x0034,  ZB_RO, ZB_UINT64,    },
+    {000, "Heure Puissance max soutirée Hier 2","maxs2-1_time",&linky_data.std.SMAXSN2_1.time,UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,    "",                                    0xFF42, 0x0035,  ZB_RO, ZB_UINT64,    },
+    {000, "Heure Puissance max soutirée Hier 3","maxs3-1_time",&linky_data.std.SMAXSN3_1.time,UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,    "",                                    0xFF42, 0x0036,  ZB_RO, ZB_UINT64,    },
 
     {134, "Puissance injectée",                 "SINSTI",      &linky_data.std.SINSTI,        UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "mdi:transmission-tower-export",       0xFF42, 0x0016,  ZB_RP, ZB_UINT32,   },
     {135, "Puissance max injectée Auj.",        "SMAXIN",      &linky_data.std.SMAXIN,        UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  POWER_VA,    "",                                    0xFF42, 0x0017,  ZB_RO, ZB_UINT32,   },
@@ -243,8 +243,8 @@ const LinkyGroup LinkyLabelList[] =
     {000, "Temps d'actualisation",              "set-refresh", &config_values.refresh_rate,    HA_NUMBER,    0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIME,        "mdi:refresh",                         0x0000, 0x0000,  ZB_NO, ZB_NO        },
     {105, "Mode TIC",                           "mode-tic",    &linky_mode,                   UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:translate",                       0xFF42, 0x002c,  ZB_RO, ZB_UINT8     },
     {106, "Mode Electrique",                    "mode-elec",   &linky_three_phase,            UINT16,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:power-plug-outline",              0xFF42, 0x002a,  ZB_RO, ZB_UINT8     },
-    {000, "Dernière actualisation",             "timestamp",   &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
-    {104, "Temps de fonctionnement",            "uptime",      &linky_data.uptime,            UINT64,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     TIME,        "mdi:clock-time-eight-outline",        0xFF42, 0x002d,  ZB_RO, ZB_UINT48    },
+ // {000, "Dernière actualisation",             "timestamp",   &linky_data.timestamp,         UINT64,       0,      ANY,  C_ANY,   G_ANY,  STATIC_VALUE,  TIMESTAMP,   "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
+    {104, "Temps de fonctionnement",            "uptime",      &linky_data.uptime,            UINT64,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     TIME_M,      "mdi:clock-time-eight-outline",        0xFF42, 0x002d,  ZB_RO, ZB_UINT48    },
  // {000, "Free RAM",                           "free-ram",    &linky_free_heap_size,         UINT32,       0,      ANY,  C_ANY,   G_ANY,  REAL_TIME,     BYTES,       "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO        },
 
 };
@@ -269,13 +269,14 @@ const char *const HADeviceClassStr[] = {
     [POWER_VA] = "apparent_power",
     [POWER_kVA] = "power",
     [POWER_W] = "power",
-    [POWER_Q] = "power",
+    [POWER_Q] = "reactive_power",
     [ENERGY] = "energy",
-    [ENERGY_Q] = "energy",
+    [ENERGY_Q] = "", // reactive_energy
     [TIMESTAMP] = "timestamp",
     [TENSION] = "voltage",
     [TEXT] = "",
     [TIME] = "duration",
+    [TIME_M] = "duration",
     [BYTES] = "",
     [CLASS_BOOL] = "",
 };
@@ -286,13 +287,14 @@ const char *const HAUnitsStr[] = {
     [POWER_VA] = "VA",
     [POWER_kVA] = "kVA",
     [POWER_W] = "W",
-    [POWER_Q] = "VAr",
+    [POWER_Q] = "var",
     [ENERGY] = "Wh",
     [ENERGY_Q] = "VArh",
     [TIMESTAMP] = "",
     [TENSION] = "V",
     [TEXT] = "",
     [TIME] = "s",
+    [TIME_M] = "s",
     [BOOL] = "",
     [BYTES] = "bytes",
 };
