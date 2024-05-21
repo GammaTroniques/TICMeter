@@ -564,6 +564,15 @@ void gpio_pairing_button_task(void *pvParameters)
 void gpio_restart_in_pairing()
 {
     ESP_LOGI(TAG, "Saving pairing mode");
+    ESP_LOGI(TAG, "pairing: clear nvs for safety");
+    config_t save = config_values;
+    esp_err_t err = config_erase_partition("nvs");
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "nvs_flash_erase failed with 0x%X", err);
+    }
+    config_begin();
+    config_values = save;
     config_values.boot_pairing = 1;
     config_write();
     ESP_LOGI(TAG, "Restarting");

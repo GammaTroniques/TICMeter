@@ -222,6 +222,7 @@ esp_err_t wifi_connect()
         if (err == ESP_ERR_NVS_NOT_ENOUGH_SPACE)
         {
             ESP_LOGE(TAG, "NVS not enough space, clear NVS");
+            config_t save = config_values;
             err = config_erase_partition("nvs");
             if (err != ESP_OK)
             {
@@ -231,6 +232,7 @@ esp_err_t wifi_connect()
             {
                 ESP_LOGI(TAG, "NVS erased, retry wifi");
                 config_begin();
+                config_values = save;
                 config_write();
                 esp_restart();
             }

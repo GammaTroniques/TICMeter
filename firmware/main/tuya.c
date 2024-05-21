@@ -457,6 +457,20 @@ void tuya_fill_index(index_offset_t *out, linky_data_t *linky)
     }
 }
 
+uint32_t tuya_cap_value(uint64_t value_in)
+{
+    uint32_t value;
+    if (value_in > INT32_MAX)
+    {
+        value = INT32_MAX;
+    }
+    else
+    {
+        value = (uint32_t)value_in;
+    }
+    return value;
+}
+
 uint8_t tuya_send_data(linky_data_t *linky)
 {
     ESP_LOGI(TAG, "Send data to tuya");
@@ -480,8 +494,11 @@ uint8_t tuya_send_data(linky_data_t *linky)
     switch (linky_contract)
     {
     case C_BASE:
-        cJSON_AddNumberToObject(jsonObject, "111", now.index_total);
-        break;
+    {
+        cJSON_AddNumberToObject(jsonObject, "111", tuya_cap_value(now.index_total));
+    }
+
+    break;
     case C_HC:
     case C_EJP:
     case C_TEMPO:
@@ -489,9 +506,9 @@ uint8_t tuya_send_data(linky_data_t *linky)
     case C_SEM_WE_MERCREDI:
     case C_SEM_WE_VENDREDI:
     case C_ZEN_FLEX:
-        cJSON_AddNumberToObject(jsonObject, "111", now.index_total);
-        cJSON_AddNumberToObject(jsonObject, "112", now.index_hc);
-        cJSON_AddNumberToObject(jsonObject, "113", now.index_hp);
+        cJSON_AddNumberToObject(jsonObject, "111", tuya_cap_value(now.index_total));
+        cJSON_AddNumberToObject(jsonObject, "112", tuya_cap_value(now.index_hc));
+        cJSON_AddNumberToObject(jsonObject, "113", tuya_cap_value(now.index_hp));
         break;
 
     default:
@@ -512,6 +529,11 @@ uint8_t tuya_send_data(linky_data_t *linky)
 
         switch (LinkyLabelList[i].id)
         {
+
+        case 104:
+            cJSON_AddNumberToObject(jsonObject, "104", tuya_cap_value(linky_data.uptime / 1000));
+            continue;
+            break;
         case 105:
             switch (linky_mode)
             {
@@ -589,7 +611,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
-            cJSON_AddNumberToObject(jsonObject, strId, *value);
+            cJSON_AddNumberToObject(jsonObject, strId, tuya_cap_value(*value));
             break;
         }
         case UINT32_TIME:
@@ -597,7 +619,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
-            cJSON_AddNumberToObject(jsonObject, strId, *value);
+            cJSON_AddNumberToObject(jsonObject, strId, tuya_cap_value(*value));
             break;
         }
         case UINT64:
@@ -605,7 +627,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint64_t *value = (uint64_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT64_MAX)
                 continue;
-            cJSON_AddNumberToObject(jsonObject, strId, *value);
+            cJSON_AddNumberToObject(jsonObject, strId, tuya_cap_value(*value));
             break;
         }
         case STRING:
@@ -655,6 +677,7 @@ void tuya_pairing_task(void *pvParameters)
 {
     config_values.index_offset.value_saved = 0;
     config_values.pairing_state = TUYA_BLE_PAIRING;
+
     tuya_init();
 
     while (config_values.pairing_state != TUYA_WIFI_CONNECTING)
