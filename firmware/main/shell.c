@@ -579,7 +579,7 @@ static int get_tuya_command(int argc, char **argv)
   printf("%cTuya config:\n", 0x02);
   printf("Product ID: %s\n", TUYA_PRODUCT_ID);
   printf("Device UUID: %s\n", config_values.tuya.device_uuid);
-  printf("Device Auth", config_values.tuya.device_auth);
+  printf("Device Auth: %s\n", config_values.tuya.device_auth);
   printf("Tuya Bind Status: %d%c\n", config_values.pairing_state, 0x03);
   return 0;
 }

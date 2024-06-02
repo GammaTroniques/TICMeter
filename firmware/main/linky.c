@@ -334,7 +334,6 @@ const char *const linky_std_str_contract[] = {
 
 const char *const linky_tuya_str_contract[] = {
     [C_ANY] = "ANY",
-    [C_UNKNOWN] = "UNKNOWN",
     [C_BASE] = "BASE",
     [C_HC] = "HCHP",
     [C_HEURES_SUPER_CREUSES] = "HSC",
