@@ -646,9 +646,9 @@ static int linky_simulate(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
 
-  if (argc == 2 && atoi(argv[1]) == 1)
+  if (argc == 2)
   {
-    linky_want_debug_frame = 2;
+    linky_want_debug_frame = atoi(argv[1]);
   }
   else
   {

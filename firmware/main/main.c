@@ -123,7 +123,7 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
-  // linky_want_debug_frame = 4;
+  // linky_want_debug_frame = 2;
 
   // esp_pm_dump_locks(stdout);
   if (config_verify() || config_values.boot_pairing)
@@ -279,7 +279,7 @@ void main_task(void *pvParameters)
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
 
-    if (!linky_update() || !linky_presence())
+    if (!linky_update() /* || !linky_presence()*/)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed");
       led_start_pattern(LED_LINKY_FAILED);

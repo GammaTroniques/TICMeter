@@ -20,7 +20,6 @@
 #include "freertos/task.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
-#include "esp_log.h"
 #include "string.h"
 #include "esp_zigbee_core.h"
 #include "time.h"
