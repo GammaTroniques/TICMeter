@@ -538,7 +538,7 @@ static uint8_t linky_read()
 
     ESP_LOGI(TAG, "Buffered data length: %zu", length);
 
-    uart_set_rx_timeout(UART_NUM_1, 500 / portTICK_PERIOD_MS);
+    // uart_set_rx_timeout(UART_NUM_1, 500 / portTICK_PERIOD_MS);
 
     do
     {
