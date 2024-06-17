@@ -171,7 +171,7 @@ static void IRAM_ATTR gpio_vusb_isr_cb(void *arg)
 {
     uint32_t gpio_num = (uint32_t)arg;
     uint32_t level = gpio_get_level(gpio_num);
-    esp_rom_printf("IT USB %ld lvl: %ld\n", gpio_num, level);
+    // esp_rom_printf("IT USB %ld lvl: %ld\n", gpio_num, level);
     gpio_wakeup_disable(gpio_num);
     gpio_intr_disable(gpio_num);
     if (level == 0)
@@ -647,5 +647,5 @@ void gpio_peripheral_reinit()
     // gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
     gpio_init_adc_cali(adc1_handle, V_CONDO_PIN, &adc_capa_cali_handle, "VCondo");
     led_init();
-    linky_init(MODE_HIST, RX_LINKY);
+    linky_init(RX_LINKY);
 }

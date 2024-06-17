@@ -335,6 +335,9 @@ extern uint32_t linky_free_heap_size;
 
 extern const void *linky_protected_data[];
 extern const uint8_t linky_protected_data_size;
+
+extern uint32_t linky_frame_size;
+
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/
@@ -345,7 +348,7 @@ extern const uint8_t linky_protected_data_size;
  * @param mode: MODE_HIST, MODE_STD OR AUTO
  * @param RX: The RX pin of the Linky
  */
-void linky_init(linky_mode_t mode, int RX);
+void linky_init(int RX);
 
 /**
  * @brief Get new data from the linky (read, decode and store in linky_data)

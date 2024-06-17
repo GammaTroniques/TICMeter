@@ -235,7 +235,8 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
 
     uint8_t has_error = 0;
     mqtt_topics.ha_discovery_configured_temp = 0;
-    if ((config_values.mode == MODE_MQTT_HA && mqtt_topics.ha_discovery_configured == 0) || first)
+    ESP_LOGI(TAG, "ha_discovery_configured = %d", mqtt_topics.ha_discovery_configured);
+    if (config_values.mode == MODE_MQTT_HA && (/*&& mqtt_topics.ha_discovery_configured == 0 || */ first))
     {
         first = false;
         ESP_LOGW(TAG, "Home Assistant Discovery not configured, configuring...");
@@ -750,6 +751,7 @@ int mqtt_send()
         ESP_LOGD(TAG, "Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
     }
 
+    // ESP_LOGW(TAG, "set ha_discovery_configured to %d", mqtt_topics.ha_discovery_configured_temp);
     mqtt_topics.ha_discovery_configured = mqtt_topics.ha_discovery_configured_temp;
     led_stop_pattern(LED_SENDING);
 
@@ -777,7 +779,7 @@ int mqtt_send()
     }
     else
     {
-        ESP_LOGI(TAG, "Send Done");
+        ESP_LOGI(TAG, "Send Done: %d msg", mqtt_sent_count);
     }
     xTaskCreate(mqtt_disconnect_task, "mqtt_disconnect_task", 4096, NULL, 5, NULL);
     led_start_pattern(LED_SEND_OK);
