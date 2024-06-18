@@ -475,13 +475,6 @@ uint8_t tuya_send_data(linky_data_t *linky)
 {
     ESP_LOGI(TAG, "Send data to tuya");
     cJSON *jsonObject = cJSON_CreateObject(); // Create the root object
-    if (config_values.index_offset.value_saved == 0)
-    {
-        ESP_LOGI(TAG, "Index offset not saved, skip tuya saving...");
-        tuya_fill_index(&config_values.index_offset, linky);
-        config_values.index_offset.value_saved = 1;
-        config_write();
-    }
 
     // add index:
     index_offset_t now = {0};

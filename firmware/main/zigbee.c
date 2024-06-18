@@ -599,8 +599,6 @@ static void zigbee_task(void *pvParameters)
         ESP_LOGI(TAG, "Attributes count changed: %ld -> %ld", config_values.zigbee.last_attribute_count, attributes_count);
         config_values.zigbee.last_attribute_count = attributes_count;
         config_write();
-        ESP_LOGI(TAG, "Potential crash incoming: Wait 10 seconds before pressing the factory reset button.");
-        vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
     //------------------ Cluster list ------------------
     esp_zb_cluster_list_t *esp_zb_cluster_list = esp_zb_zcl_cluster_list_create();

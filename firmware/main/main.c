@@ -52,6 +52,7 @@
 
 #include "esp_heap_trace.h"
 #include "esp_err.h"
+#include "esp_system.h"
 
 /*==============================================================================
  Local Define
@@ -93,11 +94,15 @@ void app_main(void)
 
   ESP_LOGI(MAIN_TAG, "Starting TICMeter...");
   power_init();
-  shell_wake_reason();
+  if (shell_wake_reason() == ESP_RST_BROWNOUT)
+  {
+    ESP_LOGE(MAIN_TAG, "Brownout detected sleeping for 30s...");
+    vTaskDelay(30000 / portTICK_PERIOD_MS);
+  }
   gpio_init_pins();
   config_begin();
   led_start_pattern(LED_BOOT);
-  linky_init(MODE_HIST, RX_LINKY);
+  linky_init(RX_LINKY);
   esp_pm_lock_create(ESP_PM_APB_FREQ_MAX, 0, "main_init", &main_init_lock);
   esp_pm_lock_acquire(main_init_lock);
 
@@ -125,7 +130,6 @@ void app_main(void)
 
   // linky_want_debug_frame = 2;
 
-  // esp_pm_dump_locks(stdout);
   if (config_verify() || config_values.boot_pairing)
   {
     // esp_pm_lock_release(main_init_lock);
@@ -136,12 +140,14 @@ void app_main(void)
       config_values.boot_pairing = 0;
       config_write();
       gpio_start_pariring();
+      vTaskDelay(portMAX_DELAY);
     }
     else
     {
       ESP_LOGW(MAIN_TAG, "No config found. Waiting for config...");
     }
 
+    esp_pm_lock_release(main_init_lock);
     while (1)
     {
       if (gpio_start_push_time + 5000 < MILLIS && !config_values.boot_pairing) // want 5s after button push
@@ -150,15 +156,14 @@ void app_main(void)
       }
       vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
-    // esp_pm_lock_acquire(main_init_lock);
   }
   ESP_LOGI(MAIN_TAG, "Config found. Starting...");
 
   vTaskDelay(200 / portTICK_PERIOD_MS); // for led pattern
 
-  if (config_values.mode == MODE_ZIGBEE && !linky_update())
+  if (config_values.mode == MODE_ZIGBEE && !linky_update(false))
   {
-    while (!linky_update())
+    while (!linky_update(false))
     {
       ESP_LOGE(MAIN_TAG, "Cant find Linky: retrying every 10s before starting");
       vTaskDelay(10000 / portTICK_PERIOD_MS);
@@ -248,6 +253,7 @@ void app_main(void)
   xTaskCreate(main_task, "main_task_handle", 16 * 1024, NULL, PRIORITY_FETCH_LINKY, &main_task_handle); // start linky task
   esp_pm_lock_release(main_init_lock);
 }
+
 void main_task(void *pvParameters)
 {
   ESP_LOGI(MAIN_TAG, "Starting fetch linky data task");
@@ -267,6 +273,8 @@ void main_task(void *pvParameters)
     main_sleep_time = abs((int32_t)config_values.refresh_rate - (int32_t)fetching_time[config_values.mode]);
     // esp_pm_dump_locks(stdout);
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
+    ESP_LOGI(MAIN_TAG, "Frame size: %lu", linky_frame_size);
+
     esp_pm_lock_release(main_init_lock);
     while (main_sleep_time > 0)
     {
@@ -274,18 +282,20 @@ void main_task(void *pvParameters)
       main_sleep_time--;
     }
 
-    esp_pm_lock_acquire(main_init_lock);
     gpio_peripheral_reinit();
+    ESP_LOGI(MAIN_TAG, "Frame size: %lu", linky_frame_size);
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
 
-    if (!linky_update() /* || !linky_presence()*/)
+    if (!linky_update(true) /* || !linky_presence()*/)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed");
       led_start_pattern(LED_LINKY_FAILED);
       continue;
     }
 
+    esp_pm_lock_acquire(main_init_lock);
+    // esp_pm_dump_locks(stdout);
     err = main_send_data();
     if (err != ESP_OK)
     {
@@ -396,6 +406,16 @@ esp_err_t main_send_data()
     break;
   }
   case MODE_TUYA:
+    if (config_values.index_offset.value_saved == 0)
+    {
+      ESP_LOGI(MAIN_TAG, "Index offset not saved, reread Linky to be sure...");
+      linky_update(false);
+      linky_update(false);
+      tuya_fill_index(&config_values.index_offset, &linky_data);
+      config_values.index_offset.value_saved = 1;
+      config_write();
+    }
+
     err = wifi_connect();
     if (err == ESP_OK)
     {

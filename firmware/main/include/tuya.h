@@ -18,6 +18,7 @@
 #include "freertos/task.h"
 #include "linky.h"
 #include "tuya_iot.h"
+#include "config.h"
 
 /*==============================================================================
  Public Defines
@@ -51,5 +52,6 @@ extern void tuya_deinit();
 extern uint8_t tuya_send_data(linky_data_t *linky);
 extern uint8_t tuya_wait_event(tuya_event_id_t event, uint32_t timeout);
 extern uint8_t tuya_available();
+extern void tuya_fill_index(index_offset_t *out, linky_data_t *linky);
 
 #endif

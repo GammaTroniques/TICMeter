@@ -355,7 +355,7 @@ void linky_init(int RX);
  *
  * @return char: 1 if success, 0 if error
  */
-char linky_update(); // Update the data
+char linky_update(bool clear);
 
 /**
  * @brief Print all data read from the linky

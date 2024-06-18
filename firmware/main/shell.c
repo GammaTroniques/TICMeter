@@ -973,7 +973,7 @@ static int start_pairing_command(int argc, char **argv)
   return 0;
 }
 
-void shell_wake_reason()
+esp_reset_reason_t shell_wake_reason()
 {
   switch (esp_reset_reason())
   {
@@ -1014,6 +1014,7 @@ void shell_wake_reason()
   default:
     break;
   }
+  return esp_reset_reason();
 }
 
 static int pm_stats_command(int argc, char **argv)

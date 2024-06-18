@@ -45,4 +45,6 @@ esp_err_t power_set_frequency(uint32_t freq_Mhz);
 
 esp_err_t power_set_zigbee();
 
+uint32_t power_get_frequency();
+
 #endif /* TEMPLATE_H */

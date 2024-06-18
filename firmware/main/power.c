@@ -23,6 +23,7 @@
 #include "time.h"
 #include <unistd.h>
 #include "esp_timer.h"
+#include "esp_sleep.h"
 
 #include "power.h"
 #include "common.h"
@@ -56,10 +57,12 @@ Function Implementation
 ===============================================================================*/
 
 int enter_time = 0;
+int exit_time = 0;
 esp_err_t power_sleep_enter()
 {
     esp_err_t ret = ESP_OK;
     enter_time = esp_timer_get_time();
+    esp_rom_printf("entering sleep after %d ms\n", abs(enter_time - exit_time) / 1000);
     return ret;
 }
 
@@ -67,7 +70,32 @@ esp_err_t power_sleep_leave()
 {
     esp_err_t ret = ESP_OK;
     int delta = esp_timer_get_time() - enter_time;
-    esp_rom_printf("Leaving %ld\n", delta);
+    exit_time = esp_timer_get_time();
+    const char *wakeup_reason;
+    switch (esp_sleep_get_wakeup_cause())
+    {
+    case ESP_SLEEP_WAKEUP_TIMER:
+        wakeup_reason = "timer";
+        break;
+    case ESP_SLEEP_WAKEUP_GPIO:
+        wakeup_reason = "pin";
+        break;
+    case ESP_SLEEP_WAKEUP_UART:
+        wakeup_reason = "uart";
+        /* Hang-up for a while to switch and execuse the uart task
+         * Otherwise the chip may fall sleep again before running uart task */
+        vTaskDelay(1);
+        break;
+#if CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3
+    case ESP_SLEEP_WAKEUP_TOUCHPAD:
+        wakeup_reason = "touch";
+        break;
+#endif
+    default:
+        wakeup_reason = "other";
+        break;
+    }
+    esp_rom_printf("Wake %s after %d ms\n", wakeup_reason, delta / 1000);
     return ret;
 }
 
@@ -139,4 +167,10 @@ esp_err_t power_set_frequency(uint32_t freq_Mhz)
         ESP_LOGI(TAG, "Frequency set to %ld MHz", freq_Mhz);
     }
     return ret;
+}
+
+uint32_t power_get_frequency()
+{
+
+    return esp_clk_cpu_freq();
 }

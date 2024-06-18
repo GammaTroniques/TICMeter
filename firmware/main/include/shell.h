@@ -55,5 +55,5 @@ uint8_t tuya_restart();
 void shell_deinit();
 void shell_reinit();
 
-extern void shell_wake_reason();
+extern esp_reset_reason_t shell_wake_reason();
 #endif /* SHELL_H */
