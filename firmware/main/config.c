@@ -473,7 +473,7 @@ uint8_t config_verify()
         break;
     case MODE_MQTT:
     case MODE_MQTT_HA:
-        if (strlen(config_values.mqtt.host) == 0 || strlen(config_values.mqtt.username) == 0 || strlen(config_values.mqtt.password) == 0 || strlen(config_values.mqtt.topic) == 0)
+        if (strlen(config_values.mqtt.host) == 0 || strlen(config_values.mqtt.topic) == 0 || config_values.mqtt.port == 0)
         {
             // No MQTT host, username, password or topic
             return 1;
