@@ -386,7 +386,7 @@ esp_err_t main_send_data()
       goto send_error;
     }
 
-    if (gpio_vusb_connected() && main_next_update_check < MILLIS)
+    if (main_next_update_check < MILLIS)
     {
       ESP_LOGI(MAIN_TAG, "Checking for update");
       main_next_update_check = MILLIS + 3600000;
@@ -443,7 +443,7 @@ esp_err_t main_send_data()
       }
       err = ESP_OK;
     tuya_disconect:
-      if (gpio_vusb_connected() && main_next_update_check < MILLIS)
+      if (main_next_update_check < MILLIS)
       {
         ESP_LOGI(MAIN_TAG, "Checking for update");
         main_next_update_check = MILLIS + 3600000;

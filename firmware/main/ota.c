@@ -70,6 +70,7 @@ Public Variable
 // extern const uint8_t root_ca_cert_pem_start[] asm("_binary_ca_cert_pem_start");
 // extern const uint8_t root_ca_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 ota_state_t ota_state = OTA_IDLE;
+bool ota_available = false;
 
 /*==============================================================================
  Local Variable
@@ -345,15 +346,18 @@ int ota_get_latest(ota_version_t *version)
     if (result == 0)
     {
         ESP_LOGW(TAG, "No update available");
+        ota_available = false;
         return 0;
     }
     else if (result == 1)
     {
         ESP_LOGW(TAG, "Current version > latest version");
+        ota_available = false;
         return 0;
     }
     ESP_LOGI(TAG, "Update available");
     ota_state = OTA_AVAILABLE;
+    ota_available = true;
     if (!gpip_led_ota_task_handle)
     {
         led_start_pattern(LED_OTA_AVAILABLE);

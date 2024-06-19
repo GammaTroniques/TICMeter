@@ -150,6 +150,8 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
     if (sensor.device_class == CLASS_BOOL)
     {
         type = BOOL;
+        cJSON_AddStringToObject(sensorConfig, "pl_on", "1");
+        cJSON_AddStringToObject(sensorConfig, "pl_off", "0");
     }
     snprintf(config_topic, sizeof(state_topic), "homeassistant/%s/%s/%s/config", ha_sensors_str[type], mqtt_topics.name, sensor.label);
     if (strcmp(sensor.label, "ADCO") == 0 || strcmp(sensor.label, "ADSC") == 0)
@@ -312,7 +314,7 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         case UINT32_TIME:
         {
             time_label_t *timeLabel = (time_label_t *)LinkyLabelList[i].data;
-            if (timeLabel->value == UINT32_MAX)
+            if (timeLabel->value == UINT32_MAX || timeLabel->value == 0)
                 continue;
             snprintf(strValue, sizeof(strValue), "%lu", timeLabel->value);
             break;
@@ -449,7 +451,7 @@ void mqtt_setup_ha_discovery()
             ESP_LOGD(TAG, "Adding %s: value = %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
             break;
         case UINT32_TIME:
-            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX || ((time_label_t *)LinkyLabelList[i].data)->value == 0)
             {
                 delete = true;
             }
