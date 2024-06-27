@@ -139,7 +139,7 @@ typedef struct
     uint16_t URMS2;      //      3         V          Tension efficace, phase 2
     uint16_t URMS3;      //      3         V          Tension efficace, phase 3
 
-    uint16_t PREF;        //      2         kVA        Puissance app. de référence (PREF) 
+    uint32_t PREF;        //      2         kVA        Puissance app. de référence (PREF) 
     uint8_t PCOUP;       //      2         kVA        Puissance app. de coupure (PCOUP)
 
     uint32_t SINSTS;     //      5         VA         Puissance apparente soutirée instantanée

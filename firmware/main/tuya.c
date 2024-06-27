@@ -523,6 +523,19 @@ uint8_t tuya_send_data(linky_data_t *linky)
         switch (LinkyLabelList[i].id)
         {
 
+        case 102:
+            // Max power contract
+            uint32_t max_power = LinkyLabelList[i].data;
+            if (linky_mode == MODE_STD && linky_three_phase)
+            {
+                max_power *= 3;
+            }
+            cJSON_AddNumberToObject(jsonObject, "102", max_power);
+
+            cJSON_AddNumberToObject(jsonObject, "102", tuya_cap_value(now.index_production));
+            continue;
+            break;
+
         case 104:
             cJSON_AddNumberToObject(jsonObject, "104", tuya_cap_value(linky_data.uptime / 1000));
             continue;
