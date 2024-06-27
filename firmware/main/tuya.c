@@ -568,6 +568,10 @@ uint8_t tuya_send_data(linky_data_t *linky)
             break;
         case 107:
         {
+            if (linky_contract >= C_COUNT)
+            {
+                linky_contract = C_UNKNOWN;
+            }
             char *str = (char *)linky_tuya_str_contract[linky_contract];
             if (str == NULL)
             {
@@ -648,6 +652,8 @@ uint8_t tuya_send_data(linky_data_t *linky)
             break;
         }
     }
+
+    cJSON_AddStringToObject(jsonObject, "193", efuse_values.serial_number);
 
     char *json = cJSON_PrintUnformatted(jsonObject); // Convert the json object to string
     cJSON_Delete(jsonObject);                        // Delete the json object

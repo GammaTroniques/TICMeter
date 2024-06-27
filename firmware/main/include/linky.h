@@ -231,6 +231,7 @@ typedef enum
     C_SEM_WE_LUNDI,
     C_SEM_WE_MERCREDI,
     C_SEM_WE_VENDREDI,
+    C_COUNT,
 } linky_contract_t;
 
 typedef enum
