@@ -926,10 +926,6 @@ static char linky_decode()
     linky_data.timestamp = wifi_get_timestamp();
     linky_data.uptime = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
-    // remove spaces from contract name
-    remove_char(linky_data.hist.OPTARIF, ' ');
-    remove_char(linky_data.std.NGTF, ' ');
-
     linky_contract = linky_get_contract(&linky_data);
 
     switch (linky_mode)
@@ -1519,7 +1515,7 @@ void linky_print_debug_frame()
 linky_contract_t linky_get_contract(linky_data_t *data)
 {
     assert(data != NULL);
-    linky_contract_t contract = C_ANY;
+    linky_contract_t contract = C_UNKNOWN;
     char raw[20] = {0};
     switch (linky_mode)
     {
@@ -1530,7 +1526,7 @@ linky_contract_t linky_get_contract(linky_data_t *data)
         strncpy(raw, data->std.NGTF, MIN(sizeof(data->std.NGTF), sizeof(raw)));
         break;
     default:
-        ESP_LOGE(TAG, "linky_get_contract: Unknown mode");
+        ESP_LOGE(TAG, "linky_get_contract: Unknown linky mode: %d", linky_mode);
         return C_ANY;
         break;
     }
@@ -1544,7 +1540,7 @@ linky_contract_t linky_get_contract(linky_data_t *data)
             {
                 continue;
             }
-            if (strncmp(linky_hist_str_contract[i], raw, MIN(sizeof(linky_hist_str_contract[i]), sizeof(raw))) == 0)
+            if (strnstr(linky_hist_str_contract[i], raw, MIN(sizeof(linky_hist_str_contract[i]), sizeof(raw))) != NULL)
             {
                 contract = i;
                 break;
@@ -1558,7 +1554,7 @@ linky_contract_t linky_get_contract(linky_data_t *data)
             {
                 continue;
             }
-            if (strncmp(linky_std_str_contract[i], raw, MIN(sizeof(linky_std_str_contract[i]), sizeof(raw))) == 0)
+            if (strnstr(linky_std_str_contract[i], raw, MIN(sizeof(linky_std_str_contract[i]), sizeof(raw))) != NULL)
             {
                 contract = i;
                 break;
@@ -1566,9 +1562,14 @@ linky_contract_t linky_get_contract(linky_data_t *data)
         }
         break;
     default:
-        ESP_LOGE(TAG, "linky_get_contract: Unknown mode");
+        ESP_LOGE(TAG, "linky_get_contract: Unknown linky mode: %d", linky_mode);
         break;
     }
+    if (contract == C_UNKNOWN)
+    {
+        ESP_LOGE(TAG, "Unknown contract: %s", raw);
+    }
+
     return contract;
 }
 
