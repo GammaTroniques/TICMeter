@@ -1532,7 +1532,7 @@ linky_contract_t linky_get_contract(linky_data_t *data)
             {
                 continue;
             }
-            if (strnstr(linky_hist_str_contract[i], raw, MIN(sizeof(linky_hist_str_contract[i]), sizeof(raw))) != NULL)
+            if (strstr(linky_hist_str_contract[i], raw) != NULL || strstr(raw, linky_hist_str_contract[i]) != NULL)
             {
                 contract = i;
                 break;
@@ -1546,7 +1546,8 @@ linky_contract_t linky_get_contract(linky_data_t *data)
             {
                 continue;
             }
-            if (strnstr(linky_std_str_contract[i], raw, MIN(sizeof(linky_std_str_contract[i]), sizeof(raw))) != NULL)
+            // ESP_LOGD(TAG, "compare: \"%s\" \"%s\"", linky_std_str_contract[i], raw);
+            if (strstr(linky_std_str_contract[i], raw) != NULL || strstr(raw, linky_std_str_contract[i]) != NULL)
             {
                 contract = i;
                 break;
@@ -1559,7 +1560,8 @@ linky_contract_t linky_get_contract(linky_data_t *data)
     }
     if (contract == C_UNKNOWN)
     {
-        ESP_LOGE(TAG, "Unknown contract: %s", raw);
+        ESP_LOGE(TAG, "Unknown contract: \"%s\"", raw);
+        ESP_LOG_BUFFER_HEXDUMP(TAG, raw, sizeof(raw), ESP_LOG_ERROR);
     }
 
     return contract;

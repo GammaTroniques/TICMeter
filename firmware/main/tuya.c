@@ -383,7 +383,7 @@ char *tuya_replace(char *str, str_replace_t *replace)
             continue;
         }
         ESP_LOGD(TAG, "Compare %s with %s", str, _replace->look);
-        if (strnstr(str, _replace->look, strlen(str)) != NULL)
+        if (strstr(str, _replace->look) != NULL || strstr(_replace->look, str) != NULL)
         {
             ESP_LOGD(TAG, "Replace %s with %s", str, _replace->replace);
             str = (char *)_replace->replace;
