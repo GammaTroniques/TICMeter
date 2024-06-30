@@ -27,7 +27,8 @@
 #include "linky.h"
 #include "common.h"
 #include "efuse_table.h"
-
+#include "version.h"
+#include <assert.h>
 /*==============================================================================
  Public Defines
 ==============================================================================*/
@@ -162,16 +163,16 @@ typedef struct
     char hw_version[3];
 } efuse_t;
 
+#define HW_VERSION_CHECK(MAJOR, MINOR, PATCH) (efuse_values.hw_version[0] == MAJOR && efuse_values.hw_version[1] == MINOR && efuse_values.hw_version[2] == PATCH)
+
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
 extern const char *const MODES[];
-extern const char *GIT_TAG;
-extern const char *GIT_REV;
-extern const char *GIT_BRANCH;
-extern const char *BUILD_TIME;
 
-#define PRODUCTION (strlen(GIT_TAG) > 0)
+#ifdef GIT_TAG
+#define PRODUCTION 1
+#endif
 
 extern config_t config_values;
 extern efuse_t efuse_values;

@@ -445,7 +445,7 @@ void tuya_fill_index(index_offset_t *out, linky_data_t *linky)
             out->index_hp = linky->std.EASF02 + linky->std.EASF04 + linky->std.EASF06 + linky->std.EASF08 + linky->std.EASF10;
             break;
         default:
-            ESP_LOGE(TAG, "Unknown Linky mode: %d", linky_mode);
+            ESP_LOGE(TAG, "Unknown contract: %d", linky_contract);
             break;
         }
         out->index_total = linky->std.EAST;
@@ -462,6 +462,7 @@ uint32_t tuya_cap_value(uint64_t value_in)
     uint32_t value;
     if (value_in > INT32_MAX)
     {
+        ESP_LOGW(TAG, "Tuya value capped: %llu", value_in);
         value = INT32_MAX;
     }
     else
@@ -525,7 +526,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
 
         case 102:
             // Max power contract
-            uint32_t max_power = LinkyLabelList[i].data;
+            uint32_t max_power = *(uint32_t *)(LinkyLabelList[i].data);
             if (linky_mode == MODE_STD && linky_three_phase)
             {
                 max_power *= 3;

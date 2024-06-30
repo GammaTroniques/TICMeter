@@ -244,8 +244,11 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         ESP_LOGW(TAG, "Home Assistant Discovery not configured, configuring...");
         ESP_LOGI(TAG, "Reread linky to be sure to have all data");
         linky_update(false);
-        linky_update(false);
-        linky_update(false);
+        if (HW_VERSION_CHECK(3, 4, 0))
+        {
+            linky_update(false);
+            linky_update(false);
+        }
         mqtt_setup_ha_discovery(linkydata);
     }
 

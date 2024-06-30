@@ -26,20 +26,37 @@ else()
     string(STRIP "${GIT_BRANCH}" GIT_BRANCH)
 endif()
 
-set(VERSION "const char* GIT_REV=\"${GIT_REV}${GIT_DIFF}\";
-const char* GIT_TAG=\"${GIT_TAG}\";
-const char* GIT_BRANCH=\"${GIT_BRANCH}\";
-const char* BUILD_TIME=\"${BUILD_TIME}\";")
+set(VERSION "
+#ifndef VERSION_H
+#define VERSION_H
+
+#define GIT_REV \"${GIT_REV}${GIT_DIFF}\"
+#define GIT_BRANCH \"${GIT_BRANCH}\"
+#define BUILD_TIME \"${BUILD_TIME}\"
+
+")
+
+if ("${GIT_TAG}" STREQUAL "")
+else()
+    # append GIT_TAG to VERSION
+    set(VERSION "${VERSION} 
+    #define GIT_TAG \"${GIT_TAG}\"
+    ")
+endif()
+
+set(VERSION "${VERSION} 
+#endif // VERSION_H
+")
 
 
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/version.c)
-    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/version.c VERSION_)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/version.h)
+    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/version.h VERSION_)
 else()
     set(VERSION_ "")
 endif()
 
 if (NOT "${VERSION}" STREQUAL "${VERSION_}")
-    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/version.c "${VERSION}")
+    file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/version.h "${VERSION}")
 endif()
 
 # version.txt

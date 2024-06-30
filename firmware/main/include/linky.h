@@ -311,6 +311,15 @@ typedef struct
     uint64_t uptime;
 } linky_data_t;
 
+typedef enum
+{
+    DEBUG_NONE,
+    DEBUG_HIST,
+    DEBUG_STD,
+    DEBUG_BAD_STD,
+
+} linky_debug_t;
+
 /*==============================================================================
  Public Variables Declaration
 ==============================================================================*/
@@ -331,7 +340,7 @@ extern linky_contract_t linky_contract;
 
 extern uint8_t linky_three_phase;
 extern uint8_t linky_reading;
-extern uint8_t linky_want_debug_frame;
+extern linky_debug_t linky_debug;
 extern uint32_t linky_free_heap_size;
 
 extern const void *linky_protected_data[];

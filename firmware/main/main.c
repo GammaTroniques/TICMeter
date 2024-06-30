@@ -128,7 +128,7 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
-  // linky_want_debug_frame = 2;
+  // linky_debug = DEBUG_STD;
 
   if (config_verify() || config_values.boot_pairing)
   {
@@ -293,6 +293,7 @@ void main_task(void *pvParameters)
       led_start_pattern(LED_LINKY_FAILED);
       continue;
     }
+    linky_print();
 
     esp_pm_lock_acquire(main_init_lock);
     // esp_pm_dump_locks(stdout);
@@ -410,7 +411,10 @@ esp_err_t main_send_data()
     {
       ESP_LOGI(MAIN_TAG, "Index offset not saved, reread Linky to be sure...");
       linky_update(false);
-      linky_update(false);
+      if (HW_VERSION_CHECK(3, 4, 0))
+      {
+        linky_update(false);
+      }
       tuya_fill_index(&config_values.index_offset, &linky_data);
       config_values.index_offset.value_saved = 1;
       config_write();

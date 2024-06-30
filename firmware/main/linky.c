@@ -84,12 +84,13 @@ typedef struct
     uint8_t *start;
     uint8_t *end;
 } raw_group_t;
+
 /*==============================================================================
  Local Function Declaration
 ===============================================================================*/
 static char linky_decode();                                      // Decode the frame
 static char linky_checksum(char *label, char *data, char *time); // Check the checksum
-static void linky_create_debug_frame(uint8_t mode_std);
+static void linky_create_debug_frame(linky_debug_t debug);
 static time_t linky_decode_time(char *time); // Decode the time
 static void linky_clear_data();
 esp_err_t linky_handle_auto_check();
@@ -273,7 +274,7 @@ linky_contract_t linky_contract = C_ANY;
 
 uint8_t linky_three_phase = 0;
 uint8_t linky_reading = 0;
-uint8_t linky_want_debug_frame = 0;
+linky_debug_t linky_debug = 0;
 
 const char *const HADeviceClassStr[] = {
     [NONE_CLASS] = "",
@@ -645,10 +646,10 @@ static char linky_decode()
     // Clear the previous data
     //----------------------------------------------------------
 
-    if (linky_want_debug_frame != 0)
-    {
-        linky_create_debug_frame(linky_want_debug_frame - 1);
-    }
+#ifndef PRODUCTION
+    linky_create_debug_frame(linky_debug);
+#endif
+
     ESP_LOGI(TAG, "Decoding frame... size: %lu", linky_frame_size);
 
     // ESP_LOGI(TAG, "Uart error: %d", uart_error);
@@ -910,13 +911,13 @@ static char linky_decode()
         config_write();
     }
 
-    if (linky_want_debug_frame == 4)
+    if (linky_debug == 4)
     {
         ESP_LOGI(TAG, "Debug frame 4: STD ALL");
         linky_set_mode(MODE_STD);
         linky_data.std = tests_std_data;
     }
-    else if (linky_want_debug_frame == 5)
+    else if (linky_debug == 5)
     {
         ESP_LOGI(TAG, "Debug frame 5: HIST ALL");
         linky_set_mode(MODE_HIST);
@@ -1119,10 +1120,10 @@ char linky_update(bool clear)
     }
 
     ESP_LOGI(TAG, "Reading frame...");
-    uint32_t timeout = MILLIS + 5000;
-    if (linky_mode == MODE_STD)
+    uint32_t timeout = MILLIS + 3000;
+    if (HW_VERSION_CHECK(3, 4, 0) && linky_mode == MODE_STD)
     {
-        timeout += 2000;
+        timeout += 4000;
     }
     do
     {
@@ -1342,96 +1343,87 @@ uint8_t linky_presence()
     return 0;
 }
 
-static void linky_create_debug_frame(uint8_t mode_std)
+static void linky_create_debug_frame(linky_debug_t debug)
 {
-    // debug frame:
-    // ADCO 031976306475 J
-    // OPTARIF BASE 0
-    // ISOUSC 30 9
-    // BASE 062105110 [
-    // PTEC TH.. $
-    // IINST1 000 H
-    // IINST2 000 I
-    // IINST3 002 L
-    // IMAX1 060 6
-    // IMAX2 060 7
-    // IMAX3 060 8
-    // PMAX 06082 6
-    // PAPP 00540 *
-    // HHPHC A ,
-    // MOTDETAT 000000 B
-    // OT 00 #
-    struct debug_group_t
-    {
-        char name[50];
-        char value[100];
-        char checksum;
-    };
-    struct debug_group_t debug_hist[16] = {
-        {"ADCO", "031976306475", 'J'},
-        {"OPTARIF", "BASE", '0'},
-        {"ISOUSC", "30", '9'},
-        {"BASE", "062105110", '['},
-        {"PTEC", "TH..", '$'},
-        {"IINST1", "000", 'H'},
-        {"IINST2", "000", 'I'},
-        {"IINST3", "002", 'L'},
-        {"IMAX1", "060", '6'},
-        {"IMAX2", "060", '7'},
-        {"IMAX3", "060", '8'},
-        {"PMAX", "06082", '6'},
-        {"PAPP", "00540", '*'},
-        {"HHPHC", "A", ','},
-        {"MOTDETAT", "000000", 'B'},
-        {"OT", "00", '#'},
-    };
 
-    if (mode_std == 1)
+    switch (debug)
+    {
+    case DEBUG_HIST:
+    {
+        struct debug_group_t
+        {
+            char name[50];
+            char value[100];
+            char checksum;
+        };
+        struct debug_group_t debug_hist[16] = {
+            {"ADCO", "031976306475", 'J'},
+            {"OPTARIF", "BASE", '0'},
+            {"ISOUSC", "30", '9'},
+            {"BASE", "062105110", '['},
+            {"PTEC", "TH..", '$'},
+            {"IINST1", "000", 'H'},
+            {"IINST2", "000", 'I'},
+            {"IINST3", "002", 'L'},
+            {"IMAX1", "060", '6'},
+            {"IMAX2", "060", '7'},
+            {"IMAX3", "060", '8'},
+            {"PMAX", "06082", '6'},
+            {"PAPP", "00540", '*'},
+            {"HHPHC", "A", ','},
+            {"MOTDETAT", "000000", 'B'},
+            {"OT", "00", '#'},
+        };
+        linky_set_mode(MODE_HIST);
+
+        // random base value
+        snprintf(debug_hist[3].value, sizeof(debug_hist[3].value), "%ld", esp_random() % 1000000);
+        debug_hist[3].checksum = linky_checksum(debug_hist[3].name, debug_hist[3].value, NULL);
+
+        const uint16_t debugGroupCount = sizeof(debug_hist) / sizeof(debug_hist[0]);
+        linky_frame_size = 0;
+        linky_buffer[linky_frame_size++] = START_OF_FRAME;
+        for (uint16_t i = 0; i < debugGroupCount - 1; i++)
+        {
+            linky_buffer[linky_frame_size++] = START_OF_GROUP;
+            for (uint16_t j = 0; j < strlen(debug_hist[i].name); j++)
+            {
+                linky_buffer[linky_frame_size++] = debug_hist[i].name[j];
+            }
+            linky_buffer[linky_frame_size++] = linky_group_separator;
+            for (uint16_t j = 0; j < strlen(debug_hist[i].value); j++)
+            {
+                linky_buffer[linky_frame_size++] = debug_hist[i].value[j];
+            }
+            linky_buffer[linky_frame_size++] = linky_group_separator;
+            linky_buffer[linky_frame_size++] = debug_hist[i].checksum;
+            linky_buffer[linky_frame_size++] = END_OF_GROUP;
+        }
+        linky_buffer[linky_frame_size++] = END_OF_FRAME;
+        break;
+    }
+    case DEBUG_STD:
     {
         ESP_LOGI(TAG, "Debug frame: Mode Standard");
         linky_set_mode(MODE_STD);
         linky_frame_size = 0;
         memcpy(linky_buffer, linky_std_debug_buffer, sizeof(linky_std_debug_buffer));
         linky_frame_size = sizeof(linky_std_debug_buffer);
-        return;
+        break;
     }
-
-    if (mode_std == 2)
+    case DEBUG_BAD_STD:
     {
         ESP_LOGI(TAG, "Debug frame: BAD frame");
         linky_set_mode(MODE_STD);
         linky_frame_size = 0;
         memcpy(linky_buffer, linky_std_debug_buffer_bad, sizeof(linky_std_debug_buffer_bad));
         linky_frame_size = sizeof(linky_std_debug_buffer_bad);
-        return;
+        break;
+    }
+    default:
+        break;
     }
 
-    linky_set_mode(MODE_HIST);
-
-    // random base value
-    snprintf(debug_hist[3].value, sizeof(debug_hist[3].value), "%ld", esp_random() % 1000000);
-    debug_hist[3].checksum = linky_checksum(debug_hist[3].name, debug_hist[3].value, NULL);
-
-    const uint16_t debugGroupCount = sizeof(debug_hist) / sizeof(debug_hist[0]);
-    linky_frame_size = 0;
-    linky_buffer[linky_frame_size++] = START_OF_FRAME;
-    for (uint16_t i = 0; i < debugGroupCount - 1; i++)
-    {
-        linky_buffer[linky_frame_size++] = START_OF_GROUP;
-        for (uint16_t j = 0; j < strlen(debug_hist[i].name); j++)
-        {
-            linky_buffer[linky_frame_size++] = debug_hist[i].name[j];
-        }
-        linky_buffer[linky_frame_size++] = linky_group_separator;
-        for (uint16_t j = 0; j < strlen(debug_hist[i].value); j++)
-        {
-            linky_buffer[linky_frame_size++] = debug_hist[i].value[j];
-        }
-        linky_buffer[linky_frame_size++] = linky_group_separator;
-        linky_buffer[linky_frame_size++] = debug_hist[i].checksum;
-        linky_buffer[linky_frame_size++] = END_OF_GROUP;
-    }
-    linky_buffer[linky_frame_size++] = END_OF_FRAME;
     // ESP_LOG_BUFFER_HEXDUMP(TAG, linky_buffer, linky_rx_bytes + 1, ESP_LOG_INFO);
 }
 

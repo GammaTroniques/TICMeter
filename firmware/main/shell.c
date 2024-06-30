@@ -283,17 +283,14 @@ void shell_init()
 static void shell_print_obfuscated(const char *name, const char *str)
 {
   printf("%s: ", name);
-  if (PRODUCTION)
+#if PRODUCTION
+  for (int i = 0; i < strlen(str); i++)
   {
-    for (int i = 0; i < strlen(str); i++)
-    {
-      printf("*");
-    }
+    printf("*");
   }
-  else
-  {
-    printf("%s", str);
-  }
+#else
+  printf("%s", str);
+#endif
   printf("\n");
 }
 
@@ -648,11 +645,11 @@ static int linky_simulate(int argc, char **argv)
 
   if (argc == 2)
   {
-    linky_want_debug_frame = atoi(argv[1]);
+    linky_debug = atoi(argv[1]);
   }
   else
   {
-    linky_want_debug_frame = 1;
+    linky_debug = 1;
   }
 
   return 0;
@@ -711,7 +708,9 @@ static int info_command(int argc, char **argv)
   const esp_app_desc_t *app_desc = esp_app_get_description();
   printf("%cApp version: %s\n", 0x02, app_desc->version);
   printf("Git commit: %s\n", GIT_REV);
+#ifdef GIT_TAG
   printf("Git tag: %s\n", GIT_TAG);
+#endif
   printf("Git branch: %s\n", GIT_BRANCH);
   printf("Build time: %s\n", BUILD_TIME);
   printf("Up time: %lld s\n", esp_timer_get_time() / 1000000);
