@@ -365,7 +365,7 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         // esp_mqtt_client_publish(mqtt_client, topic, strValue, 0, 2, 0);
         mqtt_topic_comliance(topic, sizeof(topic));
         int ret = esp_mqtt_client_enqueue(mqtt_client, topic, strValue, 0, MQTT_QOS, 0, true);
-        ESP_LOGD(TAG, "Prepared id= %d %s = %s", ret, topic, strValue);
+        ESP_LOGI(TAG, "Prepared \"%s\" = \"%s\"", topic, strValue);
 
 #ifdef MQTT_DEBUG
         mqtt_messages[mqtt_messages_count++].id = ret;
