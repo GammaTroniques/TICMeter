@@ -95,6 +95,7 @@ static void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps
 static void tuya_link_app_task(void *pvParameters);
 static void tuya_send_callback(int result, void *user_data);
 void ble_token_get_cb(wifi_info_t wifi_info);
+static char *tuya_verify_enum(char *input, const char *const *valid_values);
 
 str_replace_t str_current_tarif_replace[] = {
     {"TH..", "BASE"},
@@ -109,6 +110,14 @@ str_replace_t str_current_tarif_replace[] = {
     {"HN..", "Heures Normales"},
     {"PM..", "Heures de Pointe Mobile"},
     {NULL, NULL},
+};
+
+const char *const linky_tuya_valid_color[] = {
+    "INCONNU",
+    "BLEU",
+    "BLANC",
+    "ROUGE",
+    NULL,
 };
 
 /*==============================================================================
@@ -472,6 +481,35 @@ uint32_t tuya_cap_value(uint64_t value_in)
     return value;
 }
 
+/**
+ * @brief Verify if the input is in the valid_values list
+ *
+ *
+ * @param input input value
+ * @param valid_values list of valid values, the first value is the unknown value
+ * @return char*
+ */
+static char *tuya_verify_enum(char *input, const char *const *valid_values)
+{
+    for (char **valid = (char **)valid_values; *valid != NULL; valid++)
+    {
+        if (strcmp(input, *valid) == 0)
+        {
+            return *valid;
+        }
+    }
+
+    ESP_LOGW(TAG, "Unknown value: %s", input);
+    ESP_LOGW(TAG, "Valid values:");
+    printf("\t[ ");
+    for (char **valid = (char **)valid_values; *valid != NULL; valid++)
+    {
+        printf("\"%s\", ", *valid);
+    }
+    printf("]\n");
+    return (char *)*valid_values;
+}
+
 uint8_t tuya_send_data(linky_data_t *linky)
 {
     ESP_LOGI(TAG, "Send data to tuya");
@@ -520,7 +558,9 @@ uint8_t tuya_send_data(linky_data_t *linky)
         {
             continue; // dont send data for label not used by current mode
         }
-
+        // json
+        char str_id[5];
+        snprintf(str_id, sizeof(str_id), "%d", LinkyLabelList[i].id);
         switch (LinkyLabelList[i].id)
         {
 
@@ -578,6 +618,9 @@ uint8_t tuya_send_data(linky_data_t *linky)
             {
                 str = (char *)linky_tuya_str_contract[C_UNKNOWN];
             }
+
+            str = tuya_verify_enum(str, linky_tuya_str_contract);
+
             cJSON_AddStringToObject(jsonObject, "107", str);
             continue;
             break;
@@ -591,13 +634,26 @@ uint8_t tuya_send_data(linky_data_t *linky)
             break;
         }
 
+        case 109:
+        case 110:
+        {
+            char *value = (char *)LinkyLabelList[i].data;
+            if (value == NULL || strlen(value) == 0)
+                continue;
+
+            char *str = tuya_verify_enum(value, linky_tuya_valid_color);
+            if (str == NULL)
+            {
+                str = "INCONNU";
+            }
+
+            cJSON_AddStringToObject(jsonObject, str_id, str);
+            continue;
+            break;
+        }
         default:
             break;
         }
-
-        // json
-        char strId[5];
-        snprintf(strId, sizeof(strId), "%d", LinkyLabelList[i].id);
 
         switch (LinkyLabelList[i].type)
         {
@@ -606,7 +662,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint8_t *value = (uint8_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT8_MAX)
                 continue;
-            cJSON_AddNumberToObject(jsonObject, strId, *value);
+            cJSON_AddNumberToObject(jsonObject, str_id, *value);
             break;
         }
         case UINT16:
@@ -614,7 +670,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint16_t *value = (uint16_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT16_MAX)
                 continue;
-            cJSON_AddNumberToObject(jsonObject, strId, *value);
+            cJSON_AddNumberToObject(jsonObject, str_id, *value);
             break;
         }
         case UINT32:
@@ -622,7 +678,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
-            cJSON_AddNumberToObject(jsonObject, strId, tuya_cap_value(*value));
+            cJSON_AddNumberToObject(jsonObject, str_id, tuya_cap_value(*value));
             break;
         }
         case UINT32_TIME:
@@ -630,7 +686,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
-            cJSON_AddNumberToObject(jsonObject, strId, tuya_cap_value(*value));
+            cJSON_AddNumberToObject(jsonObject, str_id, tuya_cap_value(*value));
             break;
         }
         case UINT64:
@@ -638,7 +694,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint64_t *value = (uint64_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT64_MAX)
                 continue;
-            cJSON_AddNumberToObject(jsonObject, strId, tuya_cap_value(*value));
+            cJSON_AddNumberToObject(jsonObject, str_id, tuya_cap_value(*value));
             break;
         }
         case STRING:
@@ -646,7 +702,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
             char *value = (char *)LinkyLabelList[i].data;
             if (value == NULL || strlen(value) == 0)
                 continue;
-            cJSON_AddStringToObject(jsonObject, strId, value);
+            cJSON_AddStringToObject(jsonObject, str_id, value);
             break;
         }
         default:

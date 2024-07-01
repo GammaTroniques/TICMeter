@@ -39,9 +39,9 @@ set(VERSION "
 if ("${GIT_TAG}" STREQUAL "")
 else()
     # append GIT_TAG to VERSION
-    set(VERSION "${VERSION} 
-    #define GIT_TAG \"${GIT_TAG}\"
-    ")
+set(VERSION "${VERSION} 
+#define GIT_TAG \"${GIT_TAG}\"
+")
 endif()
 
 set(VERSION "${VERSION} 

@@ -13,7 +13,7 @@
  Local Include
 ===============================================================================*/
 
-#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+// #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
 #include <linky.h>
 #include <config.h>
@@ -346,7 +346,8 @@ const char *const linky_std_str_contract[] = {
 };
 
 const char *const linky_tuya_str_contract[] = {
-    [C_ANY] = "ANY",
+    [C_UNKNOWN] = "INCONNU",
+    [C_ANY] = "INCONNU",
     [C_BASE] = "BASE",
     [C_HC] = "HCHP",
     [C_HEURES_SUPER_CREUSES] = "HSC",
@@ -356,8 +357,7 @@ const char *const linky_tuya_str_contract[] = {
     [C_SEM_WE_LUNDI] = "SEM_WE_LUNDI",
     [C_SEM_WE_MERCREDI] = "SEM_WE_MERCREDI",
     [C_SEM_WE_VENDREDI] = "SEM_WE_VENDREDI",
-    [C_UNKNOWN] = "INCONNU",
-
+    [C_COUNT] = NULL,
 };
 
 const char *const linky_str_mode[] = {

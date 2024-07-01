@@ -226,7 +226,6 @@ typedef enum
     C_HEURES_SUPER_CREUSES,
     C_EJP,
     C_TEMPO,
-    C_PRODUCER,
     C_ZEN_FLEX,
     C_SEM_WE_LUNDI,
     C_SEM_WE_MERCREDI,

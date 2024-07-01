@@ -128,7 +128,7 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
-  // linky_debug = DEBUG_STD;
+  linky_debug = DEBUG_STD;
 
   if (config_verify() || config_values.boot_pairing)
   {
