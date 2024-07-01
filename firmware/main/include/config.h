@@ -191,5 +191,6 @@ uint8_t config_efuse_write(const char *serialnumber, uint8_t len, const uint8_t 
 uint8_t config_factory_reset();
 esp_err_t config_erase_partition(const char *partition_label);
 uint32_t config_get_hw_version();
+const char *config_get_str_mode();
 
 #endif /* CONFIG_H */

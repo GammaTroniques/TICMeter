@@ -124,7 +124,7 @@ int ota_https_request(const char *url, const char *cert)
     const esp_app_desc_t *app_desc = esp_app_get_description();
     char user_agent[64];
 
-    sprintf(user_agent, "TICMeter/%s %s", app_desc->version, efuse_values.serial_number);
+    snprintf(user_agent, sizeof(user_agent), "TICMeter/%s %s %s %s", app_desc->version, efuse_values.serial_number, linky_get_str_mode(), config_get_str_mode());
     ESP_LOGD(TAG, "cert_pem: %d %s", strlen((char *)cert), (char *)cert);
 
     esp_http_client_config_t config = {

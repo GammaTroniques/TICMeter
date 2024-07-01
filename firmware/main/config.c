@@ -111,6 +111,16 @@ nvs_sec_config_hmac_t sec_scheme_cfg = {
 Function Implementation
 ===============================================================================*/
 
+const char *config_get_str_mode()
+{
+    const char *mode = MODES[config_values.mode];
+    if (mode == NULL)
+    {
+        mode = "UNKNOWN";
+    }
+    return mode;
+}
+
 int8_t config_erase()
 {
     config_t blank_config = {

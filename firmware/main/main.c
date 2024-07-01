@@ -59,6 +59,8 @@
 ===============================================================================*/
 #define MAIN_TAG "MAIN"
 
+#define OTA_CHECK_TIME 2 * 3600 * 1000 // 2 hours
+
 /*==============================================================================
  Local Macro
 ===============================================================================*/
@@ -71,6 +73,8 @@
  Local Function Declaration
 ===============================================================================*/
 static void main_print_heap_diff();
+static void main_ota_check();
+
 /*==============================================================================
 Public Variable
 ===============================================================================*/
@@ -83,7 +87,6 @@ static esp_pm_lock_handle_t main_init_lock;
 
 linky_data_t main_data_array[MAX_DATA_INDEX];
 unsigned int main_data_index = 0;
-uint64_t main_next_update_check;
 
 /*==============================================================================
 Function Implementation
@@ -128,7 +131,7 @@ void app_main(void)
   //   esp_pm_lock_acquire(main_init_lock);
   // }
 
-  linky_debug = DEBUG_STD;
+  // linky_debug = DEBUG_STD;
 
   if (config_verify() || config_values.boot_pairing)
   {
@@ -257,7 +260,6 @@ void app_main(void)
 void main_task(void *pvParameters)
 {
   ESP_LOGI(MAIN_TAG, "Starting fetch linky data task");
-  main_next_update_check = MILLIS;
   esp_err_t err;
   uint32_t err_count = 0;
   const uint32_t fetching_time[] = {
@@ -387,13 +389,7 @@ esp_err_t main_send_data()
       goto send_error;
     }
 
-    if (main_next_update_check < MILLIS)
-    {
-      ESP_LOGI(MAIN_TAG, "Checking for update");
-      main_next_update_check = MILLIS + 3600000;
-      ota_version_t version;
-      ota_get_latest(&version);
-    }
+    main_ota_check();
     vTaskDelay(100 / portTICK_PERIOD_MS);
     wifi_disconnect();
     led_start_pattern(LED_SEND_OK);
@@ -447,14 +443,7 @@ esp_err_t main_send_data()
       }
       err = ESP_OK;
     tuya_disconect:
-      if (main_next_update_check < MILLIS)
-      {
-        ESP_LOGI(MAIN_TAG, "Checking for update");
-        main_next_update_check = MILLIS + 3600000;
-        ota_version_t version;
-        ota_get_latest(&version);
-      }
-
+      main_ota_check();
       if (!gpio_vusb_connected())
       {
         ESP_LOGI(MAIN_TAG, "VUSB not connected, suspend TUYA");
@@ -478,6 +467,24 @@ esp_err_t main_send_data()
     break;
   }
   return ESP_OK;
+}
+
+static void main_ota_check()
+{
+  static uint64_t next_update_check = 0;
+  if (next_update_check == 0)
+  {
+    // disable ota check for the first check
+    next_update_check = MILLIS + OTA_CHECK_TIME;
+  }
+
+  if (next_update_check < MILLIS)
+  {
+    ota_version_t version;
+    ESP_LOGI(MAIN_TAG, "Checking for update");
+    next_update_check = MILLIS + OTA_CHECK_TIME;
+    ota_get_latest(&version);
+  }
 }
 
 static void main_print_heap_diff()

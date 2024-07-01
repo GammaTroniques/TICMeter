@@ -392,6 +392,16 @@ static bool uart_error = false;
 /*==============================================================================
 Function Implementation
 ===============================================================================*/
+const char *linky_get_str_mode()
+{
+
+    const char *str = linky_str_mode[linky_mode];
+    if (str == NULL)
+    {
+        str = "UNKNOWN";
+    }
+    return str;
+}
 
 static void uart_event_task(void *pvParameters)
 {
