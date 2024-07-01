@@ -571,9 +571,24 @@ uint8_t tuya_send_data(linky_data_t *linky)
             {
                 max_power *= 3;
             }
-            cJSON_AddNumberToObject(jsonObject, "102", max_power);
 
-            cJSON_AddNumberToObject(jsonObject, "102", tuya_cap_value(now.index_production));
+            cJSON_AddNumberToObject(jsonObject, "102", max_power);
+            continue;
+            break;
+
+        case 103:
+            uint16_t refresh_rate = *(uint16_t *)LinkyLabelList[i].data;
+            if (refresh_rate > 300)
+            {
+                refresh_rate = 300;
+            }
+
+            if (refresh_rate < 30)
+            {
+                refresh_rate = 10;
+            }
+
+            cJSON_AddNumberToObject(jsonObject, "103", refresh_rate);
             continue;
             break;
 
@@ -700,8 +715,12 @@ uint8_t tuya_send_data(linky_data_t *linky)
         case STRING:
         {
             char *value = (char *)LinkyLabelList[i].data;
-            if (value == NULL || strlen(value) == 0)
+            if (value == NULL)
                 continue;
+            uint32_t len = strlen(value);
+            if (len == 0 || len > 255)
+                continue;
+
             cJSON_AddStringToObject(jsonObject, str_id, value);
             break;
         }
