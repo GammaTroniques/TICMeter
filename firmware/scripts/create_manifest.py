@@ -6,7 +6,9 @@ import subprocess
 csv_file = "../partitions.csv"
 json_file = "../build/manifest.json"
 
-fileURL = "https://github.com/GammaTroniques/TICMeter/releases/latest/download/"
+# git describe --tags
+version = subprocess.check_output(["git", "describe", "--tags"]).decode("utf-8").strip()
+fileURL = f"https://github.com/GammaTroniques/TICMeter/releases/{version}/download/"
 
 toFill = {
     "otadata": "ota_data_initial.bin",
@@ -31,8 +33,6 @@ with open(csv_file, mode="r") as file:
             offset.append(int(row[3], 16))
             print(f"{row[0]}: {row[3]}")
 
-# git describe --tags
-version = subprocess.check_output(["git", "describe", "--tags"]).decode("utf-8").strip()
 
 # Construire la structure JSON avec les nouvelles valeurs d'offset
 output_data = {
