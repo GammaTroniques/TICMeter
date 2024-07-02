@@ -346,7 +346,9 @@ extern const void *linky_protected_data[];
 extern const uint8_t linky_protected_data_size;
 
 extern uint32_t linky_frame_size;
-
+extern uint32_t linky_decode_count;
+extern uint32_t linky_decode_checksum_error;
+extern uint32_t linky_last_group_count;
 /*==============================================================================
  Public Functions Declaration
 ==============================================================================*/

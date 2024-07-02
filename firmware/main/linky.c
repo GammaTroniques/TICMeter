@@ -382,8 +382,9 @@ static uint8_t linky_buffer[LINKY_BUFFER_SIZE] = {0}; // The UART buffer
 static uint8_t *linky_frame = linky_buffer;           // The received frame from the linky
 
 static raw_group_t raw_groups[GROUP_COUNT] = {0}; // store raw data of each group
-static uint32_t linky_decode_count = 0;
-static uint32_t linky_decode_checksum_error = 0;
+uint32_t linky_decode_count = 0;
+uint32_t linky_decode_checksum_error = 0;
+uint32_t linky_last_group_count = 0;
 
 static QueueHandle_t linky_uart_queue;
 static TaskHandle_t linky_uart_task_handle = NULL;
@@ -396,6 +397,16 @@ const char *linky_get_str_mode()
 {
 
     const char *str = linky_str_mode[linky_mode];
+    if (str == NULL)
+    {
+        str = "UNKNOWN";
+    }
+    return str;
+}
+
+const char *linky_get_str_contract()
+{
+    const char *str = linky_std_str_contract[linky_contract];
     if (str == NULL)
     {
         str = "UNKNOWN";
@@ -723,6 +734,7 @@ static char linky_decode()
     }
 
     ESP_LOGI(TAG, "Found %ld groups", current_group_index);
+    linky_last_group_count = current_group_index;
 
     //------------------------------------------
     // Third step: Find fields in each group
@@ -1579,10 +1591,10 @@ linky_contract_t linky_get_contract(linky_data_t *data)
 
 void linky_stats()
 {
-    printf("Linky mode: %s\n", linky_str_mode[linky_mode]);
+    printf("Linky mode: %s\n", linky_get_str_mode());
     printf("Linky three phase: %s\n", linky_three_phase ? "Yes" : "No");
     printf("Linky presence: %s\n", linky_presence() ? "Yes" : "No");
-    printf("Linky contract: %s\n", linky_hist_str_contract[linky_contract]);
+    printf("Linky contract: %s\n", linky_get_str_contract());
     printf("Linky refresh rate: %d\n", config_values.refresh_rate);
     printf("Linky decode count: %ld\n", linky_decode_count);
     printf("Linky checksum error: %ld\n", linky_decode_checksum_error);

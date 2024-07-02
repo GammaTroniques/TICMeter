@@ -184,11 +184,7 @@ void app_main(void)
       wifi_get_timestamp();               // get timestamp from ntp server
       wifi_http_get_config_from_server(); // get config from server
       vTaskDelay(1000 / portTICK_PERIOD_MS);
-      if (gpio_vusb_connected())
-      {
-        ota_version_t version;
-        ota_get_latest(&version);
-      }
+      main_ota_check();
       wifi_disconnect();
     }
     else
@@ -205,11 +201,7 @@ void app_main(void)
     {
       mqtt_init();          // init mqtt
       wifi_get_timestamp(); // get timestamp from ntp server
-      if (gpio_vusb_connected())
-      {
-        ota_version_t version;
-        ota_get_latest(&version);
-      }
+      main_ota_check();
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       wifi_disconnect();
     }
@@ -296,6 +288,7 @@ void main_task(void *pvParameters)
       continue;
     }
     linky_print();
+    linky_stats();
 
     esp_pm_lock_acquire(main_init_lock);
     // esp_pm_dump_locks(stdout);
@@ -348,11 +341,7 @@ esp_err_t main_send_data()
       {
         ESP_LOGI(MAIN_TAG, "POST: %s", json);
         wifi_send_to_server(json);
-        if (gpio_vusb_connected())
-        {
-          ota_version_t version;
-          ota_get_latest(&version);
-        }
+        main_ota_check();
       }
       else
       {
@@ -474,8 +463,8 @@ static void main_ota_check()
   static uint64_t next_update_check = 0;
   if (next_update_check == 0)
   {
-    // disable ota check for the first check
-    next_update_check = MILLIS + OTA_CHECK_TIME;
+    // first check in 2 minutes
+    next_update_check = MILLIS + 2 * 60 * 1000; // 2 minutes
   }
 
   if (next_update_check < MILLIS)

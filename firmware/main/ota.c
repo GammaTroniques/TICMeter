@@ -124,7 +124,10 @@ int ota_https_request(const char *url, const char *cert)
     const esp_app_desc_t *app_desc = esp_app_get_description();
     char user_agent[64];
 
-    snprintf(user_agent, sizeof(user_agent), "TICMeter/%s %s %s %s", app_desc->version, efuse_values.serial_number, linky_get_str_mode(), config_get_str_mode());
+    char version[10] = {0};
+    // copy version before '-'
+    strncpy(version, app_desc->version, strcspn(app_desc->version, "-"));
+    snprintf(user_agent, sizeof(user_agent), "TICMeter/%s %s %s %s %ld/%ld:%ld", version, efuse_values.serial_number, linky_get_str_mode(), config_get_str_mode(), linky_decode_count, linky_last_group_count, linky_decode_checksum_error);
     ESP_LOGD(TAG, "cert_pem: %d %s", strlen((char *)cert), (char *)cert);
 
     esp_http_client_config_t config = {

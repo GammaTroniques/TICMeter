@@ -37,6 +37,7 @@ jobs:
             firmware/build/bootloader/bootloader.bin
             firmware/build/partition_table/partition-table.bin
             firmware/build/TICMeter.bin
+            firmware/build/TICMeter.elf
             firmware/build/storage.bin
             firmware/build/ota_data_initial.bin
             firmware/build/TICMeter.ota
