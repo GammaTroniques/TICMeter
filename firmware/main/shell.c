@@ -154,11 +154,11 @@ static const shell_cmd_t shell_cmds[] = {
     //mode
     {"get-mode",                    "Get mode",                                 &get_mode_command,                  0, {}, {}},
     {"set-mode",                    "Set mode\n"
-                                    "0 - Wifi - Webserver\n"
-                                    "1 - Wifi - MQTT\n"
-                                    "2 - Wifi - MQTT Home Assistant\n"
-                                    "3 - Zigbee\n"
-                                    "4 - Matter\n",                             &set_mode_command,                  1, {"<mode>"}, {"Mode of operation"}},
+                                    "1 - Wifi - Webserver\n"
+                                    "2 - Wifi - MQTT\n"
+                                    "3 - Wifi - MQTT Home Assistant\n"
+                                    "4 - Zigbee\n"
+                                    "5 - Tuya\n",                               &set_mode_command,                  1, {"<mode>"}, {"Mode of operation"}},
 
     {"set-refresh",                 "Set refresh rate",                         &set_refresh_command,               1, {"<refresh>"}, {"Refresh rate in seconds"}},
     {"get-refresh",                 "Get refresh rate",                         &get_refresh_command,               0, {}, {}},
