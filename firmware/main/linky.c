@@ -93,7 +93,6 @@ static char linky_decode();                                      // Decode the f
 static char linky_checksum(char *label, char *data, char *time); // Check the checksum
 static void linky_create_debug_frame(linky_debug_t debug);
 static time_t linky_decode_time(char *time); // Decode the time
-static void linky_clear_data();
 esp_err_t linky_handle_auto_check();
 
 /*==============================================================================
@@ -1157,11 +1156,6 @@ char linky_update(bool clear)
     led_start_pattern(LED_LINKY_READING);
 
     uint32_t try = 0;
-    if (clear)
-    {
-        linky_clear_data();
-    }
-
     ESP_LOGI(TAG, "Reading frame...");
     uint32_t timeout = MILLIS + 3000;
     if (linky_mode == MODE_STD)
@@ -1470,7 +1464,7 @@ static void linky_create_debug_frame(linky_debug_t debug)
     // ESP_LOG_BUFFER_HEXDUMP(TAG, linky_buffer, linky_rx_bytes + 1, ESP_LOG_INFO);
 }
 
-static void linky_clear_data()
+void linky_clear_data()
 {
     linky_decode_count = 0;
     linky_decode_checksum_error = 0;

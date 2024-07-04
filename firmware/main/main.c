@@ -313,7 +313,7 @@ void main_task(void *pvParameters)
 
 esp_err_t main_send_data()
 {
-  esp_err_t err;
+  esp_err_t err = ESP_OK;
   switch (config_values.mode)
   {
   case MODE_WEB:
@@ -332,7 +332,8 @@ esp_err_t main_send_data()
       if (json == NULL)
       {
         ESP_LOGE(MAIN_TAG, "Cant prepare json data");
-        return ESP_FAIL;
+        err = ESP_FAIL;
+        break;
       }
 
       ESP_LOGI(MAIN_TAG, "Sending data to server");
@@ -342,16 +343,16 @@ esp_err_t main_send_data()
         ESP_LOGI(MAIN_TAG, "POST: %s", json);
         wifi_send_to_server(json);
         main_ota_check();
+        err = ESP_OK;
       }
       else
       {
         ESP_LOGE(MAIN_TAG, "Wifi connection failed");
-        return ESP_FAIL;
+        err = ESP_FAIL;
       }
       free(json);
       wifi_disconnect();
       main_data_index = 0;
-      return ESP_OK;
     }
     break;
   }
@@ -382,13 +383,12 @@ esp_err_t main_send_data()
     vTaskDelay(100 / portTICK_PERIOD_MS);
     wifi_disconnect();
     led_start_pattern(LED_SEND_OK);
-    return ESP_OK;
     break;
 
   send_error:
     wifi_disconnect();
     led_start_pattern(LED_SEND_FAILED);
-    return ESP_FAIL;
+    err = ESP_FAIL;
     break;
   }
   case MODE_TUYA:
@@ -396,7 +396,7 @@ esp_err_t main_send_data()
     {
       ESP_LOGI(MAIN_TAG, "Index offset not saved, reread Linky to be sure...");
       linky_update(false);
-      if (HW_VERSION_CHECK(3, 4, 0))
+      if (linky_mode == MODE_STD)
       {
         linky_update(false);
       }
@@ -441,12 +441,11 @@ esp_err_t main_send_data()
         tuya_state = false;
       }
       led_start_pattern(LED_SEND_OK);
-      return err;
     }
     else
     {
       ESP_LOGE(MAIN_TAG, "Wifi connection failed: dont send TUYA");
-      return ESP_FAIL;
+      err = ESP_FAIL;
     }
     break;
   case MODE_ZIGBEE:
@@ -455,7 +454,9 @@ esp_err_t main_send_data()
   default:
     break;
   }
-  return ESP_OK;
+  ESP_LOGI(MAIN_TAG, "Data sent, clear data");
+  linky_clear_data();
+  return err;
 }
 
 static void main_ota_check()

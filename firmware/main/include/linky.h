@@ -397,5 +397,6 @@ linky_contract_t linky_get_contract(linky_data_t *data);
 void linky_stats();
 
 const char *linky_get_str_mode();
+void linky_clear_data();
 
 #endif /* Linky_H */
