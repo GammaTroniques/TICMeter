@@ -13,8 +13,9 @@
 /*==============================================================================
  Local Include
 ===============================================================================*/
-// #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
+#define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 #include "esp_log.h"
+
 #include "mqtt.h"
 #include "wifi.h"
 #include "gpio.h"
@@ -244,9 +245,8 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         ESP_LOGW(TAG, "Home Assistant Discovery not configured, configuring...");
         ESP_LOGI(TAG, "Reread linky to be sure to have all data");
         linky_update(false);
-        if (HW_VERSION_CHECK(3, 4, 0))
+        if (linky_mode == MODE_STD)
         {
-            linky_update(false);
             linky_update(false);
         }
         mqtt_setup_ha_discovery(linkydata);
@@ -405,7 +405,7 @@ void mqtt_setup_ha_discovery()
         {
             continue;
         }
-
+        delete = false;
         if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
         {
             delete = true;
@@ -477,6 +477,7 @@ void mqtt_setup_ha_discovery()
         }
         else
         {
+            ESP_LOGW(TAG, "Create %s", config_topic);
             esp_mqtt_client_enqueue(mqtt_client, config_topic, mqttBuffer, 0, 2, 1, true);
         }
 

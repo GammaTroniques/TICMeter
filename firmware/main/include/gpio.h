@@ -34,9 +34,7 @@
 #define LED_EN (gpio_num_t)0
 #define LED_DATA (gpio_num_t)5
 
-#define PAIRING_LED_PIN (gpio_num_t)23 // 23 --> unused
-#define LED_RED (gpio_num_t)23
-#define LED_GREEN (gpio_num_t)23
+#define PAIRING_LED_PIN (gpio_num_t)23
 
 /*==============================================================================
  Public Macro

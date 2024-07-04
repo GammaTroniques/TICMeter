@@ -32,6 +32,7 @@
 ===============================================================================*/
 // clang-format off
 #define LINKY_BUFFER_SIZE 16*1024 // The size of the UART buffer
+#define LINKY_DECODE_LEN 512 // The size of the UART buffer when start decoding
 #define START_OF_FRAME  0x02 // The start of frame character
 #define END_OF_FRAME    0x03   // The end of frame character
 
@@ -39,8 +40,8 @@
 #define END_OF_GROUP    0x0D    // The end of group character
 
 
-#define RX_BUF_SIZE     4096 // The size of the UART buffer
-#define GROUP_COUNT     2048
+#define RX_BUF_SIZE     8*1024 // The size of the UART buffer
+#define GROUP_COUNT     256
 #define SEPARATOR_COUNT 3
 
 #define TAG "LINKY"
@@ -428,7 +429,6 @@ static void uart_event_task(void *pvParameters)
         }
         if (xQueueReceive(linky_uart_queue, (void *)&event, (TickType_t)portMAX_DELAY))
         {
-            vTaskDelay(10 / portTICK_PERIOD_MS);
             // esp_rom_printf("event type: %d\n", event.type);
             switch (event.type)
             {
@@ -441,17 +441,17 @@ static void uart_event_task(void *pvParameters)
                 uint32_t to_read = (free_space > event.size) ? event.size : free_space;
                 uart_read_bytes(LINKY_UART, linky_buffer + linky_frame_size, to_read, 500 / portTICK_PERIOD_MS);
                 linky_frame_size += to_read;
-                // esp_rom_printf("add ¨%ld:\n%s\n", to_read, linky_buffer + linky_frame_size - to_read);
-                if (linky_frame_size >= LINKY_BUFFER_SIZE - 1)
+                // esp_rom_printf("add %ld:\n%s\n", to_read, linky_buffer + linky_frame_size - to_read);
+                if (linky_frame_size >= LINKY_DECODE_LEN)
                 {
-                    ESP_LOGE(TAG, "Buffer overflow: force decoding");
+                    ESP_LOGD(TAG, "Buffer full: force decoding");
                     linky_decode();
-                    linky_frame_size = 0; // clear the frame size
+                    // linky_frame_size = 0; // clear the frame size
                 }
                 break;
             // Event of HW FIFO overflow detected
             case UART_FIFO_OVF:
-                ESP_LOGI(TAG, "hw fifo overflow");
+                ESP_LOGW(TAG, "hw fifo overflow");
                 // If fifo overflow happened, you should consider adding flow control for your application.
                 // The ISR has already reset the rx FIFO,
                 // As an example, we directly flush the rx buffer here in order to read more data.
@@ -460,7 +460,7 @@ static void uart_event_task(void *pvParameters)
                 break;
             // Event of UART ring buffer full
             case UART_BUFFER_FULL:
-                ESP_LOGI(TAG, "ring buffer full");
+                ESP_LOGW(TAG, "ring buffer full");
                 // If buffer full happened, you should consider increasing your buffer size
                 // As an example, we directly flush the rx buffer here in order to read more data.
                 uart_flush_input(LINKY_UART);
@@ -468,25 +468,26 @@ static void uart_event_task(void *pvParameters)
                 break;
             // Event of UART RX break detected
             case UART_BREAK:
-                // ESP_LOGI(TAG, "uart rx break");
+                // ESP_LOGW(TAG, "uart rx break");
                 uart_error = true;
                 break;
             // Event of UART parity check error
             case UART_PARITY_ERR:
-                // ESP_LOGI(TAG, "uart parity error");
+                // ESP_LOGW(TAG, "uart parity error");
                 uart_error = true;
 
                 break;
             // Event of UART frame error
             case UART_FRAME_ERR:
-                // ESP_LOGI(TAG, "uart frame error");
+                // ESP_LOGW(TAG, "uart frame error");
                 uart_error = true;
                 break;
             default:
-                ESP_LOGI(TAG, "uart event type: %d", event.type);
+                ESP_LOGW(TAG, "uart event type: %d", event.type);
                 break;
             }
         }
+        // vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
@@ -574,6 +575,7 @@ void linky_set_mode(linky_mode_t newMode)
         break;
     }
     ESP_LOGI(TAG, "Changed mode to %s", linky_str_mode[linky_mode]);
+    linky_last_group_count = 0;
 
     uint32_t baud_rate;
 
@@ -671,12 +673,10 @@ static char linky_decode()
     linky_create_debug_frame(linky_debug);
 #endif
 
-    ESP_LOGI(TAG, "Decoding frame... size: %lu", linky_frame_size);
+    ESP_LOGD(TAG, "Decoding frame... size: %lu", linky_frame_size);
 
     // ESP_LOGI(TAG, "Uart error: %d", uart_error);
     // linky_print_debug_frame();
-    linky_decode_count = 0;
-    linky_decode_checksum_error = 0;
     if (linky_frame == NULL) // if no frame found
     {
         ESP_LOGE(TAG, "No frame to decode");
@@ -726,14 +726,15 @@ static char linky_decode()
         }
     }
 
-    if (current_group_index == 0)
+    if (current_group_index == 0 && linky_last_group_count == 0)
     {
         ESP_LOGI(TAG, "No group found");
+        linky_frame_size = 0;
         return linky_handle_auto_check();
         // exit the function (no group found)
     }
 
-    ESP_LOGI(TAG, "Found %ld groups", current_group_index);
+    // ESP_LOGI(TAG, "Found %ld groups", current_group_index);
     linky_last_group_count = current_group_index;
 
     //------------------------------------------
@@ -850,6 +851,23 @@ static char linky_decode()
         }
     }
 
+    raw_group_t last_group = raw_groups[current_group_index - 1];
+    if (last_group.start != NULL && last_group.end != NULL)
+    {
+        // copy data after the last group to the beginning of the buffer
+        uint32_t remaining_size = linky_frame_size - (last_group.end - linky_frame);
+        if (remaining_size > 0)
+        {
+            ESP_LOGD(TAG, "Recopy remaining data: %ld bytes", remaining_size);
+            memcpy(linky_frame, last_group.end, remaining_size);
+            linky_frame_size = remaining_size;
+        }
+        else
+        {
+            linky_frame_size = 0;
+        }
+    }
+
     // count the number of fields found
     linky_decode_count = 0;
     for (uint32_t j = 0; j < LinkyLabelListSize; j++)
@@ -917,7 +935,7 @@ static char linky_decode()
         }
     }
 
-    ESP_LOGI(TAG, "Found %ld fields", linky_decode_count);
+    ESP_LOGI(TAG, "Groups: %ld, Total: %ld fields", current_group_index, linky_decode_count);
     if (linky_decode_count == 0)
     {
         ESP_LOGE(TAG, "No field found");
@@ -933,6 +951,8 @@ static char linky_decode()
         config_write();
     }
 
+#if PRODUCTION
+
     if (linky_debug == 4)
     {
         ESP_LOGI(TAG, "Debug frame 4: STD ALL");
@@ -946,6 +966,7 @@ static char linky_decode()
         linky_data.hist = tests_hist_data;
     }
 
+#endif
     linky_data.timestamp = wifi_get_timestamp();
     linky_data.uptime = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
@@ -1028,10 +1049,10 @@ static char linky_decode()
         if (strnlen(linky_data.std.STGE, sizeof(linky_data.std.STGE)) > 0)
         {
             uint64_t value = strtoull(linky_data.std.STGE, NULL, 16);
-            ESP_LOGI(TAG, "STGE: 0x%llx", value);
+            ESP_LOGD(TAG, "STGE: 0x%llx", value);
             // tomorrow color: bit 26 and 27
             uint8_t tomorrow_color = (value >> 26) & 0x3;
-            ESP_LOGI(TAG, "tomorrow color: %d", tomorrow_color);
+            ESP_LOGD(TAG, "tomorrow color: %d", tomorrow_color);
             switch (tomorrow_color)
             {
             case 1:
@@ -1143,13 +1164,13 @@ char linky_update(bool clear)
 
     ESP_LOGI(TAG, "Reading frame...");
     uint32_t timeout = MILLIS + 3000;
-    if (HW_VERSION_CHECK(3, 4, 0) && linky_mode == MODE_STD)
+    if (linky_mode == MODE_STD)
     {
         timeout += 4000;
     }
     do
     {
-        ESP_LOGI(TAG, "Reading frame: size: %ld remaining: %ld", linky_frame_size, timeout - MILLIS);
+        ESP_LOGI(TAG, "Reading frame: size: %ld remaining: %ld ms, VCONDO: %f", linky_frame_size, timeout - MILLIS, gpio_get_vcondo());
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     } while (MILLIS < timeout);
 
@@ -1451,6 +1472,9 @@ static void linky_create_debug_frame(linky_debug_t debug)
 
 static void linky_clear_data()
 {
+    linky_decode_count = 0;
+    linky_decode_checksum_error = 0;
+    linky_last_group_count = 0;
     for (uint32_t i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].data == NULL)

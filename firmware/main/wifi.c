@@ -482,7 +482,7 @@ time_t wifi_get_timestamp()
     localtime_r(&now, &timeinfo);
     char strftime_buf[64];
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
+    ESP_LOGD(TAG, "The current date/time is: %s", strftime_buf);
     return now;
 }
 

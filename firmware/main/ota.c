@@ -508,6 +508,7 @@ static void ota_spiffs_update(const char *url)
         return;
     }
     ESP_LOGI(TAG, "Starting spiffs update");
+    ESP_LOGI(TAG, "Free heap: %ld", esp_get_free_heap_size());
     spiffs_update = true;
     err = wifi_connect();
     if (err != ESP_OK)
@@ -526,6 +527,8 @@ static void ota_spiffs_update(const char *url)
 
     storage_buffer_size = storage_partition->size;
     storage_buffer = malloc(storage_buffer_size);
+    ESP_LOGI(TAG, "Free heap: %ld", esp_get_free_heap_size());
+
     storage_buffer_index = 0;
     if (storage_buffer == NULL)
     {

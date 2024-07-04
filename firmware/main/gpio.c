@@ -356,8 +356,8 @@ float gpio_get_vcondo()
     }
     else if (ret != ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to calibrate VCondo: %s", esp_err_to_name(ret));
-        return 0.0;
+        // ESP_LOGE(TAG, "Failed to calibrate VCondo: %s", esp_err_to_name(ret));
+        return -1.0;
     }
 
     uint32_t vCondo = (vADC * 280) / 180;
