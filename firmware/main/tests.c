@@ -260,7 +260,8 @@ static esp_err_t test_mode(void *ptr)
 static esp_err_t test_linky_read(void *ptr)
 {
     linky_set_mode(MODE_HIST);
-    if (!linky_update(true))
+    linky_clear_data();
+    if (!linky_update(LINKY_READING_TIMEOUT))
     {
         printf("Linky update failed\n");
         return ESP_FAIL;

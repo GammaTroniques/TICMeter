@@ -67,7 +67,7 @@
 typedef enum
 {
     MODE_NONE,
-    MODE_WEB,
+    MODE_HTTP,
     MODE_MQTT,
     MODE_MQTT_HA,
     MODE_ZIGBEE,

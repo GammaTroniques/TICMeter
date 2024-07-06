@@ -439,7 +439,7 @@ time_t wifi_get_timestamp()
 {
     static time_t now = 0;
     struct tm timeinfo;
-    if (wifi_state == WIFI_CONNECTED)
+    if (wifi_state == WIFI_CONNECTED && config_values.mode == MODE_HTTP)
     {
         ESP_LOGI(TAG, "Getting time over NTP");
         static bool sntp_started = false;

@@ -31,6 +31,7 @@
 /*==============================================================================
  Public Macro
 ==============================================================================*/
+#define LINKY_READING_TIMEOUT (linky_mode == MODE_HIST ? 5000 : 15000)
 
 /*==============================================================================
  Public Type
@@ -346,7 +347,7 @@ extern const void *linky_protected_data[];
 extern const uint8_t linky_protected_data_size;
 
 extern uint32_t linky_frame_size;
-extern uint32_t linky_decode_count;
+extern uint32_t linky_last_decode_count;
 extern uint32_t linky_decode_checksum_error;
 extern uint32_t linky_last_group_count;
 /*==============================================================================
@@ -366,7 +367,7 @@ void linky_init(int RX);
  *
  * @return char: 1 if success, 0 if error
  */
-char linky_update(bool clear);
+char linky_update(uint32_t timeout);
 
 /**
  * @brief Print all data read from the linky

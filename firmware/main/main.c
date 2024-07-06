@@ -65,6 +65,8 @@
  Local Macro
 ===============================================================================*/
 
+#define MAIN_BOOT_VOLTAGE_THRESHOLD 4.0
+
 /*==============================================================================
  Local Type
 ===============================================================================*/
@@ -102,7 +104,16 @@ void app_main(void)
     ESP_LOGE(MAIN_TAG, "Brownout detected sleeping for 30s...");
     vTaskDelay(30000 / portTICK_PERIOD_MS);
   }
+
   gpio_init_pins();
+
+  while (!gpio_vusb_connected() && gpio_get_vcondo() < MAIN_BOOT_VOLTAGE_THRESHOLD)
+  {
+    led_start_pattern(LED_CHARGING);
+    ESP_LOGW(MAIN_TAG, "Waiting for capacitor to charge: %fV / %fV: waiting 10s", gpio_get_vcondo(), MAIN_BOOT_VOLTAGE_THRESHOLD);
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+  }
+  led_start_pattern(LED_CHARGING);
   config_begin();
   led_start_pattern(LED_BOOT);
   linky_init(RX_LINKY);
@@ -164,19 +175,21 @@ void app_main(void)
 
   vTaskDelay(200 / portTICK_PERIOD_MS); // for led pattern
 
-  if (config_values.mode == MODE_ZIGBEE && !linky_update(false))
+  if (config_values.mode == MODE_ZIGBEE && !linky_update(LINKY_READING_TIMEOUT))
   {
-    while (!linky_update(false))
+    while (!linky_update(LINKY_READING_TIMEOUT))
     {
       ESP_LOGE(MAIN_TAG, "Cant find Linky: retrying every 10s before starting");
+      esp_pm_lock_release(main_init_lock);
       vTaskDelay(10000 / portTICK_PERIOD_MS);
+      esp_pm_lock_acquire(main_init_lock);
     }
   }
 
   ESP_LOGI(MAIN_TAG, "Linky found");
   switch (config_values.mode)
   {
-  case MODE_WEB:
+  case MODE_HTTP:
     // connect to wifi
     err = wifi_connect();
     if (err == ESP_OK)
@@ -255,20 +268,18 @@ void main_task(void *pvParameters)
   esp_err_t err;
   uint32_t err_count = 0;
   const uint32_t fetching_time[] = {
-      [MODE_WEB] = 10,
+      [MODE_HTTP] = 10,
       [MODE_MQTT] = 10,
       [MODE_MQTT_HA] = 10,
       [MODE_ZIGBEE] = 2,
       [MODE_TUYA] = 10,
   };
+  linky_clear_data();
 
   while (1)
   {
-    main_sleep_time = abs((int32_t)config_values.refresh_rate - (int32_t)fetching_time[config_values.mode]);
-    // esp_pm_dump_locks(stdout);
+    main_sleep_time = abs((int32_t)config_values.refresh_rate - (int32_t)fetching_time[config_values.mode] - ((LINKY_READING_TIMEOUT / 1000) - 2));
     ESP_LOGI(MAIN_TAG, "Waiting for %ld seconds", main_sleep_time);
-    ESP_LOGI(MAIN_TAG, "Frame size: %lu", linky_frame_size);
-
     esp_pm_lock_release(main_init_lock);
     while (main_sleep_time > 0)
     {
@@ -277,20 +288,19 @@ void main_task(void *pvParameters)
     }
 
     gpio_peripheral_reinit();
-    ESP_LOGI(MAIN_TAG, "Frame size: %lu", linky_frame_size);
     ESP_LOGI(MAIN_TAG, "-----------------------------------------------------------------");
     ESP_LOGI(MAIN_TAG, "Waking up, VCondo: %f", gpio_get_vcondo());
 
-    if (!linky_update(true) /* || !linky_presence()*/)
+    if (!linky_update(LINKY_READING_TIMEOUT) /* || !linky_presence()*/)
     {
       ESP_LOGE(MAIN_TAG, "Linky update failed");
       led_start_pattern(LED_LINKY_FAILED);
       continue;
     }
+    esp_pm_lock_acquire(main_init_lock);
     linky_print();
     linky_stats();
 
-    esp_pm_lock_acquire(main_init_lock);
     // esp_pm_dump_locks(stdout);
     err = main_send_data();
     if (err != ESP_OK)
@@ -316,7 +326,7 @@ esp_err_t main_send_data()
   esp_err_t err = ESP_OK;
   switch (config_values.mode)
   {
-  case MODE_WEB:
+  case MODE_HTTP:
   {
     // send data to web server
     if (main_data_index >= MAX_DATA_INDEX)
@@ -395,11 +405,7 @@ esp_err_t main_send_data()
     if (config_values.index_offset.value_saved == 0)
     {
       ESP_LOGI(MAIN_TAG, "Index offset not saved, reread Linky to be sure...");
-      linky_update(false);
-      if (linky_mode == MODE_STD)
-      {
-        linky_update(false);
-      }
+      linky_update(LINKY_READING_TIMEOUT);
       tuya_fill_index(&config_values.index_offset, &linky_data);
       config_values.index_offset.value_saved = 1;
       config_write();
@@ -411,7 +417,7 @@ esp_err_t main_send_data()
       ESP_LOGI(MAIN_TAG, "Sending data to TUYA");
       if (tuya_state == false)
       {
-        ESP_LOGE(MAIN_TAG, "Tuya not connected, reconnecting...");
+        ESP_LOGW(MAIN_TAG, "Tuya not connected, reconnecting...");
         resume_task(tuyaTaskHandle); // resume tuya task
         tuya_state = true;
         if (tuya_wait_event(TUYA_EVENT_MQTT_CONNECTED, 10000))

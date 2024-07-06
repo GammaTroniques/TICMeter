@@ -76,6 +76,7 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
 static void zigbee_print_value(char *out_buffer, void *data, linky_label_type_t type);
 static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage);
 static uint32_t zigbee_get_hex_version(const char *version);
+static uint16_t zigbee_get_hex16_version(const char *version);
 
 /*==============================================================================
 Public Variable
@@ -173,7 +174,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         }
         break;
     case ESP_ZB_COMMON_SIGNAL_CAN_SLEEP:
-        // ESP_LOGW(TAG, "Can sleep");
+        // esp_rom_printf("can sleep\n");
         esp_zb_sleep_now();
         break;
     case ESP_ZB_ZDO_SIGNAL_LEAVE:
@@ -439,7 +440,10 @@ static void zigbee_task(void *pvParameters)
         .timer_query = ESP_ZB_ZCL_OTA_UPGRADE_QUERY_TIMER_COUNT_DEF,
         .max_data_size = 64,
     };
-    variable_config.hw_version = zigbee_get_hex_version(TICMETER_HW_VERSION);
+
+    variable_config.hw_version = zigbee_get_hex16_version(efuse_values.hw_version);
+    variable_config.hw_version = 0x0342;
+
     ESP_LOGI(TAG, "HW version: %x", variable_config.hw_version);
     ESP_LOGI(TAG, "File version: %lx", ota_cluster_cfg.ota_upgrade_file_version);
     esp_zb_ota_cluster_add_attr(esp_zb_ota_client_cluster, ESP_ZB_ZCL_ATTR_OTA_UPGRADE_CLIENT_DATA_ID, (void *)&variable_config);
@@ -1046,4 +1050,15 @@ static uint32_t zigbee_get_hex_version(const char *version)
     }
 
     return hex_version;
+}
+
+static uint16_t zigbee_get_hex16_version(const char *version)
+{
+    if (!version)
+    {
+        ESP_LOGE(TAG, "Invalid version: NULL");
+        return UINT16_MAX;
+    }
+
+    return (version[0] & 0x0F) << 8 | (version[1] & 0x0F) << 4 | (version[2] & 0x0F);
 }

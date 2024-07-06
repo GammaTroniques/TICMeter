@@ -71,7 +71,7 @@ Public Variable
 
 const uint32_t led_color_mode[] = {
     [MODE_NONE] = 0x000000,
-    [MODE_WEB] = 0x0008FF,
+    [MODE_HTTP] = 0x0008FF,
     [MODE_MQTT] = 0x8803FC,
     [MODE_MQTT_HA] = 0x8803FC,
     [MODE_ZIGBEE] = 0xFF0000,
@@ -92,6 +92,7 @@ static led_timing_t led_timing[] = {
     {LED_FLASH_OK_TUYA,         98,     LED_FLASH,      0xB04000,                       500,    500,    FOREVER, 0, 0, false,},
     {LED_FLASH_OK,              97,     LED_FLASH,      0x00FF00,                       500,    500,    FOREVER, 0, 0, false,},
     {LED_FLASH_FAILED,          96,     LED_FLASH,      0xFF0000,                       500,    500,    FOREVER, 0, 0, false,},
+    {LED_CHARGING,              95,     LED_FLASH,      0x200000,                      1000,   1000,    FOREVER, 0, 0, false,},
 
     {LED_CONNECTING,            60,     LED_FLASH_MODE, 0x000000,                       100,    900,    FOREVER, 0, 0, true, },
     {LED_CONNECTING_FAILED,     61,     LED_FLASH,      0xFF0000,                       50,     100,    4,       0, 0, true, },

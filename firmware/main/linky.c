@@ -39,6 +39,7 @@
 #define START_OF_GROUP  0x0A  // The start of group character
 #define END_OF_GROUP    0x0D    // The end of group character
 
+#define LINKY_SAME_FEILDS_COUNT 3
 
 #define RX_BUF_SIZE     8*1024 // The size of the UART buffer
 #define GROUP_COUNT     256
@@ -382,7 +383,9 @@ static uint8_t linky_buffer[LINKY_BUFFER_SIZE] = {0}; // The UART buffer
 static uint8_t *linky_frame = linky_buffer;           // The received frame from the linky
 
 static raw_group_t raw_groups[GROUP_COUNT] = {0}; // store raw data of each group
-uint32_t linky_decode_count = 0;
+uint32_t linky_last_decode_count = 0;
+static uint32_t linky_same_feilds_count = 0;
+
 uint32_t linky_decode_checksum_error = 0;
 uint32_t linky_last_group_count = 0;
 
@@ -426,6 +429,7 @@ static void uart_event_task(void *pvParameters)
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             continue;
         }
+
         if (xQueueReceive(linky_uart_queue, (void *)&event, (TickType_t)portMAX_DELAY))
         {
             // esp_rom_printf("event type: %d\n", event.type);
@@ -868,7 +872,7 @@ static char linky_decode()
     }
 
     // count the number of fields found
-    linky_decode_count = 0;
+    uint32_t linky_decode_count = 0;
     for (uint32_t j = 0; j < LinkyLabelListSize; j++)
     {
         if (linky_mode != LinkyLabelList[j].mode)
@@ -930,15 +934,27 @@ static char linky_decode()
             break;
         }
         default:
+            ESP_LOGE(TAG, "Unknown type: %s %d", LinkyLabelList[j].label, LinkyLabelList[j].type);
             break;
         }
     }
 
-    ESP_LOGI(TAG, "Groups: %ld, Total: %ld fields", current_group_index, linky_decode_count);
+    ESP_LOGD(TAG, "Groups: %ld, Total: %ld fields", current_group_index, linky_decode_count);
     if (linky_decode_count == 0)
     {
         ESP_LOGE(TAG, "No field found");
         return linky_handle_auto_check();
+    }
+
+    if (linky_decode_count > linky_last_decode_count)
+    {
+        linky_last_decode_count = linky_decode_count;
+        linky_same_feilds_count = 0;
+    }
+    else
+    {
+        linky_same_feilds_count++;
+        ESP_LOGD(TAG, "Same fields count %ld times", linky_same_feilds_count);
     }
 
     // if we have a valid frame, with mode auto and its a new value mode, we save it.
@@ -1140,12 +1156,13 @@ esp_err_t linky_handle_auto_check()
  *
  * @return char 1 if success, 0 if error
  */
-char linky_update(bool clear)
+char linky_update(uint32_t timeout)
 {
     uint8_t ret;
 
     esp_pm_lock_acquire(linky_pm_lock);
     linky_reading = 1;
+    linky_same_feilds_count = 0;
     if (linky_mode > MODE_STD)
     {
         ESP_LOGE(TAG, "Error: Unknown mode: %d", linky_mode);
@@ -1157,16 +1174,17 @@ char linky_update(bool clear)
 
     uint32_t try = 0;
     ESP_LOGI(TAG, "Reading frame...");
-    uint32_t timeout = MILLIS + 3000;
-    if (linky_mode == MODE_STD)
-    {
-        timeout += 4000;
-    }
+    timeout += MILLIS;
     do
     {
-        ESP_LOGI(TAG, "Reading frame: size: %ld remaining: %ld ms, VCONDO: %f", linky_frame_size, timeout - MILLIS, gpio_get_vcondo());
+        ESP_LOGI(TAG, "Reading frame: remaining: %ld ms, VCONDO: %f, feilds: %ld", timeout - MILLIS, gpio_get_vcondo(), linky_last_decode_count);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-    } while (MILLIS < timeout);
+    } while (MILLIS < timeout && linky_same_feilds_count < LINKY_SAME_FEILDS_COUNT);
+
+    if (linky_same_feilds_count >= LINKY_SAME_FEILDS_COUNT)
+    {
+        ESP_LOGI(TAG, "End: Same fields count %ld times", linky_same_feilds_count);
+    }
 
     ret = linky_decode(); // decode the frame
 
@@ -1466,9 +1484,10 @@ static void linky_create_debug_frame(linky_debug_t debug)
 
 void linky_clear_data()
 {
-    linky_decode_count = 0;
+    linky_last_decode_count = 0;
     linky_decode_checksum_error = 0;
     linky_last_group_count = 0;
+    linky_same_feilds_count = 0;
     for (uint32_t i = 0; i < LinkyLabelListSize; i++)
     {
         if (LinkyLabelList[i].data == NULL)
@@ -1614,6 +1633,6 @@ void linky_stats()
     printf("Linky presence: %s\n", linky_presence() ? "Yes" : "No");
     printf("Linky contract: %s\n", linky_get_str_contract());
     printf("Linky refresh rate: %d\n", config_values.refresh_rate);
-    printf("Linky decode count: %ld\n", linky_decode_count);
+    printf("Linky decode count: %ld\n", linky_last_decode_count);
     printf("Linky checksum error: %ld\n", linky_decode_checksum_error);
 }

@@ -57,7 +57,7 @@ Public Variable
 ===============================================================================*/
 const char *const MODES[] = {
     [MODE_NONE] = "NONE",
-    [MODE_WEB] = "WEB",
+    [MODE_HTTP] = "WEB",
     [MODE_MQTT] = "MQTT",
     [MODE_MQTT_HA] = "MQTT_HA",
     [MODE_ZIGBEE] = "ZIGBEE",
@@ -458,7 +458,7 @@ uint8_t config_verify()
 {
     switch (config_values.mode)
     {
-    case MODE_WEB:
+    case MODE_HTTP:
     case MODE_MQTT:
     case MODE_MQTT_HA:
     case MODE_TUYA:
@@ -474,7 +474,7 @@ uint8_t config_verify()
 
     switch (config_values.mode)
     {
-    case MODE_WEB:
+    case MODE_HTTP:
         if (strlen(config_values.web.host) == 0 || strlen(config_values.web.token) == 0 || strlen(config_values.web.postUrl) == 0 || strlen(config_values.web.configUrl) == 0)
         {
             // No web host, token, postUrl or configUrl

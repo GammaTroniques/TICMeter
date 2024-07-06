@@ -53,6 +53,8 @@ typedef enum
     LED_OTA_AVAILABLE,
     LED_OTA_IN_PROGRESS,
 
+    LED_CHARGING,
+
 } led_pattern_t;
 
 /*==============================================================================

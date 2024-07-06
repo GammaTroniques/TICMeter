@@ -462,7 +462,7 @@ void gpio_pairing_button_task(void *pvParameters)
 
                     if (current_mode_led >= MODE_LAST)
                     {
-                        current_mode_led = MODE_WEB;
+                        current_mode_led = MODE_HTTP;
                     }
                     ESP_LOGI(TAG, "LED state: %d", current_mode_led);
                     led_start_pattern(LED_COLOR_WHEEL);
@@ -586,7 +586,7 @@ void gpio_start_pariring()
     suspend_task(main_task_handle);
     switch (config_values.mode)
     {
-    case MODE_WEB:
+    case MODE_HTTP:
     case MODE_MQTT:
     case MODE_MQTT_HA:
         ESP_LOGI(TAG, "Web pairing");

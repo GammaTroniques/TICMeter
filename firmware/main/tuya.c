@@ -163,16 +163,21 @@ static void tuya_iot_dp_download(tuya_iot_client_t *client, const char *json_dps
         return;
     }
 
-    // /* Process dp data */
-    // cJSON *switch_obj = cJSON_GetObjectItem(dps, SWITCH_DP_ID_KEY);
-    // if (cJSON_IsTrue(switch_obj))
-    // {
-    //     hardware_switch_set(true);
-    // }
-    // else if (cJSON_IsFalse(switch_obj))
-    // {
-    //     hardware_switch_set(false);
-    // }
+    cJSON *dp = cJSON_GetObjectItem(dps, "103");
+    if (dp != NULL)
+    {
+        ESP_LOGI(TAG, "Received refresh rate: %d", dp->valueint);
+        config_values.refresh_rate = dp->valueint;
+        if (config_values.refresh_rate < 30)
+        {
+            config_values.refresh_rate = 30;
+        }
+        if (config_values.refresh_rate > 300)
+        {
+            config_values.refresh_rate = 300;
+        }
+        config_write();
+    }
 
     /* relese cJSON DPS object */
     cJSON_Delete(dps);
