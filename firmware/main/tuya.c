@@ -706,6 +706,9 @@ uint8_t tuya_send_data(linky_data_t *linky)
             uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
+            if (LinkyLabelList[i].device_class == ENERGY && *value == 0)
+                continue;
+
             cJSON_AddNumberToObject(jsonObject, str_id, tuya_cap_value(*value));
             break;
         }
@@ -713,6 +716,8 @@ uint8_t tuya_send_data(linky_data_t *linky)
         {
             uint64_t *value = (uint64_t *)LinkyLabelList[i].data;
             if (value == NULL || *value == UINT64_MAX)
+                continue;
+            if (LinkyLabelList[i].device_class == ENERGY && *value == 0)
                 continue;
             cJSON_AddNumberToObject(jsonObject, str_id, tuya_cap_value(*value));
             break;

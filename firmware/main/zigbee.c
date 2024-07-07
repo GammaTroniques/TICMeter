@@ -505,6 +505,10 @@ static void zigbee_task(void *pvParameters)
             {
                 continue;
             }
+            if (LinkyLabelList[i].device_class == ENERGY && *(uint64_t *)LinkyLabelList[i].data == 0)
+            {
+                continue;
+            }
             break;
         }
         case STRING:
@@ -750,6 +754,10 @@ uint8_t zigbee_send(linky_data_t *data)
             {
                 continue;
             }
+            if (LinkyLabelList[i].device_class == ENERGY && *(uint64_t *)LinkyLabelList[i].data == 0)
+            {
+                continue;
+            }
             break;
         }
         case STRING:
@@ -852,23 +860,6 @@ uint8_t zigbee_send(linky_data_t *data)
     led_start_pattern(LED_SEND_OK);
     return 0;
 }
-
-// static void zigbee_send_first_datas(void *pvParameters)
-// {
-//     vTaskDelay(2000 / portTICK_PERIOD_MS);
-//     ESP_LOGI(TAG, "Send first datas");
-//     uint8_t ret = zigbee_send(&linky_data);
-//     if (ret != 0)
-//     {
-//         ESP_LOGE(TAG, "Zigbee first send failed");
-//     }
-//     else
-//     {
-//         ESP_LOGI(TAG, "Zigbee first send success");
-//     }
-
-//     vTaskDelete(NULL);
-// }
 
 uint8_t zigbee_factory_reset()
 {

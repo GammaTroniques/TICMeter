@@ -110,11 +110,19 @@ void web_preapare_json_data(linky_data_t *data, char count, char **json)
                 {
                     continue;
                 }
+                if (LinkyLabelList[j].device_class == ENERGY && *(uint32_t *)value == 0)
+                {
+                    continue;
+                }
                 ESP_LOGD(TAG, "Name: %s Type: UINT32 Value: %ld", LinkyLabelList[j].label, *(uint32_t *)value);
                 cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint32_t *)value);
                 break;
             case UINT64:
                 if (*(uint64_t *)value == UINT64_MAX)
+                {
+                    continue;
+                }
+                if (LinkyLabelList[j].device_class == ENERGY && *(uint64_t *)value == 0)
                 {
                     continue;
                 }

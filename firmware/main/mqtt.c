@@ -299,6 +299,8 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
             uint64_t *value = (uint64_t *)LinkyLabelList[i].data;
             if (*value == UINT64_MAX)
                 continue;
+            if (LinkyLabelList[i].device_class == ENERGY && *(uint64_t *)(LinkyLabelList[i].data) == 0)
+                continue;
             snprintf(strValue, sizeof(strValue), "%lld", *value);
             break;
         }
@@ -323,6 +325,7 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
             break;
 
         default:
+            ESP_LOGE(TAG, "Unknown type: %s %d", LinkyLabelList[i].label, LinkyLabelList[i].type);
             break;
         }
 
@@ -437,6 +440,10 @@ void mqtt_setup_ha_discovery()
             break;
         case UINT64:
             if (*(uint64_t *)LinkyLabelList[i].data == UINT64_MAX)
+            {
+                delete = true;
+            }
+            if (LinkyLabelList[i].device_class == ENERGY && *(uint64_t *)(LinkyLabelList[i].data) == 0)
             {
                 delete = true;
             }
