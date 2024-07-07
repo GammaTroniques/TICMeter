@@ -647,5 +647,4 @@ void gpio_peripheral_reinit()
     // gpio_init_adc_cali(adc1_handle, V_USB_PIN, &adc_usb_cali_handle, "VUSB");
     gpio_init_adc_cali(adc1_handle, V_CONDO_PIN, &adc_capa_cali_handle, "VCondo");
     led_init();
-    // linky_init(RX_LINKY);
 }

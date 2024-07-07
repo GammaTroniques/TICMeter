@@ -471,7 +471,12 @@ esp_err_t test_start_handler(httpd_req_t *req)
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         wifi_disconnect();
         last_wifi_connect = wifi_connect();
-        ESP_LOGI(TAG, "TEST WIFI_CONNECT: %d", last_wifi_connect);
+        if (last_wifi_connect == ESP_ERR_TIMEOUT)
+        {
+            ESP_LOGI(TAG, "Retrying wifi connect");
+            last_wifi_connect = wifi_connect();
+        }
+        ESP_LOGI(TAG, "TEST WIFI_CONNECT: 0x%x", last_wifi_connect);
 
         return ESP_OK;
         break;
@@ -501,6 +506,9 @@ esp_err_t test_start_handler(httpd_req_t *req)
                 break;
             case ESP_FAIL:
                 sprintf(buf, "Connexion échouée");
+                break;
+            case ESP_ERR_TIMEOUT:
+                sprintf(buf, "Connexion échouée, délai dépassé");
                 break;
             default:
                 sprintf(buf, "%s (0x%x)", esp_err_to_name(last_wifi_connect), last_wifi_connect);
@@ -560,7 +568,7 @@ esp_err_t test_start_handler(httpd_req_t *req)
                 sprintf(buf, "Connexion refusée, non autorisé");
                 break;
             default:
-                sprintf(buf, "Connexion refusée, raison inconnue");
+                sprintf(buf, "Connexion au serveur MQTT échouée, raison inconnue");
                 break;
             }
             mqtt_deinit();
