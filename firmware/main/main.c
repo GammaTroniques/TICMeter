@@ -112,7 +112,7 @@ void app_main(void)
     ESP_LOGW(MAIN_TAG, "Waiting for capacitor to charge: %fV / %fV: waiting 10s", gpio_get_vcondo(), MAIN_BOOT_VOLTAGE_THRESHOLD);
     vTaskDelay(10000 / portTICK_PERIOD_MS);
   }
-  led_start_pattern(LED_CHARGING);
+  led_stop_pattern(LED_CHARGING);
   config_begin();
   led_start_pattern(LED_BOOT);
   linky_init(RX_LINKY);
