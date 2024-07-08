@@ -91,7 +91,7 @@ typedef struct
     char host[101];
     uint16_t port;
     char username[51];
-    char password[51];
+    char password[70];
     char topic[101];
 } mqtt_config_t;
 
