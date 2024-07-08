@@ -301,6 +301,9 @@ int8_t config_begin()
     {
         config_write();
     }
+
+    ESP_LOGI(TAG, "Communication mode: %s", config_get_str_mode());
+
     return 0;
 }
 

@@ -422,7 +422,7 @@ void gpio_pairing_button_task(void *pvParameters)
         {
             if (lastState == 1)
             {
-                ESP_LOGI(TAG, "Start pushing %ld", MILLIS);
+                ESP_LOGI(TAG, "Start pushing");
                 suspend_task(tuyaTaskHandle);
                 lastState = 0;
                 current_mode_led = MODE_NONE;
@@ -436,7 +436,7 @@ void gpio_pairing_button_task(void *pvParameters)
             if (pushTime > 4000)
             {
                 // Color Wheel
-                ESP_LOGI(TAG, "pushTime: %lu, %%: %lu", pushTime, pushTime % 1000);
+                ESP_LOGD(TAG, "pushTime: %lu, %%: %lu", pushTime, pushTime % 1000);
                 if (push_from_boot)
                 {
                     // factory reset
@@ -446,7 +446,7 @@ void gpio_pairing_button_task(void *pvParameters)
                 }
                 else if (pushTime % 1000 < 100)
                 {
-                    ESP_LOGI(TAG, "LED state before compute: %d", current_mode_led);
+                    ESP_LOGD(TAG, "LED state before compute: %d", current_mode_led);
                     current_mode_led++;
                     if (current_mode_led == MODE_MQTT)
                     {
