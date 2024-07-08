@@ -1179,12 +1179,12 @@ char linky_update(uint32_t timeout)
     {
         ESP_LOGI(TAG, "Reading frame: remaining: %ld ms, VCONDO: %f, feilds: %ld", timeout - MILLIS, gpio_get_vcondo(), linky_last_decode_count);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-    } while (MILLIS < timeout && linky_same_feilds_count < LINKY_SAME_FEILDS_COUNT);
+    } while (MILLIS < timeout);
 
-    if (linky_same_feilds_count >= LINKY_SAME_FEILDS_COUNT)
-    {
-        ESP_LOGI(TAG, "End: Same fields count %ld times", linky_same_feilds_count);
-    }
+    // if (linky_same_feilds_count >= LINKY_SAME_FEILDS_COUNT)
+    // {
+    //     ESP_LOGI(TAG, "End: Same fields count %ld times", linky_same_feilds_count);
+    // }
 
     ret = linky_decode(); // decode the frame
 
