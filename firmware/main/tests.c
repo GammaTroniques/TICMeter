@@ -48,6 +48,7 @@ static esp_err_t test_linky_std(void *ptr);
 static esp_err_t test_linky_read(void *ptr);
 static esp_err_t test_linky_stats(void *ptr);
 static void tests_task(void *pvParameters);
+static esp_err_t test_producer(void *ptr);
 
 /*==============================================================================
 Public Variable
@@ -60,6 +61,8 @@ esp_err_t (*tests_available_tests[])(void *ptr) = {
     [TEST_LINKY_STD] = test_linky_std,
     [TEST_LINKY_READ] = test_linky_read,
     [TEST_LINKY_STATS] = test_linky_stats,
+    [TEST_PRODUCER] = test_producer,
+
 };
 
 const char *const tests_str_available_tests[] = {
@@ -70,6 +73,7 @@ const char *const tests_str_available_tests[] = {
     [TEST_LINKY_STD] = "linky-std",
     [TEST_LINKY_READ] = "linky-read",
     [TEST_LINKY_STATS] = "linky-stats",
+    [TEST_PRODUCER] = "producer",
 };
 
 const uint32_t tests_count = sizeof(tests_str_available_tests) / sizeof(char *);
@@ -273,5 +277,49 @@ static esp_err_t test_linky_read(void *ptr)
 static esp_err_t test_linky_stats(void *ptr)
 {
     linky_stats();
+    return ESP_OK;
+}
+
+static esp_err_t test_producer(void *ptr)
+{
+    printf("Start test producter\n");
+    suspend_task(main_task_handle);
+    ESP_LOGI(TAG, "Start test producer: Index + prod");
+    linky_data_t data = {
+        .std = {
+            .EAIT = 45466,
+            .SINSTI = 1563,
+        }};
+
+    linky_stop();
+    linky_set_mode(MODE_STD);
+    linky_clear_data();
+    linky_print();
+
+    linky_data.std = data.std;
+    linky_compute();
+
+    esp_err_t err = main_send_data(&linky_data);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error sending data: %d", err);
+        return err;
+    }
+    ESP_LOGI(TAG, "OK");
+
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+    linky_data.std = data.std;
+    linky_data.std.SINSTI = UINT32_MAX;
+    linky_compute();
+
+    ESP_LOGI(TAG, "Start test producer: Index only");
+    err = main_send_data(&linky_data);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Error sending data: %d", err);
+        return err;
+    }
+
     return ESP_OK;
 }

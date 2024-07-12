@@ -548,6 +548,26 @@ void linky_init(int RX)
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
 }
 
+void linky_stop()
+{
+    if (linky_pm_lock != NULL)
+    {
+        esp_pm_lock_delete(linky_pm_lock);
+        linky_pm_lock = NULL;
+    }
+    if (linky_uart_task_handle != NULL)
+    {
+        vTaskDelete(linky_uart_task_handle);
+        linky_uart_task_handle = NULL;
+    }
+    if (linky_uart_queue != NULL)
+    {
+        vQueueDelete(linky_uart_queue);
+        linky_uart_queue = NULL;
+    }
+    uart_driver_delete(LINKY_UART);
+}
+
 void linky_set_mode(linky_mode_t newMode)
 {
     linky_data_t empty;
@@ -982,6 +1002,38 @@ static char linky_decode()
     }
 
 #endif
+    linky_compute();
+
+    return 1;
+}
+
+esp_err_t linky_handle_auto_check()
+{
+    if (config_values.linky_mode == AUTO)
+    {
+        switch (linky_mode)
+        {
+        case MODE_HIST:
+            ESP_LOGI(TAG, "Auto mode: Mode Historique Not Found! Try Mode Standard");
+            linky_set_mode(MODE_STD);
+
+            break;
+        case MODE_STD:
+            ESP_LOGI(TAG, "Auto mode: Mode Standard Not Found! Try Mode Historique");
+            linky_set_mode(MODE_HIST);
+
+            break;
+        default:
+            break;
+        }
+        return 2;
+    }
+    return 0;
+}
+
+esp_err_t linky_compute()
+{
+    esp_err_t err = ESP_OK;
     linky_data.timestamp = wifi_get_timestamp();
     linky_data.uptime = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
@@ -1061,6 +1113,18 @@ static char linky_decode()
             linky_three_phase = 0;
         }
 
+        // Producer
+
+        if (linky_data.std.EAIT != UINT32_MAX) // if we are producer
+        {
+            ESP_LOGI(TAG, "Producer: EAIT: %llu", linky_data.std.EAIT);
+            if (linky_data.std.SINSTI == UINT32_MAX) // and inst power is not available
+            {
+                ESP_LOGI(TAG, "Producer: SINSTI not available: no current production");
+                linky_data.std.SINSTI = 0; // set it to 0 (reset)
+            }
+        }
+
         if (strnlen(linky_data.std.STGE, sizeof(linky_data.std.STGE)) > 0)
         {
             uint64_t value = strtoull(linky_data.std.STGE, NULL, 16);
@@ -1123,31 +1187,7 @@ static char linky_decode()
         break;
     }
 
-    return 1;
-}
-
-esp_err_t linky_handle_auto_check()
-{
-    if (config_values.linky_mode == AUTO)
-    {
-        switch (linky_mode)
-        {
-        case MODE_HIST:
-            ESP_LOGI(TAG, "Auto mode: Mode Historique Not Found! Try Mode Standard");
-            linky_set_mode(MODE_STD);
-
-            break;
-        case MODE_STD:
-            ESP_LOGI(TAG, "Auto mode: Mode Standard Not Found! Try Mode Historique");
-            linky_set_mode(MODE_HIST);
-
-            break;
-        default:
-            break;
-        }
-        return 2;
-    }
-    return 0;
+    return err;
 }
 
 /**

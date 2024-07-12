@@ -304,8 +304,8 @@ void zigbee_init_stack()
 
     ESP_LOGI(TAG, "Initializing Zigbee stack");
     esp_zb_platform_config_t config = {
-        .radio_config.radio_mode = RADIO_MODE_NATIVE,
-        .host_config.host_connection_mode = HOST_CONNECTION_MODE_NONE,
+        .radio_config.radio_mode = ZB_RADIO_MODE_NATIVE,
+        .host_config.host_connection_mode = ZB_HOST_CONNECTION_MODE_NONE,
     };
     ret = esp_zb_platform_config(&config);
     if (ret != ESP_OK)
@@ -857,7 +857,6 @@ uint8_t zigbee_send(linky_data_t *data)
         }
     }
 
-    led_start_pattern(LED_SEND_OK);
     return 0;
 }
 

@@ -38,6 +38,7 @@ typedef enum
     TEST_LINKY_STD,
     TEST_LINKY_READ,
     TEST_LINKY_STATS,
+    TEST_PRODUCER,
 } tests_t;
 
 /*==============================================================================

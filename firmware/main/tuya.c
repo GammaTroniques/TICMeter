@@ -744,7 +744,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
     char *json = cJSON_PrintUnformatted(jsonObject); // Convert the json object to string
     cJSON_Delete(jsonObject);                        // Delete the json object
 
-    ESP_LOGI(TAG, "JSON: %s", json);
+    printf("JSON: %s\n", json);
     uint8_t sendComplete = 0;
     time_t timout = MILLIS + 3000;
 

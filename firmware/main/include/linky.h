@@ -362,6 +362,8 @@ extern uint32_t linky_last_group_count;
  */
 void linky_init(int RX);
 
+void linky_stop();
+
 /**
  * @brief Get new data from the linky (read, decode and store in linky_data)
  *
@@ -396,6 +398,8 @@ void linky_print_debug_frame();
 linky_contract_t linky_get_contract(linky_data_t *data);
 
 void linky_stats();
+
+esp_err_t linky_compute();
 
 const char *linky_get_str_mode();
 void linky_clear_data();

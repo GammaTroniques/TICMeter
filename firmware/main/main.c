@@ -301,7 +301,7 @@ void main_task(void *pvParameters)
     linky_stats();
 
     // esp_pm_dump_locks(stdout);
-    err = main_send_data();
+    err = main_send_data(&linky_data);
     if (err != ESP_OK)
     {
       err_count++;
@@ -320,9 +320,15 @@ void main_task(void *pvParameters)
   }
 }
 
-esp_err_t main_send_data()
+esp_err_t main_send_data(linky_data_t *data)
 {
   esp_err_t err = ESP_OK;
+  if (data == NULL)
+  {
+    ESP_LOGE(MAIN_TAG, "Data is NULL");
+    return ESP_FAIL;
+  }
+
   switch (config_values.mode)
   {
   case MODE_HTTP:
@@ -332,7 +338,7 @@ esp_err_t main_send_data()
     {
       main_data_index = 0;
     }
-    main_data_array[main_data_index++] = linky_data;
+    main_data_array[main_data_index++] = *data;
     ESP_LOGI(MAIN_TAG, "Data stored: %d/%d: time: %lld", main_data_index, config_values.web.store_before_send, linky_data.timestamp);
     if (main_data_index >= config_values.web.store_before_send || main_data_index >= MAX_DATA_INDEX)
     {
@@ -369,7 +375,7 @@ esp_err_t main_send_data()
   case MODE_MQTT_HA: // send data to mqtt server
   {
     linky_free_heap_size = esp_get_free_heap_size();
-    uint8_t ret = mqtt_prepare_publish(&linky_data);
+    uint8_t ret = mqtt_prepare_publish(data);
     if (ret == 0)
     {
       ESP_LOGE(MAIN_TAG, "Some data will not be sent, but we continue");
@@ -405,7 +411,7 @@ esp_err_t main_send_data()
     {
       ESP_LOGI(MAIN_TAG, "Index offset not saved, reread Linky to be sure...");
       linky_update(LINKY_READING_TIMEOUT);
-      tuya_fill_index(&config_values.index_offset, &linky_data);
+      tuya_fill_index(&config_values.index_offset, data);
       config_values.index_offset.value_saved = 1;
       config_write();
     }
@@ -428,7 +434,7 @@ esp_err_t main_send_data()
         }
       }
 
-      if (tuya_send_data(&linky_data))
+      if (tuya_send_data(data))
       {
         ESP_LOGE(MAIN_TAG, "Tuya SEND ERROR");
         led_start_pattern(LED_SEND_FAILED);
@@ -454,7 +460,14 @@ esp_err_t main_send_data()
     }
     break;
   case MODE_ZIGBEE:
-    zigbee_send(&linky_data);
+    if (zigbee_send(data))
+    {
+      led_start_pattern(LED_SEND_FAILED);
+    }
+    else
+    {
+      led_start_pattern(LED_SEND_OK);
+    }
     break;
   default:
     break;
