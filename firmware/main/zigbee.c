@@ -186,7 +186,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
         }
         break;
     default:
-        ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status));
+        ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s (0x%x)", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status), err_status);
 
         break;
     }
@@ -634,9 +634,7 @@ static void zigbee_task(void *pvParameters)
     esp_zb_core_action_handler_register(zigbee_action_handler);
 
     esp_zb_set_primary_network_channel_set(ZIGBEE_CHANNEL_MASK);
-    ESP_LOGI(TAG, "Primary channel mask");
     esp_zb_set_secondary_network_channel_set(0x07FFF800); // all channels
-    ESP_LOGI(TAG, "Secondary channel mask");
     ESP_ERROR_CHECK(esp_zb_start(false));
     ESP_LOGI(TAG, "Zigbee stack started");
     esp_zb_main_loop_iteration();
@@ -644,6 +642,7 @@ static void zigbee_task(void *pvParameters)
 
 static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length)
 {
+    esp_err_t ret = ESP_OK;
     // ESP_LOGW(TAG, "zigbee_report_attribute: 0x%x, attribute: 0x%x, value: %llu, length: %d", clusterID, attributeID, *(uint64_t *)value, value_length);
     esp_zb_zcl_report_attr_cmd_t cmd = {
         .zcl_basic_cmd = {
@@ -670,7 +669,8 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
         return;
     }
     memcpy(value_r->data_p, value, value_length);
-    esp_zb_zcl_report_attr_cmd_req(&cmd);
+    ret = esp_zb_zcl_report_attr_cmd_req(&cmd);
+    ESP_LOGI(TAG, "Ret 0x%x %s", ret, esp_err_to_name(ret));
 }
 char string_buffer[100];
 
@@ -690,7 +690,8 @@ uint8_t zigbee_send(linky_data_t *data)
 
     if (zigbee_state == ZIGBEE_COMMISIONING_ERROR)
     {
-        ESP_LOGE(TAG, "Zigbee commisioning error: Don't send data");
+        ESP_LOGE(TAG, "Zigbee commisioning error: retrying for the next time");
+        esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
         return 1;
     }
 
