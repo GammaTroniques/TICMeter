@@ -71,8 +71,7 @@ static void zigbee_bdb_start_top_level_commissioning_cb(uint8_t mode_mask);
 static esp_err_t zigbee_attribute_handler(const esp_zb_zcl_set_attr_value_message_t *message);
 static esp_err_t zigbee_action_handler(esp_zb_core_action_callback_id_t callback_id, const void *message);
 static void zigbee_task(void *pvParameters);
-static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length);
-// static void zigbee_send_first_datas(void *pvParameters);
+static esp_err_t zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length);
 static void zigbee_print_value(char *out_buffer, void *data, linky_label_type_t type);
 static esp_err_t zigbee_ota_upgrade_status_handler(esp_zb_zcl_ota_upgrade_value_message_t messsage);
 static uint32_t zigbee_get_hex_version(const char *version);
@@ -640,7 +639,7 @@ static void zigbee_task(void *pvParameters)
     esp_zb_main_loop_iteration();
 }
 
-static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length)
+static esp_err_t zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16_t attributeID, void *value, uint8_t value_length)
 {
     esp_err_t ret = ESP_OK;
     // ESP_LOGW(TAG, "zigbee_report_attribute: 0x%x, attribute: 0x%x, value: %llu, length: %d", clusterID, attributeID, *(uint64_t *)value, value_length);
@@ -661,38 +660,36 @@ static void zigbee_report_attribute(uint8_t endpoint, uint16_t clusterID, uint16
     if (value_r == NULL)
     {
         ESP_LOGE(TAG, "Attribute not found: 0x%x, attribute: 0x%x", clusterID, attributeID);
-        return;
+        return ESP_ERR_NOT_FOUND;
     }
     if (value == NULL)
     {
         ESP_LOGE(TAG, "Report value is NULL");
-        return;
+        return ESP_ERR_INVALID_ARG;
     }
     memcpy(value_r->data_p, value, value_length);
     ret = esp_zb_zcl_report_attr_cmd_req(&cmd);
-    ESP_LOGI(TAG, "Ret 0x%x %s", ret, esp_err_to_name(ret));
+
+    return ret;
 }
 char string_buffer[100];
 
 uint64_t temp = 150;
-uint8_t zigbee_send(linky_data_t *data)
+esp_err_t zigbee_send(linky_data_t *data)
 {
+    esp_err_t ret = ESP_OK;
+
     if (config_values.zigbee.state != ZIGBEE_PAIRED)
     {
         ESP_LOGE(TAG, "Zigbee not paired");
-        return 1;
+        return ESP_ERR_INVALID_STATE;
     }
-    // if (zigbee_state != ZIGBEE_CONNECTED)
-    // {
-    //     ESP_LOGE(TAG, "Zigbee not connected");
-    //     return 1;
-    // }
 
     if (zigbee_state == ZIGBEE_COMMISIONING_ERROR)
     {
         ESP_LOGE(TAG, "Zigbee commisioning error: retrying for the next time");
         esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
-        return 1;
+        return ESP_ERR_INVALID_STATE;
     }
 
     if (zigbee_ota_running)
@@ -845,12 +842,21 @@ uint8_t zigbee_send(linky_data_t *data)
                 continue;
                 break;
             }
-            zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, ptr_value, size);
+            ret = zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, ptr_value, size);
+            if (ret != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Report attribute failed: 0x%x", ret);
+            }
         }
         else
         {
             ESP_LOGI(TAG, "Set attribute cluster: Status: 0x%X 0x%x, attribute: 0x%x, name: %s, value: %lu", status, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint32_t *)ptr_value);
             status = esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, ptr_value, false);
+            if (status != ESP_ZB_ZCL_STATUS_SUCCESS)
+            {
+                ESP_LOGE(TAG, "Set attribute failed: 0x%x", status);
+                ret = ESP_FAIL;
+            }
         }
         if (zigbee_ota_running)
         {
@@ -858,7 +864,7 @@ uint8_t zigbee_send(linky_data_t *data)
         }
     }
 
-    return 0;
+    return ret;
 }
 
 uint8_t zigbee_factory_reset()

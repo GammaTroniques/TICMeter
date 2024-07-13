@@ -460,7 +460,9 @@ esp_err_t main_send_data(linky_data_t *data)
     }
     break;
   case MODE_ZIGBEE:
-    if (zigbee_send(data))
+
+    err = zigbee_send(data);
+    if (err != ESP_OK)
     {
       led_start_pattern(LED_SEND_FAILED);
     }
