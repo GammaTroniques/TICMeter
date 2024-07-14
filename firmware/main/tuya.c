@@ -553,25 +553,25 @@ uint8_t tuya_send_data(linky_data_t *linky)
         break;
     }
 
-    for (int i = 0; i < LinkyLabelListSize; i++)
+    for (int i = 0; i < linky_label_list_size; i++)
     {
-        if (LinkyLabelList[i].id < 101 || LinkyLabelList[i].id > 199)
+        if (linky_label_list[i].tuya_id < 101 || linky_label_list[i].tuya_id > 199)
         {
             continue; // dont send data for label < 101 : they are not used by tuya
         }
-        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
+        if (linky_label_list[i].mode != linky_mode && linky_label_list[i].mode != ANY)
         {
             continue; // dont send data for label not used by current mode
         }
         // json
         char str_id[5];
-        snprintf(str_id, sizeof(str_id), "%d", LinkyLabelList[i].id);
-        switch (LinkyLabelList[i].id)
+        snprintf(str_id, sizeof(str_id), "%d", linky_label_list[i].tuya_id);
+        switch (linky_label_list[i].tuya_id)
         {
 
         case 102:
             // Max power contract
-            uint32_t max_power = *(uint32_t *)(LinkyLabelList[i].data);
+            uint32_t max_power = *(uint32_t *)(linky_label_list[i].data);
             if (linky_mode == MODE_STD && linky_three_phase)
             {
                 max_power *= 3;
@@ -582,7 +582,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
             break;
 
         case 103:
-            uint16_t refresh_rate = *(uint16_t *)LinkyLabelList[i].data;
+            uint16_t refresh_rate = *(uint16_t *)linky_label_list[i].data;
             if (refresh_rate > 300)
             {
                 refresh_rate = 300;
@@ -647,7 +647,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
         }
         case 108:
         {
-            char *str = (char *)LinkyLabelList[i].data;
+            char *str = (char *)linky_label_list[i].data;
             str = tuya_replace(str, str_current_tarif_replace);
             cJSON_AddStringToObject(jsonObject, "108", str);
             continue;
@@ -657,7 +657,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
         case 109:
         case 110:
         {
-            char *value = (char *)LinkyLabelList[i].data;
+            char *value = (char *)linky_label_list[i].data;
             if (value == NULL || strlen(value) == 0)
                 continue;
 
@@ -675,11 +675,11 @@ uint8_t tuya_send_data(linky_data_t *linky)
             break;
         }
 
-        switch (LinkyLabelList[i].type)
+        switch (linky_label_list[i].type)
         {
         case UINT8:
         {
-            uint8_t *value = (uint8_t *)LinkyLabelList[i].data;
+            uint8_t *value = (uint8_t *)linky_label_list[i].data;
             if (value == NULL || *value == UINT8_MAX)
                 continue;
             cJSON_AddNumberToObject(jsonObject, str_id, *value);
@@ -687,7 +687,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
         }
         case UINT16:
         {
-            uint16_t *value = (uint16_t *)LinkyLabelList[i].data;
+            uint16_t *value = (uint16_t *)linky_label_list[i].data;
             if (value == NULL || *value == UINT16_MAX)
                 continue;
             cJSON_AddNumberToObject(jsonObject, str_id, *value);
@@ -695,7 +695,7 @@ uint8_t tuya_send_data(linky_data_t *linky)
         }
         case UINT32:
         {
-            uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
+            uint32_t *value = (uint32_t *)linky_label_list[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
             cJSON_AddNumberToObject(jsonObject, str_id, tuya_cap_value(*value));
@@ -703,10 +703,10 @@ uint8_t tuya_send_data(linky_data_t *linky)
         }
         case UINT32_TIME:
         {
-            uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
+            uint32_t *value = (uint32_t *)linky_label_list[i].data;
             if (value == NULL || *value == UINT32_MAX)
                 continue;
-            if (LinkyLabelList[i].device_class == ENERGY && *value == 0)
+            if (linky_label_list[i].device_class == ENERGY && *value == 0)
                 continue;
 
             cJSON_AddNumberToObject(jsonObject, str_id, tuya_cap_value(*value));
@@ -714,17 +714,17 @@ uint8_t tuya_send_data(linky_data_t *linky)
         }
         case UINT64:
         {
-            uint64_t *value = (uint64_t *)LinkyLabelList[i].data;
+            uint64_t *value = (uint64_t *)linky_label_list[i].data;
             if (value == NULL || *value == UINT64_MAX)
                 continue;
-            if (LinkyLabelList[i].device_class == ENERGY && *value == 0)
+            if (linky_label_list[i].device_class == ENERGY && *value == 0)
                 continue;
             cJSON_AddNumberToObject(jsonObject, str_id, tuya_cap_value(*value));
             break;
         }
         case STRING:
         {
-            char *value = (char *)LinkyLabelList[i].data;
+            char *value = (char *)linky_label_list[i].data;
             if (value == NULL)
                 continue;
             uint32_t len = strlen(value);

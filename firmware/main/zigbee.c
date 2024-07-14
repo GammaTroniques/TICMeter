@@ -207,37 +207,37 @@ static esp_err_t zigbee_attribute_handler(const esp_zb_zcl_set_attr_value_messag
 
     uint8_t *data = message->attribute.data.value;
     char buffer[101];
-    for (int i = 0; i < LinkyLabelListSize; i++)
+    for (int i = 0; i < linky_label_list_size; i++)
     {
-        if (LinkyLabelList[i].clusterID == message->info.cluster && LinkyLabelList[i].attributeID == message->attribute.id)
+        if (linky_label_list[i].clusterID == message->info.cluster && linky_label_list[i].attributeID == message->attribute.id)
         {
-            switch (LinkyLabelList[i].type)
+            switch (linky_label_list[i].type)
             {
             case UINT8:
-                *(uint8_t *)LinkyLabelList[i].data = data[0];
+                *(uint8_t *)linky_label_list[i].data = data[0];
                 break;
             case UINT16:
-                *(uint16_t *)LinkyLabelList[i].data = data[1] << 8 | data[0];
+                *(uint16_t *)linky_label_list[i].data = data[1] << 8 | data[0];
                 break;
             case UINT32:
-                *(uint32_t *)LinkyLabelList[i].data = (uint32_t)data[3] << 24 | (uint32_t)data[2] << 16 | (uint32_t)data[1] << 8 | (uint32_t)data[0];
+                *(uint32_t *)linky_label_list[i].data = (uint32_t)data[3] << 24 | (uint32_t)data[2] << 16 | (uint32_t)data[1] << 8 | (uint32_t)data[0];
                 break;
             case UINT64:
-                *(uint64_t *)LinkyLabelList[i].data = (uint64_t)data[7] << 56 | (uint64_t)data[6] << 48 | (uint64_t)data[5] << 40 | (uint64_t)data[4] << 32 | (uint64_t)data[3] << 24 | (uint64_t)data[2] << 16 | (uint64_t)data[1] << 8 | (uint64_t)data[0];
+                *(uint64_t *)linky_label_list[i].data = (uint64_t)data[7] << 56 | (uint64_t)data[6] << 48 | (uint64_t)data[5] << 40 | (uint64_t)data[4] << 32 | (uint64_t)data[3] << 24 | (uint64_t)data[2] << 16 | (uint64_t)data[1] << 8 | (uint64_t)data[0];
                 break;
             case STRING:
-                memcpy(LinkyLabelList[i].data, data, MIN(LinkyLabelList[i].size, message->attribute.data.size));
-                ((char *)LinkyLabelList[i].data)[LinkyLabelList[i].size] = '\0';
+                memcpy(linky_label_list[i].data, data, MIN(linky_label_list[i].size, message->attribute.data.size));
+                ((char *)linky_label_list[i].data)[linky_label_list[i].size] = '\0';
                 break;
             case UINT32_TIME:
-                ((time_label_t *)LinkyLabelList[i].data)->value = data[3] << 24 | data[2] << 16 | data[1] << 8 | data[0];
+                ((time_label_t *)linky_label_list[i].data)->value = data[3] << 24 | data[2] << 16 | data[1] << 8 | data[0];
                 break;
             default:
                 return ESP_ERR_INVALID_ARG;
                 break;
             }
-            zigbee_print_value(buffer, LinkyLabelList[i].data, LinkyLabelList[i].type);
-            ESP_LOGI(TAG, "Attribute %s updated to %s", LinkyLabelList[i].label, buffer);
+            zigbee_print_value(buffer, linky_label_list[i].data, linky_label_list[i].type);
+            ESP_LOGI(TAG, "Attribute %s updated to %s", linky_label_list[i].label, buffer);
             config_write();
             break;
         }
@@ -452,27 +452,27 @@ static void zigbee_task(void *pvParameters)
     // ------------------ Add attributes ------------------
     uint32_t attributes_count = 0;
 
-    for (int i = 0; i < LinkyLabelListSize; i++)
+    for (int i = 0; i < linky_label_list_size; i++)
     {
-        if (LinkyLabelList[i].zb_access == 0)
+        if (linky_label_list[i].zb_access == 0)
         {
             continue;
         }
 
-        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
+        if (linky_label_list[i].mode != linky_mode && linky_label_list[i].mode != ANY)
         {
             continue;
         }
-        if (LinkyLabelList[i].data == NULL)
+        if (linky_label_list[i].data == NULL)
         {
             continue;
         }
 
-        switch (LinkyLabelList[i].type)
+        switch (linky_label_list[i].type)
         {
         case UINT8:
         {
-            if (*(uint8_t *)LinkyLabelList[i].data == UINT8_MAX)
+            if (*(uint8_t *)linky_label_list[i].data == UINT8_MAX)
             {
                 continue;
             }
@@ -480,7 +480,7 @@ static void zigbee_task(void *pvParameters)
         }
         case UINT16:
         {
-            if (*(uint16_t *)LinkyLabelList[i].data == UINT16_MAX)
+            if (*(uint16_t *)linky_label_list[i].data == UINT16_MAX)
             {
                 continue;
             }
@@ -488,11 +488,11 @@ static void zigbee_task(void *pvParameters)
         }
         case UINT32:
         {
-            if (*(uint32_t *)LinkyLabelList[i].data == UINT32_MAX)
+            if (*(uint32_t *)linky_label_list[i].data == UINT32_MAX)
             {
                 continue;
             }
-            if (LinkyLabelList[i].device_class == ENERGY && *(uint32_t *)LinkyLabelList[i].data == 0)
+            if (linky_label_list[i].device_class == ENERGY && *(uint32_t *)linky_label_list[i].data == 0)
             {
                 continue;
             }
@@ -500,11 +500,11 @@ static void zigbee_task(void *pvParameters)
         }
         case UINT64:
         {
-            if (*(uint64_t *)LinkyLabelList[i].data == UINT64_MAX)
+            if (*(uint64_t *)linky_label_list[i].data == UINT64_MAX)
             {
                 continue;
             }
-            if (LinkyLabelList[i].device_class == ENERGY && *(uint64_t *)LinkyLabelList[i].data == 0)
+            if (linky_label_list[i].device_class == ENERGY && *(uint64_t *)linky_label_list[i].data == 0)
             {
                 continue;
             }
@@ -512,7 +512,7 @@ static void zigbee_task(void *pvParameters)
         }
         case STRING:
         {
-            if (strnlen((char *)LinkyLabelList[i].data, LinkyLabelList[i].size) == 0)
+            if (strnlen((char *)linky_label_list[i].data, linky_label_list[i].size) == 0)
             {
                 continue;
             }
@@ -520,7 +520,7 @@ static void zigbee_task(void *pvParameters)
         }
         case UINT32_TIME:
         {
-            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            if (((time_label_t *)linky_label_list[i].data)->value == UINT32_MAX)
             {
                 continue;
             }
@@ -531,14 +531,14 @@ static void zigbee_task(void *pvParameters)
         };
 
         char str_value[100];
-        void *ptr_value = LinkyLabelList[i].data;
+        void *ptr_value = linky_label_list[i].data;
 
-        if (LinkyLabelList[i].type == UINT32_TIME)
+        if (linky_label_list[i].type == UINT32_TIME)
         {
-            ptr_value = &((time_label_t *)LinkyLabelList[i].data)->value;
+            ptr_value = &((time_label_t *)linky_label_list[i].data)->value;
         }
 
-        switch (LinkyLabelList[i].type)
+        switch (linky_label_list[i].type)
         {
         case UINT8:
             sprintf(str_value, "%u", *(uint8_t *)ptr_value);
@@ -559,39 +559,39 @@ static void zigbee_task(void *pvParameters)
             sprintf(str_value, "%s", (char *)ptr_value);
             char *str = (char *)ptr_value;
             char temp[100];
-            memcpy(temp + 1, str, LinkyLabelList[i].size + 1);
+            memcpy(temp + 1, str, linky_label_list[i].size + 1);
             temp[0] = strlen(temp + 1);
-            if (temp[0] > LinkyLabelList[i].size)
+            if (temp[0] > linky_label_list[i].size)
             {
-                temp[0] = LinkyLabelList[i].size;
+                temp[0] = linky_label_list[i].size;
             }
-            temp[LinkyLabelList[i].size + 2] = '\0';
-            memcpy(LinkyLabelList[i].data, temp, LinkyLabelList[i].size + 1);
-            // ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
+            temp[linky_label_list[i].size + 2] = '\0';
+            memcpy(linky_label_list[i].data, temp, linky_label_list[i].size + 1);
+            // ESP_LOG_BUFFER_HEXDUMP(TAG, linky_label_list[i].data, linky_label_list[i].size + 2, ESP_LOG_INFO);
             break;
         default:
-            ESP_LOGE(TAG, "%s : Unknown type", LinkyLabelList[i].label);
+            ESP_LOGE(TAG, "%s : Unknown type", linky_label_list[i].label);
             continue;
             break;
         }
 
-        ESP_LOGI(TAG, "Adding %s : Cluster: 0x%04x, attribute: 0x%04x, zbtype: %x, value: %s", LinkyLabelList[i].label, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, str_value);
+        ESP_LOGI(TAG, "Adding %s : Cluster: 0x%04x, attribute: 0x%04x, zbtype: %x, value: %s", linky_label_list[i].label, linky_label_list[i].clusterID, linky_label_list[i].attributeID, linky_label_list[i].zb_type, str_value);
 
-        switch (LinkyLabelList[i].clusterID)
+        switch (linky_label_list[i].clusterID)
         {
         case ESP_ZB_ZCL_CLUSTER_ID_ELECTRICAL_MEASUREMENT:
         {
-            esp_zb_electrical_meas_cluster_add_attr(esp_zb_electrical_meas_cluster, LinkyLabelList[i].attributeID, ptr_value);
+            esp_zb_electrical_meas_cluster_add_attr(esp_zb_electrical_meas_cluster, linky_label_list[i].attributeID, ptr_value);
             break;
         }
         case ESP_ZB_ZCL_CLUSTER_ID_METERING:
         {
-            esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, LinkyLabelList[i].zb_access, ptr_value);
+            esp_zb_cluster_add_attr(esp_zb_metering_cluster, ESP_ZB_ZCL_CLUSTER_ID_METERING, linky_label_list[i].attributeID, linky_label_list[i].zb_type, linky_label_list[i].zb_access, ptr_value);
             break;
         }
         case TICMETER_CLUSTER_ID:
         {
-            esp_zb_custom_cluster_add_custom_attr(esp_zb_ticmeter_cluster, LinkyLabelList[i].attributeID, LinkyLabelList[i].zb_type, LinkyLabelList[i].zb_access, ptr_value);
+            esp_zb_custom_cluster_add_custom_attr(esp_zb_ticmeter_cluster, linky_label_list[i].attributeID, linky_label_list[i].zb_type, linky_label_list[i].zb_access, ptr_value);
             break;
         }
         default:
@@ -698,29 +698,29 @@ esp_err_t zigbee_send(linky_data_t *data)
     }
     zigbee_sending = true;
 
-    for (int i = 0; i < LinkyLabelListSize; i++)
+    for (int i = 0; i < linky_label_list_size; i++)
     {
         char str_value[102];
-        void *ptr_value = LinkyLabelList[i].data;
-        ESP_LOGD(TAG, "check %s %d", LinkyLabelList[i].label, i);
-        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
+        void *ptr_value = linky_label_list[i].data;
+        ESP_LOGD(TAG, "check %s %d", linky_label_list[i].label, i);
+        if (linky_label_list[i].mode != linky_mode && linky_label_list[i].mode != ANY)
         {
             continue;
         }
-        if (LinkyLabelList[i].data == NULL)
+        if (linky_label_list[i].data == NULL)
         {
             continue;
         }
-        if (LinkyLabelList[i].clusterID == 0 || LinkyLabelList[i].zb_access == 0)
+        if (linky_label_list[i].clusterID == 0 || linky_label_list[i].zb_access == 0)
         {
             continue;
         }
 
-        switch (LinkyLabelList[i].type)
+        switch (linky_label_list[i].type)
         {
         case UINT8:
         {
-            if (*(uint8_t *)LinkyLabelList[i].data == UINT8_MAX)
+            if (*(uint8_t *)linky_label_list[i].data == UINT8_MAX)
             {
                 continue;
             }
@@ -728,7 +728,7 @@ esp_err_t zigbee_send(linky_data_t *data)
         }
         case UINT16:
         {
-            if (*(uint16_t *)LinkyLabelList[i].data == UINT16_MAX)
+            if (*(uint16_t *)linky_label_list[i].data == UINT16_MAX)
             {
                 continue;
             }
@@ -736,11 +736,11 @@ esp_err_t zigbee_send(linky_data_t *data)
         }
         case UINT32:
         {
-            if (*(uint32_t *)LinkyLabelList[i].data == UINT32_MAX)
+            if (*(uint32_t *)linky_label_list[i].data == UINT32_MAX)
             {
                 continue;
             }
-            if (LinkyLabelList[i].device_class == ENERGY && *(uint32_t *)LinkyLabelList[i].data == 0)
+            if (linky_label_list[i].device_class == ENERGY && *(uint32_t *)linky_label_list[i].data == 0)
             {
                 continue;
             }
@@ -748,11 +748,11 @@ esp_err_t zigbee_send(linky_data_t *data)
         }
         case UINT64:
         {
-            if (*(uint64_t *)LinkyLabelList[i].data == UINT64_MAX)
+            if (*(uint64_t *)linky_label_list[i].data == UINT64_MAX)
             {
                 continue;
             }
-            if (LinkyLabelList[i].device_class == ENERGY && *(uint64_t *)LinkyLabelList[i].data == 0)
+            if (linky_label_list[i].device_class == ENERGY && *(uint64_t *)linky_label_list[i].data == 0)
             {
                 continue;
             }
@@ -760,34 +760,34 @@ esp_err_t zigbee_send(linky_data_t *data)
         }
         case STRING:
         {
-            if (strnlen((char *)LinkyLabelList[i].data, LinkyLabelList[i].size) == 0)
+            if (strnlen((char *)linky_label_list[i].data, linky_label_list[i].size) == 0)
             {
                 continue;
             }
-            char *str = (char *)LinkyLabelList[i].data;
+            char *str = (char *)linky_label_list[i].data;
             char temp[100];
-            memcpy(temp + 1, str, LinkyLabelList[i].size + 1);
+            memcpy(temp + 1, str, linky_label_list[i].size + 1);
             temp[0] = strlen(temp + 1);
-            if (temp[0] > LinkyLabelList[i].size)
+            if (temp[0] > linky_label_list[i].size)
             {
-                temp[0] = LinkyLabelList[i].size;
+                temp[0] = linky_label_list[i].size;
             }
-            temp[LinkyLabelList[i].size + 2] = '\0';
-            memcpy(LinkyLabelList[i].data, temp, LinkyLabelList[i].size + 1);
-            // ESP_LOG_BUFFER_HEXDUMP(TAG, LinkyLabelList[i].data, LinkyLabelList[i].size + 2, ESP_LOG_INFO);
+            temp[linky_label_list[i].size + 2] = '\0';
+            memcpy(linky_label_list[i].data, temp, linky_label_list[i].size + 1);
+            // ESP_LOG_BUFFER_HEXDUMP(TAG, linky_label_list[i].data, linky_label_list[i].size + 2, ESP_LOG_INFO);
             break;
         }
         case UINT32_TIME:
         {
-            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX)
+            if (((time_label_t *)linky_label_list[i].data)->value == UINT32_MAX)
             {
                 continue;
             }
-            ptr_value = &((time_label_t *)LinkyLabelList[i].data)->value;
-            if (LinkyLabelList[i].zb_type == ESP_ZB_ZCL_ATTR_TYPE_U64)
+            ptr_value = &((time_label_t *)linky_label_list[i].data)->value;
+            if (linky_label_list[i].zb_type == ESP_ZB_ZCL_ATTR_TYPE_U64)
             {
                 // pass only timestamp as uint64_t
-                ptr_value = &((time_label_t *)LinkyLabelList[i].data)->time;
+                ptr_value = &((time_label_t *)linky_label_list[i].data)->time;
             }
             break;
         }
@@ -795,16 +795,16 @@ esp_err_t zigbee_send(linky_data_t *data)
             break;
         };
 
-        ESP_LOGD(TAG, "Send %s", LinkyLabelList[i].label);
+        ESP_LOGD(TAG, "Send %s", linky_label_list[i].label);
 
         esp_zb_zcl_status_t status = ESP_ZB_ZCL_STATUS_SUCCESS;
 
-        if (LinkyLabelList[i].zb_access == ESP_ZB_ZCL_ATTR_ACCESS_REPORTING)
+        if (linky_label_list[i].zb_access == ESP_ZB_ZCL_ATTR_ACCESS_REPORTING)
         {
-            zigbee_print_value(str_value, LinkyLabelList[i].data, LinkyLabelList[i].type);
-            ESP_LOGI(TAG, "Repporting cluster: 0x%x, attribute: 0x%x, name: %s, value: %s", LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, str_value);
+            zigbee_print_value(str_value, linky_label_list[i].data, linky_label_list[i].type);
+            ESP_LOGI(TAG, "Repporting cluster: 0x%x, attribute: 0x%x, name: %s, value: %s", linky_label_list[i].clusterID, linky_label_list[i].attributeID, linky_label_list[i].label, str_value);
             uint8_t size;
-            switch (LinkyLabelList[i].zb_type)
+            switch (linky_label_list[i].zb_type)
             {
             case ESP_ZB_ZCL_ATTR_TYPE_U8:
             case ESP_ZB_ZCL_ATTR_TYPE_S8:
@@ -832,17 +832,17 @@ esp_err_t zigbee_send(linky_data_t *data)
                 break;
             case ESP_ZB_ZCL_ATTR_TYPE_CHAR_STRING:
             case ESP_ZB_ZCL_ATTR_TYPE_OCTET_STRING:
-                size = LinkyLabelList[i].size + 1;
+                size = linky_label_list[i].size + 1;
                 break;
             case ESP_ZB_ZCL_ATTR_TYPE_BOOL:
                 size = sizeof(uint8_t);
                 break;
             default:
-                ESP_LOGE(TAG, "Zigbee send: %s Unknown type. skipping...", LinkyLabelList[i].label);
+                ESP_LOGE(TAG, "Zigbee send: %s Unknown type. skipping...", linky_label_list[i].label);
                 continue;
                 break;
             }
-            ret = zigbee_report_attribute(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, ptr_value, size);
+            ret = zigbee_report_attribute(LINKY_TIC_ENDPOINT, linky_label_list[i].clusterID, linky_label_list[i].attributeID, ptr_value, size);
             if (ret != ESP_OK)
             {
                 ESP_LOGE(TAG, "Report attribute failed: 0x%x", ret);
@@ -850,8 +850,8 @@ esp_err_t zigbee_send(linky_data_t *data)
         }
         else
         {
-            ESP_LOGI(TAG, "Set attribute cluster: Status: 0x%X 0x%x, attribute: 0x%x, name: %s, value: %lu", status, LinkyLabelList[i].clusterID, LinkyLabelList[i].attributeID, LinkyLabelList[i].label, *(uint32_t *)ptr_value);
-            status = esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, LinkyLabelList[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, LinkyLabelList[i].attributeID, ptr_value, false);
+            ESP_LOGI(TAG, "Set attribute cluster: Status: 0x%X 0x%x, attribute: 0x%x, name: %s, value: %lu", status, linky_label_list[i].clusterID, linky_label_list[i].attributeID, linky_label_list[i].label, *(uint32_t *)ptr_value);
+            status = esp_zb_zcl_set_attribute_val(LINKY_TIC_ENDPOINT, linky_label_list[i].clusterID, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE, linky_label_list[i].attributeID, ptr_value, false);
             if (status != ESP_ZB_ZCL_STATUS_SUCCESS)
             {
                 ESP_LOGE(TAG, "Set attribute failed: 0x%x", status);

@@ -449,7 +449,7 @@ static int mqtt_discovery_command(int argc, char **argv)
     return ESP_ERR_INVALID_ARG;
   }
   printf("MQTT discovery\n");
-  mqtt_setup_ha_discovery();
+  mqtt_setup_ha_discovery(false);
   return 0;
 }
 

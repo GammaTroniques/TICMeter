@@ -60,20 +60,20 @@ void web_preapare_json_data(linky_data_t *data, char count, char **json)
     {
         ESP_LOGI(TAG, "Data index: %d: timestamp: %lld", i, data[i].timestamp);
         cJSON *dataItem = cJSON_CreateObject();
-        for (uint32_t j = 0; j < LinkyLabelListSize; j++)
+        for (uint32_t j = 0; j < linky_label_list_size; j++)
         {
-            if (LinkyLabelList[j].data == NULL)
+            if (linky_label_list[j].data == NULL)
             {
                 continue;
             }
-            if (linky_mode != LinkyLabelList[j].mode && LinkyLabelList[j].mode != ANY)
+            if (linky_mode != linky_label_list[j].mode && linky_label_list[j].mode != ANY)
             {
                 continue;
             }
             uint8_t found = 0;
             for (uint32_t k = 0; k < linky_protected_data_size; k++)
             {
-                if (LinkyLabelList[j].data == linky_protected_data[k])
+                if (linky_label_list[j].data == linky_protected_data[k])
                 {
                     found = 1;
                     continue;
@@ -83,71 +83,71 @@ void web_preapare_json_data(linky_data_t *data, char count, char **json)
             {
                 continue;
             }
-            uint32_t delta_in_data = (char *)LinkyLabelList[j].data - (char *)&linky_data;
+            uint32_t delta_in_data = (char *)linky_label_list[j].data - (char *)&linky_data;
             ESP_LOGD(TAG, "Adress in data: 0x%lx", delta_in_data);
             void *value = (char *)&data[i] + delta_in_data;
             ESP_LOGD(TAG, "Adress in value: 0x%p", value);
-            switch (LinkyLabelList[j].type)
+            switch (linky_label_list[j].type)
             {
             case UINT8:
                 if (*(uint8_t *)value == UINT8_MAX)
                 {
                     continue;
                 }
-                ESP_LOGD(TAG, "Name: %s Type: UINT8 Value: %d", LinkyLabelList[j].label, *(uint8_t *)value);
-                cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint8_t *)value);
+                ESP_LOGD(TAG, "Name: %s Type: UINT8 Value: %d", linky_label_list[j].label, *(uint8_t *)value);
+                cJSON_AddNumberToObject(dataItem, linky_label_list[j].label, *(uint8_t *)value);
                 break;
             case UINT16:
                 if (*(uint16_t *)value == UINT16_MAX)
                 {
                     continue;
                 }
-                ESP_LOGD(TAG, "Name: %s Type: UINT16 Value: %d", LinkyLabelList[j].label, *(uint16_t *)value);
-                cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint16_t *)value);
+                ESP_LOGD(TAG, "Name: %s Type: UINT16 Value: %d", linky_label_list[j].label, *(uint16_t *)value);
+                cJSON_AddNumberToObject(dataItem, linky_label_list[j].label, *(uint16_t *)value);
                 break;
             case UINT32:
                 if (*(uint32_t *)value == UINT32_MAX)
                 {
                     continue;
                 }
-                if (LinkyLabelList[j].device_class == ENERGY && *(uint32_t *)value == 0)
+                if (linky_label_list[j].device_class == ENERGY && *(uint32_t *)value == 0)
                 {
                     continue;
                 }
-                ESP_LOGD(TAG, "Name: %s Type: UINT32 Value: %ld", LinkyLabelList[j].label, *(uint32_t *)value);
-                cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint32_t *)value);
+                ESP_LOGD(TAG, "Name: %s Type: UINT32 Value: %ld", linky_label_list[j].label, *(uint32_t *)value);
+                cJSON_AddNumberToObject(dataItem, linky_label_list[j].label, *(uint32_t *)value);
                 break;
             case UINT64:
                 if (*(uint64_t *)value == UINT64_MAX)
                 {
                     continue;
                 }
-                if (LinkyLabelList[j].device_class == ENERGY && *(uint64_t *)value == 0)
+                if (linky_label_list[j].device_class == ENERGY && *(uint64_t *)value == 0)
                 {
                     continue;
                 }
-                ESP_LOGD(TAG, "Name: %s Type: UINT64 Value: %lld", LinkyLabelList[j].label, *(uint64_t *)value);
-                cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint64_t *)value);
+                ESP_LOGD(TAG, "Name: %s Type: UINT64 Value: %lld", linky_label_list[j].label, *(uint64_t *)value);
+                cJSON_AddNumberToObject(dataItem, linky_label_list[j].label, *(uint64_t *)value);
                 break;
             case STRING:
                 if (strlen((char *)value) == 0)
                 {
                     continue;
                 }
-                ESP_LOGD(TAG, "Name: %s Type: STRING Value: %s", LinkyLabelList[j].label, (char *)value);
-                cJSON_AddStringToObject(dataItem, LinkyLabelList[j].label, (char *)value);
+                ESP_LOGD(TAG, "Name: %s Type: STRING Value: %s", linky_label_list[j].label, (char *)value);
+                cJSON_AddStringToObject(dataItem, linky_label_list[j].label, (char *)value);
                 break;
             case UINT32_TIME:
                 if (*(uint32_t *)value == UINT32_MAX)
                 {
                     continue;
                 }
-                ESP_LOGD(TAG, "Name: %s Type: UINT32_TIME Value: %ld", LinkyLabelList[j].label, *(uint32_t *)value);
-                cJSON_AddNumberToObject(dataItem, LinkyLabelList[j].label, *(uint32_t *)value);
+                ESP_LOGD(TAG, "Name: %s Type: UINT32_TIME Value: %ld", linky_label_list[j].label, *(uint32_t *)value);
+                cJSON_AddNumberToObject(dataItem, linky_label_list[j].label, *(uint32_t *)value);
                 break;
             case BOOL:
-                ESP_LOGD(TAG, "Name: %s Type: BOOL Value: %d", LinkyLabelList[j].label, *(bool *)value);
-                cJSON_AddBoolToObject(dataItem, LinkyLabelList[j].label, *(bool *)value);
+                ESP_LOGD(TAG, "Name: %s Type: BOOL Value: %d", linky_label_list[j].label, *(bool *)value);
+                cJSON_AddBoolToObject(dataItem, linky_label_list[j].label, *(bool *)value);
                 break;
             default:
                 break;

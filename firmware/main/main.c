@@ -500,15 +500,12 @@ static void main_ota_check()
 static void main_print_heap_diff()
 {
   static uint32_t last_heap = 0;
-  ESP_LOGI(MAIN_TAG, "Free heap memory: %ld", esp_get_free_heap_size());
   int32_t diff = last_heap - esp_get_free_heap_size();
+  char c = ' ';
   if (diff > 0)
   {
-    ESP_LOGW(MAIN_TAG, "Heap: we lost %ld bytes", diff);
+    c = '+';
   }
-  else
-  {
-    ESP_LOGI(MAIN_TAG, "Heap: we gained %ld bytes", -diff);
-  }
+  ESP_LOGI(MAIN_TAG, "Heap : %ld/%zd, %c%ld bytes", heap_caps_get_total_size(MALLOC_CAP_DEFAULT) - esp_get_free_heap_size(), heap_caps_get_total_size(MALLOC_CAP_DEFAULT), c, diff);
   last_heap = esp_get_free_heap_size();
 }

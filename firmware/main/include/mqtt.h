@@ -72,7 +72,7 @@ extern int mqtt_deinit();
  * @brief Send all entities to Home Assistant
  *
  */
-extern void mqtt_setup_ha_discovery();
+extern void mqtt_setup_ha_discovery(bool with_delete);
 
 /**
  * @brief Send linky_data_t to MQTT

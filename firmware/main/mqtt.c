@@ -75,8 +75,8 @@ typedef struct
  Local Function Declaration
 ===============================================================================*/
 static void log_error_if_nonzero(const char *message, int error_code);
-static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor);
-void mqtt_setup_ha_discovery();
+static void mqtt_create_sensor(char *json, char *config_topic, linky_value_t sensor);
+void mqtt_setup_ha_discovery(bool with_delete);
 void mqtt_topic_comliance(char *topic, int size);
 void mqtt_disconnect_task(void *pvParameters);
 
@@ -123,7 +123,7 @@ static void mqtt_remove_plus(char *topic)
     }
 }
 
-static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor)
+static void mqtt_create_sensor(char *json, char *config_topic, linky_value_t sensor)
 {
     const esp_app_desc_t *app_desc = esp_app_get_description();
     cJSON *jsonDevice = cJSON_CreateObject(); // Create the root object
@@ -227,7 +227,6 @@ static void mqtt_create_sensor(char *json, char *config_topic, LinkyGroup sensor
 
 uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
 {
-    static bool first = true;
     mqtt_sensors_count = 0;
     mqtt_sent_count = 0;
     if (mqtt_state == MQTT_DEINIT)
@@ -238,14 +237,10 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
 
     uint8_t has_error = 0;
     mqtt_topics.ha_discovery_configured_temp = 0;
-    ESP_LOGI(TAG, "ha_discovery_configured = %d", mqtt_topics.ha_discovery_configured);
-    if (config_values.mode == MODE_MQTT_HA && (/*&& mqtt_topics.ha_discovery_configured == 0 || */ first))
+    // ESP_LOGI(TAG, "ha_discovery_configured = %d", mqtt_topics.ha_discovery_configured);
+    if (config_values.mode == MODE_MQTT_HA)
     {
-        first = false;
-        ESP_LOGW(TAG, "Home Assistant Discovery not configured, configuring...");
-        ESP_LOGI(TAG, "Reread linky to be sure to have all data");
-        linky_update(LINKY_READING_TIMEOUT);
-        mqtt_setup_ha_discovery(linkydata);
+        mqtt_setup_ha_discovery(true);
     }
 
     char topic[150];
@@ -253,24 +248,24 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
 
     ESP_LOGI(TAG, "Pre-send Outbox size: %d", esp_mqtt_client_get_outbox_size(mqtt_client));
 
-    for (int i = 0; i < LinkyLabelListSize; i++)
+    for (int i = 0; i < linky_label_list_size; i++)
     {
-        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
+        if (linky_label_list[i].mode != linky_mode && linky_label_list[i].mode != ANY)
         {
             continue;
         }
 
-        if (LinkyLabelList[i].data == NULL)
+        if (linky_label_list[i].data == NULL)
         {
             continue;
         }
 
-        snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, (char *)LinkyLabelList[i].label);
-        switch (LinkyLabelList[i].type)
+        snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, (char *)linky_label_list[i].label);
+        switch (linky_label_list[i].type)
         {
         case UINT8:
         {
-            uint8_t *value = (uint8_t *)LinkyLabelList[i].data;
+            uint8_t *value = (uint8_t *)linky_label_list[i].data;
             if (*value == UINT8_MAX)
                 continue;
             snprintf(strValue, sizeof(strValue), "%d", *value);
@@ -278,7 +273,7 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         }
         case UINT16:
         {
-            uint16_t *value = (uint16_t *)LinkyLabelList[i].data;
+            uint16_t *value = (uint16_t *)linky_label_list[i].data;
             if (*value == UINT16_MAX)
                 continue;
             snprintf(strValue, sizeof(strValue), "%d", *value);
@@ -286,27 +281,27 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         }
         case UINT32:
         {
-            uint32_t *value = (uint32_t *)LinkyLabelList[i].data;
+            uint32_t *value = (uint32_t *)linky_label_list[i].data;
             if (*value == UINT32_MAX)
                 continue;
-            if (LinkyLabelList[i].device_class == ENERGY && *(uint32_t *)(LinkyLabelList[i].data) == 0)
+            if (linky_label_list[i].device_class == ENERGY && *(uint32_t *)(linky_label_list[i].data) == 0)
                 continue;
             snprintf(strValue, sizeof(strValue), "%ld", *value);
             break;
         }
         case UINT64:
         {
-            uint64_t *value = (uint64_t *)LinkyLabelList[i].data;
+            uint64_t *value = (uint64_t *)linky_label_list[i].data;
             if (*value == UINT64_MAX)
                 continue;
-            if (LinkyLabelList[i].device_class == ENERGY && *(uint64_t *)(LinkyLabelList[i].data) == 0)
+            if (linky_label_list[i].device_class == ENERGY && *(uint64_t *)(linky_label_list[i].data) == 0)
                 continue;
             snprintf(strValue, sizeof(strValue), "%lld", *value);
             break;
         }
         case STRING:
         {
-            char *value = (char *)LinkyLabelList[i].data;
+            char *value = (char *)linky_label_list[i].data;
             if (strlen(value) == 0)
                 continue;
             snprintf(strValue, sizeof(strValue), "%s", value);
@@ -314,7 +309,7 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
         }
         case UINT32_TIME:
         {
-            time_label_t *timeLabel = (time_label_t *)LinkyLabelList[i].data;
+            time_label_t *timeLabel = (time_label_t *)linky_label_list[i].data;
             if (timeLabel->value == UINT32_MAX || timeLabel->value == 0)
                 continue;
             snprintf(strValue, sizeof(strValue), "%lu", timeLabel->value);
@@ -325,11 +320,11 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
             break;
 
         default:
-            ESP_LOGE(TAG, "Unknown type: %s %d", LinkyLabelList[i].label, LinkyLabelList[i].type);
+            ESP_LOGE(TAG, "Unknown type: %s %d", linky_label_list[i].label, linky_label_list[i].type);
             break;
         }
 
-        if (LinkyLabelList[i].data == &linky_mode)
+        if (linky_label_list[i].data == &linky_mode)
         {
             switch (linky_mode)
             {
@@ -344,7 +339,7 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
                 break;
             }
         }
-        else if (LinkyLabelList[i].data == &linky_three_phase)
+        else if (linky_label_list[i].data == &linky_three_phase)
         {
             if (linky_three_phase == 1)
             {
@@ -355,9 +350,9 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
                 snprintf(strValue, sizeof(strValue), "Monophasé");
             }
         }
-        else if (LinkyLabelList[i].device_class == TIME_M)
+        else if (linky_label_list[i].device_class == TIME_M)
         {
-            snprintf(strValue, sizeof(strValue), "%lu", *((uint32_t *)LinkyLabelList[i].data) / 1000);
+            snprintf(strValue, sizeof(strValue), "%lu", *((uint32_t *)linky_label_list[i].data) / 1000);
         }
 
         mqtt_sensors_count++;
@@ -392,96 +387,119 @@ uint8_t mqtt_prepare_publish(linky_data_t *linkydata)
     return 1;
 }
 
-void mqtt_setup_ha_discovery()
+void mqtt_setup_ha_discovery(bool with_delete)
 {
-    char mqttBuffer[1024];
+    char mqtt_buffer[1024];
     char config_topic[100];
     bool delete = false;
 
-    for (int i = 0; i < LinkyLabelListSize; i++)
+    for (int i = 0; i < linky_label_list_size; i++)
     {
-        if (LinkyLabelList[i].data == NULL)
+        if (linky_label_list[i].data == NULL)
         {
             continue;
         }
-        delete = false;
-        if (LinkyLabelList[i].mode != linky_mode && LinkyLabelList[i].mode != ANY)
+
+        linky_value_rw_t *rw = linky_get_value_rw(i);
+        if (rw == NULL)
         {
-            delete = true;
+            ESP_LOGW(TAG, "RW not found for %s", linky_label_list[i].label);
+            continue;
         }
 
-        ESP_LOGD(TAG, "HA Discovery: %s", LinkyLabelList[i].label);
-        switch (LinkyLabelList[i].type)
+        delete = false;
+
+        ESP_LOGD(TAG, "HA Discovery: %s", linky_label_list[i].label);
+        switch (linky_label_list[i].type)
         {
         case UINT8:
-            if (*(uint8_t *)LinkyLabelList[i].data == UINT8_MAX)
+            if (*(uint8_t *)linky_label_list[i].data == UINT8_MAX)
             {
                 delete = true;
             }
-            ESP_LOGD(TAG, "Adding %s: value = %d", LinkyLabelList[i].label, *(uint8_t *)LinkyLabelList[i].data);
+            ESP_LOGD(TAG, "Adding %s: value = %d", linky_label_list[i].label, *(uint8_t *)linky_label_list[i].data);
             break;
         case UINT16:
-            if (*(uint16_t *)LinkyLabelList[i].data == UINT16_MAX)
+            if (*(uint16_t *)linky_label_list[i].data == UINT16_MAX)
             {
                 delete = true;
             }
-            ESP_LOGD(TAG, "Adding %s: value = %d", LinkyLabelList[i].label, *(uint16_t *)LinkyLabelList[i].data);
+            ESP_LOGD(TAG, "Adding %s: value = %d", linky_label_list[i].label, *(uint16_t *)linky_label_list[i].data);
             break;
         case UINT32:
-            if (*(uint32_t *)LinkyLabelList[i].data == UINT32_MAX)
+            if (*(uint32_t *)linky_label_list[i].data == UINT32_MAX)
             {
                 delete = true;
             }
-            if (LinkyLabelList[i].device_class == ENERGY && *(uint32_t *)(LinkyLabelList[i].data) == 0)
+            if (linky_label_list[i].device_class == ENERGY && *(uint32_t *)(linky_label_list[i].data) == 0)
             {
                 delete = true;
             }
-            ESP_LOGD(TAG, "Adding %s: value = %ld", LinkyLabelList[i].label, *(uint32_t *)LinkyLabelList[i].data);
+            ESP_LOGD(TAG, "Adding %s: value = %ld", linky_label_list[i].label, *(uint32_t *)linky_label_list[i].data);
             break;
         case UINT64:
-            if (*(uint64_t *)LinkyLabelList[i].data == UINT64_MAX)
+            if (*(uint64_t *)linky_label_list[i].data == UINT64_MAX)
             {
                 delete = true;
             }
-            if (LinkyLabelList[i].device_class == ENERGY && *(uint64_t *)(LinkyLabelList[i].data) == 0)
+            if (linky_label_list[i].device_class == ENERGY && *(uint64_t *)(linky_label_list[i].data) == 0)
             {
                 delete = true;
             }
-            ESP_LOGD(TAG, "Adding %s: value = %lld", LinkyLabelList[i].label, *(uint64_t *)LinkyLabelList[i].data);
+            ESP_LOGD(TAG, "Adding %s: value = %lld", linky_label_list[i].label, *(uint64_t *)linky_label_list[i].data);
             break;
         case STRING:
-            if (strlen((char *)LinkyLabelList[i].data) == 0)
+            if (strlen((char *)linky_label_list[i].data) == 0)
             {
                 delete = true;
             }
-            ESP_LOGD(TAG, "Adding %s: value = %s", LinkyLabelList[i].label, (char *)LinkyLabelList[i].data);
+            ESP_LOGD(TAG, "Adding %s: value = %s", linky_label_list[i].label, (char *)linky_label_list[i].data);
             break;
         case UINT32_TIME:
-            if (((time_label_t *)LinkyLabelList[i].data)->value == UINT32_MAX || ((time_label_t *)LinkyLabelList[i].data)->value == 0)
+            if (((time_label_t *)linky_label_list[i].data)->value == UINT32_MAX || ((time_label_t *)linky_label_list[i].data)->value == 0)
             {
                 delete = true;
             }
-            ESP_LOGD(TAG, "Adding %s: value = %lu", LinkyLabelList[i].label, ((time_label_t *)LinkyLabelList[i].data)->value);
+            ESP_LOGD(TAG, "Adding %s: value = %lu", linky_label_list[i].label, ((time_label_t *)linky_label_list[i].data)->value);
             break;
         case HA_NUMBER:
             break;
         default:
-            ESP_LOGE(TAG, "Unknown type %d", LinkyLabelList[i].type);
+            ESP_LOGE(TAG, "Unknown type %d", linky_label_list[i].type);
             continue;
             break;
         }
-        mqtt_create_sensor(mqttBuffer, config_topic, LinkyLabelList[i]);
+
+        if (linky_label_list[i].mode == linky_mode || linky_label_list[i].mode == ANY)
+        {
+            // dont delete entity of the current mode
+            ESP_LOGD(TAG, "Dont delete %s: same mode", linky_label_list[i].label);
+        }
+
+        mqtt_create_sensor(mqtt_buffer, config_topic, linky_label_list[i]);
         mqtt_topic_comliance(config_topic, sizeof(config_topic));
+
         if (delete)
         {
-            ESP_LOGW(TAG, "Delete %s", config_topic);
-            esp_mqtt_client_enqueue(mqtt_client, config_topic, "", 0, 1, 0, true);
-            delete = false;
+            if (with_delete && rw->reported != HA_REPORT_STATE_DELETED)
+            {
+                rw->reported = HA_REPORT_STATE_DELETED;
+                ESP_LOGW(TAG, "Delete %s", config_topic);
+                esp_mqtt_client_enqueue(mqtt_client, config_topic, "", 0, 1, 0, true);
+            }
         }
         else
         {
-            ESP_LOGW(TAG, "Create %s", config_topic);
-            esp_mqtt_client_enqueue(mqtt_client, config_topic, mqttBuffer, 0, 2, 1, true);
+            if (rw->reported != HA_REPORT_STATE_REPORTED)
+            {
+                ESP_LOGW(TAG, "Create %s", config_topic);
+                rw->reported = HA_REPORT_STATE_REPORTED;
+                esp_mqtt_client_enqueue(mqtt_client, config_topic, mqtt_buffer, 0, 2, 1, true);
+            }
+            else
+            {
+                ESP_LOGW(TAG, "Already reported %s", linky_label_list[i].label);
+            }
         }
 
         mqtt_sensors_count++;
@@ -506,12 +524,12 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
             mqtt_state = MQTT_CONNECTED;
         }
         // subscribe to input topic
-        for (int i = 0; i < LinkyLabelListSize; i++)
+        for (int i = 0; i < linky_label_list_size; i++)
         {
-            if (LinkyLabelList[i].type == HA_NUMBER)
+            if (linky_label_list[i].type == HA_NUMBER)
             {
                 char topic[150];
-                snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, LinkyLabelList[i].label);
+                snprintf(topic, sizeof(topic), "%s/%s", config_values.mqtt.topic, linky_label_list[i].label);
                 esp_mqtt_client_subscribe(mqtt_client, topic, 1);
                 ESP_LOGI(TAG, "Subscribing to %s", topic);
             }
@@ -577,39 +595,39 @@ void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_t event
             }
         }
         char *name = fullname + strlen(config_values.mqtt.topic) + 1; // +1 for '/'
-        for (int i = 0; i < LinkyLabelListSize; i++)
+        for (int i = 0; i < linky_label_list_size; i++)
         {
-            if (strcmp(LinkyLabelList[i].label, name) == 0)
+            if (strcmp(linky_label_list[i].label, name) == 0)
             {
-                if (LinkyLabelList[i].data == NULL)
+                if (linky_label_list[i].data == NULL)
                 {
                     ESP_LOGE(TAG, "Null pointer for %s", name);
                     break;
                 }
 
-                switch (LinkyLabelList[i].type)
+                switch (linky_label_list[i].type)
                 {
                 case UINT8:
-                    *(uint8_t *)LinkyLabelList[i].data = atoi(strValue);
+                    *(uint8_t *)linky_label_list[i].data = atoi(strValue);
                     break;
                 case UINT16:
-                    *(uint16_t *)LinkyLabelList[i].data = atoi(strValue);
+                    *(uint16_t *)linky_label_list[i].data = atoi(strValue);
                     break;
                 case UINT32:
-                    *(uint32_t *)LinkyLabelList[i].data = atol(strValue);
+                    *(uint32_t *)linky_label_list[i].data = atol(strValue);
                     break;
                 case UINT64:
-                    *(uint64_t *)LinkyLabelList[i].data = atoll(strValue);
+                    *(uint64_t *)linky_label_list[i].data = atoll(strValue);
                     break;
                 case STRING:
-                    strncpy((char *)LinkyLabelList[i].data, strValue, LinkyLabelList[i].size);
+                    strncpy((char *)linky_label_list[i].data, strValue, linky_label_list[i].size);
                     break;
                 case UINT32_TIME:
-                    ((time_label_t *)LinkyLabelList[i].data)->value = atol(strValue);
+                    ((time_label_t *)linky_label_list[i].data)->value = atol(strValue);
                     break;
                 case HA_NUMBER:
                     uint16_t value = atoi(strValue);
-                    uint16_t *config = (uint16_t *)LinkyLabelList[i].data;
+                    uint16_t *config = (uint16_t *)linky_label_list[i].data;
                     if (value != *config)
                     {
                         *config = value;

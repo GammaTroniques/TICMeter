@@ -283,9 +283,21 @@ typedef enum
     BYTES,
 } HADeviceClass;
 
+typedef enum
+{
+    HA_REPORT_STATE_UNKNOWN,
+    HA_REPORT_STATE_REPORTED,
+    HA_REPORT_STATE_DELETED,
+} ha_report_state_t;
+
 typedef struct
 {
-    uint16_t id;
+    ha_report_state_t reported; // HA discovery already done
+} linky_value_rw_t;
+typedef struct
+{
+    const uint16_t id;
+    const uint16_t tuya_id;
     const char *name;
     const char *label;
     void *data;
@@ -301,7 +313,7 @@ typedef struct
     const uint16_t attributeID;
     const esp_zb_zcl_attr_access_t zb_access;
     const esp_zb_zcl_attr_type_t zb_type;
-} LinkyGroup;
+} linky_value_t;
 
 typedef struct
 {
@@ -331,8 +343,9 @@ extern const char *const linky_std_str_contract[];
 extern const char *const linky_tuya_str_contract[];
 extern const char *const linky_str_mode[];
 
-extern const LinkyGroup LinkyLabelList[];
-extern const int32_t LinkyLabelListSize;
+extern const linky_value_t linky_label_list[];
+extern const int32_t linky_label_list_size;
+extern linky_value_rw_t linky_editable_values[];
 
 extern linky_data_t linky_data;
 extern linky_mode_t linky_mode;
@@ -403,5 +416,7 @@ esp_err_t linky_compute();
 
 const char *linky_get_str_mode();
 void linky_clear_data();
+
+linky_value_rw_t *linky_get_value_rw(uint32_t index);
 
 #endif /* Linky_H */
