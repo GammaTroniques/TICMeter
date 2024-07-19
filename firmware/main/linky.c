@@ -128,7 +128,7 @@ const linky_value_t linky_label_list[] =
     { 17, 999, "Heures Pleines Jours Rouges",        "BBRHPJR",     &linky_data.hist.BBRHPJR,      UINT64,       0, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0x0702, 0x010A,  ZB_RP, ZB_UINT48,   },
 
     { 18, 108, "Période tarifaire en cours",         "PTEC",        &linky_data.hist.PTEC,         STRING,       4, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:calendar-clock",                  0xFF42, 0x0039,  ZB_RP, ZB_CHARSTR,  }, //0x0702, 0x0020
-    { 19, 109, "Couleur aujourd'hui",                "aujour",      &linky_data.hist.AUJOUR ,      STRING,       9, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0x0000, 0x0000,  ZB_NO, ZB_NO,       },
+    { 19, 109, "Couleur aujourd'hui",                "aujour",      &linky_data.hist.AUJOUR ,      STRING,       9, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x003A,  ZB_RP, ZB_OCTSTR,   },
     { 20, 110, "Couleur du lendemain",               "DEMAIN",      &linky_data.hist.DEMAIN,       STRING,       9, MODE_HIST, C_TEMPO, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x0003,  ZB_RP, ZB_OCTSTR,   },
 
     { 21, 126, "Intensité instantanée",              "IINST",       &linky_data.hist.IINST,        UINT16,       0, MODE_HIST, C_ANY,   G_MONO, REAL_TIME,     CURRENT,     "",                                    0x0B04, 0x0508,  ZB_RP, ZB_UINT16,   },
@@ -234,7 +234,7 @@ const linky_value_t linky_label_list[] =
     {102, 000, "Tension moyenne Phase 3",            "UMOY3",       &linky_data.std.UMOY3,         UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  TENSION,     "",                                    0x0B04, 0x0A11,  ZB_RO, ZB_UINT16,   },
 
     {103, 000, "Registre de Statuts",                "STGE",        &linky_data.std.STGE,          STRING,       8, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x000A,  ZB_RO, ZB_OCTSTR,   },
-    {104, 109, "Couleur aujourd'hui",                "aujour",      &linky_data.std.AUJOUR,        STRING,       9, MODE_STD,  C_TEMPO, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0x0000, 0x0000,  ZB_NO, ZB_NO,       }, 
+    {104, 109, "Couleur aujourd'hui",                "aujour",      &linky_data.std.AUJOUR,        STRING,       9, MODE_STD,  C_TEMPO, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x003A,  ZB_RP, ZB_OCTSTR,   },
     {105, 110, "Couleur du lendemain",               "demain",      &linky_data.std.DEMAIN,        STRING,       9, MODE_STD,  C_TEMPO, G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:state-machine",                   0xFF42, 0x0003,  ZB_RP, ZB_OCTSTR,   }, // TODO: Enedis-NOI-CPT_54E p25 Couleur du lendemain --> tuya 109
 
     {106, 000, "Début Pointe Mobile 1",              "DPM1",        &linky_data.std.DPM1,          UINT32_TIME,  0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "",                                    0xFF42, 0x001c,  ZB_RO, ZB_UINT64,   },
@@ -1248,12 +1248,14 @@ char linky_update(uint32_t timeout)
     case 0:
         linky_clear_data();
         ESP_LOGE(TAG, "Error: Decode failed");
+        linky_stats();
         led_start_pattern(LED_LINKY_FAILED);
         return 0;
         break;
 
     case 2:
         ESP_LOGE(TAG, "Auto mode: Unable to find mode automatically");
+        linky_stats();
         linky_clear_data();
         led_start_pattern(LED_LINKY_FAILED);
         return 0;
