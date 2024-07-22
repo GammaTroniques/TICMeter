@@ -424,9 +424,19 @@ function wifi_scan() {
   fetch("/wifi-scan")
     .then((response) => response.json())
     .then((data) => {
-      console.log(data);
       const ap = data["ap"];
-      update_wifi_list(ap);
+
+      //remove duplicates and keep the one with the highest rssi
+      ap.sort((a, b) => b.rssi - a.rssi);
+      let uniqueAPs = {};
+      ap.forEach(ap => {
+        if (!uniqueAPs[ap.ssid] || ap.rssi > uniqueAPs[ap.ssid].rssi) {
+          uniqueAPs[ap.ssid] = ap;
+        }
+      });
+      let finalList = Object.values(uniqueAPs);
+      console.log(finalList)
+      update_wifi_list(finalList);
       wifi_text.textContent = "";
     })
     .catch((error) => {
