@@ -104,6 +104,113 @@ void zigbee_start_pairing()
     esp_zb_bdb_start_top_level_commissioning(ESP_ZB_BDB_MODE_NETWORK_STEERING);
 }
 
+void zigbee_config_report()
+{
+    // uint32_t record_count = 0;
+    uint32_t reportable_change = 0;
+    for (int i = 0; i < linky_label_list_size; i++)
+    {
+        if (linky_label_list[i].zb_access == 0)
+        {
+            continue;
+        }
+
+        if (linky_label_list[i].mode != linky_mode && linky_label_list[i].mode != ANY)
+        {
+            continue;
+        }
+
+        if (linky_label_list[i].data == NULL)
+        {
+            continue;
+        }
+
+        switch (linky_label_list[i].type)
+        {
+        case UINT8:
+        {
+            if (*(uint8_t *)linky_label_list[i].data == UINT8_MAX)
+            {
+                continue;
+            }
+            break;
+        }
+        case UINT16:
+        {
+            if (*(uint16_t *)linky_label_list[i].data == UINT16_MAX)
+            {
+                continue;
+            }
+            break;
+        }
+        case UINT32:
+        {
+            if (*(uint32_t *)linky_label_list[i].data == UINT32_MAX)
+            {
+                continue;
+            }
+            if (linky_label_list[i].device_class == ENERGY && *(uint32_t *)linky_label_list[i].data == 0)
+            {
+                continue;
+            }
+            break;
+        }
+        case UINT64:
+        {
+            if (*(uint64_t *)linky_label_list[i].data == UINT64_MAX)
+            {
+                continue;
+            }
+            if (linky_label_list[i].device_class == ENERGY && *(uint64_t *)linky_label_list[i].data == 0)
+            {
+                continue;
+            }
+            break;
+        }
+        case STRING:
+        {
+            if (strnlen((char *)linky_label_list[i].data, linky_label_list[i].size) == 0)
+            {
+                continue;
+            }
+            break;
+        }
+        case UINT32_TIME:
+        {
+            if (((time_label_t *)linky_label_list[i].data)->value == UINT32_MAX)
+            {
+                continue;
+            }
+            break;
+        }
+        default:
+            break;
+        };
+        esp_zb_zcl_config_report_record_t record;
+        record.direction = ESP_ZB_ZCL_CMD_DIRECTION_TO_SRV;
+        record.attributeID = linky_label_list[i].attributeID;
+        record.attrType = linky_label_list[i].zb_type;
+        record.min_interval = 0;
+        record.max_interval = config_values.refresh_rate * 3;
+        record.reportable_change = &reportable_change;
+
+        esp_zb_zcl_config_report_cmd_t report_cmd = {
+            .address_mode = ESP_ZB_APS_ADDR_MODE_DST_ADDR_ENDP_NOT_PRESENT,
+            .zcl_basic_cmd.src_endpoint = LINKY_TIC_ENDPOINT,
+            .clusterID = ESP_ZB_ZCL_CLUSTER_ID_TEMP_MEASUREMENT,
+        };
+
+        // report_cmd.record_number = ARRAY_LENTH(records);
+        report_cmd.record_number = 1;
+        report_cmd.record_field = &record;
+
+        esp_zb_lock_acquire(portMAX_DELAY);
+        esp_zb_zcl_config_report_cmd_req(&report_cmd);
+        esp_zb_lock_release();
+        ESP_LOGI(TAG, "Send configure reporting for: %s", linky_label_list[i].label);
+    }
+}
+
 void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
 {
     esp_zb_app_signal_type_t *p_sg_p = (esp_zb_app_signal_type_t *)signal_struct->p_app_signal;
@@ -153,6 +260,7 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
                      extended_pan_id[7], extended_pan_id[6], extended_pan_id[5], extended_pan_id[4],
                      extended_pan_id[3], extended_pan_id[2], extended_pan_id[1], extended_pan_id[0],
                      esp_zb_get_pan_id(), esp_zb_get_current_channel(), esp_zb_get_short_address());
+            zigbee_config_report();
 
             if (config_values.zigbee.state != ZIGBEE_PAIRED)
             {
@@ -183,6 +291,9 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             config_values.zigbee.state = ZIGBEE_NOT_CONFIGURED;
             config_write();
         }
+        break;
+    case ESP_ZB_ZDO_SIGNAL_PRODUCTION_CONFIG_READY:
+        zigbee_config_report();
         break;
     default:
         ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s (0x%x)", esp_zb_zdo_signal_to_string(sig_type), sig_type, esp_err_to_name(err_status), err_status);
