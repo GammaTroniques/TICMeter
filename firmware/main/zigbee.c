@@ -442,15 +442,15 @@ static void zigbee_task(void *pvParameters)
         .nwk_cfg.zed_cfg.keep_alive = 4000, // in seconds
     };
 
-    if (!gpio_vusb_connected())
-    {
-        ESP_LOGW(TAG, "Enable sleep");
-        esp_zb_sleep_enable(true);
-    }
-    else
-    {
-        ESP_LOGW(TAG, "Disable sleep: VUSB connected");
-    }
+    // if (!gpio_vusb_connected())
+    //{
+    ESP_LOGW(TAG, "Enable sleep");
+    esp_zb_sleep_enable(true);
+    // }
+    // else
+    // {
+    //     ESP_LOGW(TAG, "Disable sleep: VUSB connected");
+    // }
 
     esp_zb_aps_src_binding_table_size_set(64);
     esp_zb_init(&zigbee_cfg);
