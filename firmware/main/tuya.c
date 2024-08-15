@@ -142,7 +142,7 @@ Function Implementation
 
 static void tuya_qrcode_print(const char *productkey, const char *uuid)
 {
-    ESP_LOGI(TAG, "https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", productkey, uuid);
+    ESP_LOGI(TAG, "Tuya URL: https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", productkey, uuid);
 
     char urlbuf[255];
     snprintf(urlbuf, sizeof(urlbuf), "https://smartapp.tuya.com/s/p?p=%s&uuid=%s&v=2.0", productkey, uuid);

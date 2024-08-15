@@ -82,6 +82,7 @@ static int set_tuya_command(int argc, char **argv);
 static int set_tuya_pairing(int argc, char **argv);
 static int get_tuya_command(int argc, char **argv);
 static int start_tuya(int argc, char **argv);
+static int manual_tuya_pairing(int argc, char **argv);
 
 static int set_linky_mode_command(int argc, char **argv);
 static int get_linky_mode_command(int argc, char **argv);
@@ -171,6 +172,7 @@ static const shell_cmd_t shell_cmds[] = {
     {"set-tuya-pairing",            "Set tuya pairing state",                   &set_tuya_pairing,                  1, {"<pairing_state>"}, {"Pairing state"}},
     {"get-tuya",                    "Get tuya config",                          &get_tuya_command,                  0, {}, {}},
     {"start-tuya",                  "Start tuya",                               &start_tuya,                        0, {}, {}},
+    {"pairing-tuya",                "Start manual tuya pairing",                &manual_tuya_pairing,               0, {}, {}},
     {"set-linky-mode",              "Set linky mode",                           &set_linky_mode_command,            1, {"<mode>"}, {"Mode"}},
     {"get-linky-mode",              "Get linky mode",                           &get_linky_mode_command,            0, {}, {}},
     {"linky-print",                 "Print linky linky_data",                   &linky_print_command,               1, {"<debug>"}, {"View raw frame, bool 0/1"}},
@@ -589,6 +591,17 @@ static int start_tuya(int argc, char **argv)
   }
   wifi_connect();
   resume_task(tuyaTaskHandle); // resume tuya task
+  return 0;
+}
+
+static int manual_tuya_pairing(int argc, char **argv)
+{
+  if (argc != 1)
+  {
+    return ESP_ERR_INVALID_ARG;
+  }
+  wifi_connect();
+  tuya_init();
   return 0;
 }
 
