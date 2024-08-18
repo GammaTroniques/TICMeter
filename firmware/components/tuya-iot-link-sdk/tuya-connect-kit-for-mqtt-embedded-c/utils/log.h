@@ -13,11 +13,13 @@
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
+#include "esp_log.h"
 
 #define LOG_VERSION "0.1.0"
 #define LOG_USE_COLOR
 
-typedef struct {
+typedef struct
+{
   va_list ap;
   const char *fmt;
   const char *file;
@@ -30,19 +32,41 @@ typedef struct {
 typedef void (*log_LogFn)(log_Event *ev);
 typedef void (*log_LockFn)(bool lock, void *udata);
 
-enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
+enum
+{
+  LOG_TRACE,
+  LOG_DEBUG,
+  LOG_INFO,
+  LOG_WARN,
+  LOG_ERROR,
+  LOG_FATAL
+};
 
 #define __FILENAME_TUYA__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
+// #define TUYA_DEBUG_LOGS
+
+#ifdef TUYA_DEBUG_LOGS
+
 #define log_trace(...) log_log(LOG_TRACE, __FILENAME_TUYA__, __LINE__, __VA_ARGS__)
 #define log_debug(...) log_log(LOG_DEBUG, __FILENAME_TUYA__, __LINE__, __VA_ARGS__)
-#define log_info(...)  log_log(LOG_INFO,  __FILENAME_TUYA__, __LINE__, __VA_ARGS__)
-#define log_warn(...)  log_log(LOG_WARN,  __FILENAME_TUYA__, __LINE__, __VA_ARGS__)
+#define log_info(...) log_log(LOG_INFO, __FILENAME_TUYA__, __LINE__, __VA_ARGS__)
+#define log_warn(...) log_log(LOG_WARN, __FILENAME_TUYA__, __LINE__, __VA_ARGS__)
 #define log_error(...) log_log(LOG_ERROR, __FILENAME_TUYA__, __LINE__, __VA_ARGS__)
 #define log_fatal(...) log_log(LOG_FATAL, __FILENAME_TUYA__, __LINE__, __VA_ARGS__)
 
+#else
 
-const char* log_level_string(int level);
+#define log_trace(...) ESP_LOGV("TUYA", __VA_ARGS__)
+#define log_debug(...) ESP_LOGD("TUYA", __VA_ARGS__)
+#define log_info(...) ESP_LOGI("TUYA", __VA_ARGS__)
+#define log_warn(...) ESP_LOGW("TUYA", __VA_ARGS__)
+#define log_error(...) ESP_LOGE("TUYA", __VA_ARGS__)
+#define log_fatal(...) ESP_LOGE("TUYA", __VA_ARGS__)
+
+#endif
+
+const char *log_level_string(int level);
 void log_set_lock(log_LockFn fn, void *udata);
 void log_set_level(int level);
 void log_set_quiet(bool enable);

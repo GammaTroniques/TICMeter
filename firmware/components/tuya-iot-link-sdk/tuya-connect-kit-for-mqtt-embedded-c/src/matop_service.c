@@ -109,7 +109,7 @@ static int matop_service_file_rawdata_receive_cb(void *context, const uint8_t *i
 
     if (ilen < sizeof(uint32_t))
     {
-        TY_LOGE("error ilen:%ld", ilen);
+        TY_LOGE("error ilen:%zu", ilen);
         return OPRT_INVALID_PARM;
     }
 
@@ -182,7 +182,7 @@ static int matop_request_send(matop_context_t *context, const uint8_t *data, siz
     if (msgid <= 0)
     {
         // TODO add error code
-        TY_LOGE("mqtt connect err:%ld", msgid);
+        TY_LOGE("mqtt connect err:%d", msgid);
         return OPRT_COM_ERROR;
     }
     return OPRT_OK;
@@ -233,7 +233,7 @@ int matop_serice_yield(matop_context_t *context)
         mqtt_atop_message_t *entry = *current;
         if (system_ticks() > entry->timeout)
         {
-            TY_LOGW("Message id %ld timeout.", entry->id);
+            TY_LOGW("Message id %d timeout.", entry->id);
             if (entry->notify_cb)
             {
                 entry->notify_cb(&(atop_base_response_t){.success = false}, entry->user_data);
@@ -305,7 +305,7 @@ int matop_service_request_async(matop_context_t *context,
 
     if (rt != OPRT_OK)
     {
-        TY_LOGE("mqtt_atop_request_send error:%ld", rt);
+        TY_LOGE("mqtt_atop_request_send error:%d", rt);
         system_free(message_handle);
         return rt;
     }

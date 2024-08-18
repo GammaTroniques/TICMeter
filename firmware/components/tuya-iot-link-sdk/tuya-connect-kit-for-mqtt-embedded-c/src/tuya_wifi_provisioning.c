@@ -18,7 +18,7 @@ wifi_provisioning_params_t wifi_provisioning_params = {0};
 
 static void ble_service_callback(wifi_info_t wifi_info, tuya_binding_info_t binding_info)
 {
-    PR_DEBUG("ble_service_callback", "wifi_info: ssid=%s, pwd=%s", wifi_info.ssid, wifi_info.pwd);
+    PR_DEBUG("ble_service_callback: wifi_info: ssid=%s, pwd=%s", wifi_info.ssid, wifi_info.pwd);
     if (wifi_provisioning_params.cb)
     {
         wifi_provisioning_params.cb(wifi_info);

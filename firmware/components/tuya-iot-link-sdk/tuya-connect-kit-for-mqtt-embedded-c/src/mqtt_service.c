@@ -105,7 +105,7 @@ static int pv22_packet_encode(const uint8_t *key, const pv22_packet_object_t *in
 	rt = aes128_ecb_encode((const uint8_t *)input->data, input->datalen, &encrypt_data, (unsigned int *)&encrypt_len, key);
 	if (OPRT_OK != rt)
 	{
-		TY_LOGE("encrypt fail:%ld", rt);
+		TY_LOGE("encrypt fail:%d", rt);
 		return OPRT_COM_ERROR;
 	}
 	memcpy(output + PV22_FIXED_HEADER_LENGTH, encrypt_data, encrypt_len);
@@ -164,7 +164,7 @@ static int pv22_packet_decode(const uint8_t *key, const uint8_t *input, size_t i
 	/* get encrypt data */
 	uint8_t *data = (uint8_t *)input + PV22_FIXED_HEADER_LENGTH;
 	size_t data_len = (size_t)(ilen - PV22_FIXED_HEADER_LENGTH);
-	TY_LOGD("crc32:%08x, sequence:%ld, source:%ld, datalen:%ld", crc32, sequence, source, (int)data_len);
+	TY_LOGD("crc32:%08x, sequence:%ld, source:%ld, datalen:%zu", (unsigned int)crc32, sequence, source, data_len);
 
 	// decrypt buffer
 	uint8_t *decrypt_data;
@@ -172,7 +172,7 @@ static int pv22_packet_decode(const uint8_t *key, const uint8_t *input, size_t i
 	int rt = aes128_ecb_decode((const uint8_t *)data, data_len, &decrypt_data, (unsigned int *)&decrypt_len, key);
 	if (OPRT_OK != rt)
 	{
-		TY_LOGE("mqtt data decrypt fail:%ld", rt);
+		TY_LOGE("mqtt data decrypt fail:%d", rt);
 		return OPRT_COM_ERROR;
 	}
 	memcpy(output->data, decrypt_data, decrypt_len);
@@ -379,7 +379,7 @@ static void on_subscribe_message_default(uint16_t msgid, const mqtt_client_messa
 	int ret = tuya_protocol_message_parse_process(context, msg->payload, msg->length);
 	if (ret != OPRT_OK)
 	{
-		TY_LOGE("protocol message parse error:%ld", ret);
+		TY_LOGE("protocol message parse error:%d", ret);
 	}
 }
 
@@ -422,7 +422,7 @@ static void mqtt_client_message_cb(void *client, uint16_t msgid, const mqtt_clie
 	tuya_mqtt_context_t *context = (tuya_mqtt_context_t *)userdata;
 
 	/* topic filter */
-	TY_LOGD("recv message TopicName:%s, payload len:%ld", msg->topic, msg->length);
+	TY_LOGD("recv message TopicName:%s, payload len:%zu", msg->topic, msg->length);
 	mqtt_subscribe_message_distribute(context, msgid, msg);
 }
 
@@ -430,14 +430,14 @@ static void mqtt_client_subscribed_cb(void *client, uint16_t msgid, void *userda
 {
 	client = client;
 	userdata = userdata;
-	TY_LOGD("Subscribe successed ID:%ld", msgid);
+	TY_LOGD("Subscribe successed ID:%d", msgid);
 }
 
 static void mqtt_client_puback_cb(void *client, uint16_t msgid, void *userdata)
 {
 	client = client;
 	tuya_mqtt_context_t *context = (tuya_mqtt_context_t *)userdata;
-	TY_LOGD("PUBACK ID:%ld", msgid);
+	TY_LOGD("PUBACK ID:%d", msgid);
 
 	/* LOCK */
 	/* publish async process */
@@ -486,7 +486,7 @@ int tuya_mqtt_init(tuya_mqtt_context_t *context, const tuya_mqtt_config_t *confi
 		&context->signature);
 	if (OPRT_OK != rt)
 	{
-		TY_LOGE("mqtt token sign error:%ld", rt);
+		TY_LOGE("mqtt token sign error:%d", rt);
 		return rt;
 	}
 
@@ -518,7 +518,7 @@ int tuya_mqtt_init(tuya_mqtt_context_t *context, const tuya_mqtt_config_t *confi
 	mqtt_status = mqtt_client_init(context->mqtt_client, &mqtt_config);
 	if (mqtt_status != MQTT_STATUS_SUCCESS)
 	{
-		TY_LOGE("MQTT init failed: Status = %ld.", mqtt_status);
+		TY_LOGE("MQTT init failed: Status = %d.", mqtt_status);
 		return OPRT_COM_ERROR;
 	}
 
@@ -557,7 +557,7 @@ int tuya_mqtt_start(tuya_mqtt_context_t *context)
 	mqtt_status = mqtt_client_connect(context->mqtt_client);
 	if (MQTT_STATUS_NOT_AUTHORIZED == mqtt_status)
 	{
-		TY_LOGE("MQTT connect fail:%ld", mqtt_status);
+		TY_LOGE("MQTT connect fail:%d", mqtt_status);
 		if (context->on_unbind)
 		{
 			context->on_unbind(context, context->user_data);
@@ -567,7 +567,7 @@ int tuya_mqtt_start(tuya_mqtt_context_t *context)
 
 	if (MQTT_STATUS_SUCCESS != mqtt_status)
 	{
-		TY_LOGE("MQTT connect fail:%ld", mqtt_status);
+		TY_LOGE("MQTT connect fail:%d", mqtt_status);
 		/* Generate a random number and get back-off value (in milliseconds) for the next connection retry. */
 		uint16_t nextRetryBackOff = 0U;
 		if (BackoffAlgorithm_GetNextBackoff(&context->backoff_algorithm,
@@ -591,11 +591,11 @@ int tuya_mqtt_stop(tuya_mqtt_context_t *context)
 	}
 
 	int ret = tuya_mqtt_subscribe_message_callback_unregister(context, context->signature.topic_in);
-	TY_LOGD("MQTT unsubscribe result:%ld", ret);
+	TY_LOGD("MQTT unsubscribe result:%d", ret);
 
 	mqtt_client_status_t mqtt_status;
 	mqtt_status = mqtt_client_disconnect(context->mqtt_client);
-	TY_LOGD("MQTT disconnect result:%ld", mqtt_status);
+	TY_LOGD("MQTT disconnect result:%d", mqtt_status);
 
 	context->manual_disconnect = true;
 	return OPRT_OK;
@@ -766,7 +766,7 @@ int tuya_mqtt_protocol_data_publish_with_topic_common(tuya_mqtt_context_t *conte
 	system_free(packet);
 	if (ret != OPRT_OK)
 	{
-		TY_LOGE("pv22_packet_encode error:%ld", ret);
+		TY_LOGE("pv22_packet_encode error: %d", ret);
 		system_free(buffer);
 		return OPRT_COM_ERROR;
 	}
@@ -906,7 +906,7 @@ int tuya_mqtt_upgrade_progress_report(tuya_mqtt_context_t *context, int channel,
 {
 	if (percent > 100)
 	{
-		TY_LOGE("input invalid:%ld", percent);
+		TY_LOGE("input invalid:%d", percent);
 		return OPRT_INVALID_PARM;
 	}
 

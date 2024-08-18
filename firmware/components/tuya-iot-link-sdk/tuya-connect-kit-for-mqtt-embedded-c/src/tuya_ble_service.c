@@ -889,7 +889,7 @@ static void ble_recv_data_process(uint8_t *data, uint32_t len)
         TY_LOGE("wait next pack");
         return;
     }
-    TY_LOGD("recv LEN: %d", recv_pack.frame_len);
+    TY_LOGD("recv LEN: %ld", recv_pack.frame_len);
     // decrypt
     recv_frame_len = recv_pack.frame_len - FRAME_ENCRYPT_MODE_SIZE - FRAME_IV_SIZE;
     recv_frame = system_malloc(recv_frame_len);

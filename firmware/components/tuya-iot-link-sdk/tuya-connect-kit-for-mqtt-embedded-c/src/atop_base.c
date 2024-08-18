@@ -77,7 +77,7 @@ static int atop_url_params_encode(const char *key,
     rt = atop_url_params_sign(key, params, param_num, (uint8_t *)buffer + printlen, &sign_len);
     if (rt != 0)
     {
-        TY_LOGE("atop_url_params_sign error:%ld", rt);
+        TY_LOGE("atop_url_params_sign error:%d", rt);
         return rt;
     }
     printlen += sign_len;
@@ -146,7 +146,7 @@ static int atop_response_result_decrpyt(const char *key,
     rt = aes128_ecb_decode_raw(input, ilen, output, (const uint8_t *)key);
     if (rt != OPRT_OK)
     {
-        TY_LOGE("aes128_ecb_decode error:%ld", rt);
+        TY_LOGE("aes128_ecb_decode error:%d", rt);
         return rt;
     }
 
@@ -194,7 +194,7 @@ static int atop_response_data_decode(const char *key,
     rt = mbedtls_base64_decode(b64buffer, b64buffer_len, &b64buffer_olen, (const uint8_t *)value, value_length);
     if (rt != OPRT_OK)
     {
-        TY_LOGE("base64 decode error:%ld", rt);
+        TY_LOGE("base64 decode error:%d", rt);
         system_free(b64buffer);
         return rt;
     }
@@ -203,7 +203,7 @@ static int atop_response_data_decode(const char *key,
     system_free(b64buffer);
     if (rt != OPRT_OK)
     {
-        TY_LOGE("atop_data_decrpyt error: %ld", rt);
+        TY_LOGE("atop_data_decrpyt error: %d", rt);
         return rt;
     }
     TY_LOGV("result:\r\n%.*s", *olen, output);
@@ -224,7 +224,7 @@ static int atop_response_result_parse_cjson(const uint8_t *input, size_t ilen,
 
     if (input[ilen] != '\0')
     {
-        TY_LOGE("string length error ilen:%ld, stlen:%ld", ilen, strlen((char *)input));
+        TY_LOGE("string length error ilen:%zu, stlen:%zu", ilen, strlen((char *)input));
     }
 
     // json parse
@@ -349,12 +349,12 @@ int atop_base_request(const atop_base_request_t *request, atop_base_response_t *
     rt = atop_url_params_encode((char *)request->key, params, idx, path_buffer + path_buffer_len, &encode_len);
     if (rt != OPRT_OK)
     {
-        TY_LOGE("url param encode error:%ld", rt);
+        TY_LOGE("url param encode error:%d", rt);
         system_free(path_buffer);
         return rt;
     }
     path_buffer_len += encode_len;
-    TY_LOGD("request url len:%ld: %s", path_buffer_len, path_buffer);
+    TY_LOGD("request url len:%d: %s", path_buffer_len, path_buffer);
 
     /* POST data buffer */
     size_t body_length = 0;
@@ -371,12 +371,12 @@ int atop_base_request(const atop_base_request_t *request, atop_base_response_t *
     rt = atop_request_data_encode((char *)request->key, request->data, request->datalen, body_buffer, &body_length);
     if (rt != OPRT_OK)
     {
-        TY_LOGE("atop_post_data_encrypt error:%ld", rt);
+        TY_LOGE("atop_post_data_encrypt error:%d", rt);
         system_free(path_buffer);
         system_free(body_buffer);
         return rt;
     }
-    TY_LOGV("out post data len:%ld, data:%s", body_length, body_buffer);
+    TY_LOGV("out post data len:%zu, data:%s", body_length, body_buffer);
 
     /* HTTP headers */
     http_client_header_t headers[] = {
@@ -432,7 +432,7 @@ int atop_base_request(const atop_base_request_t *request, atop_base_response_t *
 
     if (HTTP_CLIENT_SUCCESS != http_status)
     {
-        TY_LOGE("http_request_send error:%ld", http_status);
+        TY_LOGE("http_request_send error:%u", http_status);
         system_free(response_buffer);
         return OPRT_LINK_CORE_HTTP_CLIENT_SEND_ERROR;
     }
@@ -459,7 +459,7 @@ int atop_base_request(const atop_base_request_t *request, atop_base_response_t *
         return rt;
     }
 
-    TY_LOGW("atop_response_decode error:%ld, try parse the plaintext data.", rt);
+    TY_LOGW("atop_response_decode error:%d, try parse the plaintext data.", rt);
     rt = atop_response_result_parse_cjson(http_response.body, http_response.body_length, response);
     system_free(response_buffer);
     return rt;
