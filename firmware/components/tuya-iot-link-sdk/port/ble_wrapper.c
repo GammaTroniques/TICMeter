@@ -353,6 +353,7 @@ OPERATE_RET tkl_ble_gap_adv_start(TKL_BLE_GAP_ADV_PARAMS_T const *p_adv_params)
     }
     else
     {
+        TY_LOGW("Invalid adv type");
         return OPRT_INVALID_PARM; // Invalid Parameters
     }
 

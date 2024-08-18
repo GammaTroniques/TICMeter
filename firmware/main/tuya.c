@@ -833,9 +833,7 @@ uint8_t tuya_restart()
 void ble_token_get_cb(wifi_info_t wifi_info)
 {
     ESP_LOGI(TAG, "BLE token get callback");
-    ESP_LOGI(TAG, "SSID: %s", wifi_info.ssid);
-    ESP_LOGI(TAG, "PWD: %s", wifi_info.pwd);
-    wifi_set_credentials(wifi_info.ssid, wifi_info.pwd);
+    wifi_set_credentials((char *)wifi_info.ssid, (char *)wifi_info.pwd);
 
     config_values.pairing_state = TUYA_WIFI_CONNECTING;
 
