@@ -110,4 +110,6 @@ extern void wifi_scan(uint16_t *ap_count);
 
 extern esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time);
 
+extern void wifi_set_credentials(const char *ssid, const char *password);
+
 #endif /* WIFI_H */

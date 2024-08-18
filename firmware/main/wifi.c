@@ -805,3 +805,10 @@ esp_err_t wifi_ping(ip_addr_t host, uint32_t *ping_time)
         return ESP_ERR_TIMEOUT;
     }
 }
+
+void wifi_set_credentials(const char *ssid, const char *password)
+{
+    strncpy(config_values.ssid, ssid, MIN(strlen(ssid), sizeof(config_values.ssid)));
+    strncpy(config_values.password, password, MIN(strlen(password), sizeof(config_values.password)));
+    config_write();
+}

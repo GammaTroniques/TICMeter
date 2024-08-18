@@ -331,8 +331,7 @@ static int set_wifi_command(int argc, char **argv)
   {
     return ESP_ERR_INVALID_ARG;
   }
-  strncpy(config_values.ssid, argv[1], sizeof(config_values.ssid));
-  strncpy(config_values.password, argv[2], sizeof(config_values.password));
+  wifi_set_credentials(argv[1], argv[2]);
   config_write();
   printf("Wifi credentials saved\n");
 
