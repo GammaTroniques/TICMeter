@@ -105,7 +105,7 @@ uint32_t linky_free_heap_size = 0;
 
 const linky_value_t linky_label_list[] =
 {   
-    // Tuya ID  Name                               Label         DataPtr                        Type        Size   MODE    Contract   Grid    UpdateType    HA Class      Icon                                CLUSTER ATTRIBUTE  ACCESS  ZB_TYPE
+    // ID|Tuya ID|Name                               Label         DataPtr                        Type        Size   MODE    Contract   Grid    UpdateType    HA Class      Icon                                CLUSTER ATTRIBUTE  ACCESS  ZB_TYPE
     //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     //--------------------------- MODE HISTORIQUE --------------------------------
     {  1, 101, "Identifiant",                        "ADCO",        &linky_data.hist.ADCO,         STRING,      12, MODE_HIST, C_ANY,   G_ANY,  STATIC_VALUE,  NONE_CLASS,  "mdi:card-account-details",            0x0702, 0x0308,  ZB_RO, ZB_OCTSTR,   },
@@ -176,7 +176,7 @@ const linky_value_t linky_label_list[] =
     { 56, 000, "Index 3 Energie soutirée Distr",     "EASD03",      &linky_data.std.EASD03,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0xFF42, 0x0010,  ZB_RP, ZB_UINT48,   },
     { 57, 000, "Index 4 Energie soutirée Distr",     "EASD04",      &linky_data.std.EASD04,        UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "",                                    0xFF42, 0x0011,  ZB_RP, ZB_UINT48,   },
 
-    { 58, 999, "Energie injectée totale",            "EAIT",        &linky_data.std.EAIT,          UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "mdi:transmission-tower-export",       0x0702, 0x0001,  ZB_RP, ZB_UINT48,   },
+    { 58, 121, "Energie injectée totale",            "EAIT",        &linky_data.std.EAIT,          UINT64,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY,      "mdi:transmission-tower-export",       0x0702, 0x0001,  ZB_RP, ZB_UINT48,   },
 
     { 59, 000, "Energie réactive Q1 totale",         "ERQ1",        &linky_data.std.ERQ1,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "mdi:lightning-bolt",                  0x0B04, 0x0305,  ZB_RP, ZB_INT16,    },
     { 60, 000, "Energie réactive Q2 totale",         "ERQ2",        &linky_data.std.ERQ2,          UINT32,       0, MODE_STD,  C_ANY,   G_ANY,  STATIC_VALUE,  ENERGY_Q,    "mdi:lightning-bolt",                  0x0B04, 0x050E,  ZB_RP, ZB_INT16,    },
@@ -346,6 +346,7 @@ const char *const linky_std_str_contract[] = {
     [C_SEM_WE_LUNDI] = "SEM WE LUNDI",
     [C_SEM_WE_MERCREDI] = "SEM WE MERCREDI",
     [C_SEM_WE_VENDREDI] = "SEM WE VENDREDI",
+    [C_HC_WE] = "HC et Week-End",
 };
 
 const char *const linky_tuya_str_contract[] = {
